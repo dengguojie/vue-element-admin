@@ -1,0 +1,10 @@
+
+# cmake project
+build/
+
+# python cache
+*.pyc
+
+# protobuf
+*.pb.h
+*.pb.c
