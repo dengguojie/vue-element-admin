@@ -1,6 +1,7 @@
 
 # cmake project
 build/
+output/
 
 # python cache
 *.pyc

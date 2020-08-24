@@ -15,10 +15,11 @@
 # ============================================================================
 
 set -e
-BASEPATH=$(cd "$(dirname $0)"; pwd)
-export BUILD_PATH="${BASEPATH}/build/"
-OUTPUT_PATH="${BUILD_PATH}/output"
-CANN_PATH="${BUILD_PATH}/cann"
+BASE_PATH=$(cd "$(dirname $0)"; pwd)
+RELEASE_PATH="${BASE_PATH}/output"
+export BUILD_PATH="${BASE_PATH}/build"
+INSTALL_PATH="${BUILD_PATH}/install"
+CMAKE_PATH="${BUILD_PATH}/cann"
 
 # print usage message
 usage() {
@@ -98,10 +99,8 @@ mk_dir() {
 # create build path
 build_cann() {
   logging "Create build directory and build CANN"
-  mk_dir "${CANN_PATH}"
-  # CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DCANN_ONLY=$CANN_ONLY"
-  CMAKE_ARGS=""
 
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH"
   if [[ "X$ENABLE_CANN_COV" = "Xon" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_CANN_COV=ON"
   fi
@@ -114,14 +113,17 @@ build_cann() {
   fi
 
   logging "CMake Args: ${CMAKE_ARGS}"
-  cd "${BUILD_PATH}/cann" && cmake ${CMAKE_ARGS} ../..
+  mk_dir "${CMAKE_PATH}"
+  cd "${CMAKE_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
   logging "CANN build success!"
 }
 
 release_cann() {
   logging "Create output directory"
-  mk_dir "${OUTPUT_PATH}"
+  mk_dir "${RELEASE_PATH}"
+  RELEASE_TARGET="cann.tar"
+  cd ${INSTALL_PATH} && tar cvfz "${RELEASE_TARGET}" * && mv "${RELEASE_TARGET}" "${RELEASE_PATH}"
 }
 
 main() {
