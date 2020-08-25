@@ -1,0 +1,1899 @@
+"""
+Copyright 2018 Huawei Technologies Co., Ltd
+
+conv2d_backprop_input schedule
+"""
+from collections import deque
+import functools  # pylint: disable=C0302
+import operator
+import re
+
+import topi
+from topi.cce.util import is_v200_version
+from topi.cce.util import is_mini_version
+from te import tvm
+from te import platform as cce
+from te.lang.cce import util
+from te.platform import CUBE_MKN
+from te.platform import intrinsic_check_support
+from te.platform import get_soc_spec
+from te.domain.tiling.tiling_query import tiling_query
+from te.utils.error_manager import error_manager_util as err_man
+
+# Don't modify,used in log_util
+DX_SUPPORT_TAG_LOG_PREFIX = '#Conv2DBackpropInput only support#'
+# default False
+DEBUG_MODE = False
+CONST_L1_SHAPE_DIM = 4
+UB_SPACE_SIZE = get_soc_spec("UB_SIZE")
+L1_SPACE_SIZE = get_soc_spec("L1_SIZE")
+L0A_SPACE_SIZE = get_soc_spec("L0A_SIZE")
+L0B_SPACE_SIZE = get_soc_spec("L0B_SIZE")
+L0C_SPACE_SIZE = get_soc_spec("L0C_SIZE")
+DTYPE_BYTE_MAP = {"float16": 2,
+                  "float32": 4,
+                  "int8": 1,
+                  "int32": 4}
+CUB_BUFFER_LIMIT = 4096
+EPSINON = 1e-6
+TENSOR_MAP = {}
+TILING = {}
+DIM_MAP = {}
+
+FUSION_DX_DRELU = "dx+drelu"
+FUSION_DX_ADD = "dx+vadd"
+FUSION_DX_ADD_DRELU = "dx+vadd+drelu"
+FUSION_DX_DEQUANT = "dx+dequant"
+FUSION_DX_DEQUANT_QUANT = "dx+dequant+quant"
+FUSION_DX_REQUANT = "dx+requant"
+FUSION_NONE = ""
+FUSION_TYPE_2_OPERAND_NUM = {FUSION_NONE: 0,
+                             FUSION_DX_DRELU: 0.0625,
+                             FUSION_DX_ADD: 1,
+                             FUSION_DX_ADD_DRELU: 1.0625,
+                             FUSION_DX_DEQUANT: 0,
+                             FUSION_DX_DEQUANT_QUANT: 0,
+                             FUSION_DX_REQUANT: 0
+                            }
+
+# broadcast should be 16
+BRC_STANDARD_BLOCK_SIZE = 16
+
+class DeconvParam:
+    """
+    class of DeconvTilingParam
+    """
+
+    def __init__(self):
+        pass
+
+    para_map = {"DATA_AMOUNT_CUB": 0,
+                "FUSION_TYPE": FUSION_NONE}
+
+    @staticmethod
+    def update_para_map(key, value):
+        """
+        updata para map with key and value
+        """
+        DeconvParam.para_map[key] = value
+
+    @staticmethod
+    def get_para_map(key):
+        """
+        get value by key
+        """
+        return DeconvParam.para_map[key]
+
+
+def raise_dx_opti_err(msg):
+    """
+    In op Conv2DBackpropInput_opti, [%s] % (msg)
+    msg for discribe the error info
+    the error info only for Conv2DBackpropInput_opti's developers
+    """
+    args_dict = {
+        "errCode": "E60108",
+        "reason": msg
+    }
+    msg = err_man.get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def print_debug(*params):
+    '''
+    print log if debug
+    :param params: infos
+    :return: None
+    '''
+    if DEBUG_MODE:
+        print(params)
+
+
+def print_ir_conv(process, sch):
+    """
+    print ir for input sch
+
+    Parameter:
+    --------------------------------------------------------------
+    :param process: tag
+    :param sch: schedule
+    :return: IR process
+    ---------------------------------------------------------------
+    """
+    if DEBUG_MODE or process == "debug":
+        start = process + " IR start"
+        end = process + " IR end\n"
+        sch = sch.normalize()
+        print(start)
+        bounds = tvm.schedule.InferBound(sch)
+        stmt = tvm.schedule.ScheduleOps(sch, bounds, True)
+        print(stmt)
+        print(end)
+
+
+def _calc_double_op_num(fusion_type):
+    if fusion_type in (FUSION_DX_DEQUANT_QUANT,
+                       FUSION_DX_DEQUANT,
+                       FUSION_DX_REQUANT):
+        double_op_num = 0
+        if fusion_type == FUSION_DX_DEQUANT_QUANT:
+            double_op_num += 4
+        elif fusion_type == FUSION_DX_DEQUANT:
+            if "dequant_relu" in TENSOR_MAP or "dequant_sqrt" in TENSOR_MAP:
+                double_op_num += 1
+            elif TENSOR_MAP.get("input_tensor"):
+                double_op_num += 1
+        else:
+            pass
+        FUSION_TYPE_2_OPERAND_NUM[fusion_type] = double_op_num
+
+
+def _get_data_amount_l1(l1_shape, isdouble):
+    """
+    using tilling parameter calculate data amount in l1
+
+    Parameters:
+    ---------------------------------------------------
+    :param l1_shape:  'AL1_shape' or 'BL1_shape'
+    :param isdouble:  True or False
+    :return:  data amount in l1_shape
+    ---------------------------------------------------
+    """
+    if TILING.get(l1_shape) is None:
+        raise_dx_opti_err('{} can not be None'.format(l1_shape))
+    if TILING.get(l1_shape) != [] \
+            and len(TILING.get(l1_shape)) != CONST_L1_SHAPE_DIM:
+        raise_dx_opti_err('{} should be {}'
+                           .format(l1_shape, CONST_L1_SHAPE_DIM))
+
+    if TILING.get(l1_shape) == []:
+        if l1_shape == 'AL1_shape':
+            data_amount_l1 = functools.reduce(lambda x, y: x * y,
+                                              DIM_MAP['A_matrix_dim'][1:]) \
+                             // TILING["block_dim"][2]
+        if l1_shape == 'BL1_shape':
+            data_amount_l1 = functools.reduce(lambda x, y: x * y,
+                                              DIM_MAP['B_matrix_dim']) \
+                             // TILING["block_dim"][1]
+    else:
+        block_m, block_k, block_n = CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+        l1_k = TILING.get(l1_shape)[0]
+        l1_mn = TILING.get(l1_shape)[1]
+        if l1_k == 0 or l1_mn == 0:
+            raise_dx_opti_err('l1_k or l1_mn can not be zero')
+        if l1_k % block_k != 0:
+            raise_dx_opti_err('l1_k can not be divided by {}'.format(block_k))
+        if l1_shape == 'AL1_shape':
+            data_amount_l1 = l1_k * l1_mn * TILING.get('CL0_matrix')[1] \
+                             * block_m \
+                             * DTYPE_BYTE_MAP[TENSOR_MAP.get("a_l1").dtype]
+        else:
+            data_amount_l1 = l1_k * l1_mn * TILING.get('CL0_matrix')[0] \
+                             * block_n \
+                             * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l1").dtype]
+        if isdouble == 2:
+            data_amount_l1 = data_amount_l1 * 2
+    print_debug('{} data_amount_l1:{}'
+                .format(l1_shape, data_amount_l1 / 1024))
+    return data_amount_l1
+
+
+def _check_tilling_l0(l0_shape, l0_space, isdouble):
+    """
+     check tilling parameter in L0 buffer
+
+     Parameter:
+     --------------------------------------------------
+    :param l0_shape: 'AL0_matrix' or 'BL0_matrix'
+    :param l0_space: LO buffer size
+    :param isdouble: True or False
+    :return: None
+    ---------------------------------------------------
+    """
+    row = TILING.get(l0_shape)[0]
+    col = TILING.get(l0_shape)[1]
+    if row == 0 or col == 0:
+        raise_dx_opti_err('k, m, n in L0A/B can not be zero')
+    data_amount_l0 = row * col * TILING.get(l0_shape)[2] \
+                     * TILING.get(l0_shape)[3] \
+                     * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l0b").dtype] * isdouble
+    print_debug('data_amount_l0A/B[KB]:', data_amount_l0 / 1024)
+    if data_amount_l0 > l0_space:
+        raise_dx_opti_err('tilling size exceed L0A/B Buffer')
+
+
+def _check_tilling_l0c(l0c_shape, l0c_space, isdouble):
+    """
+    check tilling parameter in L0c
+
+    Parameter:
+    -----------------------------------------------------
+    :param l0c_shape:'CL0_matrix'
+    :param l0c_space: LOC buffer size
+    :param isdouble: True or False
+    :return: None
+    -----------------------------------------------------
+    """
+    cl0_m, cl0_n = TILING.get(l0c_shape)[1], TILING.get(l0c_shape)[0]
+    if TILING.get('BL0_matrix') != []:
+        bl0_n = TILING.get('BL0_matrix')[1]
+        if cl0_m == 0 or cl0_n == 0:
+            raise_dx_opti_err('cl0_m, cl0_n can not be zero')
+        if cl0_n != bl0_n:
+            raise_dx_opti_err('axis n in tilling BL0 '
+                               'is not equal to axis n in tilling CL0')
+    data_amount_cl0 = cl0_m * cl0_n * TILING.get(l0c_shape)[2] \
+                      * TILING.get(l0c_shape)[3] \
+                      * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_l0c").dtype] * isdouble
+    print_debug('data_amount_l0C[KB]:', data_amount_cl0 / 1024)
+    if data_amount_cl0 > l0c_space:
+        raise_dx_opti_err('tilling size exceed L0C Buffer')
+
+
+def _check_tilling_cub(cub_matrix, strideh, stridew, cub_space, isdouble):
+    """
+    check tilling parameter in cub
+
+    Parameter:
+    ------------------------------------------------------
+    :param cub_matrix: 'CUB_matrix'
+    :param strideh: stride_h
+    :param stridew: stride_w
+    :param cub_space: UB buffer size
+    :param isdouble: True or False
+    :return: None
+    -------------------------------------------------------
+    """
+    def _get_dilate_cub_size():
+        block_m, _, _ = CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"]
+        if cl0_m_extent < DIM_MAP['img_shape'][3]:
+            raise_dx_opti_err('mc of CL0_matrix '
+                               'smaller than weight of Image')
+        if DIM_MAP['img_shape'][3] > block_m:
+            check_ifmc_falg = \
+                bool((cl0_m_extent // DIM_MAP['img_shape'][3]) *
+                     DIM_MAP['img_shape'][3] * strideh * stridew
+                     <= CUB_BUFFER_LIMIT)
+            if cl0_m_extent % DIM_MAP['img_shape'][3] == 0 \
+                    and check_ifmc_falg \
+                    and DIM_MAP['img_shape'][2] % \
+                    (cl0_m_extent // DIM_MAP['img_shape'][3]) == 0:
+                n_is_hfactor = cl0_m_extent // DIM_MAP['img_shape'][3]
+            else:
+                n_is_hfactor = (cl0_m_extent - block_m) \
+                               // DIM_MAP['img_shape'][3]
+        else:
+            check_ifmc_falg_s = False
+            if cl0_m_extent % DIM_MAP['img_shape'][3] == 0:
+                n_is_hfactor = cl0_m_extent // DIM_MAP['img_shape'][3]
+                while DIM_MAP['img_shape'][2] % n_is_hfactor != 0:
+                    n_is_hfactor = n_is_hfactor - 1
+                check_ifmc_falg_s = bool(n_is_hfactor
+                                         * DIM_MAP['img_shape'][3]
+                                         * DIM_MAP['dilate_dim'][0]
+                                         * DIM_MAP['dilate_dim'][1]
+                                         > CUB_BUFFER_LIMIT)
+            if cl0_m_extent % DIM_MAP['img_shape'][3] != 0 \
+                    or check_ifmc_falg_s:
+                n_is_hfactor = ((cl0_m_extent - block_m)
+                                // DIM_MAP['img_shape'][3])
+                while DIM_MAP['img_shape'][2] % n_is_hfactor != 0:
+                    n_is_hfactor = n_is_hfactor - 1
+        real_m = n_is_hfactor * DIM_MAP['img_shape'][3]
+        dilate_cub_size = (1 + strideh * stridew) * nc_factor * real_m * \
+                          TILING.get(cub_matrix)[3] \
+                          * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype] * isdouble
+        return dilate_cub_size
+
+    nc_factor, mc_factor = TILING.get(cub_matrix)[0], \
+                           TILING.get(cub_matrix)[1]
+    if mc_factor != TILING.get('CL0_matrix')[1]:
+        raise_dx_opti_err('mc_factor is not equal to mc')
+    if TILING.get('CL0_matrix')[0] % nc_factor != 0:
+        raise_dx_opti_err('nc_factor is not factor of nc')
+    cl0_m_extent = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
+    if strideh > 1 or stridew > 1:
+        data_amount_cub = _get_dilate_cub_size()
+    else:
+        data_amount_cub = nc_factor * mc_factor \
+                          * TILING.get(cub_matrix)[2] \
+                          * TILING.get(cub_matrix)[3] \
+                          * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype] * isdouble
+    DeconvParam.update_para_map("DATA_AMOUNT_CUB", data_amount_cub)
+    print_debug('DATA_AMOUNT_CUB[KB]:',
+                DeconvParam.get_para_map("DATA_AMOUNT_CUB") / 1024)
+
+    if DeconvParam.get_para_map("DATA_AMOUNT_CUB") > cub_space:
+        raise_dx_opti_err('tilling size exceed CUB Buffer')
+
+
+def _get_tiling_l0a_l0b(cl0_matrix, l0_matrix, instr):
+    ''' get l0a and l0b matrix '''
+    k_dim = DIM_MAP.get("A_matrix_dim")[-3]
+    if instr == 'A':
+        block_m, block_k, block_n = CUBE_MKN[TENSOR_MAP.get("a_l0a").dtype]["mac"]
+        # l0_matrix is bl0_matrix:[kb, nb, n0, k0]
+        if l0_matrix != []:
+            full_ab = [cl0_matrix[1], l0_matrix[0],
+                       block_m, block_k, 1]
+        else:
+            full_ab = [cl0_matrix[1], k_dim,
+                       block_m, block_k, 1]
+    elif instr == 'B':
+        block_m, block_k, block_n = CUBE_MKN[TENSOR_MAP.get("b_l0b").dtype]["mac"]
+        # l0_matrix is al0_matrix:[ma, ka, m0, k0]
+        if l0_matrix != []:
+            full_ab = [l0_matrix[1], cl0_matrix[0],
+                       block_n, block_k, 1]
+        else:
+            full_ab = [k_dim, cl0_matrix[0], block_n, block_k, 1]
+    else:
+        raise_dx_opti_err("instr should be A or B")
+
+    return full_ab
+
+
+def _check_tilinng_k_l1():
+    _, block_k, _ = CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    k_al1 = TILING.get("AL1_shape")[0]
+    k_bl1 = TILING.get("BL1_shape")[0]
+    if k_al1 % k_bl1 != 0 and k_bl1 % k_al1 != 0:
+        raise_dx_opti_err('kal1 should be divisible by kbl1 or kbl1'
+                           'should be divisible by kal1 ')
+    if k_al1 % (TILING.get('AL0_matrix')[1] * block_k) != 0:
+        raise_dx_opti_err('ka should be divisible by kal1')
+    if TILING.get('BL0_matrix') \
+            and k_bl1 % (TILING.get('BL0_matrix')[0] * block_k) != 0:
+        raise_dx_opti_err('kb should be divisible by kbl1')
+
+
+def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b):
+    if TILING.get('BL0_matrix') is None:
+        raise_dx_opti_err('tiling[BL0_matrix] can not be None')
+    if TILING.get('BL0_matrix') == []:
+        data_amount_l0b = data_amount_l1b
+        if data_amount_l0b > L0B_SPACE_SIZE:
+            raise_dx_opti_err('tiling size exceed L0B Buffer')
+    else:
+        _check_tilling_l0('BL0_matrix', L0B_SPACE_SIZE,
+                          manual_pingpong_buffer.get('BL0_pbuffer'))
+        if TILING.get('AL0_matrix')[1] != TILING.get('BL0_matrix')[0]:
+            raise_dx_opti_err('axis k in tilling AL0 is not '
+                               'equal to axis k in tilling BL0')
+
+
+def _check_ub_size_limit():
+    block_m, _, block_n = CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    shape_deq_scale = TENSOR_MAP.get("deq_scale").shape
+    size_deq_scale = functools.reduce(lambda x, y: x * y, shape_deq_scale)
+
+    # min tiling size is 1*1*16*16*2(float16) or 1*1*16*32(int8)
+    min_nc, min_mc = 2, 2
+    for factor in range(1, DIM_MAP["img_shape"][2]):
+        if factor * DIM_MAP["img_shape"][3] % block_m == 0:
+            min_mc = 1
+            break
+
+    size_cub_min = min_nc * min_mc * block_m * block_n * 2
+
+    # has deq_scale, dequant1, quant_reform, quant_vmuls_ub at least
+    size_cub_min_total = size_deq_scale * 2 + size_cub_min * 3
+
+    if TENSOR_MAP.get("dilate_ub") is not None:
+        shape_dilate = TENSOR_MAP.get("dilate_ub").op.attrs["dilate"]
+        size_cub_dilate = size_cub_min * shape_dilate[0] * shape_dilate[1]
+        size_cub_min_total += size_cub_dilate
+
+    if TENSOR_MAP.get("dequant_relu") is not None:
+        size_cub_min_total += size_cub_min
+    if TENSOR_MAP.get("dequant2_scalar") is not None:
+        size_cub_min_total += size_cub_min
+    if TENSOR_MAP.get("input_ub") is not None:
+        size_cub_min_total += size_cub_min
+
+    if operator.ge(int(size_cub_min_total), UB_SPACE_SIZE):
+        TILING.clear()
+        DIM_MAP.clear()
+        TENSOR_MAP.clear()
+        raise_dx_opti_err("Exceed Unified_Buffer max limit")
+
+
+def get_tiling(tensor, fusion_type, kernel_name):
+    """
+    get tilling parameter from tilling guery and check all parameter
+    """
+
+    def handle_quant_tiling():
+        if fusion_type in (FUSION_DX_DEQUANT_QUANT,
+                           FUSION_DX_REQUANT):
+            TILING["CL0_matrix"][0] //= 2
+            if TILING["CL0_matrix"][0] == 0:
+                TILING["CL0_matrix"][0] = 1
+            TILING["CL0_matrix"][3] = 32
+
+            TILING["CUB_matrix"][0] //= 2
+            if TILING["CUB_matrix"][0] == 0:
+                TILING["CUB_matrix"][0] = 1
+            TILING["CUB_matrix"][3] = 32
+
+    _, block_k, block_n = CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    # if filter dtype is int8, than channel block_size is 32
+    if tensor.dtype == "int32" or fusion_type in (
+            FUSION_DX_DEQUANT,
+            FUSION_DX_DEQUANT_QUANT,
+            FUSION_DX_REQUANT):
+        co_dim, ci_dim, _, _ = DIM_MAP['filter_shape']
+    else:
+        ci_dim, co_dim, _, _ = DIM_MAP['filter_shape']
+    filter_shape = [co_dim * block_k, ci_dim, 1, 1, block_n]
+
+    if TENSOR_MAP.get("dilate_ub") is None:
+        strideh, stridew = 1, 1
+    else:
+        strideh, stridew = DIM_MAP['dilate_dim']
+    # times of the dx ub space
+    _calc_double_op_num(fusion_type)
+
+    if fusion_type in (FUSION_DX_DEQUANT_QUANT,
+                       FUSION_DX_REQUANT):
+        filter_shape[1] = (filter_shape[1] + 1) // 2 * 2
+
+    bias_flag = _get_bias_flag()
+
+    global TILING
+    if not TILING:  # pylint:disable=W0603
+        TILING = tiling_query(DIM_MAP['img_shape'],
+                              filter_shape, c_shape=None,
+                              a_dtype=TENSOR_MAP["img_placehold"].dtype,
+                              b_dtype=TENSOR_MAP["filter_placehold"].dtype,
+                              c_dtype=tensor.dtype,
+                              mad_dtype=TENSOR_MAP["c_l0c"].dtype,
+                              padl=0, padr=0, padu=0, padd=0,
+                              strideh=1, stridew=1,
+                              strideh_expand=strideh, stridew_expand=stridew,
+                              dilationh=1, dilationw=1, group=1,
+                              fused_double_operand_num
+                              =FUSION_TYPE_2_OPERAND_NUM.get(fusion_type),
+                              bias_flag=bias_flag,
+                              op_tag='conv2d_backprop_input',
+                              kernel_name=kernel_name)
+
+    print_debug('opti dx shape:', 'filter:', filter_shape,
+                'dy:', DIM_MAP['img_shape'], 'dx:', DIM_MAP['out_img_shape'])
+    print_debug('tiling:', TILING)
+
+    if TILING.get('AL0_matrix') == []:
+        TILING['AL0_matrix'] = _get_tiling_l0a_l0b(TILING.get('CL0_matrix'),
+                                                   TILING.get('BL0_matrix'),
+                                                   'A')
+
+    if TILING.get('BL0_matrix') == []:
+        TILING['BL0_matrix'] = _get_tiling_l0a_l0b(TILING.get('CL0_matrix'),
+                                                   TILING.get('AL0_matrix'),
+                                                   'B')
+
+    manual_pingpong_buffer = TILING.get('manual_pingpong_buffer')
+    data_amount_l1a = _get_data_amount_l1('AL1_shape',
+                                          manual_pingpong_buffer.get(
+                                              'AL1_pbuffer'))
+    data_amount_l1b = _get_data_amount_l1('BL1_shape',
+                                          manual_pingpong_buffer.get(
+                                              'BL1_pbuffer'))
+
+    if (data_amount_l1a + data_amount_l1b) > L1_SPACE_SIZE:
+        raise_dx_opti_err('tiling size exceed L1 Buffer')
+    if TILING.get('BL1_shape') and TILING.get('AL1_shape'):
+        _check_tilinng_k_l1()
+
+    # check tilling in AL0 BL0
+    if TILING.get('AL0_matrix') is None or TILING.get('AL0_matrix') == []:
+        raise_dx_opti_err('tiling[AL0_matrix] can not be None or []')
+    _check_tilling_l0('AL0_matrix', L0A_SPACE_SIZE,
+                      manual_pingpong_buffer.get('AL0_pbuffer'))
+
+    _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b)
+
+    # check tilling in CL0
+    _check_tilling_l0c('CL0_matrix', L0C_SPACE_SIZE,
+                       manual_pingpong_buffer.get('CL0_pbuffer'))
+
+    # check tilling in CUB  attention:light when stride get  #########
+    _check_tilling_cub('CUB_matrix', strideh, stridew,
+                       UB_SPACE_SIZE,
+                       manual_pingpong_buffer.get('CUB_pbuffer'))
+
+    handle_quant_tiling()
+
+def _get_bias_flag():
+    if TENSOR_MAP.get("bias_add_vector") is not None or TENSOR_MAP.get(
+            "c_add_bias") is not None:
+        bias_flag = 1
+    else:
+        bias_flag = 0
+    return bias_flag
+
+
+def int_ceil_div(divisor_a, divisor_b):
+    """
+    round up function
+
+    Paramater:
+    :param divisor_a: int.
+    :param divisor_b: int.
+    :return: int
+    """
+    if divisor_b == 0:
+        raise_dx_opti_err("division by zero")
+    return (divisor_a + divisor_b - 1) // divisor_b
+
+
+def _get_src_tensor(tensor, index):
+    """
+    get input tensor according to the specified index
+    :param tensor: Tensor for getting input tensor
+    :param index: specified index
+    :return: specified input tensor
+    """
+    if tensor is not None and tensor.op.input_tensors:
+        return tensor.op.input_tensors[index]
+    return None
+
+
+def _get_target_tensor(tensor, tag):
+    """
+    Get the specified tensor
+    :param tensor: start tensor
+    :param tag: tag of specified tensor
+    :return: specified tensor
+    """
+    if tensor is None:
+        raise_dx_opti_err("start tensor is None")
+
+    stack = deque([tensor])
+    while stack:
+        tensor = stack.popleft()
+        if tensor.op.name.endswith(tag):
+            return tensor
+
+        for input_tensor in tensor.op.input_tensors:
+            stack.append(input_tensor)
+
+    raise_dx_opti_err("cannot find specified tensor")
+
+
+def _check_dx_opti(tensor):
+    l0c = _get_target_tensor(tensor, "C")
+    l0b = _get_src_tensor(l0c, 1)
+    kernel_h, kernel_w = l0b.op.attrs["kernel_hw"]
+    if kernel_h.value != 1 or kernel_w.value != 1:
+        return False
+    return True
+
+
+def quant_tensor_info(dx_res, quant_para):
+    """
+    check dequant + quant
+    """
+
+    def input_tensor_info(tensor_info):
+        input_tensor = _get_src_tensor(tensor_info, 0)
+        if not input_tensor.op.input_tensors:
+            input_cache_buffer.append([input_tensor, tensor_info])
+            tensor_info = _get_src_tensor(tensor_info, 1)
+        else:
+            input_tensor = _get_src_tensor(tensor_info, 1)
+            input_cache_buffer.append([input_tensor, tensor_info])
+            tensor_info = _get_src_tensor(tensor_info, 0)
+        return tensor_info
+
+    DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT_QUANT)
+    quant_para["q_round"] = dx_res.op.attrs["round_mode"].value
+    temp_tensor = dx_res
+    elewise_cache_list = []
+    input_cache_buffer = []
+
+    while temp_tensor.op.input_tensors:
+        if temp_tensor.op.name == "cast_i8_ub":
+            TENSOR_MAP["cast_i8_ub"] = temp_tensor
+        elif "reform" in temp_tensor.op.name:
+            TENSOR_MAP["reform_op"] = temp_tensor
+        elif temp_tensor.op.name in ("scale_sqrt_ub", "offset_ub",
+                                     "dequant_relu"):
+            elewise_cache_list.append(temp_tensor)
+        elif temp_tensor.op.name == "input_ub":
+            TENSOR_MAP["input_ub"] = temp_tensor
+            if temp_tensor.op.attrs["c_out"].value % 2:
+                quant_para["q_padding"] = True
+        elif len(temp_tensor.op.input_tensors) == 2 \
+                and "elewise" in temp_tensor.op.tag:
+            temp_tensor = input_tensor_info(temp_tensor)
+            continue
+        elif "elewise" in temp_tensor.op.tag:
+            elewise_cache_list.append(temp_tensor)
+        elif "dequant2" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_sqrt"] = temp_tensor
+        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+            quant_para["deq_vector"] = True
+        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+        elif "dequant_remove_pad" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
+        temp_tensor = _get_src_tensor(temp_tensor, 0)
+    TENSOR_MAP["elewise_tensor"] = elewise_cache_list
+    TENSOR_MAP["input_tensor"] = input_cache_buffer
+    return quant_para
+
+
+def dequant_tensor_info(dx_res, quant_para):
+    """
+    check dequant
+    """
+    DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT)
+    temp_tensor = dx_res
+    while temp_tensor.op.input_tensors:
+        if "dequant2" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_sqrt"] = temp_tensor
+        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+            quant_para["deq_vector"] = True
+        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+        elif temp_tensor.op.name == "dequant_relu":
+            TENSOR_MAP["dequant_relu"] = temp_tensor
+        elif "dequant_remove_pad" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
+        temp_tensor = _get_src_tensor(temp_tensor, 0)
+    return quant_para
+
+
+def requant_tesnor_info(dx_res, quant_para):
+    """
+    check requant
+    """
+    DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_REQUANT)
+    TENSOR_MAP["data_transfer"] = _get_src_tensor(dx_res, 0)
+    TENSOR_MAP["c_ub"] = _get_src_tensor(TENSOR_MAP["data_transfer"], 0)
+    if "vector" in TENSOR_MAP["c_ub"].op.tag:
+        quant_para["req_vector"] = True
+    TENSOR_MAP["deq"] = _get_src_tensor(TENSOR_MAP["c_ub"], 1)
+    return quant_para
+
+
+def dequant_elewise_infor(dx_res, quant_para):
+    """
+    check dequant + elewise
+    """
+    temp_tensor = dx_res
+    elewise_cache_list = []
+    input_cache_buffer = []
+    while temp_tensor.op.input_tensors:
+        if "dequant" in temp_tensor.op.tag:
+            DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT)
+        if len(temp_tensor.op.input_tensors) == 2 \
+                and "elewise" in temp_tensor.op.tag:
+            input_tensor = _get_src_tensor(temp_tensor, 0)
+            if not input_tensor.op.input_tensors:
+                input_cache_buffer.append([input_tensor, temp_tensor])
+                temp_tensor = _get_src_tensor(temp_tensor, 1)
+                continue
+            else:
+                input_tensor = _get_src_tensor(temp_tensor, 1)
+                input_cache_buffer.append([input_tensor, temp_tensor])
+        elif "elewise" in temp_tensor.op.tag:
+            elewise_cache_list.append(temp_tensor)
+        elif "dequant2" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_sqrt"] = temp_tensor
+        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+            quant_para["deq_vector"] = True
+        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
+            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
+            TENSOR_MAP["c_ub"] = temp_tensor
+        elif temp_tensor.op.name == "dequant_relu":
+            TENSOR_MAP["dequant_relu"] = temp_tensor
+        elif "dequant_remove_pad" in temp_tensor.op.tag:
+            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
+        temp_tensor = _get_src_tensor(temp_tensor, 0)
+    TENSOR_MAP["elewise_tensor"] = elewise_cache_list
+    TENSOR_MAP["input_tensor"] = input_cache_buffer
+    return quant_para
+
+
+def _check_quant_fusion(dx_res):
+    """
+    check the quant fusion
+
+    :return the quant para
+    """
+
+    quant_para = {
+        "deq_vector": False,
+        "req_vector": False,
+        "q_round": None,
+        'q_padding': False
+    }
+
+    if dx_res.op.tag == "quant":
+        quant_para = quant_tensor_info(dx_res, quant_para)
+    elif "dequant" in dx_res.op.tag:
+        quant_para = dequant_tensor_info(dx_res, quant_para)
+    elif "requant_remove_pad" in dx_res.op.tag:
+        quant_para = requant_tesnor_info(dx_res, quant_para)
+    else:
+        quant_para = dequant_elewise_infor(dx_res, quant_para)
+
+    return quant_para
+
+
+def _set_data_layout(res, sch):  # pylint: disable=R0914,R0915
+    """
+    get DIM_MAP which contains all ops
+
+    Parameter:
+    ----------------------------------------------------------
+    :param res: op
+    :param sch: schedule
+    :return: None
+    ----------------------------------------------------------
+    """
+
+    def _get_tensor_dx_gm(tensor_add_res):
+        '''
+        get dx_gm tensor by add_res tensor
+        :param sch:
+        :param tensor_add_res: add_res tensor
+        :return: dx_gm tensor
+        '''
+        global TENSOR_MAP  # pylint: disable=W0603
+        tensor_add_left = tensor_add_res.op.input_tensors[0]
+        tensor_add_right = tensor_add_res.op.input_tensors[1]
+        if tensor_add_left.op.tag == "conv2d_backprop_input_opti":
+            tensor_dx_gm = tensor_add_left
+            tensor_add_input_gm = tensor_add_right
+        else:
+            tensor_dx_gm = tensor_add_right
+            tensor_add_input_gm = tensor_add_left
+
+        tensor_add_input_ub = sch.cache_read(tensor_add_input_gm,
+                                             cce.scope_ubuf,
+                                             [tensor_add_res])
+        TENSOR_MAP["add_input_ub"] = tensor_add_input_ub
+        return tensor_dx_gm
+
+    def _check_dx_fusion_type(res, fusion_tensor_map):
+        """
+        check fusion type and set buffer
+        """
+        def handle_elewise_tensor():
+            elewise_tensor = fusion_tensor_map.get("elewise_tensor")
+            if elewise_tensor:
+                for elewise_tensor_mem in elewise_tensor:
+                    if elewise_tensor_mem.op.tag != res.op.tag:
+                        sch[elewise_tensor_mem].set_scope(cce.scope_ubuf)
+
+            input_tensor = fusion_tensor_map.get("input_tensor")
+            if input_tensor:
+                for input_tensor_mem in input_tensor:
+                    if input_tensor_mem[1].op.tag != res.op.tag:
+                        sch[input_tensor_mem[1]].set_scope(cce.scope_ubuf)
+                        input_tensor_ub = sch.cache_read(input_tensor_mem[0],
+                                                         cce.scope_ubuf,
+                                                         input_tensor_mem[1])
+                    else:
+                        input_tensor_ub = sch.cache_read(input_tensor_mem[0],
+                                                         cce.scope_ubuf,
+                                                         c_ub_res)
+                    input_tensor_mem[0] = input_tensor_ub
+
+        def handle_deq_tensor():
+            deq_scale = fusion_tensor_map.get("deq")
+
+            if "dequant_sqrt" in fusion_tensor_map:
+                dequant_sqrt = fusion_tensor_map.get("dequant_sqrt")
+                if "c_ub_res" in fusion_tensor_map \
+                        and c_ub_res.op.tag == dequant_sqrt.op.tag:
+                    dequant_sqrt = c_ub_res
+                deq_ub = sch.cache_read(deq_scale,
+                                        cce.scope_ubuf,
+                                        [fusion_tensor_map.get("c_ub"),
+                                         dequant_sqrt])
+            else:
+                deq_ub = sch.cache_read(deq_scale,
+                                        cce.scope_ubuf,
+                                        fusion_tensor_map.get("c_ub"))
+            fusion_tensor_map["deq"] = deq_ub
+
+        if DeconvParam.get_para_map("FUSION_TYPE") in \
+                (FUSION_DX_DEQUANT,
+                 FUSION_DX_DEQUANT_QUANT,
+                 FUSION_DX_REQUANT):
+            if res.op.tag != "dequant_remove_pad" and \
+                    DeconvParam.get_para_map("FUSION_TYPE") \
+                    == FUSION_DX_DEQUANT:
+                c_ub_res = sch.cache_write(res, cce.scope_ubuf)
+                fusion_tensor_map["c_ub_res"] = c_ub_res
+
+            for tensor in fusion_tensor_map:
+                if tensor not in ("elewise_tensor", "input_tensor", "deq") \
+                        and res.op.tag != fusion_tensor_map[tensor].op.tag:
+                    sch[fusion_tensor_map[tensor]].set_scope(cce.scope_ubuf)
+
+            handle_elewise_tensor()
+            handle_deq_tensor()
+            tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
+        elif res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+            drelu_gm = res
+            # dx+add+drelu
+            if "elewise_binary_add" in drelu_gm.op.input_tensors[1].op.tag:
+                DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_ADD_DRELU)
+                tensor_add_res = drelu_gm.op.input_tensors[1]
+                sch[tensor_add_res].set_scope(cce.scope_ubuf)
+                TENSOR_MAP["add_res_ub"] = tensor_add_res
+                tensor_dx_gm = _get_tensor_dx_gm(tensor_add_res)
+            # dx+drelu
+            else:
+                DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DRELU)
+                tensor_dx_gm = drelu_gm.op.input_tensors[1]
+
+            tensor_bitmask_gm = drelu_gm.op.input_tensors[0]
+            sch[tensor_dx_gm].set_scope(cce.scope_ubuf)
+            tensor_bitmask = sch.cache_read(
+                tensor_bitmask_gm, cce.scope_ubuf, [drelu_gm])
+            tensor_drelu = sch.cache_write(drelu_gm, cce.scope_ubuf)
+
+            fusion_tensor_map["bitmask_ub"] = tensor_bitmask
+            fusion_tensor_map["drelu_ub"] = tensor_drelu
+            fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm  # inter_gm
+        # dx+add
+        elif res.op.tag == "elewise_binary_add_disable":
+            add_res_gm = res
+            DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_ADD)
+            tensor_dx_gm = _get_tensor_dx_gm(add_res_gm)
+            sch[tensor_dx_gm].set_scope(cce.scope_ubuf)
+            add_res_ub = sch.cache_write(add_res_gm, cce.scope_ubuf)
+            fusion_tensor_map["add_res_ub"] = add_res_ub
+            fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm  # inter_gm
+        # dx+dequant+(quant)
+        elif res.op.tag == "conv2d_backprop_input_opti":
+            DeconvParam.update_para_map("FUSION_TYPE", FUSION_NONE)
+            tensor_dx_gm = res
+        else:
+            raise_dx_opti_err(DX_SUPPORT_TAG_LOG_PREFIX
+                               + ' unsupported data flow')
+        return tensor_dx_gm, fusion_tensor_map
+
+    def _get_ub_tensor(fusion_type):
+        if tensor_dx_gm.op.input_tensors[0].op.name == "bias_add_vector":
+            bias_add_vector = tensor_dx_gm.op.input_tensors[0]
+            tensor_dilate_ub = bias_add_vector.op.input_tensors[0]
+            tensor_bias = bias_add_vector.op.input_tensors[1]
+            sch[bias_add_vector].set_scope(cce.scope_ubuf)
+            bias_ub = sch.cache_read(
+                tensor_bias, cce.scope_ubuf, [bias_add_vector]
+            )
+            TENSOR_MAP["bias_add_vector"] = bias_add_vector
+            TENSOR_MAP["bias_ub"] = bias_ub
+        else:
+            tensor_dilate_ub = tensor_dx_gm.op.input_tensors[0]
+
+        if tensor_dilate_ub is not None \
+                and tensor_dilate_ub.op.tag == "conv2d_backprop_input_opti":
+            TENSOR_MAP["dilate_ub"] = tensor_dilate_ub
+            sch[tensor_dilate_ub].set_scope(cce.scope_ubuf)
+            tensor_cub = tensor_dilate_ub.op.input_tensors[0]
+            tensor_fillling_zero = tensor_dilate_ub.op.input_tensors[1]
+            TENSOR_MAP["tensor_fillling_zero"] = tensor_fillling_zero
+            sch[tensor_fillling_zero].set_scope(cce.scope_ubuf)
+        else:
+            if tensor_dx_gm.op.input_tensors[0].op.name == "bias_add_vector":
+                tensor_cub = tensor_dilate_ub
+            else:
+                tensor_cub = tensor_dx_gm.op.input_tensors[0]
+        if fusion_type in (FUSION_DX_DEQUANT,
+                           FUSION_DX_DEQUANT_QUANT,
+                           FUSION_DX_REQUANT):
+            tensor_cub = TENSOR_MAP["c_ub"]
+
+        return tensor_cub
+
+    global TENSOR_MAP  # pylint: disable=W0603
+    global DIM_MAP  # pylint: disable=W0603
+
+    print_debug("dx fusion tag:", res.op.tag)
+    tensor_dx_gm, TENSOR_MAP = _check_dx_fusion_type(res, TENSOR_MAP)
+    fusion_type = DeconvParam.get_para_map("FUSION_TYPE")
+
+    # get tensor of l0c, l1,l0a,l0b
+    tensor_cub = _get_ub_tensor(fusion_type)
+    if fusion_type in (FUSION_DX_DEQUANT,
+                       FUSION_DX_DEQUANT_QUANT,
+                       FUSION_DX_REQUANT):
+        c_ub_img = tensor_cub.op.input_tensors[0]
+        sch[c_ub_img].buffer_align(
+            (1, 1), (1, 1), (1, 16), (1, 16))
+        sch[c_ub_img].compute_inline()
+        c_ub = c_ub_img.op.input_tensors[0]
+        sch[c_ub].compute_inline()
+        tensor_cub = c_ub
+    if tensor_cub.op.input_tensors[0].name == "c_add_bias":
+        c_add_bias = tensor_cub.op.input_tensors[0]
+        bias_l0c = c_add_bias.op.input_tensors[0]
+        tensor_mmad = c_add_bias.op.input_tensors[1]
+        bias_ub_brc = bias_l0c.op.input_tensors[0]
+        tensor_bias = bias_ub_brc.op.input_tensors[0]
+        bias_ub = sch.cache_read(tensor_bias, cce.scope_ubuf, [bias_ub_brc])
+        TENSOR_MAP["c_add_bias"] = c_add_bias
+        TENSOR_MAP["bias_l0c"] = bias_l0c
+        TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
+        TENSOR_MAP["bias_ub"] = bias_ub
+        TENSOR_MAP["tensor_bias"] = tensor_bias
+    else:
+        tensor_mmad = tensor_cub.op.input_tensors[0]
+    a_l0a = tensor_mmad.op.input_tensors[0]
+    dedy_col = a_l0a.op.input_tensors[0]
+    dedy = dedy_col.op.input_tensors[0]
+    weight_l0 = tensor_mmad.op.input_tensors[1]
+    weight_l1 = weight_l0.op.input_tensors[0]
+
+    # set scope
+    if fusion_type in (FUSION_DX_DEQUANT,
+                       FUSION_DX_DEQUANT_QUANT,
+                       FUSION_DX_REQUANT):
+        tensor_cub = TENSOR_MAP["c_ub"]
+    sch[tensor_cub].set_scope(cce.scope_ubuf)
+    TENSOR_MAP["c_ub"] = tensor_cub
+    sch[dedy_col].set_scope(cce.scope_cbuf)
+    storage_align_size = 256
+    if dedy_col.dtype == "int8":
+        storage_align_size = 512
+    sch[dedy_col].storage_align(
+        sch[dedy_col].op.axis[1], storage_align_size, 0)
+    TENSOR_MAP["a_l1"] = dedy_col
+    sch[a_l0a].set_scope(cce.scope_ca)
+    l0a_m0, l0a_k0, _ = CUBE_MKN[a_l0a.dtype]['mac']
+    sch[a_l0a].buffer_align(
+        (1, 1), (1, 1), (1, 1), (1, l0a_m0), (1, l0a_k0))
+    TENSOR_MAP["a_l0a"] = a_l0a
+    if TENSOR_MAP.get("c_add_bias") is not None:
+        sch[c_add_bias].set_scope(cce.scope_cc)
+        sch[bias_l0c].set_scope(cce.scope_cc)
+        sch[bias_ub_brc].set_scope(cce.scope_ubuf)
+    sch[weight_l1].set_scope(cce.scope_cbuf)
+    TENSOR_MAP["b_l1"] = weight_l1
+    sch[weight_l0].set_scope(cce.scope_cb)
+    TENSOR_MAP["b_l0b"] = weight_l0
+
+    sch[tensor_mmad].set_scope(cce.scope_cc)
+    TENSOR_MAP["c_l0c"] = tensor_mmad
+    TENSOR_MAP["c_gm"] = res
+    TENSOR_MAP["img_placehold"] = dedy
+    TENSOR_MAP["filter_placehold"] = weight_l1.op.input_tensors[0]
+
+    # fill in dimmap
+    DIM_MAP['out_img_shape'] = [int(i) for i in res.shape]
+    DIM_MAP['img_shape'] = [int(i) for i in TENSOR_MAP["img_placehold"].shape]
+    DIM_MAP['A_matrix_dim'] = [int(i) for i in dedy_col.shape]
+    DIM_MAP['B_matrix_dim'] = [int(i) for i in weight_l0.shape]
+    DIM_MAP['filter_shape'] = [int(i) for i in
+                               weight_l1.op.input_tensors[0].shape]
+    if TENSOR_MAP.get("dilate_ub") is not None:
+        DIM_MAP['dilate_dim'] \
+            = [int(i) for i in TENSOR_MAP["dilate_ub"].op.attrs["dilate"]]
+        DIM_MAP['out_hwdim'] \
+            = [int(i) for i in TENSOR_MAP["dilate_ub"].op.attrs["out_hw"]]
+    return tensor_dx_gm
+
+
+def _get_aicore_tiling_factor():
+    """
+    using tilling parameter calculate factor
+
+    :return: tilling factor from ub to ddr
+         tilling factor from l0c to ub
+         tilling factor from ddr to AL1
+         tilling factor from ddr to Bl1
+    """
+
+    def _get_undilate_loc_m(l0c_tiling_factor):
+
+        if l0c_tiling_factor[1] < DIM_MAP.get("img_shape")[-2]:
+            raise_dx_opti_err('mc of CL0_matrix small than weight of Image')
+        if DIM_MAP['img_shape'][3] > block_m:
+            check_ifmc_falg = bool((mc_from_tiling // DIM_MAP['img_shape'][3])
+                                   * DIM_MAP['img_shape'][3]
+                                   * DIM_MAP['dilate_dim'][0]
+                                   * DIM_MAP['dilate_dim'][1]
+                                   <= CUB_BUFFER_LIMIT)
+            if mc_from_tiling % DIM_MAP['img_shape'][3] == 0 \
+                    and check_ifmc_falg \
+                    and DIM_MAP['img_shape'][2] \
+                    % (mc_from_tiling // DIM_MAP['img_shape'][3]) == 0:
+                n_is_hfactor = ((mc_from_tiling) // DIM_MAP['img_shape'][3])
+            else:
+                n_is_hfactor = ((mc_from_tiling - block_m) //
+                                DIM_MAP['img_shape'][3])
+        else:
+            check_ifmc_falg_s = False
+            if mc_from_tiling % DIM_MAP['img_shape'][3] == 0:
+                n_is_hfactor = mc_from_tiling // DIM_MAP['img_shape'][3]
+                while DIM_MAP['img_shape'][2] % n_is_hfactor != 0:
+                    n_is_hfactor = n_is_hfactor - 1
+                check_ifmc_falg_s = bool(
+                    n_is_hfactor * DIM_MAP['img_shape'][3] *
+                    DIM_MAP['dilate_dim'][0] * DIM_MAP['dilate_dim'][1]
+                    > CUB_BUFFER_LIMIT)
+            if mc_from_tiling % DIM_MAP['img_shape'][3] != 0 \
+                    or check_ifmc_falg_s:
+                n_is_hfactor = ((mc_from_tiling - block_m) //
+                                DIM_MAP['img_shape'][3])
+                while DIM_MAP['img_shape'][2] % n_is_hfactor != 0:
+                    n_is_hfactor = n_is_hfactor - 1
+
+        l0c_tiling_factor[1] = DIM_MAP.get("out_hwdim")[1] * n_is_hfactor * \
+                               DIM_MAP['dilate_dim'][0]
+        if l0c_tiling_factor[1] == 0:
+            raise_dx_opti_err('nw can not be zero')
+        undilate_l0c_m = n_is_hfactor * DIM_MAP['img_shape'][3]
+        return undilate_l0c_m
+
+    block_m = CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
+    block_k = CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"][1]
+    # get factor from l0c, ub to ddr
+    l0c_tiling_factor = [TILING["CL0_matrix"][0], # sizeOfpart for N axis
+                         TILING["CL0_matrix"][1]
+                         * TILING["CL0_matrix"][2]] # M
+    mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
+
+    undilate_l0c_m = (mc_from_tiling // DIM_MAP['img_shape'][3]) * \
+                     DIM_MAP['img_shape'][3]
+
+    need_buffer_tile = False
+    if DIM_MAP.get('dilate_dim') is not None:
+        undilate_l0c_m = _get_undilate_loc_m(l0c_tiling_factor)
+        if undilate_l0c_m % block_m != 0:
+            need_buffer_tile = True
+    if TENSOR_MAP.get("drelu_ub") is not None:
+        if l0c_tiling_factor[1] % block_m != 0 or \
+                (DIM_MAP['out_img_shape'][2] - DIM_MAP['out_img_shape'][2] //
+                 l0c_tiling_factor[1]
+                 * l0c_tiling_factor[1]) % block_m != 0:
+            TILING["CUB_matrix"][0] = 1
+
+    # From LOC to GM [NumOfparts for N axis, NumOfparts for M axis ]
+    l0c_parts = [
+        int_ceil_div(DIM_MAP.get("out_img_shape")[1] // TILING['block_dim'][1],
+                     l0c_tiling_factor[0]),
+        int_ceil_div(DIM_MAP.get("out_img_shape")[2] // TILING['block_dim'][2],
+                     l0c_tiling_factor[1])]
+
+    # l0c_ub_tiling_factor is num of parts from l0c to ub
+    l0c_ub_tiling_factor = TILING["CUB_matrix"]  # [n_part, m_part(not used)]
+    # C_UB_factor is size of each part from l0c to ub, second item is 1
+    # From L0C to UB,[NumOfparts for N axis, NumOfparts for M axis]
+    l0c_ub_parts = [int_ceil_div(l0c_tiling_factor[0],
+                                 l0c_ub_tiling_factor[0]),
+                    int_ceil_div(
+                        l0c_tiling_factor[1],
+                        l0c_ub_tiling_factor[1] * l0c_ub_tiling_factor[2])]
+    print_debug('l0c_ub_tiling_factor:', l0c_ub_tiling_factor,
+                'l0c_ub_parts:', l0c_ub_parts)
+
+    if TILING["AL1_shape"]:  # AL1_shape = [C1,H*W,16,16],batch=1
+        # parts of k-axis from DDR to L1---need div by H*W
+        al1_parts = [int_ceil_div(DIM_MAP["A_matrix_dim"][1],
+                                  int_ceil_div(TILING["AL1_shape"][0],
+                                               block_k)),
+                     int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1])]
+    else:
+        al1_parts = [1, 1]
+
+    if TILING["BL1_shape"]:
+        if (l0c_parts[0] % TILING["BL1_shape"][1]) != 0:
+            raise_dx_opti_err(
+                "second value of BL1_shape should be factor of n block num")
+        bl1_parts = [int_ceil_div(DIM_MAP["B_matrix_dim"][0],
+                                  int_ceil_div(TILING["BL1_shape"][0],
+                                               block_k)),
+                     int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1])]
+    else:
+        bl1_parts = [1, 1]
+
+    return l0c_tiling_factor, l0c_ub_parts, al1_parts, bl1_parts, \
+           undilate_l0c_m, need_buffer_tile
+
+
+def _get_mmad_factor():
+    """
+    get tilling factor in mmad
+
+    :return:tilling factor for al0
+            tilling factor for bl0
+            tilling factor for reduce axis
+    """
+    al0_factor = [TILING.get("AL0_matrix")[0], TILING.get("AL0_matrix")[1]]
+    bl0_factor = [TILING.get("BL0_matrix")[0], TILING.get("BL0_matrix")[1]]
+    reduce_factor = TILING.get("BL0_matrix")[0]
+    return al0_factor, bl0_factor, reduce_factor
+
+
+def _bind_multi_core(  # pylint: disable=R0913,R0914
+        sch, c_gm, l1_n_outer_outer, l1_n_out_inner,
+        l1_m_outer_outer, l1_m_outer_inner):
+    if "block_dim" in TILING:
+        block_dim = TILING["block_dim"]
+    else:
+        block_dim = [1, 1, 1, 1]
+    blockidx = []
+    # split batch axis
+    batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], nparts=block_dim[0])
+    l1_n_out_inner_out, l1_n_out_inner_in = \
+        sch[c_gm].split(l1_n_out_inner, nparts=block_dim[1])
+    l1_m_outer_inner_out, l1_m_outer_inner_in = \
+        sch[c_gm].split(l1_m_outer_inner, nparts=block_dim[2])
+
+    # reorder
+    sch[c_gm].reorder(batch_out, l1_n_out_inner_out, l1_m_outer_inner_out,
+                      batch_in,
+                      l1_n_outer_outer, l1_n_out_inner_in, l1_m_outer_outer,
+                      l1_m_outer_inner_in)
+
+    blocks = block_dim[0] * block_dim[1] * block_dim[2]
+    if blocks != 1:
+        out_fused = sch[c_gm].fuse(batch_out, l1_n_out_inner_out,
+                                   l1_m_outer_inner_out)
+        out_fused_out, _ = sch[c_gm].split(out_fused, nparts=blocks)
+        bind_out, bind_in = sch[c_gm].split(out_fused_out, 1)
+        blockidx = tvm.thread_axis("blockIdx.x")
+        sch[c_gm].bind(bind_out, blockidx)
+        if blocks == block_dim[0]:
+            sch[c_gm].pragma(bind_in, 'json_info_batchBindOnly')
+    else:
+        blockidx = [batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
+    return batch_in, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx
+
+
+def _get_l0c_and_l1_axis(  # pylint: disable=R0914
+        sch, c_gm, l0c_factor, al1_parts, bl1_parts):
+    """
+    get l0c and l1 axis
+
+    Parameter:
+    ------------------------------------------------------------------
+    :param sch: schedule
+    :param c_gm: op
+    :param l0c_factor: tilling factor for l0c
+    :param al1_parts: tilling factor for al1
+    :param bl1_parts: tilling factor for bl1
+    :param batch_in_axis: tilling factor for batch
+    -------------------------------------------------------------------
+    """
+
+    def _get_reorder_flag(al1_parts, bl1_parts):
+        reorder_flag = False
+        if TILING["AL1_shape"] and al1_parts[0] != 1 \
+                and TILING["BL1_shape"] and bl1_parts[0] != 1:
+            if bl1_parts[1] >= al1_parts[1]:
+                reorder_flag = True
+        if TILING["AL1_shape"] and al1_parts[0] == 1 \
+                and TILING["BL1_shape"] and bl1_parts[0] == 1:
+            if bl1_parts[1] >= al1_parts[1]:
+                reorder_flag = True
+        if TILING["BL1_shape"] and bl1_parts[0] != 1 \
+                and TILING["AL1_shape"] and al1_parts[0] == 1:
+            reorder_flag = True
+        print_debug('reorder_flag:', reorder_flag)
+        return reorder_flag
+
+    # split c_gm according to factor of loc and out_shape
+    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[0])
+    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
+    sch[c_gm].reorder(l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
+
+    # split c_gm according to factor of a_l1 and b_l1
+    l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(l0c_m_outer,
+                                                         nparts=al1_parts[1])
+    l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer,
+                                                       nparts=bl1_parts[1])
+
+    batch_in, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx = \
+        _bind_multi_core(sch, c_gm, l1_n_outer_outer, l1_n_out_inner,
+                         l1_m_outer_outer, l1_m_outer_inner)
+    # reorder al1 and bl1 axis according to double buffer
+    batch_in_out_axis, batch_in_inner_axis \
+        = sch[c_gm].split(batch_in, factor=1)
+
+    reorder_flag = _get_reorder_flag(al1_parts, bl1_parts)
+    print_ir_conv("before reorder", sch)
+    if reorder_flag:
+        sch[c_gm].reorder(l1_m_outer_outer, batch_in_inner_axis,
+                          l1_n_outer_outer)
+    else:
+        sch[c_gm].reorder(l1_n_outer_outer, l1_m_outer_outer,
+                          batch_in_inner_axis)
+    print_ir_conv("after reorder", sch)
+    return batch_in_out_axis, l1_n_outer_outer, batch_in_inner_axis, \
+           l1_m_outer_inner_in, l0c_n_inner, l0c_m_inner, l1_m_outer_outer, \
+           l1_n_out_inner_in, blockidx
+
+
+def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
+        sch, c_l0c, new_c_col_axis, al0_axis_factor,
+        bl0_axis_factor, reduce_axis_factor):
+    """
+    get l0a and l0b axis
+    Parameter:
+    ---------------------------------------------------------------
+    :param sch: schedule
+    :param c_l0c: op
+    :param new_c_col_axis:
+    :param al0_axis_factor:
+    :param bl0_axis_factor:
+    :param reduce_axis_factor:
+    :return:
+    ---------------------------------------------------------------
+    """
+    # split and get axis of reduce, al0_at_axis, bl0_at_axis
+    reduce_out, reduce_inner = sch[c_l0c].op.reduce_axis
+    al0_m_out, al0_m_inner = sch[c_l0c].split(
+        new_c_col_axis[2],
+        al0_axis_factor[0] * CUBE_MKN[c_l0c.dtype]["mac"][0])
+    bl0_n_outer, bl0_n_inner = sch[c_l0c].split(
+        new_c_col_axis[1], bl0_axis_factor[1])
+    # for reduce axis, al0 and b_l0b should be the same
+    k_outer_outer, k_outer_inner = sch[c_l0c].split(reduce_out,
+                                                    reduce_axis_factor)
+    _, batch_l0c_inner = sch[c_l0c].split(c_l0c.op.axis[0], 1)
+
+    sch[c_l0c].reorder(k_outer_outer, bl0_n_outer,
+                       al0_m_out, batch_l0c_inner,
+                       bl0_n_inner, al0_m_inner, new_c_col_axis[3],
+                       k_outer_inner, reduce_inner)
+
+    return al0_m_out, bl0_n_outer, k_outer_outer, batch_l0c_inner
+
+def _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer):
+    """
+    get al1 and bli axis
+    Parameter:
+    ---------------------------------------------------------------
+    :param sch: schedule
+    :param c_l0c: op
+    :param al1_parts:
+    :param bl1_parts:
+    :param k_outer_outer:
+    :return:
+    ---------------------------------------------------------------
+    """
+    #  ============ a_l1 and b_l1 slice can be different with CUB & CL0 =====
+    outer_factor = max(al1_parts[0], bl1_parts[0])
+    inner_factor = min(al1_parts[0], bl1_parts[0])
+    if outer_factor % inner_factor != 0:
+        raise_dx_opti_err("illegal value of AL1_shape & BL1_shape")
+
+    if al1_parts[0] > bl1_parts[0]:
+        k_outer_outer_outer, k_outer_outer_inner = \
+            sch[c_l0c].split(k_outer_outer, nparts=al1_parts[0])
+        k_outer_outer_outer_outer, k_outer_outer_outer_inner = \
+            sch[c_l0c].split(k_outer_outer_outer, nparts=(bl1_parts[0]))
+        al1_at_l0c_axis = k_outer_outer_outer_inner
+        bl1_at_l0c_axis = k_outer_outer_outer_outer
+    else:
+        k_outer_outer_outer, k_outer_outer_inner = \
+            sch[c_l0c].split(k_outer_outer, nparts=bl1_parts[0])
+        k_outer_outer_outer_outer, k_outer_outer_outer_inner = \
+            sch[c_l0c].split(k_outer_outer_outer, nparts=(al1_parts[0]))
+        al1_at_l0c_axis = k_outer_outer_outer_outer
+        bl1_at_l0c_axis = k_outer_outer_outer_inner
+    reduce_axis_serial = [k_outer_outer_outer_outer,
+                          k_outer_outer_outer_inner,
+                          k_outer_outer_inner]
+    return al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial
+
+
+def _dilate_schedule(sch, dilate_ub, out_w, dilate_w, dilate_h):
+    '''
+    :param sch:
+    :param dilate_ub:
+    :param out_h:
+    :param out_w:
+    :param dilate_h:
+    :param dilate_w:
+    :return:
+    '''
+    h_axis, w_axis = sch[dilate_ub].split(dilate_ub.op.axis[2], out_w)
+    wo_axis, wi_axis = sch[dilate_ub].split(w_axis, dilate_w)
+    ho_axis, hi_axis = sch[dilate_ub].split(h_axis, dilate_h)
+    sch[dilate_ub].unroll(hi_axis)
+    sch[dilate_ub].reorder(wi_axis,
+                           dilate_ub.op.axis[0],
+                           dilate_ub.op.axis[1],
+                           ho_axis, wo_axis)
+    sch[dilate_ub].unroll(wi_axis)
+    return wo_axis
+
+
+def opti_schedule(tensor, sch_list):  # pylint: disable=R0915,R0914
+    """
+    the schedule of conv2d_backprop_opti_input
+
+    Parameter:
+    -------------------------------------------------------------------
+    :param tensor: a tensor
+    :param sch_list: a schedule list
+    :return: schedule
+    -------------------------------------------------------------------
+    """
+
+    def _do_buffer_tile(fusion_type):
+        def _get_cub_buffertile_m_min():
+            # cub buffertile hw axis
+            block_m = CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"][0]
+            mm_coefficient_factor = undilate_l0c_m
+            moo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP['out_img_shape'][2], l0c_factor[1]),
+                al1_parts[1])
+            moo_coefficient = 0 if al1_parts[1] == 1 \
+                else moo_coefficient_unzero
+            moio_coefficient = 0 if TILING['block_dim'][2] == 1 \
+                else int_ceil_div(moo_coefficient_unzero, TILING['block_dim'][2])
+            moii_coefficient = 0 if int_ceil_div(moo_coefficient_unzero,
+                                                 TILING['block_dim'][2]) == 1 else 1
+            cub_buffertile_m_min = (moo_coefficient * tile_axis.var +
+                                    moio_coefficient * moio_axis +
+                                    moii_coefficient * c_slice_axis) * \
+                                   mm_coefficient_factor // block_m \
+                                   * block_m
+            return cub_buffertile_m_min
+
+        def _get_cub_buffertile_n_min():
+            # cub buffertile cout axis
+            no_coefficient = l0c_factor[0]
+            noo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP['out_img_shape'][1],
+                             l0c_factor[0]), bl1_parts[1])
+            noo_coefficient = 0 if bl1_parts[1] == 1 \
+                else noo_coefficient_unzero
+            noio_coefficient = 0 if TILING['block_dim'][1] == 1 \
+                else int_ceil_div(noo_coefficient_unzero, TILING['block_dim'][1])
+            noii_coefficient = 0 if int_ceil_div(noo_coefficient_unzero,
+                                                 TILING['block_dim'][1]) == 1 else 1
+            nio_coefficient = 0 if l0c_ub_parts[0] == 1 \
+                else int_ceil_div(l0c_factor[0], l0c_ub_parts[0])
+            cub_buffertile_n_min = (bl1_at_c_axis.var * noo_coefficient +
+                                    noio_coefficient * noio_axis +
+                                    noii_coefficient * noii_axis.var) \
+                                    * no_coefficient \
+                                    + nio_coefficient * l0c_n_inner_outer.var
+            return cub_buffertile_n_min
+
+        l0c_factor_tile = TILING['CL0_matrix'][1] * TILING['CL0_matrix'][2]
+
+        # multi core and one core
+        if isinstance(blockidx, list):
+            batcho_axis = blockidx[0]
+            noio_axis = blockidx[1]
+            moio_axis = blockidx[2]
+        else:
+            batcho_axis = blockidx.var // (TILING['block_dim'][1] * TILING['block_dim'][2])
+            noio_axis = blockidx.var // TILING['block_dim'][2] % TILING['block_dim'][1]
+            moio_axis = blockidx.var % TILING['block_dim'][2]
+        # cub buffertile batch axis
+        batch_factor = int_ceil_div(DIM_MAP['img_shape'][0],
+                                    TILING["block_dim"][0])
+        batcho_coefficient = 0 if TILING['block_dim'][0] == 1 else batch_factor
+        batchio_coefficient = 0 if batch_factor == 1 else 1
+        batch_dim = [batcho_axis * batcho_coefficient +
+                     batch_in_out_axis.var * batchio_coefficient, 1]
+        cub_buffertile_m_min = _get_cub_buffertile_m_min()
+        cub_buffertile_m_extend = l0c_factor_tile
+
+        cub_buffertile_n_min = _get_cub_buffertile_n_min()
+        cub_buffertile_n_extend = TILING['CUB_matrix'][0]
+
+        sch[c_ub].buffer_tile((batch_dim[0], batch_dim[1]),
+                              (cub_buffertile_n_min, cub_buffertile_n_extend),
+                              (cub_buffertile_m_min, cub_buffertile_m_extend),
+                              (0, 16))
+
+    def _attach_ub(fusion_type):
+        def _attach_ub_quant():
+            ub_attach_list = ["dequant_relu", "dequant_sqrt", "input_ub",
+                              "deq", "reform_op", "quant_vmuls",
+                              "quant_vadds", "cast_i8_ub",
+                              "data_transfer"]
+            for tensor in TENSOR_MAP:
+                if tensor == "dequant_remove_pad" \
+                        and c_gm.op.tag != TENSOR_MAP[tensor].op.tag:
+                    sch[TENSOR_MAP[tensor]].compute_inline()
+                elif tensor == "elewise_tensor":
+                    tensor_list = TENSOR_MAP[tensor]
+                    for elewise_tensor in tensor_list:
+                        if elewise_tensor.op.tag != c_gm.op.tag:
+                            sch[elewise_tensor].compute_at(
+                                sch[c_gm], l0c_m_inner_outer)
+                elif tensor == "input_tensor":
+                    tensor_list = TENSOR_MAP[tensor]
+                    for input_tensor in tensor_list:
+                        sch[input_tensor[0]].compute_at(
+                            sch[c_gm], l0c_m_inner_outer)
+                        if input_tensor[1].op.tag != c_gm.op.tag:
+                            sch[input_tensor[1]].compute_at(
+                                sch[c_gm], l0c_m_inner_outer)
+                elif tensor == "input_ub" and not quan_para["q_padding"]:
+                    sch[TENSOR_MAP[tensor]].compute_inline()
+                elif tensor in ub_attach_list \
+                        and c_gm.op.tag != TENSOR_MAP[tensor].op.tag:
+                    sch[TENSOR_MAP[tensor]].compute_at(
+                        sch[c_gm], l0c_m_inner_outer)
+                elif tensor == "c_ub_res":
+                    sch[TENSOR_MAP[tensor]].compute_at(
+                        sch[c_gm], l0c_m_inner_outer)
+
+        if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
+            if fusion_type == FUSION_DX_ADD_DRELU:
+                sch[add_res_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+                sch[add_input_ub].compute_at(sch[c_gm], add_input_at)
+            sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
+        elif fusion_type == FUSION_DX_ADD:
+            sch[add_res_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[add_input_ub].compute_at(sch[c_gm], add_input_at)
+            sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
+        elif fusion_type in (FUSION_DX_DEQUANT,
+                             FUSION_DX_DEQUANT_QUANT,
+                             FUSION_DX_REQUANT):
+            _attach_ub_quant()
+        if bias_add_vector_ub is not None:
+            sch[bias_ub].compute_at(sch[c_gm], batch_in_out_axis)
+            sch[bias_add_vector_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+
+        if bias_ub_brc is not None:
+            sch[bias_ub].compute_at(sch[c_gm], batch_in_out_axis)
+
+        if dilate_ub is not None:
+            filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+            sch[dilate_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[filling_zero_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+
+        sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+        if "data_transfer" in TENSOR_MAP:
+            sch[c_ub].compute_inline()
+            sch[TENSOR_MAP["data_transfer"]].buffer_align(
+                (1, 1),
+                (1, 1),
+                (1, CUBE_MKN["int8"]["mac"][0]),
+                (1, CUBE_MKN["int8"]["mac"][0]))
+    def _attach_al1_bl1():
+        # attach tensor of al1 and bl1 to c_l0c
+        if TILING["AL1_shape"]:
+            print_debug('al1_parts[0]:', al1_parts[0])
+            if al1_parts[0] != 1:
+                sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
+            else:
+                sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
+        else:  # TILING["AL1_shape"]=[]
+            sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
+
+        if TILING["BL1_shape"]:
+            print_debug('bl1_parts[0]:', bl1_parts[0])
+            if bl1_parts[0] != 1:
+                sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
+            else:  # bl1_parts[0] == 1
+                sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
+        else:  # TILING["BL1_shape"]=[]
+            sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
+
+    def _do_double_buffer(fusion_type):
+        # a_l1 b_l1
+        if TILING.get("manual_pingpong_buffer")["AL1_pbuffer"] == 2 \
+                and (TILING["AL1_shape"] != []):
+            sch[a_l1].double_buffer()
+        if TILING.get("manual_pingpong_buffer")["BL1_pbuffer"] == 2 \
+                and (TILING["BL1_shape"] != []):
+            sch[b_l1].double_buffer()
+
+        # L0A L0B
+        if TILING.get("manual_pingpong_buffer")["AL0_pbuffer"] == 2:
+            sch[a_l0a].double_buffer()
+        if TILING.get("manual_pingpong_buffer")["BL0_pbuffer"] == 2:
+            sch[b_l0b].double_buffer()
+
+        # c_l0c
+        _double_buffer_l0c()
+
+        # C_UB
+        _double_buffer_cub(fusion_type)
+
+    def _double_buffer_l0c():
+        if TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
+            sch[c_l0c].double_buffer()
+            if bias_l0c is not None:
+                sch[bias_l0c].double_buffer()
+                sch[c_add_bias].double_buffer()
+                sch[bias_l0c].preload()
+                sch[bias_ub_brc].double_buffer()
+                sch[bias_ub_brc].preload()
+
+    def _double_buffer_cub(fusion_type):
+        if TILING.get("manual_pingpong_buffer")["CUB_pbuffer"] == 2:
+            sch[c_ub].double_buffer()
+            if bias_add_vector_ub is not None:
+                sch[bias_add_vector_ub].double_buffer()
+            if dilate_ub is not None:
+                filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                sch[dilate_ub].double_buffer()
+                sch[filling_zero_ub].double_buffer()
+            if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
+                sch[fusion_dx_gm].double_buffer()
+                sch[drelu_ub].double_buffer()
+                if fusion_type == FUSION_DX_ADD_DRELU:
+                    sch[add_res_ub].double_buffer()
+                    if dilate_ub is not None:
+                        sch[add_input_ub].double_buffer()
+                        sch[add_input_ub].preload()
+            elif fusion_type == FUSION_DX_ADD:
+                sch[fusion_dx_gm].double_buffer()
+                sch[add_res_ub].double_buffer()
+                if dilate_ub is not None:
+                    sch[add_input_ub].double_buffer()
+                    sch[add_input_ub].preload()
+
+
+    def _do_reused_by(fusion_type):
+        if dilate_ub is not None:
+            dx_output_ub = dilate_ub
+        else:
+            dx_output_ub = c_ub
+        if fusion_type == FUSION_DX_ADD_DRELU:
+            if dilate_ub is not None:
+                filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                sch[filling_zero_ub].reused_by(add_input_ub)
+                sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
+            else:
+                sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub, add_res_ub)
+        elif fusion_type == FUSION_DX_DRELU:
+            sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub)
+        elif fusion_type == FUSION_DX_ADD:
+            if dilate_ub is not None:
+                filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                sch[filling_zero_ub].reused_by(add_input_ub)
+                sch[dx_output_ub].reused_by(fusion_dx_gm)
+            else:
+                sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
+
+
+    def _fusion_intrin_mapping(fusion_type):
+        def _add_res_ub_insn():
+            if dilate_ub is None:
+                sch[add_res_ub].emit_insn(add_res_ub.op.axis[0], "vector_add")
+            else:
+                sch[add_res_ub].emit_insn(add_res_ub.op.axis[0], "phony_insn")
+
+        def _quant_vector_insn():
+            for tensor_name in TENSOR_MAP:
+                if "dequant" in tensor_name \
+                        and tensor_name != "dequant_remove_pad" \
+                        and dx_res.op.tag != TENSOR_MAP[tensor_name].op.tag:
+                    sch[TENSOR_MAP[tensor_name]].emit_insn(
+                        TENSOR_MAP[tensor_name].op.axis[0],
+                        "vector_auto")
+                elif tensor_name == "c_ub_res":
+                    sch[TENSOR_MAP[tensor_name]].emit_insn(
+                        TENSOR_MAP[tensor_name].op.axis[0],
+                        "vector_auto")
+                elif tensor_name == "reform_op":
+                    reform_ub = TENSOR_MAP[tensor_name]
+                    ndim = len(sch[reform_ub].op.axis)
+                    coo, _ = sch[reform_ub].split(
+                        sch[reform_ub].op.axis[ndim - 1],
+                        CUBE_MKN["float16"]["mac"][1])
+                    axis_list = sch[reform_ub].op.axis[0:ndim - 1]
+                    sch[reform_ub].reorder(coo, *axis_list)
+                    sch[reform_ub].emit_insn(
+                        sch[reform_ub].op.axis[2], "vector_auto")
+                elif tensor_name == "elewise_tensor":
+                    for elewise_tensor in TENSOR_MAP[tensor_name]:
+                        if elewise_tensor.op.tag != dx_res.op.tag:
+                            sch[elewise_tensor].emit_insn(
+                                elewise_tensor.op.axis[0],
+                                "vector_auto")
+
+        def _quant_copy_insn():
+            for tensor_name in TENSOR_MAP:
+                if tensor_name == "deq":
+                    sch[TENSOR_MAP[tensor_name]].emit_insn(
+                        TENSOR_MAP[tensor_name].op.axis[0],
+                        "dma_copy")
+                elif tensor_name == "input_tensor":
+                    for input_tensor in TENSOR_MAP[tensor_name]:
+                        if input_tensor[1].op.tag != dx_res.op.tag:
+                            sch[input_tensor[1]].emit_insn(
+                                input_tensor[1].op.axis[0],
+                                "vector_auto")
+                        sch[input_tensor[0]].emit_insn(
+                            input_tensor[0].op.axis[0],
+                            "dma_copy")
+                elif tensor_name == "data_transfer":
+                    c_ub_reform = TENSOR_MAP[tensor_name]
+                    reform_outer, reform_inner = sch[c_ub_reform].split(
+                        c_ub_reform.op.axis[3], nparts=2
+                    )
+                    sch[c_ub_reform].reorder(reform_outer,
+                                             c_ub_reform.op.axis[0],
+                                             c_ub_reform.op.axis[1],
+                                             c_ub_reform.op.axis[2],
+                                             reform_inner)
+                    sch[c_ub_reform].emit_insn(
+                        c_ub_reform.op.axis[2], "dma_copy")
+
+        def _quant_ub_insn():
+            _quant_vector_insn()
+            _quant_copy_insn()
+            for tensor_name in TENSOR_MAP:
+                if tensor_name == "c_ub" and fusion_type != FUSION_DX_REQUANT:
+                    axis_index = 2 if quan_para["deq_vector"] else 0
+                    if is_v200_version():
+                        sch[TENSOR_MAP[tensor_name]].emit_insn(
+                            TENSOR_MAP[tensor_name].op.axis[axis_index],
+                            "dma_copy")
+                    else:
+                        emit = "vector" if axis_index == 2 else "scalar"
+                        sch[TENSOR_MAP[tensor_name]].pragma(
+                            TENSOR_MAP[tensor_name].op.axis[axis_index],
+                            'deq_scale', emit)
+                elif tensor_name == "input_ub" and quan_para["q_padding"]:
+                    sch[TENSOR_MAP[tensor_name]].emit_insn(
+                        TENSOR_MAP[tensor_name].op.axis[0],
+                        "dma_padding")
+                elif tensor_name == "cast_i8_ub":
+                    cast_i8_ub = TENSOR_MAP[tensor_name]
+                    round_mode_emit_insn \
+                        = 'vector_conv_%s' \
+                          % quan_para['q_round'].lower()
+                    if is_mini_version():
+                        round_mode_emit_insn = 'vector_conv'
+                    sch[cast_i8_ub].emit_insn(
+                        cast_i8_ub.op.axis[0], round_mode_emit_insn)
+
+
+        if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
+            sch[bitmask_ub].emit_insn(bitmask_ub.op.axis[0], 'dma_copy')
+            sch[drelu_ub].emit_insn(
+                drelu_ub.op.axis[0], "vector_selects_bool")
+            sch[fusion_dx_gm].emit_insn(fusion_dx_gm.op.axis[0], 'phony_insn')
+            if fusion_type == FUSION_DX_ADD_DRELU:
+                sch[add_input_ub].emit_insn(
+                    add_input_ub.op.axis[0], 'dma_copy')
+                _add_res_ub_insn()
+        elif fusion_type == FUSION_DX_ADD:
+            sch[add_input_ub].emit_insn(add_input_ub.op.axis[0], 'dma_copy')
+            _add_res_ub_insn()
+            sch[fusion_dx_gm].emit_insn(fusion_dx_gm.op.axis[0], 'phony_insn')
+        elif fusion_type in (FUSION_DX_DEQUANT,
+                             FUSION_DX_DEQUANT_QUANT,
+                             FUSION_DX_REQUANT):
+            _quant_ub_insn()
+
+    def _intrin_mapping(fusion_type):
+        if TILING["AL1_shape"] is not None:
+            sch[a_l1].emit_insn(a_l1.op.axis[0], 'dma_copy')
+        sch[b_l1].emit_insn(b_l1.op.axis[0], 'dma_copy')
+        sch[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
+        sch[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
+        if fusion_type not in (FUSION_DX_DEQUANT,
+                               FUSION_DX_DEQUANT_QUANT,
+                               FUSION_DX_REQUANT):
+            sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
+        sch[c_gm].emit_insn(l0c_n_inner_inner, 'dma_copy')
+
+        if dilate_ub is not None:
+            filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+
+            if bias_add_vector_ub is not None:
+                sch[dilate_ub].reused_by(filling_zero_ub, bias_add_vector_ub)
+            else:
+                sch[dilate_ub].reused_by(filling_zero_ub)
+            if fusion_type in (FUSION_DX_ADD_DRELU, FUSION_DX_ADD):
+                sch[filling_zero_ub].emit_insn(
+                    sch[filling_zero_ub].op.axis[0], "phony_insn")
+            else:
+                sch[filling_zero_ub].emit_insn(
+                    sch[filling_zero_ub].op.axis[0], "vector_dup")
+            vadd_at_axis = _dilate_schedule(sch, dilate_ub,
+                                            DIM_MAP.get("out_hwdim")[1],
+                                            DIM_MAP.get("dilate_dim")[1],
+                                            DIM_MAP.get("dilate_dim")[0])
+            sch[dilate_ub].emit_insn(vadd_at_axis, "vector_add")
+        elif bias_add_vector_ub is not None:
+            sch[c_ub].reused_by(bias_add_vector_ub)
+
+        if bias_add_vector_ub is not None:
+            sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
+            sch[bias_add_vector_ub].emit_insn(
+                sch[bias_add_vector_ub].op.axis[0], 'vector_auto',
+            )
+
+        if fusion_type != FUSION_NONE:
+            _fusion_intrin_mapping(fusion_type)
+        mad_dict = {"mad_pattern": 2,
+                    "k_outer": [reduce_axis_serial[0],
+                                reduce_axis_serial[1],
+                                reduce_axis_serial[2]]}
+
+        if bias_ub_brc is not None:
+            sch[bias_l0c].reused_by(c_add_bias, c_l0c)
+            sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], 'phony_insn')
+            cc_outer, _ = sch[bias_l0c].split(
+                bias_l0c.op.axis[2], BRC_STANDARD_BLOCK_SIZE)
+            sch[bias_l0c].emit_insn(cc_outer, 'dma_copy')
+            sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
+            sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
+            mad_dict["init_bias"] = 1
+
+        sch[c_l0c].emit_insn(batch_l0c_inner, 'mad', mad_dict)
+        print_ir_conv("intrin mapping", sch)
+
+    TILING.clear()
+    dx_res = tensor
+    sch = sch_list[0]
+    print_ir_conv("schedule", sch)
+    quan_para = _check_quant_fusion(dx_res)
+
+    # set scope for all tensor
+    tensor_dx_gm = _set_data_layout(dx_res, sch)
+    kernel_name = tensor_dx_gm.op.attrs["kernel_name"]
+    fusion_type = DeconvParam.get_para_map("FUSION_TYPE")
+
+    print_ir_conv("set scope", sch)
+
+    # get tensor
+    a_l1, b_l1, a_l0a, b_l0b, c_ub, dilate_ub, c_l0c, c_gm = \
+        TENSOR_MAP.get("a_l1"), TENSOR_MAP.get("b_l1"), \
+        TENSOR_MAP.get("a_l0a"), TENSOR_MAP.get("b_l0b"), \
+        TENSOR_MAP.get("c_ub"), TENSOR_MAP.get("dilate_ub"), \
+        TENSOR_MAP.get("c_l0c"), TENSOR_MAP.get("c_gm")
+    drelu_ub, bitmask_ub, add_res_ub, add_input_ub, fusion_dx_gm \
+        = TENSOR_MAP.get("drelu_ub"), TENSOR_MAP.get("bitmask_ub"), \
+          TENSOR_MAP.get("add_res_ub"), TENSOR_MAP.get("add_input_ub"), \
+          TENSOR_MAP.get("fusion_dx_gm")
+    bias_add_vector_ub, bias_ub \
+        = TENSOR_MAP.get("bias_add_vector"), \
+          TENSOR_MAP.get("bias_ub")
+    bias_ub_brc, bias_l0c, c_add_bias \
+        = TENSOR_MAP.get("bias_ub_brc"), TENSOR_MAP.get("bias_l0c"), \
+          TENSOR_MAP.get("c_add_bias")
+
+    get_tiling(tensor, fusion_type, kernel_name)
+
+    # get factor and parts from tiling
+    l0c_factor, l0c_ub_parts, al1_parts, bl1_parts, \
+    undilate_l0c_m, need_buffer_tile = _get_aicore_tiling_factor()
+    al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
+    print_ir_conv("bind to core", sch)
+
+    # split and get axis of l0c, al1, bl1
+    batch_in_out_axis, l1_n_outer_outer, batch_in_inner_axis, \
+    l1_m_outer_inner_in, l0c_n_inner, l0c_m_inner, tile_axis, \
+    noii_axis, blockidx = \
+        _get_l0c_and_l1_axis(sch, c_gm, l0c_factor, al1_parts, bl1_parts)
+    al1_at_c_axis = batch_in_inner_axis
+    bl1_at_c_axis = l1_n_outer_outer
+    c_slice_axis = l1_m_outer_inner_in
+    print_ir_conv("split with al1 and bl1 factor", sch)
+
+    # attach tensor of CUB
+    l0c_n_inner_outer, l0c_n_inner_inner = \
+        sch[c_gm].split(l0c_n_inner, nparts=l0c_ub_parts[0])
+    l0c_m_inner_outer, l0c_m_inner_inner = \
+        sch[c_gm].split(l0c_m_inner, nparts=1)
+    add_input_at, l0c_m_inner_outer = \
+        sch[c_gm].split(l0c_m_inner_outer, nparts=1)
+    sch[c_gm].reorder(l0c_n_inner_outer, add_input_at,
+                      l0c_m_inner_outer, l0c_n_inner_inner,
+                      l0c_m_inner_inner)
+    print_ir_conv("reorder loc", sch)
+
+    _attach_ub(fusion_type)
+    print_ir_conv("attach CUB", sch)
+
+    # attach tensor of l0c
+    new_c_col_axis = [sch[c_l0c].op.axis[0], sch[c_l0c].op.axis[1],
+                      sch[c_l0c].op.axis[2], sch[c_l0c].op.axis[3]]
+    sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
+    if bias_l0c is not None:
+        sch[bias_l0c].compute_at(sch[c_gm], c_slice_axis)
+        sch[c_add_bias].compute_at(sch[c_gm], c_slice_axis)
+        sch[bias_ub_brc].compute_at(sch[c_gm], c_slice_axis)
+
+    print_ir_conv("attach l0c", sch)
+
+    # split and get axis of reduce, al0_at_axis, bl0_at_axis
+    al0_m_out, bl0_n_outer, k_outer_outer, batch_l0c_inner = \
+        _get_l0a_and_l0b_axis(sch, c_l0c, new_c_col_axis, al0_axis_factor,
+                              bl0_axis_factor, reduce_axis_factor)
+    print_ir_conv("split with al0/bl0/reduce factor", sch)
+
+    # attach tensor of a_l0a
+    sch[a_l0a].compute_at(sch[c_l0c], al0_m_out)
+    sch[b_l0b].compute_at(sch[c_l0c], bl0_n_outer)
+    print_ir_conv("attach l0a/l0b", sch)
+
+    # split and get axis of al1_at_l0c_axis, bl1_at_l0c_axis
+    al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial = \
+        _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer)
+
+    _attach_al1_bl1()
+    print_ir_conv("attach al1/bl1", sch)
+    if need_buffer_tile:
+        _do_buffer_tile(fusion_type)
+        print_ir_conv("after_tile", sch)
+    else:
+        sch[c_ub].buffer_align((1, 1), (1, 1),
+                               (1, CUBE_MKN["float16"]["mac"][0]),
+                               (1, CUBE_MKN["float16"]["mac"][0]))
+        if bias_add_vector_ub is not None and dilate_ub is None:
+            sch[bias_add_vector_ub].buffer_align(
+                (1, 1), (1, 1),
+                (1, CUBE_MKN["float16"]["mac"][0]),
+                (1, CUBE_MKN["float16"]["mac"][0]))
+    # double buffer
+    _do_double_buffer(fusion_type)
+    print_ir_conv("enable double buffer", sch)
+
+    _do_reused_by(fusion_type)
+    print_ir_conv("reused_by", sch)
+
+    # preload
+    if DeconvParam.get_para_map("DATA_AMOUNT_CUB") * (
+            1 + 2*FUSION_TYPE_2_OPERAND_NUM.get(fusion_type)) \
+            <= UB_SPACE_SIZE:
+        print_debug('dx opti ub preload enable.')
+        if fusion_type == FUSION_DX_DRELU:
+            sch[bitmask_ub].double_buffer()
+            sch[bitmask_ub].preload()
+        elif fusion_type == FUSION_DX_ADD_DRELU:
+            sch[bitmask_ub].double_buffer()
+            sch[bitmask_ub].preload()
+            if dilate_ub is None:
+                sch[add_input_ub].double_buffer()
+                sch[add_input_ub].preload()
+        elif fusion_type == FUSION_DX_ADD:
+            if dilate_ub is None:
+                sch[add_input_ub].double_buffer()
+                sch[add_input_ub].preload()
+        print_ir_conv("preload", sch)
+
+    # intrin mapping
+    _intrin_mapping(fusion_type)
+    # clear global cache
+    TILING.clear()
+    DIM_MAP.clear()
+    TENSOR_MAP.clear()
+    return sch

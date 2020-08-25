@@ -1,0 +1,692 @@
+[
+        {
+            "errCode": "E50000",
+            "errMessage": "The op [%s] missing [%s] parameter",
+            "argList": "op_name, param_name"
+        },
+        {
+            "errCode": "E50001",
+            "errMessage": "The  length of input [%s] of [%s] op needs to be %s, but the length is [%s]",
+            "argList": "param,op_name,expected_length, length"
+        },
+        {
+            "errCode": "E50002",
+            "errMessage": "The  format of input [%s] of [%s] op needs to be [%s], but incoming format is [%s]",
+            "argList": "param,op_name,expected_format_list,format"
+        },
+        {
+            "errCode": "E50003",
+            "errMessage": "The data type of input [%s] of [%s] op needs to be [%s], but incoming data type is [%s]",
+            "argList": "param,op_name,expected_data_type_list,data_type"
+        },
+        {
+            "errCode": "E50004",
+            "errMessage": "1.The op [%s] input [%s] data type is [%s], but input [%s] data type is [%s], They must meet the rule [%s]",
+            "argList": "op_name,param1,param1_data_type,param2,param2_data_type,rule"
+        },
+        {
+            "errCode": "E50009",
+            "errMessage": "1.The op [%s] has rule: [%s], but input [%s] shape is [%s]",
+            "argList": "op_name, rule_desc,param_name, param_shape"
+        },
+        {
+            "errCode": "E50012",
+            "errMessage": "The [%s] op has rule: %s, but [%s] is [%s]",
+            "argList": "op_name,rule_desc,param_name, param_value"
+        },
+        {
+            "errCode": "E50029",
+            "errMessage": "The op[%s] input parameter[%s] should be [%s], actual the input is [%s]",
+            "argList": "op_name,param_name,expected_value,input_value"
+        },
+        {
+            "errCode": "E50030",
+            "errMessage": "The op[%s] required input parameter[%s] must exist.",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E50031",
+            "errMessage": "In op[%s], the [%s] of [%s] and [%s] must be same, actual the [%s] of [%s] is [%s] and the [%s] of [%s] is [%s]",
+            "argList": "op_name,attr_name,param1_name,param2_name,attr_name,param1_name,param1_value,attr_name,param2_name,param2_value"
+        },
+        {
+            "errCode": "E50032",
+            "errMessage": "When dtype of a is [%s], the op[%s] out dtype must in [%s], actual out dtype is [%s]",
+            "argList": "a_dtype,op_name,expected_dtype_list,out_dtype"
+        },
+        {
+            "errCode": "E50033",
+            "errMessage": "The format of [%s] of op[%s] must in [%s], actual format is [%s]",
+            "argList": "param_name,p_name,expected_format_list,format"
+        },
+        {
+            "errCode": "E50034",
+            "errMessage": "The dtype of [%s] of op[%s] must in [%s], actual dtype is [%s]",
+            "argList": "param_name,op_name,expected_dtype_list,dtype"
+        },
+        {
+            "errCode": "E50035",
+            "errMessage": "In op[%s], the dim of [%s] must be [%s], actual input is [%s]",
+            "argList": "op_name,param_name,expected_length,length"
+        },
+        {
+            "errCode": "E50036",
+            "errMessage": "When the shape of a is [%s] and the shape of b is [%s], the shape of c of op [%s] must be [%s], actual input is [%s]",
+            "argList": "a_shape,b_shape,op_name, expected_shape,shape"
+        },
+        {
+            "errCode": "E50037",
+            "errMessage": "The original format of [%s] of op[%s] must in [%s], actual format is [%s]",
+            "argList": "param_name,op_name, expected_format_list,format"
+        },
+        {
+            "errCode": "E50038",
+            "errMessage": "In op [%s], the 1d value of shape a shoud be equal to 0d value of shape b, actual input are [%s] and [%s]",
+            "argList": "op_name,a_1d,b_0d"
+        },
+        {
+            "errCode": "E50039",
+            "errMessage": "In op[%s], the channel of a shoud be equal to  filter's, actual input are [%s] and [%s]",
+            "argList": "op_name,channel_of_x,channel_of_filter"
+        },
+        {
+            "errCode": "E50040",
+            "errMessage": "In op[%s], the [%s] must in range [%s], actual is [%s]",
+            "argList": "op_name,range,attr_name,value"
+        },
+        {
+            "errCode": "E50041",
+            "errMessage": "In op[%s], the depth of feature map after padding can not be less than shape_filter's, actual are [%s] and [%s]",
+            "argList": "op_name,depth_of_x,depth_of_filter"
+        },
+        {
+            "errCode": "E50042",
+            "errMessage": "In op[%s], the depth of pad can not be less than shape_filter's, actual are [%s] and [%s]",
+            "argList": "op_name,depth_of_pad,depth_of_filter"
+        },
+        {
+            "errCode": "E50043",
+            "errMessage": "In op[%s], x H(after pad) must >= filter H, actual are [%s] and [%s]",
+            "argList": "op_name,h_of_x,h_of_filter"
+        },
+        {
+            "errCode": "E50044",
+            "errMessage": "In op[%s], x W(after pad) must >= filter W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_filter"
+        },
+        {
+            "errCode": "E50045",
+            "errMessage": "In op[%s],filter H must > Pad H, actual are [%s] and [%s]",
+            "argList": "op_name,h_of_filter,h_of_pad"
+        },
+        {
+            "errCode": "E50046",
+            "errMessage": "In op[%s],filter W must > Pad W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_filter,w_of_pad"
+        },
+        {
+            "errCode": "E50047",
+            "errMessage": "In op[%s], x W(after pad) must >= stride W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_filter"
+        },
+        {
+            "errCode": "E50048",
+            "errMessage": "In op[%s], x W(after pad) must >= stride W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_stride"
+        },
+        {
+            "errCode": "E50049",
+            "errMessage": "In op[%s], [%s] exceed 64 bit limitations",
+            "argList": "op_name,attr_name"
+        },
+        {
+            "errCode": "E50050",
+            "errMessage": "In op [%s], only support pads model [%s], actual is [%s]",
+            "argList": "op_name,expected_pad_mode,actual_pad_mode"
+        },
+        {
+            "errCode": "E50051",
+            "errMessage": "In op[%s], Invalid input size due to large kernel size and stride",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E50052",
+            "errMessage": "In op[%s], Dilations in the batch and depth dimensions must be 1,actual are [%s] and [%s].",
+            "argList": "op_name,dilation_n,dilation_c"
+        },
+        {
+            "errCode": "E50053",
+            "errMessage": "In op[%s], Shape error : The compute result of H under convolution rule cannot match",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E50054",
+            "errMessage": "In op[%s], Shape error : The compute result of W under convolution rule cannot match",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E50055",
+            "errMessage": "In op[%s], Input is too large, the minimum tiling may exceed L1_Buffer",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E50056",
+            "errMessage": "In V200 op[%s],dilation_h and dilation_w must be 1,actual are [%s] and  [%s]",
+            "argList": "op_name,dilation_h,dilation_w"
+        },
+        {
+            "errCode": "E50057",
+            "errMessage": "In op [%s], set either [%s] or [%s], not both",
+            "argList": "op_name,param1_name,param2_name"
+        },
+        {
+            "errCode": "E50058",
+            "errMessage": "In op [%s], [%s]",
+            "argList": "op_name,description"
+        },
+        {
+            "errCode": "E60000",
+            "errMessage": "The op[%s] input parameter[%s] should be [%s], actual the input is [%s]",
+            "argList": "op_name,param_name,expected_value,input_value"
+        },
+        {
+            "errCode": "E60001",
+            "errMessage": "The op[%s] required input parameter[%s] must exist.",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E60002",
+            "errMessage": "In op[%s], the [%s] of [%s] and [%s] must be same, actual the [%s] of [%s] is [%s] and the [%s] of [%s] is [%s]",
+            "argList": "op_name,attr_name,param1_name,param2_name,attr_name,param1_name,param1_value,attr_name,param2_name,param2_value"
+        },
+        {
+            "errCode": "E60003",
+            "errMessage": "When dtype of a is [%s], the op[%s] out dtype must in [%s], actual out dtype is [%s]",
+            "argList": "a_dtype,op_name,expected_dtype_list,out_dtype"
+        },
+        {
+            "errCode": "E60004",
+            "errMessage": "The format of [%s] of op[%s] must in [%s], actual format is [%s]",
+            "argList": "param_name,op_name, expected_format_list,format"
+        },
+        {
+            "errCode": "E60005",
+            "errMessage": "The dtype of [%s] of op[%s] must in [%s], actual dtype is [%s]",
+            "argList": "param_name,op_name,expected_dtype_list,dtype"
+        },
+        {
+            "errCode": "E60006",
+            "errMessage": "In op[%s], the dim of [%s] must be [%s], actual input is [%s]",
+            "argList": "op_name,param_name,expected_length,length"
+        },
+        {
+            "errCode": "E60007",
+            "errMessage": "When the shape of a is [%s] and the shape of b is [%s], the shape of c of op [%s] must be [%s], actual input is [%s]",
+            "argList": "a_shape,b_shape,op_name,expected_shape,shape"
+        },
+        {
+            "errCode": "E60008",
+            "errMessage": "The original format of [%s] of op[%s] must in [%s], actual format is [%s]",
+            "argList": "param_name,op_name,expected_format_list,format"
+        },
+        {
+            "errCode": "E60009",
+            "errMessage": "In op [%s], the 1d value of shape a shoud be equal to 0d value of shape b, actual input are [%s] and [%s]",
+            "argList": "op_name,a_1d,b_0d"
+        },
+        {
+            "errCode": "E60010",
+            "errMessage": "In op[%s], the channel of a shoud be equal to  filter's, actual input are [%s] and [%s]",
+            "argList": "op_name,channel_of_x,channel_of_filter"
+        },
+        {
+            "errCode": "E60011",
+            "errMessage": "In op[%s], the [%s] must in range [%s], actual is [%s]",
+            "argList": "op_name,attr_name,range,value"
+        },
+        {
+            "errCode": "E60012",
+            "errMessage": "In op[%s], the depth of feature map after padding can not be less than shape_filter's, actual are [%s] and [%s]",
+            "argList": "op_name,depth_of_x,depth_of_filter"
+        },
+        {
+            "errCode": "E60013",
+            "errMessage": "In op[%s], the depth of pad can not be less than shape_filter's, actual are [%s] and [%s]",
+            "argList": "op_name,depth_of_pad,depth_of_filter"
+        },
+        {
+            "errCode": "E60014",
+            "errMessage": "In op[%s], x H(after pad) must >= filter H, actual are [%s] and [%s]",
+            "argList": "op_name,h_of_x,h_of_filter"
+        },
+        {
+            "errCode": "E60015",
+            "errMessage": "In op[%s], x W(after pad) must >= filter W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_filter"
+        },
+        {
+            "errCode": "E60016",
+            "errMessage": "In op[%s],filter H must > Pad H, actual are [%s] and [%s]",
+            "argList": "op_name,h_of_filter,h_of_pad"
+        },
+        {
+            "errCode": "E60017",
+            "errMessage": "In op[%s],filter W must > Pad W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_filter,w_of_pad"
+        },
+        {
+            "errCode": "E60018",
+            "errMessage": "In op[%s], x W(after pad) must >= stride W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_filter"
+        },
+        {
+            "errCode": "E60019",
+            "errMessage": "In op[%s], x W(after pad) must >= stride W, actual are [%s] and [%s]",
+            "argList": "op_name,w_of_x,w_of_stride"
+        },
+        {
+            "errCode": "E60020",
+            "errMessage": "In op[%s], [%s] exceed 64 bit limitations",
+            "argList": "op_name,attr_name"
+        },
+        {
+            "errCode": "E60021",
+            "errMessage": "In op [%s], only support pads model [%s], actual is [%s]",
+            "argList": "op_name,expected_pad_mode,actual_pad_mode"
+        },
+        {
+            "errCode": "E60022",
+            "errMessage": "In op[%s], Invalid input size due to large kernel size and stride",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60023",
+            "errMessage": "In op[%s], Dilations in the batch and depth dimensions must be 1,actual are [%s] and [%s].",
+            "argList": "op_name,dilation_n,dilation_c"
+        },
+        {
+            "errCode": "E60024",
+            "errMessage": "In op[%s], Shape error : The compute result of H under convolution rule cannot match",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60025",
+            "errMessage": "In op[%s], Shape error : The compute result of W under convolution rule cannot match",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60026",
+            "errMessage": "In op[%s], Input is too large, the minimum tiling may exceed L1_Buffer",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60027",
+            "errMessage": "In V200 op[%s],dilation_h and dilation_w must be 1,actual are [%s] and  [%s]",
+            "argList": "op_name,dilation_h,dilation_w"
+        },
+        {
+            "errCode": "E60101",
+            "errMessage": "In op[%s], the last 2 dim of [%s] should be [%s], actual are [%s] ",
+            "argList": "op_name,param_name,expected_two_dims,actual_two_dim"
+        },
+        {
+            "errCode": "E60102",
+            "errMessage": "When the shape of a is [%s] and the shape of b is [%s], the first 2 dims of c of op[%s] must be [%s], actual input is [%s]",
+            "argList": "a_shape,b_shape,op_name,expected_first_two_dims,two_dim"
+        },
+        {
+            "errCode": "E60103",
+            "errMessage": "In op[%s], block_in of a should be [%s], actual input is [%s]",
+            "argList": "op_name,expected_value,value"
+        },
+        {
+            "errCode": "E60104",
+            "errMessage": "In op[%s], block_reduce of a should be [%s], actual input is [%s]",
+            "argList": "op_name,expected_value,value"
+        },
+        {
+            "errCode": "E60105",
+            "errMessage": "In op[%s], block_out of b should be [%s], actual input is [%s]",
+            "argList": "op_name,expected_value,value"
+        },
+        {
+            "errCode": "E60106",
+            "errMessage": "In op[%s], block_reduce of b should be [%s], actual input is [%s]",
+            "argList": "op_name,expected_value,value"
+        },
+        {
+            "errCode": "E60107",
+            "errMessage": "In op[%s], [%s] should be 4d list",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E60108",
+            "errMessage": "In op[%s], [%s]",
+            "argList": "op_name,reason"
+        },
+        {
+            "errCode": "E60109",
+            "errMessage": "In op[%s], input_memory_type should be 0 or 2, actual is [%s]",
+            "argList": "op_name,input_memory_type"
+        },
+        {
+            "errCode": "E60110",
+            "errMessage": "In op[%s], output_memory_type should be 0 or 2, actual [%s]",
+            "argList": "op_name,output_memory_type"
+        },
+        {
+            "errCode": "E60111",
+            "errMessage": "In op[%s], slice_offset is valid, actual is [%s]",
+            "argList": "op_name,slice_offset"
+        },
+        {
+            "errCode": "E60112",
+            "errMessage": "In op[%s], valid_shape is valid, actual valid_shape is [%s] and shape_in is [%s]",
+            "argList": "op_name,valid_shape,shape_in"
+        },
+        {
+            "errCode": "E60113",
+            "errMessage": "When dtype of b is int8, the op[%s]'s parameter[transpose_b] value must be False.",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60114",
+            "errMessage": "In op[%s], [%s],actual is [%s]",
+            "argList": "op_name,reason,value"
+        },
+        {
+            "errCode": "E60028",
+            "errMessage": "The op [%s] input parameter [%s] should be [%s] type, but the type you enter is [%s]",
+            "argList": "opname,param_name, optype,optype"
+        },
+        {
+            "errCode": "E60029",
+            "errMessage": "The op [%s] [%s] input does not contain the [%s] key",
+            "argList": "op_name,param_name, key"
+        },
+        {
+            "errCode": "E60030",
+            "errMessage": "The  length of input [%s] of [%s] op needs to be [%s],but the length is [%s]",
+            "argList": "param_name, op_name, expected_length, length"
+        },
+        {
+            "errCode": "E60031",
+            "errMessage": "The  format of input [%s] of [%s] op needs to be [%s], but the format you enter is [%s]",
+            "argList": "param_name,op_name,expeted_format_list,format"
+        },
+        {
+            "errCode": "E60032",
+            "errMessage": "The input[%s] data type of the op[%s] is [%s], but the data type you enter is [%s]",
+            "argList": "param_name, op_name, expected_data_type_list,data_type"
+        },
+        {
+            "errCode": "E60033",
+            "errMessage": "The op [%s] has rule: %s, but [%s] is [%s]",
+            "argList": "op_name, rule_desc, param_name,param_value"
+        },
+        {
+            "errCode": "E60034",
+            "errMessage": "The op [%s]'s kernel name[%s] is invalid, it can only contain letters, numbers and underscores, and begin with underscores or letters\n\uff08kernel name\u5e94\u8be5\u662f\u5185\u90e8\u4fe1\u606f,\u4e0d\u5408\u9002\u5bf9\u7528\u6237\u5448\u73b0\uff09?\uff08\u5efa\u8bae\u663e\u793a\u51fa\u6765\uff09",
+            "argList": "op_name,kernel_name"
+        },
+        {
+            "errCode": "E60035",
+            "errMessage": "The op [%s] does not support this fusion mode\n\uff08\u786e\u8ba4\u5177\u4f53\u4e1a\u52a1\u573a\u666f\uff1f\uff09",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E60115",
+            "errMessage": "The op [%s] get illegal tiling parameter",
+            "argList": "\uff1f"
+        },
+        {
+            "errCode": "E60116",
+            "errMessage": "tiling query has rule: %s",
+            "argList": "rule_desc"
+        },
+        {
+            "errCode": "E60117",
+            "errMessage": "Failed to generate solution space, because of %s",
+            "argList": "cause_desc"
+        },
+        {
+            "errCode": "E60118",
+            "errMessage": "Invalid platform,only support [%s]",
+            "argList": "platform_desc"
+        },
+        {
+            "errCode": "E61000",
+            "errMessage": "In op[%s], [%s] should be 4d list",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E61001",
+            "errMessage": "In op[%s], [%s],actual is [%s]",
+            "argList": "op_name,reason,value"
+        },
+        {
+            "errCode": "E61202",
+            "errMessage": "The op [%s] input parameter [%s] should be [%s] type, but the type you enter is [%s]",
+            "argList": "op_name, param_name, optype_1, optype_2"
+        },
+        {
+            "errCode": "E61300",
+            "errMessage": "wrong tiling in op[%s]: [%s] must be [%s] [%s]",
+            "argList": "op_name,param_name,expect_value,condition"
+        },
+        {
+            "errCode": "E61301",
+            "errMessage": "wrong tiling in op[%s]: [%s] must be equal to [%s]",
+            "argList": "op_name,param_name_1,param_name_2"
+        },
+        {
+            "errCode": "E61500",
+            "errMessage": "In op[%s], input_memory_type should be 0 or 1 or 2, actual is [%s]",
+            "argList": "op_name,input_memory_type"
+        },
+        {
+            "errCode": "E61501",
+            "errMessage": "In op[%s], output_memory_type should be 0 or 1 or 2, actual [%s]",
+            "argList": "op_name,output_memory_type"
+        },
+        {
+            "errCode": "E62001",
+            "errMessage": "In op[%s],dilation_h, dilation_w and dilation_d must be 1,actual are [%s], [%s] and  [%s]",
+            "argList": "op_name,dilation_h,dilation_w,dilation_d"
+        },
+        {
+            "errCode": "E62002",
+            "errMessage": "In op[%s], the type and dim of [%s] must be  [%s] and [%s], actual they are  [%s] and [%s] respectively",
+            "argList": "op_name,param_name,expected_type,expected_length,type,length"
+        },
+        {
+            "errCode": "E62003",
+            "errMessage": "In op[%s], the size of [%s] on [%s] dimension should be in range [%s], but it is [%s].",
+            "argList": "op_name,param_name,dim,range,actual_value"
+        },
+        {
+            "errCode": "E62004",
+            "errMessage": "In op[%s],filter D must > Pad D, actual are [%s] and [%s]",
+            "argList": "op_name,d_of_filter,d_of_pad"
+        },
+        {
+            "errCode": "E62005",
+            "errMessage": "In op[%s], x D(after pad) must >= stride D, actual are [%s] and [%s]",
+            "argList": "op_name,d_of_x,d_of_stride"
+        },
+        {
+            "errCode": "E62006",
+            "errMessage": "In op[%s],[%s].",
+            "argList": "op_name,error_desc"
+        },
+        {
+            "errCode": "E62301",
+            "errMessage": "In op[%s], the second value of BL1_shape should be a factor of  the block num, actual input is [%s].",
+            "argList": "op_name,second_value_BL1"
+        },
+        {
+            "errCode": "E62302",
+            "errMessage": "In op[%s], the second value of BL1_shape should be even number, but actually it is [%s].",
+            "argList": "op_name,second_value_BL1"
+        },
+        {
+            "errCode": "E62303",
+            "errMessage": "In op[%s], the value of AL1_shape & BL1_shape are  not reasonable, which are [%s] and [%s].",
+            "argList": "op_name, AL1_shape,BL1_shape"
+        },
+        {
+            "errCode": "E62304",
+            "errMessage": "In op[%s], the dim of [%s] should be [%s], but it is  [%s].",
+            "argList": "op_name,param_name,expect_value,value"
+        },
+        {
+            "errCode": "E62305",
+            "errMessage": "In op[%s], the value of [%s] should be [%s], but it is  [%s].",
+            "argList": "op_name,param_name,expect_value,value"
+        },
+        {
+            "errCode": "E62306",
+            "errMessage": "In op[%s], [%s].",
+            "argList": "op_name,desc"
+        },
+        {
+            "errCode": "E62501",
+            "errMessage": "In op[%s], [%s] should be 6d list",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E62502",
+            "errMessage": "In op[%s], there is a division by zero operation during calculating, the oprands are [%s] and [%s]. ",
+            "argList": "op_name,first_operand,second_operand"
+        },
+        {
+            "errCode": "E62503",
+            "errMessage": "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+            "argList": "op_name,backprop_N,forward_shape"
+        },
+        {
+            "errCode": "E62504",
+            "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+            "argList": "op_name,backprop_C,forward_shape"
+        },
+        {
+            "errCode": "E62505",
+            "errMessage": "In op[%s], the  input's channel must be equal to the Filter's batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+            "argList": "op_name,input_C,filter_N"
+        },
+        {
+            "errCode": "E62506",
+            "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's channel in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+            "argList": "op_name,backprop_C,filter_C"
+        },
+        {
+            "errCode": "E62507",
+            "errMessage": "In op[%s], the [%s] dim of Filter(after dilation) must be less than the corresponding dim of input(after padding), they are [%s] and [%s].",
+            "argList": "op_name,dim,filter_dila,input_pad"
+        },
+        {
+            "errCode": "E62508",
+            "errMessage": "In op[%s], Shape error : The compute result of D under convolution rule cannot match",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E62509",
+            "errMessage": "In op[%s], the type of axis of [%s] must be positive int.",
+            "argList": "op_name,param_name"
+        },
+        {
+            "errCode": "E62510",
+            "errMessage": "In op[%s], Dilations in the batch and channel dimensions must be 1.",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E62511",
+            "errMessage": "In op[%s], C0 must be 16,  but actually it is [%s].",
+            "argList": "op_name,shape_c0"
+        },
+        {
+            "errCode": "E64001",
+            "errMessage": "In op[%s], the [%s] must be int and  in range [%s], actual is [%s]",
+            "argList": "op_name,attr_name, range, value"
+        },
+        {
+            "errCode": "E64002",
+            "errMessage": "In op[%s], [%s] must be equal to [%s], while the input of them are [%s]",
+            "argList": "op_name, param1, param2, actual_value"
+        },
+        {
+            "errCode": "E64003",
+            "errMessage": "In op[%s], shape format of [%s] must be [%s], and the dim is [%s], actual the dim is [%s]",
+            "argList": "op_name, param_name, format, expect_dim, dim"
+        },
+        {
+            "errCode": "E64004",
+            "errMessage": "In op[%s], The type of axis of [%s] must be [%s], actual the [%s]ed axis is [%s]",
+            "argList": "op_name, param_name, axis_rule, wrong_axis, actual_value"
+        },
+        {
+            "errCode": "E64005",
+            "errMessage": "In op[%s], pads must less than filter In [%s], acthal input of [%s] are [%s] while filter is [%s]",
+            "argList": "op_name, direction, pads_dir, pads_value, filter_value "
+        },
+        {
+            "errCode": "E64006",
+            "errMessage": "In tiling of op [%s], k of [%s] must be integral multiply of [%s], acutal are [%s] and [%s]",
+            "argList": "op_name, param_1, param_2, value_1, value_2"
+        },
+        {
+            "errCode": "E64007",
+            "errMessage": "In tiling of op [%s], [%s] of L1 must be integral multiply of L0,  that mean [%s] must >=1, actual it is [%s]",
+            "argList": "op_name, axis_name, param_name, param_value"
+        },
+        {
+            "errCode": "E64008",
+            "errMessage": "In tiling of op [%s], [%s] of [%s] and [%s] must be same, actual they are [%s] and [%s]",
+            "argList": "op_name, axis_name, param_1, param_2, value_1, value_2"
+        },
+        {
+            "errCode": "E64009",
+            "errMessage": "In tiling of op [%s], it has rules: CUB_matrix[1] = CL0_matrix[1],  CUB_matrix[0] is a factor of CL0_matrix[0]",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E64010",
+            "errMessage": "In tiling of op [%s], value of [%s] can only be 1 or 2, while the value is [%s]",
+            "argList": "op_name, buffer_name, value"
+        },
+        {
+            "errCode": "E65001",
+            "errMessage": "In op [%s], The type of axis of [%s] must be [%s], actual the [%s]ed axis is [%s]",
+            "argList": "op_name, param_name, axis_rule, wrong_axis, actual_value"
+        },
+        {
+            "errCode": "E65002",
+            "errMessage": "In op [%s], the dtype of [%s] and [%s] must be equal",
+            "argList": "op_name, param_1, param_2"
+        },
+        {
+            "errCode": "E65003",
+            "errMessage": "In op[%s], shape format of [%s] must be [%s], and the dim is [%s], actual the dim is [%s]",
+            "argList": "op_name, param_name, format, expect_dim, dim"
+        },
+        {
+            "errCode": "E65004",
+            "errMessage": "In op[%s],  deconvolution not support offset_w now.",
+            "argList": "op_name"
+        },
+        {
+            "errCode": "E65005",
+            "errMessage": "In op[%s],  [%s] must <= [%s]",
+            "argList": "op_name, param_1, param_2"
+        },
+        {
+            "errCode": "E65006",
+            "errMessage": "In op[%s], the [%s] must be int and  in range [%s], actual is [%s]",
+            "argList": "op_name, attr_name, range, value"
+        },
+        {
+            "errCode": "E65007",
+            "errMessage": "In op[%s], [%s] must be equal to [%s], while the input of them are [%s]",
+            "argList": "op_name, param1, param2, actual_value"
+        }
+]

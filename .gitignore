@@ -1,7 +1,13 @@
-
-# cmake project
+# distribution and packaging
 build/
 output/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# vim cache
+*.swp
 
 # python cache
 *.pyc

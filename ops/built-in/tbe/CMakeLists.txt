@@ -16,7 +16,6 @@
 # convert ini to json
 set(ALL_JSON_FILES "")
 file(GLOB_RECURSE OP_FILES "op_info_cfg/*.ini")
-find_package(Python3 COMPONENTS Interpreter)
 foreach(_file ${OP_FILES})
   set(INI_PARSER "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/parser/parser_ini.py")
   if(NOT EXISTS "${INI_PARSER}")
@@ -39,14 +38,18 @@ foreach(_file ${OP_FILES})
 endforeach()
 
 set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
-set(TBE_OP_CONFIG_PATH "${TBE_OP_PATH}/config")
 add_custom_target(parse_op_ini ALL
   DEPENDS ${ALL_JSON_FILES}
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${TBE_OP_CONFIG_PATH}"
-  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_BINARY_DIR}/config" "${TBE_OP_CONFIG_PATH}"
+)
+cann_install(
+  TARGET      parse_op_ini
+  DIRECTORY   "${CMAKE_CURRENT_BINARY_DIR}/config"
+  DESTINATION "${TBE_OP_PATH}/config"
 )
 
-set(TBE_OP_IMPL_PATH "${TBE_OP_PATH}/impl")
-add_custom_target(copy_tbe_op ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/impl" "${TBE_OP_IMPL_PATH}"
+add_custom_target(copy_tbe_op ALL)
+cann_install(
+  TARGET      copy_tbe_op
+  DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/impl"
+  DESTINATION "${TBE_OP_PATH}/impl"
 )

@@ -123,7 +123,7 @@ release_cann() {
   logging "Create output directory"
   mk_dir "${RELEASE_PATH}"
   RELEASE_TARGET="cann.tar"
-  cd ${INSTALL_PATH} && tar cvfz "${RELEASE_TARGET}" * && mv "${RELEASE_TARGET}" "${RELEASE_PATH}"
+  cd ${INSTALL_PATH} && tar cfz "${RELEASE_TARGET}" * && mv "${RELEASE_TARGET}" "${RELEASE_PATH}"
 }
 
 main() {
