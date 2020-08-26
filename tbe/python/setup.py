@@ -30,7 +30,10 @@ class BinaryDistribution(Distribution):
         return False
 
 
-setup_kwargs = {}
+setup_kwargs = {
+    "include_package_data": True,
+    "data_files": [('', ['LICENSE']),]
+}
 
 setup(name='te',
       version='0.4.0',
@@ -43,6 +46,6 @@ setup(name='te',
         'psutil',
       ],
       packages=find_packages(),
-      # distclass=BinaryDistribution,
+      distclass=BinaryDistribution,
       url='https://github.com/dmlc/tvm',
       **setup_kwargs)

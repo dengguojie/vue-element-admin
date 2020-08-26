@@ -17,6 +17,8 @@ set(TBE_WHL "te-0.4.0-py3-none-any.whl")
 set(TBE_WHL_FULL "${CMAKE_CURRENT_BINARY_DIR}/${TBE_WHL}")
 
 if(EXISTS "${TBE_WHL_FULL}")
+  set(TBE_PY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/python")
+
   # unzip first
   set(_tmp_path "${CMAKE_CURRENT_BINARY_DIR}/python")
   add_custom_target(unzip_tbe ALL)
@@ -32,13 +34,16 @@ if(EXISTS "${TBE_WHL_FULL}")
   add_custom_target(copy_tbe ALL DEPENDS unzip_tbe)
   add_custom_command(TARGET copy_tbe
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/python/auto_schedule" "${_pkg_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py" "${_purelib_path}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${TBE_PY_PATH}/setup.py" "${TBE_PY_PATH}/LICENSE" "${_purelib_path}"
+    COMMENT "Copying auto schedule"
   )
 
   # repackaging
   add_custom_target(repack_tbe ALL DEPENDS copy_tbe)
   add_custom_command(TARGET repack_tbe
-    COMMAND "${Python3}" "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py" bdist_wheel
+    COMMAND ${CMAKE_COMMAND} -E chdir "${_purelib_path}" "${Python3_EXECUTABLE}" "setup.py" bdist_wheel
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${_purelib_path}/dist" "${CMAKE_CURRENT_BINARY_DIR}/dist"
+    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/dist/*.whl ${CMAKE_CURRENT_BINARY_DIR}/dist/${TBE_WHL}
     COMMENT "Repacking ${TBE_WHL}"
   )
 
