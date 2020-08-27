@@ -35,6 +35,10 @@ setup_kwargs = {
     "data_files": [('', ['LICENSE']),]
 }
 
+include_files = [
+    'utils/error_manager/errormanager.json'
+]
+
 setup(name='te',
       version='0.4.0',
       description="TVM: An End to End Tensor IR/DSL Stack for Deep Learning Systems",
@@ -46,6 +50,7 @@ setup(name='te',
         'psutil',
       ],
       packages=find_packages(),
+      package_data={'te': include_files},
       distclass=BinaryDistribution,
-      url='https://github.com/dmlc/tvm',
+      url='https://github.com/apache/incubator-tvm',
       **setup_kwargs)
