@@ -24,16 +24,13 @@ CMAKE_PATH="${BUILD_PATH}/cann"
 # print usage message
 usage() {
   echo "Usage:"
-  echo "sh build.sh [-j[n]] [-h] [-v] [-s] [-t] [-u] [-c]"
+  echo "    bash build.sh [-h] [-j[n]] [-v] [-g]"
   echo ""
   echo "Options:"
   echo "    -h Print usage"
-  echo "    -u Only compile ut, not execute"
-  echo "    -s Build st"
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
-  echo "    -t Build and execute ut"
-  echo "    -c Build ut with coverage tag"
   echo "    -v Verbose"
+  echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "to be continued ..."
 }
 
@@ -45,46 +42,19 @@ logging() {
 checkopts() {
   VERBOSE=""
   THREAD_NUM=8
-  # ENABLE_CANN_UT_ONLY_COMPILE="off"
-  ENABLE_CANN_UT="off"
-  ENABLE_CANN_ST="off"
-  ENABLE_CANN_COV="off"
-  CANN_ONLY="on"
+  GCC_PREFIX=""
   # Process the options
-  while getopts 'ustchj:v' opt
+  while getopts 'hj:vg:' opt
   do
-    OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
     case "${opt}" in
-      u)
-        # ENABLE_CANN_UT_ONLY_COMPILE="on"
-        ENABLE_CANN_UT="on"
-        CANN_ONLY="off"
-        ;;
-      s)
-        ENABLE_CANN_ST="on"
-        ;;
-      t)
-	      ENABLE_CANN_UT="on"
-	      CANN_ONLY="off"
-	      ;;
-      c)
-        ENABLE_CANN_COV="on"
-        CANN_ONLY="off"
-        ;;
-      h)
-        usage
-        exit 0
-        ;;
-      j)
-        THREAD_NUM=$OPTARG
-        ;;
-      v)
-        VERBOSE="VERBOSE=1"
-        ;;
-      *)
-        logging "Undefined option: ${opt}"
-        usage
-        exit 1
+      h) usage
+         exit 0 ;;
+      j) THREAD_NUM=$OPTARG ;;
+      v) VERBOSE="VERBOSE=1" ;;
+      g) GCC_PREFIX=$OPTARG ;;
+      *) logging "Undefined option: ${opt}"
+         usage
+         exit 1 ;;
     esac
   done
 }
@@ -99,20 +69,12 @@ mk_dir() {
 # create build path
 build_cann() {
   logging "Create build directory and build CANN"
-
   CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH"
-  if [[ "X$ENABLE_CANN_COV" = "Xon" ]]; then
-    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_CANN_COV=ON"
+  if [[ "$GCC_PREFIX" != "" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
   fi
-
-  if [[ "X$ENABLE_CANN_UT" = "Xon" ]]; then
-    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_CANN_UT=ON"
-  fi
-  if [[ "X$ENABLE_CANN_ST" = "Xon" ]]; then
-    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_CANN_ST=ON"
-  fi
-
   logging "CMake Args: ${CMAKE_ARGS}"
+
   mk_dir "${CMAKE_PATH}"
   cd "${CMAKE_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
@@ -130,7 +92,7 @@ main() {
   checkopts "$@"
   # CANN build start
   logging "---------------- CANN build start ----------------"
-  g++ -v
+  ${GCC_PREFIX}g++ -v
   build_cann
   release_cann
   logging "---------------- CANN build finished ----------------"

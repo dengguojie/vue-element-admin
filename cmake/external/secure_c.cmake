@@ -18,7 +18,7 @@ set(SEC_C_SRCS "${SEC_C}/src/*.c")
 set(SEC_C_INCS "${SEC_C}/include")
 set(SEC_C_CFLAGS "-fstack-protector-strong -fPIC -Wall -D_FORTIFY_SOURCE=2 -O2")
 set(SEC_C_BUILD 
-  "gcc --shared -o libc_sec.so -I${SEC_C_INCS} ${SEC_C_CFLAGS} ${SEC_C_SRCS}"
+  "${CMAKE_C_COMPILER} --shared -o libc_sec.so -I${SEC_C_INCS} ${SEC_C_CFLAGS} ${SEC_C_SRCS}"
 )
 
 ExternalProject_Add(secure_c
