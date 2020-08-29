@@ -43,7 +43,7 @@ setup(name='te',
       version='0.4.0',
       description="TVM: An End to End Tensor IR/DSL Stack for Deep Learning Systems",
       zip_safe=False,
-      install_reqires=[
+      install_requires=[
         'numpy',
         'decorator',
         'attrs',

@@ -53,17 +53,45 @@ set(CMAME_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe")
 # include useful funcs
 include(cmake/util.cmake)
 # build external prjects
-set(THIRD_PARTY "${CMAKE_CURRENT_BINARY_DIR}/third_party/src")
-message(STATUS "THIRD_PARTY=${THIRD_PARTY}")
 include(ExternalProject)
 include(cmake/external/secure_c.cmake)
 include(cmake/external/nlohmann_json.cmake)
 include(cmake/external/protobuf.cmake)
 
 # find necessary packages
-find_package(Python3 COMPONENTS Interpreter)
-find_library(c_sec ${THIRD_PARTY})
-find_library(protobuf ${THIRD_PARTY})
+find_package(Python3 3.7 COMPONENTS Interpreter)
+
+# if D_LINK_PATH is set in environment variables, search libraries in given path
+if(DEFINED ENV{D_LINK_PATH})
+  # D_LINK_PATH is set
+  set(CANN_LIB_PATH $ENV{D_LINK_PATH})
+  set(CANN_SYS_ARCH "")
+  if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
+      # x86 ubuntu
+      set(CANN_SYS_ARCH "x86_64")
+  elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64")
+      # arm euleros
+      set(CANN_SYS_ARCH "aarch64")
+  else()
+      message(FATAL_ERROR "Running on a unsupported architecture: ${SYSTEM_TYPE}, build terminated")
+  endif()
+  set(CANN_LIB_PATH ${CANN_LIB_PATH}/${CANN_SYS_ARCH})
+  find_library(slog libslog.so ${CANN_LIB_PATH})
+  find_library(register libregister.so ${CANN_LIB_PATH})
+  find_library(graph libgraph.so ${CANN_LIB_PATH})
+  find_library(error_manager liberror_manager.so ${CANN_LIB_PATH})
+else()
+  # Ascend mode
+  if(DEFINED ENV{ASCEND_CUSTOM_PATH})
+      set(ASCEND_DIR $ENV{ASCEND_CUSTOM_PATH})
+  else()
+      set(ASCEND_DIR /usr/local/Ascend)
+  endif()
+  find_library(slog libslog.so ${ASCEND_DIR})
+  find_library(register libregister.so ${ASCEND_DIR})
+  find_library(graph libgraph.so ${ASCEND_DIR})
+  find_library(error_manager liberror_manager.so ${ASCEND_DIR})
+endif()
 
 # sub projects
 add_subdirectory(ops/built-in)

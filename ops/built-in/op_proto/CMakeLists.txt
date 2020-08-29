@@ -12,3 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+
+file(GLOB PROTO_SRCS *.cc *.cpp)
+foreach(_op_proto ${PROTO_SRCS})
+  get_filename_component(_op_name ${_op_proto} NAME)
+  string(REGEX REPLACE "(\.cc$)|(\.cpp$)" "_proto" _target ${_op_name})
+  add_library(${_target} SHARED ${_op_proto})
+
+  target_include_directories(${_target} PRIVATE
+    ${CANN_ROOT}/inc/external
+    ${JSON_INCLUDE}
+    ${Protobuf_INCLUDE}
+  )
+
+  target_link_libraries(${_target} PRIVATE
+    # graph
+    # register
+    # slog
+    # error_manager
+    c_sec
+    protobuf
+  )
+
+  set(OPS_PROTO_PATH "${INSTALL_PATH}/opp/op_proto/built-in")
+  cann_install(
+    TARGET      ${_target}
+    FILES       $<TARGET_FILE:${_target}>
+    DESTINATION "${OPS_PROTO_PATH}"
+  )
+endforeach()

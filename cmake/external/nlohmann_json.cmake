@@ -22,3 +22,8 @@ ExternalProject_Add(nlohmann_json
   BUILD_COMMAND     ""
   INSTALL_COMMAND   ""
 )
+
+ExternalProject_Get_Property(nlohmann_json SOURCE_DIR)
+ExternalProject_Get_Property(nlohmann_json BINARY_DIR)
+
+set(JSON_INCLUDE ${SOURCE_DIR}/include)

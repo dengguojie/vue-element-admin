@@ -13,14 +13,28 @@
 # limitations under the License.
 # ============================================================================
 
-ExternalProject_Add(protobuf
+ExternalProject_Add(external_protobuf
   URL               https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
   URL_MD5           3d9e32700639618a4d2d342c99d4507a
   DOWNLOAD_DIR      download/protobuf
   PREFIX            third_party
   SOURCE_SUBDIR     cmake
   CMAKE_CACHE_ARGS
+      -DProtobuf_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -Dprotobuf_BUILD_TESTS:BOOL=OFF
+      -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
       -Dprotobuf_BUILD_SHARED_LIBS:BOOL=ON
+      -DProtobuf_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
   INSTALL_COMMAND   ""
 )
+
+ExternalProject_Get_Property(external_protobuf SOURCE_DIR)
+ExternalProject_Get_Property(external_protobuf BINARY_DIR)
+
+add_library(protobuf SHARED IMPORTED)
+add_dependencies(protobuf external_protobuf)
+set_target_properties(protobuf PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/libprotobuf.so)
+
+set(Protobuf_INCLUDE ${SOURCE_DIR}/src)
+set(Protobuf_LIBRARIES ${BINARY_DIR}/libprotobuf.so)
+set(Protobuf_PROTOC_EXECUTABLE ${BINARY_DIR}/protoc)

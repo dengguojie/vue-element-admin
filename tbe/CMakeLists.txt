@@ -41,6 +41,7 @@ if(EXISTS "${TBE_WHL_FULL}")
   # repackaging
   add_custom_target(repack_tbe ALL DEPENDS copy_tbe)
   add_custom_command(TARGET repack_tbe
+    COMMAND ${CMAKE_COMMAND} -E remove_directory dist
     COMMAND ${CMAKE_COMMAND} -E chdir "${_purelib_path}" "${Python3_EXECUTABLE}" "setup.py" bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${_purelib_path}/dist" "${CMAKE_CURRENT_BINARY_DIR}/dist"
     COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/dist/*.whl ${CMAKE_CURRENT_BINARY_DIR}/dist/${TBE_WHL}
