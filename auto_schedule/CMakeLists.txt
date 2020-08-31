@@ -13,10 +13,8 @@
 # limitations under the License.
 # ============================================================================
 
-set(TBE_WHL "te-0.4.0-py3-none-any.whl")
-set(TBE_WHL_FULL "${CMAKE_CURRENT_BINARY_DIR}/${TBE_WHL}")
-
-if(EXISTS "${TBE_WHL_FULL}")
+if(EXISTS "${tbe_whl}")
+  get_filename_component(_tbe_whl_name "${tbe_whl}" NAME)
   set(AUTO_SCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
   # unzip first
@@ -24,8 +22,8 @@ if(EXISTS "${TBE_WHL_FULL}")
   add_custom_target(unzip_tbe ALL)
   add_custom_command(TARGET unzip_tbe PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E remove_directory "${_tmp_path}"
-    COMMAND unzip -q -o "${TBE_WHL_FULL}" -d "${_tmp_path}"
-    COMMENT "Unpacking ${TBE_WHL}"
+    COMMAND unzip -q -o "${tbe_whl}" -d "${_tmp_path}"
+    COMMENT "Unpacking ${_tbe_whl_name}"
   )
 
   # copy and replace
@@ -44,8 +42,8 @@ if(EXISTS "${TBE_WHL_FULL}")
     COMMAND ${CMAKE_COMMAND} -E remove_directory dist
     COMMAND ${CMAKE_COMMAND} -E chdir "${_purelib_path}" "${Python3_EXECUTABLE}" "setup.py" bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${_purelib_path}/dist" "${CMAKE_CURRENT_BINARY_DIR}/dist"
-    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/dist/*.whl ${CMAKE_CURRENT_BINARY_DIR}/dist/${TBE_WHL}
-    COMMENT "Repacking ${TBE_WHL}"
+    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/dist/*.whl ${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}
+    COMMENT "Repacking ${_tbe_whl_name}"
   )
 
   # install
@@ -53,12 +51,12 @@ if(EXISTS "${TBE_WHL_FULL}")
   set(TBE_FWK_PATH "${INSTALL_PATH}/fwkacllib/lib64")
   cann_install(
     TARGET      repack_tbe
-    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${TBE_WHL}"
+    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
     DESTINATION "${TBE_ATC_PATH}"
   )
   cann_install(
     TARGET      repack_tbe
-    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${TBE_WHL}"
+    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
     DESTINATION "${TBE_FWK_PATH}"
   )
 endif()

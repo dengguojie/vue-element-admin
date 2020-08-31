@@ -64,22 +64,13 @@ find_package(Python3 3.7 COMPONENTS Interpreter)
 # if D_LINK_PATH is set in environment variables, search libraries in given path
 if(DEFINED ENV{D_LINK_PATH})
   # D_LINK_PATH is set
+  message("Find env D_LINK_PATH, search libs under ${D_LINK_PATH}")
   set(CANN_LIB_PATH $ENV{D_LINK_PATH})
-  set(CANN_SYS_ARCH "")
-  if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
-      # x86 ubuntu
-      set(CANN_SYS_ARCH "x86_64")
-  elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64")
-      # arm euleros
-      set(CANN_SYS_ARCH "aarch64")
-  else()
-      message(FATAL_ERROR "Running on a unsupported architecture: ${SYSTEM_TYPE}, build terminated")
-  endif()
-  set(CANN_LIB_PATH ${CANN_LIB_PATH}/${CANN_SYS_ARCH})
   find_library(slog libslog.so ${CANN_LIB_PATH})
   find_library(register libregister.so ${CANN_LIB_PATH})
   find_library(graph libgraph.so ${CANN_LIB_PATH})
   find_library(error_manager liberror_manager.so ${CANN_LIB_PATH})
+  set(tbe_whl ${CANN_LIB_PATH}/te-0.4.0-py3-none-any.whl)
 else()
   # Ascend mode
   if(DEFINED ENV{ASCEND_CUSTOM_PATH})
@@ -87,10 +78,12 @@ else()
   else()
       set(ASCEND_DIR /usr/local/Ascend)
   endif()
+  message("Search libs under install path ${ASCEND_DIR}")
   find_library(slog libslog.so ${ASCEND_DIR})
   find_library(register libregister.so ${ASCEND_DIR})
   find_library(graph libgraph.so ${ASCEND_DIR})
   find_library(error_manager liberror_manager.so ${ASCEND_DIR})
+  find_file(tbe_whl te-0.4.0-py3-none-any.whl ${ASCEND_DIR})
 endif()
 
 # sub projects
