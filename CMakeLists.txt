@@ -95,4 +95,4 @@ endif()
 
 # sub projects
 add_subdirectory(ops/built-in)
-add_subdirectory(tbe)
+add_subdirectory(auto_schedule)

@@ -17,7 +17,7 @@ set(TBE_WHL "te-0.4.0-py3-none-any.whl")
 set(TBE_WHL_FULL "${CMAKE_CURRENT_BINARY_DIR}/${TBE_WHL}")
 
 if(EXISTS "${TBE_WHL_FULL}")
-  set(TBE_PY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/python")
+  set(AUTO_SCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
   # unzip first
   set(_tmp_path "${CMAKE_CURRENT_BINARY_DIR}/python")
@@ -33,8 +33,8 @@ if(EXISTS "${TBE_WHL_FULL}")
   set(_pkg_path "${_purelib_path}/te")
   add_custom_target(copy_tbe ALL DEPENDS unzip_tbe)
   add_custom_command(TARGET copy_tbe
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/python/auto_schedule" "${_pkg_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy "${TBE_PY_PATH}/setup.py" "${TBE_PY_PATH}/LICENSE" "${_purelib_path}"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/python" "${_pkg_path}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${AUTO_SCH_PATH}/setup.py" "${AUTO_SCH_PATH}/LICENSE" "${_purelib_path}"
     COMMENT "Copying auto schedule"
   )
 
