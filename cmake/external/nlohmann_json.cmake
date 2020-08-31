@@ -14,7 +14,8 @@
 # ============================================================================
 
 ExternalProject_Add(nlohmann_json
-  URL               https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
+  URL               http://121.36.71.102/third_party/nlohmann/json/releases/download/v3.6.1/include.zip 
+                    https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
   URL_MD5           0dc903888211db3a0f170304cd9f3a89
   DOWNLOAD_DIR      download/nlohmann_json
   PREFIX            third_party

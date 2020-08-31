@@ -14,7 +14,8 @@
 # ============================================================================
 
 ExternalProject_Add(external_protobuf
-  URL               https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
+  URL               http://121.36.71.102/third_party/protocolbuffers/protobuf/archive/v3.8.0.tar.gz 
+                    https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
   URL_MD5           3d9e32700639618a4d2d342c99d4507a
   DOWNLOAD_DIR      download/protobuf
   PREFIX            third_party
