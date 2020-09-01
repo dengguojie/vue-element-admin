@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# coding=utf-8
+"""
+Function:
+This class mainly involves compile and run acl op.
+Copyright Information:
+Huawei Technologies Co., Ltd. All Rights Reserved © 2020
+"""
+try:
+    import sys
+    import os
+    import subprocess
+    from interface import utils
+except ImportError as import_error:
+    sys.exit("[excel_parse] Unable to import module: %s." % str(import_error))
+
+CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
+BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
+RUN_OUT = 'run/out'
+MAIN = 'main'
+
+
+class AclOpRunner:
+    """
+    Class for compile and run acl op test code.
+    """
+
+    def __init__(self, path, soc_version):
+        self.path = path
+        self.soc_version = soc_version
+
+    def compile(self):
+        """
+        Compile acl op
+        """
+        utils.print_info_log('Start to compile %s.' % self.path)
+        cmakelist_path = os.path.join(self.path, CMAKE_LIST_FILE_NAME)
+        if not os.path.exists(cmakelist_path):
+            utils.print_error_log(
+                'There is no %s in %s. Please check the path for compile.' % (
+                    CMAKE_LIST_FILE_NAME, self.path))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+        # do cmake and make
+        build_path = os.path.join(self.path, BUILD_INTERMEDIATES_HOST)
+        utils.check_path_valid(build_path, True)
+        os.chdir(build_path)
+        cmake_cmd = ['cmake', '../../..', '-DCMAKE_CXX_COMPILER=g++',
+                     '-DCMAKE_SKIP_RPATH=TRUE']
+        make_cmd = ['make']
+        utils.print_info_log("Compile command line: cd %s && %s && %s" % (
+            build_path, " ".join(cmake_cmd), " ".join(make_cmd)))
+        self._execute_command(cmake_cmd)
+        self._execute_command(make_cmd)
+        utils.print_info_log('Finish to compile %s.' % self.path)
+
+        # do atc single op model conversion
+        utils.print_info_log('Start to convert single op.')
+        run_out_path = os.path.join(self.path, RUN_OUT)
+        os.chdir(run_out_path)
+        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
+                   '--soc_version=' + self.soc_version, '--output=op_models']
+        utils.print_info_log("ATC command line: cd %s && %s " % (
+            run_out_path, " ".join(atc_cmd)))
+        self._execute_command(atc_cmd)
+        utils.print_info_log('Finish to convert single op.')
+
+    @staticmethod
+    def _execute_command(cmd):
+        utils.print_info_log('Execute command: %s' % cmd)
+        process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        while process.poll() is None:
+            line = process.stdout.readline()
+            line = line.strip()
+            if line:
+                print(line)
+        if process.returncode != 0:
+            utils.print_error_log('Failed to execute command: %s' % cmd)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    def run(self):
+        """
+        Run acl op
+        """
+        main_path = os.path.join(self.path, 'run', 'out', MAIN)
+        utils.print_info_log('Start to run %s.' % main_path)
+        if not os.path.exists(main_path):
+            utils.print_error_log(
+                'There is no execute file "%s" in %s. Please check the path '
+                'for running.' % (MAIN, os.path.dirname(main_path)))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        out_path = os.path.dirname(main_path)
+        utils.check_path_valid(out_path, True)
+        os.chdir(out_path)
+        run_cmd = ['./' + MAIN]
+        utils.print_info_log("Run command line: cd %s && %s " % (
+            out_path, " ".join(run_cmd)))
+        self._execute_command(run_cmd)
+        utils.print_info_log('Finish to run %s.' % main_path)
+
+    def process(self):
+        """
+        compile and run acl op
+        """
+        self.compile()
+        self.run()
