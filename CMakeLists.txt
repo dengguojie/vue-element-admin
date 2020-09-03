@@ -64,8 +64,8 @@ find_package(Python3 3.7 COMPONENTS Interpreter)
 # if D_LINK_PATH is set in environment variables, search libraries in given path
 if(DEFINED ENV{D_LINK_PATH})
   # D_LINK_PATH is set
-  message("Find env D_LINK_PATH, search libs under ${D_LINK_PATH}")
   set(CANN_LIB_PATH $ENV{D_LINK_PATH})
+  message("Find env D_LINK_PATH, search libs under ${CANN_LIB_PATH}")
   find_library(slog libslog.so ${CANN_LIB_PATH})
   find_library(register libregister.so ${CANN_LIB_PATH})
   find_library(graph libgraph.so ${CANN_LIB_PATH})
@@ -89,3 +89,4 @@ endif()
 # sub projects
 add_subdirectory(ops/built-in)
 add_subdirectory(auto_schedule)
+add_subdirectory(tools)

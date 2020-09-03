@@ -45,7 +45,6 @@ setup(
     zip_safe=False,
     packages=find_packages(),
     install_requires=[],
-    distclass=BinaryDistribution,
     license=read_txt("LICENSE"),
     **{
         "include_package_data": True,

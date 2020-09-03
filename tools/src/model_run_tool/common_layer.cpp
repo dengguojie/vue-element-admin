@@ -84,6 +84,7 @@ bool ParseOpWorkspaceTypes(uint32_t numWorkspace, std::ifstream &ifs, OpJsonInfo
             return false;
         }
     }
+    return true;
 }
 
 bool ParseOpWorkspace(std::ifstream &ifs, OpJsonInfo &opJsonInfo) {
