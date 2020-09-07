@@ -12,6 +12,15 @@ dist/
 # python cache
 *.pyc
 
+# python cov
+cov_report/
+report/
+
 # protobuf
 *.pb.h
 *.pb.c
+
+# cann tmp
+lib/
+kernel_meta/
+tools/python/op_test_frame/libs/*.so

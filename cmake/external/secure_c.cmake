@@ -99,3 +99,9 @@ set_target_properties(c_sec
   LINKER_LANGUAGE          C
   LIBRARY_OUTPUT_DIRECTORY ${BINARY_DIR}
 )
+
+cann_install(
+  TARGET      c_sec
+  FILES       $<TARGET_FILE:c_sec>
+  DESTINATION "${CANN_ROOT}/lib"
+)
