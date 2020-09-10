@@ -23,7 +23,7 @@ set_env() {
   export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/python"
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
   export PYTHONPATH=$PYTHONPATH:$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME
-  export LD_LIBRARY_PATH=$ATC_HOME/lib64:${CANN_ROOT}/lib
+  export LD_LIBRARY_PATH=$ATC_HOME/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
   export PATH=$PATH:$ATC_HOME/ccec_compiler/bin
 }
 
