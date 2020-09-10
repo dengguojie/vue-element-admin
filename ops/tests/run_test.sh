@@ -19,11 +19,9 @@ CANN_ROOT=$(cd ${CURR_PATH}/../..; pwd)
 
 set_env() {
   local atc_path="$1"
-
   export ATC_HOME="${atc_path}"
   export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/python"
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
-  # export PYTHONPATH=$PYTHONPATH:$ATC_HOME/python/site-packages/te:$ATC_HOME/python/site-packages/topi:$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME
   export PYTHONPATH=$PYTHONPATH:$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME
   export LD_LIBRARY_PATH=$ATC_HOME/lib64:${CANN_ROOT}/lib
   export PATH=$PATH:$ATC_HOME/ccec_compiler/bin
@@ -32,11 +30,13 @@ set_env() {
 
 main() {
   local task="$1"
-  local soc_version="$2"
-  local atc_path="$3"
+  local atc_path="$2"
   set_env "${atc_path}"
   if [[ "$task" == "ut" || "$task" == "all" ]]; then
-    python3.7 run_ut.py --soc_version="${soc_version}"
+    local supported_soc="Ascend310 Ascend910"
+    for version in $(echo ${supported_soc}); do
+      python3.7 run_ut.py --soc_version="${version}"
+    done
   fi;
   if [[ "$task" == "st" || "$task" == "all" ]]; then
     echo "run st"
