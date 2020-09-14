@@ -122,3 +122,7 @@ def msg_excepthook(etype, value, tback):
 
 
 sys.excepthook = msg_excepthook
+
+from .platform import dispatcher
+from .platform import operation as op
+

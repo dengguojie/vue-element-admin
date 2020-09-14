@@ -19,17 +19,22 @@ reverse_ext2
 
 import math
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
+
 from te import tik
 from te import platform as cce
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+
 
 MAX_BLOCK_NUM = 65536
 
 
 def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
+    """
+    select format for op
+    """
     input_ori_shape = input_x.get("ori_shape")
     input_ori_format = input_x.get("ori_format")
 
@@ -45,11 +50,12 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
             or (input_ori_format == "NHWC" and (3 in axis)):
         is_support_5hd = False
 
-    if (input_ori_format == "NCHW") and (input_ori_shape[1] % 16 != 0):
+    if (input_ori_format == "NCHW") and len(input_ori_shape) > 1 \
+            and (input_ori_shape[1] % 16 != 0):
         is_support_5hd = False
 
     cce_product = cce.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES",):
+    if cce_product in ("Hi3796CV300ES",  "Hi3796CV300CS"):
         dtype_base = [
             "float16", "int8", "int16", "int32", "int64", "uint8",
             "uint16", "uint32", "uint64"
@@ -87,7 +93,8 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     return param_dynamic_in_json
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+                 KERNEL_NAME)
 # pylint: disable=unused-argument
 def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     """
@@ -162,6 +169,7 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
 
     return axis
 
+
 # pylint: disable=invalid-name
 def get_max_factor(n):
     """
@@ -181,12 +189,13 @@ def get_max_factor(n):
     factors = []
     for i in range(2, MAX_BLOCK_NUM):
         if n % i == 0:
-            factors = factors + [i,]
+            factors = factors + [i, ]
 
     if len(factors) == 0:
         return -1
 
     return factors[-1]
+
 
 # pylint: disable=invalid-name
 def get_min_factor(n):
@@ -208,6 +217,7 @@ def get_min_factor(n):
             break
     return min_factor
 
+
 def omit_axis_point_to_dim_1(shape, axis):
     """
     Omit the axis points to shape of dim 1
@@ -226,6 +236,7 @@ def omit_axis_point_to_dim_1(shape, axis):
     """
     dst_axis = [i for i in axis if shape[i] != 1]
     return dst_axis
+
 
 def get_new_shape_axis(shape, axis):
     """
@@ -249,7 +260,7 @@ def get_new_shape_axis(shape, axis):
     out_shape_len = len(out_shape)
 
     if out_shape_len > 0:
-        out_ele_num = functools_reduce(lambda x, y: x*y, out_shape)
+        out_ele_num = functools_reduce(lambda x, y: x * y, out_shape)
         if out_ele_num == 1:
             dst_out_shape = shape[axis[0]:]
             dst_axis = [i - out_shape_len for i in axis]
@@ -260,7 +271,8 @@ def get_new_shape_axis(shape, axis):
                     dst_out_shape = [out_ele_num, ] + list(shape[axis[0]:])
                     dst_axis = [i - out_shape_len + 1 for i in axis]
                 else:
-                    dst_out_shape = [max_factor, out_ele_num//max_factor] + list(shape[axis[0]:])
+                    dst_out_shape = [max_factor, out_ele_num//max_factor] + \
+                                    list(shape[axis[0]:])
                     dst_axis = [i - out_shape_len + 2 for i in axis]
             else:
                 dst_out_shape = [out_ele_num, ] + list(shape[axis[0]:])
@@ -272,7 +284,8 @@ def get_new_shape_axis(shape, axis):
     if dst_out_shape[0] > MAX_BLOCK_NUM - 1:
         max_factor = get_max_factor(dst_out_shape[0])
         if max_factor != -1:
-            dst_out_shape = [max_factor, dst_out_shape[0]//max_factor] + list(dst_out_shape[1:])
+            dst_out_shape = [max_factor, dst_out_shape[0]//max_factor] + \
+                            list(dst_out_shape[1:])
             if 0 in dst_axis:
                 tmp_axis = [i+1 for i in dst_axis[1:]]
                 dst_axis = [0, 1] + tmp_axis
@@ -949,7 +962,7 @@ class MoveFromGm2Gm:
         None
         """
         self.tik_instance = tik.Tik(tik.Dprofile())
-        #self.aicore_num = tik.Dprofile().get_aicore_num()
+
         self.aicore_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
         self.shape = list(shape)

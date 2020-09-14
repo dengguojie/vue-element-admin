@@ -24,10 +24,13 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 100000000  # shape limit for tf_reduce_mean
 
 NoneType = type(None)
+ori_shape = [[0], [0]]
+ori_format = ["NCHW", "NCHW"]
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -37,6 +40,7 @@ def reduce_mean_d_compute(x,
                           axes,
                           keepdims,
                           kernel_name="reduce_mean_d",
+                          impl_mode="high_performance",
                           is_5hdc=False):
     """reduce_mean_d compute
 
@@ -59,6 +63,7 @@ def reduce_mean_d_compute(x,
         output tensor, has the same shape and type as input tensor.
     """
     shape = te.lang.cce.util.shape_to_list(x.shape)
+
     shape_len = len(shape)
     if not axes:
         axes = range(shape_len)
@@ -72,7 +77,11 @@ def reduce_mean_d_compute(x,
             reduce_elts *= shape[i]
     else:
         reduce_elts = shape[axes]
-    cof = reduce_elts**(-1)
+    cof = reduce_elts ** (-1)
+
+    if ori_format[0] == 'NHWC' and ori_format[1] == 'NC1HWC0' and len(axes) == 2 \
+            and axes == [1, 4] and len(ori_shape[0]) == 4:
+        cof = ori_shape[0][-1] ** (-1)
 
     dtype = x.dtype
     if dtype in ("int8", "uint8"):
@@ -89,6 +98,12 @@ def reduce_mean_d_compute(x,
                 "te.lang.cce.sum", "float32") and not is_5hdc:
         data_input_tmp = te.lang.cce.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
+    elif cce_product in ("Ascend310",) and dtype == "float16" \
+            and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
+                                                        "float32") \
+            and not is_5hdc and impl_mode != "high_performance":
+        data_input_tmp = te.lang.cce.cast_to(data_input_tmp, "float32")
+        has_improve_precision = True
 
     data_input_tmp = te.lang.cce.vmuls(data_input_tmp, cof)
     res = te.lang.cce.sum(data_input_tmp, axis=axes, keepdims=keepdims)
@@ -100,10 +115,13 @@ def reduce_mean_d_compute(x,
 
     return res
 
-@util.check_input_type(dict, dict, (int, list, tuple, NoneType),
-                       (bool, NoneType), str)
+
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
-                  keepdims=None, kernel_name="reduce_mean_d"):
+                  keepdims=None, kernel_name="reduce_mean_d",
+                  impl_mode="high_performance"):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -126,9 +144,10 @@ def reduce_mean_d(input_x, output_y, axes,
     -------
     None
     """
+    global ori_shape
+    global ori_format
     shape = input_x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
+    check_shape(shape, param_name="input_x")
     check_list = ["float16", "float32", "int8", "uint8"]
     shape_len = len(shape)
 
@@ -139,21 +158,25 @@ def reduce_mean_d(input_x, output_y, axes,
         axes = list(axes)
 
     inp_dtype = input_x.get("dtype").lower()
-    util.check_dtype_rule(inp_dtype, check_list)
+    check_dtype(inp_dtype, check_list, param_name="input_x")
 
     axes = util.axis_check(shape_len, axes)
-    util.check_tensor_shape_size(shape)
 
     # Shape should not be modified in 5HD mode
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_x, axes, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(input_x, axes)
     if not is_5hdc:
         shape, axes = util.shape_refine(list(shape), axes)
         shape, axes = util.simplify_axis_shape(shape, axes)
 
-    data_input = tvm.placeholder(shape, name="data_input_" + kernel_name, dtype=inp_dtype)
-    res = reduce_mean_d_compute(data_input, output_y, axes,
-                                keepdims, is_5hdc=is_5hdc)
+    ori_shape = [input_x["ori_shape"], input_x["shape"]]
+    ori_format = [input_x["ori_format"], input_x["format"]]
+    data_input = tvm.placeholder(shape, name="data_input", dtype=inp_dtype)
+    res = reduce_mean_d_compute(data_input, output_y, axes, keepdims,
+                                impl_mode=impl_mode, is_5hdc=is_5hdc)
+    if is_5hdc:
+        res.ori_shape = input_x["ori_shape"]
+        res.ori_format = input_x["ori_format"]
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

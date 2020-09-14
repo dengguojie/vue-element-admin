@@ -95,6 +95,7 @@ class OpPatterns(Enum):
     POOL3D_PATTERN = "Pool3d"
     READ_SELECT_PATTERN = "read_select"
     WRITE_SELECT_PATTERN = "write_select"
+    COSINE_EMBEDDING_LOSS_PATTERN = "cosine_embedding_loss"
 
 
 class OpSubPatterns(Enum):

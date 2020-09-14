@@ -21,6 +21,7 @@ from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
@@ -253,9 +254,11 @@ def check_ori_shape(input0, input1, input2):
     shape_1 = list(util.scalar2tensor_one(input1.get("ori_shape")))
     shape_2 = list(util.scalar2tensor_one(input2.get("ori_shape")))
     shape_input0, shape_input1, shape_max_mul = \
-        util.produce_shapes(shape_0, shape_1)
+        broadcast_shapes(shape_0, shape_1, param_name_input1="input0",
+                         param_name_input2="input1")
     shape_input2, shape_max_mul, shape_max_add0 = \
-        util.produce_shapes(shape_0, shape_2)
+        broadcast_shapes(shape_0, shape_2, param_name_input1="input0",
+                         param_name_input2="input2")
 
 
 def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
@@ -286,7 +289,9 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
 
     if condition2:
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1,
+                             param_name_input1="input0",
+                             param_name_input2="input1")
     elif condition0 and not condition1:
         shape_input1.append(1)
         shape_input1.append(1)
@@ -295,7 +300,9 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-2] = 1
         shape_input1[-3] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1,
+                             param_name_input1="input0",
+                             param_name_input2="input1")
     elif not condition0 and condition1:
         shape_input1.append(1)
         shape_input1.append(1)
@@ -304,13 +311,17 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-4] = 1
         shape_input1[-1] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1,
+                             param_name_input1="input0",
+                             param_name_input2="input1")
     else:
         raise RuntimeError("shape of input1 or input0 is illegal")
 
     if condition5:
         shape_input2, shape_max_mul, shape_max_add0 = \
-            util.produce_shapes(shape_input2, shape_max_mul)
+            broadcast_shapes(shape_input2, shape_max_mul,
+                             param_name_input1="input2",
+                             param_name_input2="shape_max_mul")
     elif condition3 and not condition4:
         shape_input2.append(1)
         shape_input2.append(1)
@@ -319,7 +330,9 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input2[-2] = 1
         shape_input2[-3] = 1
         shape_input2, shape_max_mul, shape_max_add0 = \
-            util.produce_shapes(shape_input2, shape_max_mul)
+            broadcast_shapes(shape_input2, shape_max_mul,
+                             param_name_input1="input2",
+                             param_name_input2="shape_max_mul")
     elif not condition3 and condition4:
         shape_input2.append(1)
         shape_input2.append(1)
@@ -328,7 +341,9 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input2[-4] = 1
         shape_input2[-1] = 1
         shape_input2, shape_max_mul, shape_max_add0 = \
-            util.produce_shapes(shape_input2, shape_max_mul)
+            broadcast_shapes(shape_input2, shape_max_mul,
+                             param_name_input1="input2",
+                             param_name_input2="shape_max_mul")
     else:
         raise RuntimeError("shape of input2 or input0 is illegal")
 
@@ -359,7 +374,8 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
 
     if condition2:
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                             param_name_input2="input1")
     elif condition0 and not condition1:
         shape_input1.append(1)
         shape_input1.append(1)
@@ -368,7 +384,8 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-2] = 1
         shape_input1[-3] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                             param_name_input2="input1")
     elif not condition0 and condition1:
         shape_input1.append(1)
         shape_input1.append(1)
@@ -377,12 +394,14 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-4] = 1
         shape_input1[-1] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                             param_name_input2="input1")
     else:
         raise RuntimeError("shape of input1 or input0 is illegal")
 
     shape_input2, shape_max_mul, shape_max_add0 = \
-        util.produce_shapes(shape_input2, shape_max_mul)
+        broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+                         param_name_input2="shape_max_mul")
 
     return shape_input0, shape_input1, shape_input2
 
@@ -407,8 +426,9 @@ def shape_broadcast(data_1, data_2):
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-        util.check_tensor_shape_size(shape_max)
+        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                       param_name_input1="data_1",
+                                                       param_name_input2="data_2")
         data_1 = te.lang.cce.broadcast(data_1, shape_max)
         data_2 = te.lang.cce.broadcast(data_2, shape_max)
 
@@ -449,7 +469,8 @@ def fused_mul_add_compute(data_input0, data_input1, data_input2,
     return res
 
 
-#@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 KERNEL_NAME)
 def fused_mul_add(input0, input1, input2,
                   output, kernel_name="fused_mul_add"):
     """
@@ -484,7 +505,6 @@ def fused_mul_add(input0, input1, input2,
     format_input1 = input1.get("format").upper()
     format_input2 = input2.get("format").upper()
 
-    util.check_kernel_name(kernel_name)
     check_ori_shape(input0, input1, input2)
     format_pattern = check_format(format_input0, format_input1, format_input2)
     if format_pattern in [1, 2, 3]:
@@ -497,9 +517,11 @@ def fused_mul_add(input0, input1, input2,
                              shape_input2, format_pattern)
     else:
         shape_input0, shape_input1, shape_max_mul = \
-            util.produce_shapes(shape_input0, shape_input1)
+            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                             param_name_input2="input1")
         shape_input2, shape_max_mul, shape_max_add0 = \
-            util.produce_shapes(shape_input2, shape_max_mul)
+            broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+                             param_name_input2="shape_max_mul")
 
     data_input0 = tvm.placeholder(shape_input0,
                                   name="data_input0",

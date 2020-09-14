@@ -22,6 +22,7 @@ from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -80,7 +81,7 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
     return result
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits_grad(
         predict,
         target,
@@ -112,28 +113,24 @@ def sigmoid_cross_entropy_with_logits_grad(
     predict_dtype = predict.get("dtype")
     gradient_dtype = gradient.get("dtype").lower()
     predict_dtype_lower = predict_dtype.lower()
-    util.check_dtype_rule(gradient_dtype, check_list)
-    util.check_dtype_rule(predict_dtype_lower, check_list)
+    check_dtype(gradient_dtype, check_list, param_name="gradient")
+    check_dtype(predict_dtype_lower, check_list, param_name="predict")
 
-    util.check_shape_rule(predict_shape)
-    util.check_tensor_shape_size(predict_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(predict_shape, param_name="predict")
 
     target_shape = target.get("shape")
     target_dtype = target.get("dtype")
     target_dtype_lower = target_dtype.lower()
-    util.check_dtype_rule(target_dtype_lower, check_list)
+    check_dtype(target_dtype_lower, check_list, param_name="target")
 
-    util.check_shape_rule(target_shape)
-    util.check_tensor_shape_size(target_shape)
+    check_shape(target_shape, param_name="target")
 
     dout_shape = dout.get("shape")
     dout_dtype = dout.get("dtype")
     dout_dtype_lower = dout_dtype.lower()
-    util.check_dtype_rule(dout_dtype_lower, check_list)
+    check_dtype(dout_dtype_lower, check_list, param_name="dout")
 
-    util.check_shape_rule(dout_shape)
-    util.check_tensor_shape_size(dout_shape)
+    check_shape(dout_shape, param_name="dout")
     util.compare_tensor_dict_key(predict, target, "shape")
     util.compare_tensor_dict_key(predict, dout, "shape")
     shape = (functools_reduce(lambda x, y: x * y, predict_shape[:]),)

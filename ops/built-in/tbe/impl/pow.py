@@ -26,6 +26,7 @@ from te.utils.op_utils import refine_shapes_for_broadcast
 from te import platform as tbe_platform
 from te.utils.op_utils import *
 
+
 def _less_compute(input_x, input_y):
     """
     if x is less than y, then return 1, else return 0.

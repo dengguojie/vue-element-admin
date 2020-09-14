@@ -126,7 +126,7 @@ class PsroiClass():
         None
         """
 
-        if product_name in ("Ascend310","Ascend910","Hi3796CV300ES"):
+        if not tbe_platform.cce_conf.api_check_support("tik.vrelu", "float32"):
             check_dtype(self.dtype, (FP16,), param_name="x")
             check_dtype(self.roi_dtype, (FP16,), param_name="rois")
         else:
@@ -134,104 +134,98 @@ class PsroiClass():
             check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
 
         if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
-            error_Info = {}
-            error_Info['errCode'] = 'E80017'
-            error_Info['param_name1'] = self.dtype
-            error_Info['param_name2'] = self.roi_dtype
-            error_Info['param_name3'] = self.y_dtype
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], the dtype of input x[%s],"
-                            "rois[%s] and y[%s] must be equal."
-                           %(error_Info['op_name'],error_Info['param_name1'],\
-                            error_Info['param_name2'],error_Info['param_name3']))
+            error_info = {}
+            error_info['errCode'] = 'E80017'
+            error_info['param_name1'] = self.dtype
+            error_info['param_name2'] = self.roi_dtype
+            error_info['param_name3'] = self.y_dtype
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], the dtype of input x[%s], "
+                               "rois[%s] and y[%s] must be equal."
+                               % (error_info['op_name'], error_info['param_name1'],
+                                  error_info['param_name2'], error_info['param_name3']))
 
         check_shape(self.x_shape, param_name="x")
         check_shape(self.roi_shape, param_name="rois")
         check_shape(self.y_shape, param_name="y")
         # x and y must be 5HD
-        check_shape(self.x_shape,min_rank=DIGIT_5,max_rank=DIGIT_5,param_name="x")
-        check_shape(self.y_shape,min_rank=DIGIT_5,max_rank=DIGIT_5,param_name="y")
+        check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
+        check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
 
         if self.roi_shape[0] != self.x_shape[0]:
-            error_Info = {}
-            error_Info['errCode'] = 'E81009'
-            error_Info['param_value1'] = self.x_shape[0]
-            error_Info['param_value2'] = self.roi_shape[0]
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], the batch of input x[%s] "
-                               "and rois[%s] must be equal."
-                               %(error_Info['op_name'],error_Info['param_value1'],\
-                                error_Info['param_value2']))
+            error_info = {}
+            error_info['errCode'] = 'E81009'
+            error_info['param_value1'] = self.x_shape[0]
+            error_info['param_value2'] = self.roi_shape[0]
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], the batch of input x[%s] and rois[%s] must be equal."
+                               % (error_info['op_name'], error_info['param_value1'], error_info['param_value2']))
 
         if self.roi_shape[1] != DIGIT_5:
-            error_Info = {}
-            error_Info['errCode'] = 'E80000'
-            error_Info['param_name'] = "roi_shape[1]"
-            error_Info['op_name'] = 'psroipooling'
-            error_Info['expect_value'] = DIGIT_5
-            error_Info['real_value'] = self.roi_shape[1]
-            raise RuntimeError(error_Info,"In op[%s], the parameter [%s]"
-                                          "must be equal 5,but actually is [%s]."
-                               %(error_Info['op_name'],error_Info['param_name'], \
-                                 error_Info['real_value']))
+            error_info = {}
+            error_info['errCode'] = 'E80000'
+            error_info['param_name'] = "roi_shape[1]"
+            error_info['op_name'] = 'psroipooling'
+            error_info['expect_value'] = DIGIT_5
+            error_info['real_value'] = self.roi_shape[1]
+            raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be equal 5, but actually is [%s]."
+                               % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
         
         if self.roi_shape[0]*self.roi_shape[2] != self.y_shape[0]:
-            error_Info = {}
-            error_Info['errCode'] = 'E81009'
-            error_Info['param_value1'] = self.roi_shape[0]*self.roi_shape[2]
-            error_Info['param_value2'] = self.y_shape[0]
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], all num of rois must be equal to "
-                            "y_shape[0][%s],but actually is [%s]."
-                            %(error_Info['op_name'],error_Info['param_value2'],\
-                            error_Info['param_value1']))
+            error_info = {}
+            error_info['errCode'] = 'E81009'
+            error_info['param_value1'] = self.roi_shape[0]*self.roi_shape[2]
+            error_info['param_value2'] = self.y_shape[0]
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], all num of rois must be equal to "
+                               "y_shape[0][%s],but actually is [%s]."
+                               % (error_info['op_name'], error_info['param_value2'], error_info['param_value1']))
 
         if self.group_size >= DIGIT_128:
-            error_Info = {}
-            error_Info['errCode'] = 'E80002'
-            error_Info['param_name'] = 'group_size'
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], the parameter[%s] must be "
-                              "less than [%s],but actually is [%s]."
-                              %(error_Info['op_name'],error_Info['param_name'],\
-                              DIGIT_128,self.group_size))
+            error_info = {}
+            error_info['errCode'] = 'E80002'
+            error_info['param_name'] = 'group_size'
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s] must be "
+                               "less than [%s],but actually is [%s]."
+                               % (error_info['op_name'], error_info['param_name'], DIGIT_128, self.group_size))
 
         if self.x_shape[1]//self.y_shape[1] != self.y_shape[2]*self.y_shape[3]:
-            error_Info = {}
-            error_Info['errCode'] = 'E81010'
-            error_Info['param_name'] = 'x_shape[1]'
-            error_Info['op_name'] = 'psroipooling'
-            error_Info['param_value1'] = self.x_shape[1]
-            error_Info['param_value2'] = self.y_shape[1]
-            error_Info['param_value3'] = self.y_shape[2]
-            error_Info['param_value4'] = self.y_shape[3]
-            raise RuntimeError(error_Info,"In op[%s], the parameter %s is invalid, "
+            error_info = {}
+            error_info['errCode'] = 'E81010'
+            error_info['param_name'] = 'x_shape[1]'
+            error_info['op_name'] = 'psroipooling'
+            error_info['param_value1'] = self.x_shape[1]
+            error_info['param_value2'] = self.y_shape[1]
+            error_info['param_value3'] = self.y_shape[2]
+            error_info['param_value4'] = self.y_shape[3]
+            raise RuntimeError(error_info, "In op[%s], the parameter %s is invalid, "
                                "it should follow the rule: self.x_shape[1](%s)//self.y_shape[1](%s) "
-                                "== self.y_shape[2](%s)*self.y_shape[3](%s)."
-                               %(error_Info['op_name'],error_Info['param_name'],error_Info['param_value1'], \
-                                error_Info['param_value2'],error_Info['param_value3'], \
-                                 error_Info['param_value4']))
+                               "== self.y_shape[2](%s)*self.y_shape[3](%s)."
+                               % (error_info['op_name'], error_info['param_name'], error_info['param_value1'],
+                                  error_info['param_value2'], error_info['param_value3'],
+                                  error_info['param_value4']))
 
         if self.group_size != self.y_shape[2] or \
                 self.group_size != self.y_shape[3]:
-            error_Info = {}
-            error_Info['errCode'] = 'E80017'
-            error_Info['param_value1'] = self.y_shape[2]
-            error_Info['param_value2'] = self.y_shape[3]
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], the shape of y_shape[2] and y_shape[3] "
-                                "must be equal to group_size[%s],but actually is %s and %s."
-                               %(error_Info['op_name'],self.group_size,error_Info['param_value1'], \
-                                 error_Info['param_value2']))
+            error_info = {}
+            error_info['errCode'] = 'E80017'
+            error_info['param_value1'] = self.y_shape[2]
+            error_info['param_value2'] = self.y_shape[3]
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], the shape of y_shape[2] and y_shape[3] "
+                               "must be equal to group_size[%s],but actually is %s and %s."
+                               % (error_info['op_name'], self.group_size, error_info['param_value1'],
+                                  error_info['param_value2']))
 
         if ceil_value(self.output_dim, C0) != self.y_shape[1]:
-            error_Info = {}
-            error_Info['errCode'] = 'E81011'
-            error_Info['param_name'] = 'output_dim'
-            error_Info['op_name'] = 'psroipooling'
-            raise RuntimeError(error_Info,"In op[%s], the parameter[%s] is invalid,it should "
+            error_info = {}
+            error_info['errCode'] = 'E81011'
+            error_info['param_name'] = 'output_dim'
+            error_info['op_name'] = 'psroipooling'
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s] is invalid,it should "
                                "follow the rule:(output_dim + C0 -1) // C0 == y_shape[1]"
-                               %(error_Info['op_name'],error_Info['param_name']))
+                               % (error_info['op_name'], error_info['param_name']))
 
     def __init__(self, x_dict, rois_dict, y_dict, params, kernel_name):
         """
@@ -419,7 +413,7 @@ class PsroiClass():
         -------
         None
         """
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910", "Ascend620", "Ascend610"):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910", "Ascend710", "Ascend610"):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
@@ -490,12 +484,11 @@ class PsroiClass():
         with self.tik_instance.for_range(0, params["h_width"]) as i:
             with self.tik_instance.for_range(0, params["w_width"]) as j:
                 self.tik_instance \
-                    .data_move(ub_bin_input_buf[(i*params["w_width"] + j)
-                                                *inner_dst_addr_stread],
+                    .data_move(ub_bin_input_buf[(i*params["w_width"] + j)*inner_dst_addr_stread],
                                x_src[params["scalar_roi_batch_id"],
                                      params["bin_i_offset"]*self.inner_c1,
-                                     params["h_start"]+i,
-                                     params["w_start"]+j, 0],
+                                     params["h_start"] + i,
+                                     params["w_start"] + j, 0],
                                SID, self.inner_c1, burst_len,
                                self.bin_load_stride, STRIDE_ZERO)
 
@@ -1182,8 +1175,8 @@ class PsroiClass():
 
 
 # pylint: disable=too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
-                 REQUIRED_ATTR_INT,REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
+                 REQUIRED_ATTR_INT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def psroipooling(x_dict, rois_dict, y_dict, output_dim, group_size,
                  spatial_scale, kernel_name="psroipooling"):
     """

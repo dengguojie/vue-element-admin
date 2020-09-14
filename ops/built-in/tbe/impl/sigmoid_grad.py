@@ -17,14 +17,14 @@ sigmoid_grad
 """
 import operator
 from functools import reduce as reduce_ins
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
+
 import te.lang.cce
 import topi
-from topi.cce import util
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_SIZE_LIMIT = 2**30
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @fusion_manager.register("sigmoid_grad")
@@ -53,7 +53,8 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
         "te.lang.cce.cast_to", "f322f16")
     if dtype == "float32" and not cast_support:
         raise RuntimeError(
-            "float32 transfer to float16 is only supported on mini and cloud platform")
+            "float32 transfer to float16 is only supported on mini and cloud platform"
+        )
     vmul_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmul", "float32")
     vsub_support = tbe_platform.cce_conf.api_check_support(
@@ -73,11 +74,9 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
-def sigmoid_grad(x,
-                 y,
-                 z,
-                 kernel_name="sigmoid_grad"):
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.KERNEL_NAME)
+def sigmoid_grad(x, y, z, kernel_name="sigmoid_grad"):
     """
     do sigmoid grad
 
@@ -101,27 +100,29 @@ def sigmoid_grad(x,
     shape_d = y.get("shape")
     dtype = x.get("dtype")
     dtype_y = y.get("dtype")
-    util.check_kernel_name(kernel_name)
     if dtype != dtype_y:
         raise RuntimeError("Input dtype must be equal")
     if not operator.eq(list(shape_sig), list(shape_d)):
         raise RuntimeError("Input shapes must be equal")
-    util.check_shape_rule(shape_sig)
-    util.check_shape_size(shape_sig, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(shape_sig, param_name="x")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, ["float16", "float32"])
+    op_utils.check_dtype(input_dtype, ("float16", "float32"), param_name="x")
 
     shape_sig = [reduce_ins(lambda x, y: x * y, shape_sig[:])]
-    input_sigmoid = tvm.placeholder(shape_sig, name="input_sigmoid",
+    input_sigmoid = tvm.placeholder(shape_sig,
+                                    name="input_sigmoid",
                                     dtype=input_dtype)
-    input_grad = tvm.placeholder(shape_sig, name="input_grad",
+    input_grad = tvm.placeholder(shape_sig,
+                                 name="input_grad",
                                  dtype=input_dtype)
 
     with tvm.target.cce():
         res = sigmoid_grad_compute(input_sigmoid, input_grad, z, kernel_name)
         auto_sch = topi.generic.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_sigmoid, input_grad, res]}
+    config = {
+        "name": kernel_name,
+        "tensor_list": [input_sigmoid, input_grad, res]
+    }
 
     te.lang.cce.cce_build_code(auto_sch, config)

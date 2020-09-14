@@ -19,8 +19,8 @@ import math
 
 import te
 
-from te.platform.cce_emitinsn_params import cceEmitParamsIns
 from te.platform.cce_params import scope_ubuf
+from te.platform import log
 from .util import dfs_tensor_graph
 from .util import get_all_axes
 from .util import get_reduce_axes
@@ -32,7 +32,6 @@ SINGLE_CORE_BYTE_SIZE_THRESHOLD = 32
 class Reduce5HDCSchedule:  # pylint: disable=R0902
     """Schedule for reduce 5HD C axis"""
     def __init__(self):
-        self.debug = True
         # Schedule object
         self._schedule = None
         # Output tensor
@@ -140,24 +139,22 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         self._all_tensors, self._input_tensors, \
             self._mid_tensors, self.tensor_map = dfs_tensor_graph(self._out_tensor)
         if len(self._input_tensors) != 1:
-            raise RuntimeError("Reduce 5HD C axis should have only one input tensor")
+            raise RuntimeError("[Reduce5HDCSchedule] Reduce 5HD C axis " +
+                               "should have only one input tensor")
         self._input_tensor = self._input_tensors[0]
         self.in_shape = list(map(int, self._input_tensor.shape))
         self.out_shape = list(map(int, self._out_tensor.shape))
-        temp_ori_shape = cceEmitParamsIns.get_param("5HDOriShape" +
-                                                    self._input_tensor.name.replace('data_input',
-                                                                                    ''))
+        temp_ori_shape = getattr(self._out_tensor, "ori_shape", None)
         if temp_ori_shape is None:
-            print('[Warning] Failed to get 5HDC Mode original shape',
-                  "5HDOriShape" + self._input_tensor.name.replace('data_input', ''))
+            log.error("[Reduce5HDCSchedule] " +
+                      "Failed to get 5HDC Mode original shape")
             temp_ori_shape = [self.in_shape[0], self.in_shape[2], self.in_shape[3],
                               self.in_shape[1] * self.in_shape[4]]
         self.ori_shape = temp_ori_shape
-        self.ori_format = cceEmitParamsIns.get_param("5HDOriFormat" +
-                                                     self._input_tensor.name.replace('data_input',
-                                                                                     ''))
+        self.ori_format = getattr(self._out_tensor, "ori_format", None)
         if self.ori_format is None:
-            print('[Warning] Failed to get 5HDC Mode original format')
+            log.error("[Reduce5HDCSchedule] " +
+                      "Failed to get 5HDC Mode original format")
             self.ori_format = "NHWC"
         n_idx = self.ori_format.index("N")
         h_idx = self.ori_format.index("H")
@@ -168,10 +165,10 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
                           self.ori_shape[w_idx],
                           self.ori_shape[c_idx]]
 
-    def print_debug(self, info_name, info):
+    @staticmethod
+    def print_debug(info_name, info):
         """Debug info print"""
-        if self.debug:
-            print("[Reduce5HDCSchedule]", str(info_name) + ":", str(info))
+        log.debug("[Reduce5HDCSchedule] " + str(info_name) + ":" + str(info))
 
     def obtain_tensor_info(self):
         """Get reduce node info"""
@@ -536,13 +533,27 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
             self._schedule[tensor].emit_insn(
                 self._schedule[tensor].op.axis[0],
                 tag)
+            if "5hdc" in tag:
+                self._schedule[tensor].pragma(self._schedule[tensor].op.axis[0],
+                                              "5hdc_CAxisVar",
+                                              str(self.all_var[1]))
+                self._schedule[tensor].pragma(
+                    self._schedule[tensor].op.axis[0],
+                    "CAxisInvalidSize",
+                    16 - (self.ori_shape[-1] - self.ori_shape[-1] // 16 * 16))
         final_tag_ub = self._out_tensor.op.tag.split("|")[0]
         if "reduce" in final_tag_ub:
             final_tag_ub = "5hdc_" + final_tag_ub
         self._schedule[self._out_tensor_ub].emit_insn(
             self._schedule[self._out_tensor_ub].op.axis[0],
             final_tag_ub)
+        if "5hdc" in final_tag_ub:
+            self._schedule[self._out_tensor_ub].pragma(
+                self._schedule[self._out_tensor_ub].op.axis[0],
+                "5hdc_CAxisVar",
+                str(self.all_var[1]))
+            self._schedule[self._out_tensor_ub].pragma(
+                self._schedule[self._out_tensor_ub].op.axis[0],
+                "CAxisInvalidSize",
+                16 - (self.ori_shape[-1] - self.ori_shape[-1] // 16 * 16))
         self._schedule[self._out_tensor].emit_insn(self.ub_inner, "dma_copy")
-        cceEmitParamsIns.insert_param("CAxisVar", self.all_var[1])
-        cceEmitParamsIns.insert_param("CAxisInvalidSize",
-                                      16 - (self.ori_shape[-1] - self.ori_shape[-1] // 16 * 16))

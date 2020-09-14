@@ -24,6 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -79,7 +80,8 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
     return result
 
 
-@util.check_input_type(dict, dict, dict, (int, list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 (OPTION_ATTR_INT, OPTION_ATTR_LIST_INT), KERNEL_NAME)
 def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
                      kernel_name="log_softmax_grad"):
     """
@@ -115,11 +117,9 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
 
     shape1 = input_dy.get("shape")
     shape2 = input_x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape1)
-    util.check_shape_rule(shape2)
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_shape_size(shape2, SHAPE_SIZE_LIMIT)
+    check_shape(shape1, param_name="input_dy")
+    check_shape(shape2, param_name="input_x")
+    check_dtype(input_dtype, check_list, param_name="input_dy")
 
     axis = util.axis_check(len(shape1), axis)
 

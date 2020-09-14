@@ -4214,6 +4214,7 @@ def compute_five_2_four(input_tensor, output_tensor, src_format, dst_format):
 
     return data_ub2gm_out, param_ir
 
+
 def five_2_four_compute(src, dst, src_format, dst_format,
                         kernel_name="five_2_four"):
     """

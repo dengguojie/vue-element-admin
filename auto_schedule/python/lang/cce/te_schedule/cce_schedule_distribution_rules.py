@@ -10,6 +10,7 @@ to corresponding schedule correctly
 """
 from te import platform
 from te.platform import get_soc_spec
+from te.platform.cce_conf import CceProductParams as pver
 from .cce_schedule_declarations import OpFlags
 from .util import _check_pattern_matched
 from .util import get_reduce_axes
@@ -18,6 +19,8 @@ from .op_pattern import softmax_dfs_tag_list
 from .op_pattern import bn_reduce_pattern_list
 from .op_pattern import bn_update_grad_pattern_list
 from .op_pattern import bn_update_pattern_list
+from .op_pattern import in_update_pattern_list
+from .op_pattern import gn_update_pattern_list
 from .op_pattern import bn_grad_reduce_pattern_list
 from .op_pattern import layer_norm_grad_pattern_list
 from .op_pattern import softmax_cross_entropy_with_logits_pattern_list
@@ -29,6 +32,7 @@ from .op_pattern import reduce_mean_2d_aligned_mid_reduce_no_cast_list
 from .op_pattern import truncate_div_tag_list
 from .op_pattern import floor_mod_tag_list
 from .op_pattern import threshold_grad_v2_d_tag_list
+from .op_pattern import cosine_embedding_loss_tag_list
 
 class OpPatternRules:
     """Rules for matching patterns"""
@@ -69,6 +73,13 @@ class OpPatternRules:
         return result
 
     @staticmethod
+    def pure_broadcast_pattern_rule(flags: dict, pattern,
+                                    mapping, *args) -> bool:
+        """Simple pattern rule for pure broadcast phase"""
+        return OpPatternRules.single_only_pattern_rule(
+            flags, pattern, mapping, *args)
+
+    @staticmethod
     def softmax_pattern_rule(flags: dict, input_tensors: list,
                              output_tensors: list, dfs_tensor_list: list,
                              *args) -> bool:
@@ -79,6 +90,32 @@ class OpPatternRules:
         if len(output_tensors) == out_len:
             for tag_list in softmax_dfs_tag_list:
                 if _check_pattern_matched(dfs_tensor_list, tag_list):
+                    is_match = True
+                    break
+        return is_match
+
+    @staticmethod
+    def cosine_embedding_loss_pattern_rule(flags: dict, input_tensors: list,
+                             output_tensors: list, dfs_tensor_list: list,
+                             *args) -> bool:
+        """softmax pattern rule"""
+        # Use it once to avoid static checks
+        [flags, input_tensors, args].clear()
+        is_match = False
+        out_len = 1
+        ignore_tags = ["elewise_single_cast|not_auto_cast",
+                       "broadcast_for_tensor"]
+        if len(output_tensors) == out_len:
+            if dfs_tensor_list[0].op.tag == "reduce_sum":
+                dfs_tensor_list = dfs_tensor_list[1:]
+                if dfs_tensor_list[0].op.tag == \
+                        "elewise_single_VS_mul":
+                    dfs_tensor_list = dfs_tensor_list[1:]
+
+            for tag_list in cosine_embedding_loss_tag_list:
+                if _check_pattern_matched(dfs_tensor_list,
+                                          tag_list,
+                                          ignore_tags):
                     is_match = True
                     break
         return is_match
@@ -113,7 +150,13 @@ class OpPatternRules:
         expected_flag_num = flags[OpFlags.elewise_flag.value]["count"] \
             + flags[OpFlags.broadcast_flag.value]["count"]
         if expected_flag_num > 0:
-            if flags["total"]["count"] - flags[None]["count"] - expected_flag_num == 0:
+            # scenes: read_select or write_select fused by elewise
+            # for these scenes, modify pattern to go into elewise schedule
+            fusion_op_nums = \
+                flags[OpFlags.read_select_flag.value]["count"] + \
+                flags[OpFlags.write_select_flag.value]["count"]
+            if flags["total"]["count"] - flags[None]["count"] \
+                    - expected_flag_num - fusion_op_nums == 0:
                 result = True
         return result
 
@@ -122,17 +165,25 @@ class OpPatternRules:
                                dfs_tensor_list: list, *args):
         """Bn update pattern rule"""
         list([flags, input_tensors, args]).clear()  # Use it once to avoid static checks
-        out_len = 5
+        out_len_list = [3, 5, 6]
         input_data_len = 5
-        if (len(output_tensors) == out_len or len(output_tensors) == out_len + 1) \
-                and len(output_tensors[0].shape) == input_data_len:
+        if len(output_tensors) in out_len_list and \
+            len(output_tensors[0].shape) == input_data_len:
             is_match = False
-            for tag_liat in bn_update_pattern_list:
-                if _check_pattern_matched(dfs_tensor_list, tag_liat):
-                    is_match = True
-                    break
+            for tag_list in bn_update_pattern_list:
+                if _check_pattern_matched(dfs_tensor_list, tag_list):
+                    return True
 
-            return is_match
+            ignore_tags = ["elewise_single_cast|not_auto_cast", ]
+            for tag_list in in_update_pattern_list:
+                if _check_pattern_matched(dfs_tensor_list, tag_list,
+                                          ignore_tags):
+                    return True
+
+            for tag_list in gn_update_pattern_list:
+                if _check_pattern_matched(dfs_tensor_list, tag_list,
+                                          ignore_tags):
+                    return True
 
         return False
 
@@ -338,9 +389,8 @@ class OpPatternRules:
         output_dim_cnt = 1
         output_dim_val = 1
 
-        product = platform.cce_conf.get_product()
         # atomic add does't support fp16 now.
-        check_dtype = (product.startswith("1.60") and
+        check_dtype = (pver().is_cloud_version() and
                        output_tensors[0].dtype == input_tensors[0].dtype and
                        input_tensors[0].dtype == "float32")
         check_shape = (len(output_tensors) == output_len and
@@ -379,9 +429,9 @@ class OpSubPatternRules:  # pylint: disable=R0903
         list([input_tensors, args]).clear()  # Use it once to avoid static checks
         flags.copy()  # Use it once to avoid static checks
         result = False
-        # Only cloud has atomic function
-        product = platform.cce_conf.get_product()
-        if product.startswith("1.60"):
+        is_support_atomic = pver().is_cloud_version() or \
+                            pver().is_1951_version()
+        if is_support_atomic:
             # Use atomic only when there is more than one reduce output tensors
             for output_tensor in output_tensors:
                 if OpFlags.reduce_flag.value in output_tensor.op.tag:
@@ -558,7 +608,7 @@ class OpSpecialRules:
         out_len = 1
         in_len = 3
 
-        if get_soc_spec("SOC_VERSION") != "Ascend310":
+        if not pver().is_mini_version():
             return False
 
         normalize_scale_tag_list = [
@@ -865,7 +915,7 @@ class OpSpecialRules:
                         reduce_axes.append(reduce_axis.var.name)
                     if len(reduce_axes) == 1 and \
                             reduce_axes[0] == str(reduce_tensor_body[0].source[0].args[-2]) and \
-                            (get_soc_spec("SOC_VERSION") not in ["Ascend910"]):
+                            (not pver().is_cloud_version()):
                         return True
                     break
         return False

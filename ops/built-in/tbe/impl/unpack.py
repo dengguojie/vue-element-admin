@@ -17,18 +17,65 @@ unpack
 from functools import reduce as function_reduce
 
 import te.lang.cce
-from te import tvm
+from impl.copy_only import copy_only
+from impl.split_d import split_d
+from impl.util.util_select_op_base import gen_param, get_dynamic_param_in_json
 from te import platform as tbe_platform
-from te.platform import cce_params
-from te.platform import insn_cmd
+from te import tvm
+from te.platform import cce_params, insn_cmd
 from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.split_d import split_d
-from impl.copy_only import copy_only
-from te.utils.op_utils import *
+from te.utils import op_utils
 
-SHAPE_SIZE_LIMIT = 2**30
+
+# pylint: disable=unused-argument,invalid-name,too-many-boolean-expressions
+# pylint: disable=chained-comparison,too-many-locals
+# pylint: disable=locally-disabled,too-many-arguments
+def op_select_format(x, y, num, axis, kernel_name="unpack"):
+    """
+    unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
+    1. when unpack by C, but output size not C0 align so don't support NC1HWC0
+    2. when split_d by N,H,W, support NC1HWC0
+    """
+    support_ori_format = ["NCHW", "NHWC"]
+
+    # all output attributes are consistent
+    ori_format = x.get("ori_format").upper()
+    ori_shape = x.get("ori_shape")
+    axis = axis % len(ori_shape)
+
+    is_support_5hd = False
+    if ori_format in support_ori_format and len(
+            ori_shape) == 4 and ori_format[axis] != "C":
+        is_support_5hd = True
+
+    dtype_base = [
+        "float16", "float", "int32", "int8", "int16", "int64", "uint8",
+        "uint16", "uint32", "uint64"
+    ]
+
+    dtype_base_out = dtype_base.copy()
+    format_base_out = ["ND"] * len(dtype_base)
+
+    if is_support_5hd:
+        dtype_base_out = dtype_base_out + dtype_base
+        format_base_out = format_base_out + ["NC1HWC0"] * len(format_base_out)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+
+    input0 = gen_param(classify="input0",
+                       name="x",
+                       datatype=dtype_str,
+                       format=format_str)
+    output0 = gen_param(classify="output0",
+                        name="y",
+                        datatype=dtype_str,
+                        format=format_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 def _check_params(shape, num, axis, format, dtype, kernel_name):
@@ -54,7 +101,7 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
     -------
     None
     """
-    check_shape(shape, param_name="x")
+    op_utils.check_shape(shape, param_name="x")
 
     # check format
     format_list = ("ND", "NHWC", "NCHW", "HWCN", "NC1HWC0")
@@ -67,8 +114,7 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
             raise RuntimeError("NC1HWC0 supports unpack of N H W axis")
     else:
         if format not in format_list:
-            raise RuntimeError(
-                            "Format supports ND,NCHW,NHWC,HWCN and NC1HWC0")
+            raise RuntimeError("Format supports ND,NCHW,NHWC,HWCN and NC1HWC0")
 
     # check axis value
     if axis < -len(shape) or axis >= len(shape):
@@ -88,10 +134,9 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
     # 1 param takes 8 bytes, needs Multiple output param and 1 input param
     # mini has more parameters (offset, index) than cloud
     compile_plat = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if compile_plat in ("Ascend310",):
+    if compile_plat in ("Ascend310", ):
         if num > (1536 // 3) // 8 - 1:
-            raise RuntimeError(
-                "Exceeds stack holding the parameters for mini")
+            raise RuntimeError("Exceeds stack holding the parameters for mini")
     else:
         if num > 1536 // 8 - 1:
             raise RuntimeError(
@@ -99,7 +144,7 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
 
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
-    check_dtype(dtype, check_list, param_name="x")
+    op_utils.check_dtype(dtype, check_list, param_name="x")
 
 
 def _get_public_param(dtype):
@@ -120,7 +165,8 @@ def _get_public_param(dtype):
     device_core_num: int
         the numbers of blockdim.
     """
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 2
+    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.UB_SIZE) // 2
     # Convert bits to Bytes
     dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
     # gm->ub maximum copy data at a time
@@ -133,12 +179,13 @@ def _get_public_param(dtype):
     ele_each_block = one_block_bytes_size // dtype_size
 
     # get core num according to the product
-    device_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.CORE_NUM)
 
     return total_ele, ele_each_block, device_core_num
 
 
-def check_use_special_optimize(dtype, afterdim, flag = False):
+def check_use_special_optimize(dtype, afterdim, flag=False):
     """Function: use to optimize special scene.
     """
     is_dtype_support = dtype in ("float16", "float32")
@@ -146,15 +193,15 @@ def check_use_special_optimize(dtype, afterdim, flag = False):
 
     _, ele_each_block, _ = _get_public_param(dtype)
     if afterdim < ele_each_block:
-        if dtype in ("int8", "uint8") and not (afterdim % 8):
+        if dtype in ("int8", "uint8") and not afterdim % 8:
             dtype = "uint64"
             afterdim = afterdim // 8
             flag = True
-        if dtype in ("float16", "int16", "uint16") and not (afterdim % 4):
+        if dtype in ("float16", "int16", "uint16") and not afterdim % 4:
             dtype = "uint64"
             afterdim = afterdim // 4
             flag = True
-        if dtype in ("float32", "int32", "uint32") and not (afterdim % 2):
+        if dtype in ("float32", "int32", "uint32") and not afterdim % 2:
             dtype = "uint64"
             afterdim = afterdim // 2
             flag = True
@@ -479,7 +526,8 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
                 afterdim_in = afterdim
             elif befordim == 1:
                 befordim_out = befordim
-                afterdim_in = (afterdim + device_core_num - 1) // device_core_num
+                afterdim_in = (afterdim + device_core_num -
+                               1) // device_core_num
             else:
                 afterdim_outer = device_core_num // befordim
                 afterdim_in = (afterdim + afterdim_outer - 1) // afterdim_outer
@@ -530,7 +578,9 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     return sch, build_list
 
 
-@check_op_params(REQUIRED_INPUT, DYNAMIC_OUTPUT, OPTION_ATTR_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.DYNAMIC_OUTPUT,
+                          op_utils.OPTION_ATTR_INT, op_utils.REQUIRED_ATTR_INT,
+                          op_utils.KERNEL_NAME)
 def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
@@ -570,7 +620,9 @@ def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
         afterdim *= after_dim
     reshape = (beferdim, shape[real_axis], afterdim)
 
-    _, _, is_use_split = check_use_special_optimize(dtype, afterdim, flag=False)
+    _, _, is_use_split = check_use_special_optimize(dtype,
+                                                    afterdim,
+                                                    flag=False)
     reshape_input = x.copy()
     reshape_input["shape"] = reshape
     real_axis = 1
@@ -579,17 +631,22 @@ def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
         copy_only(reshape_input, reshape_input, kernel_name)
     # use split
     elif is_use_split:
-        split_d(reshape_input, y, split_dim=real_axis,
-                num_split=num, kernel_name=kernel_name)
+        split_d(reshape_input,
+                y,
+                split_dim=real_axis,
+                num_split=num,
+                kernel_name=kernel_name)
     else:
-        new_dtype, afterdim, _ = check_use_special_optimize(
-            dtype, afterdim, flag=False)
+        new_dtype, afterdim, _ = check_use_special_optimize(dtype,
+                                                            afterdim,
+                                                            flag=False)
         new_shape = (beferdim, reshape[real_axis], afterdim)
 
-        input_place = tvm.placeholder(
-            new_shape, name="input_place", dtype=new_dtype)
-        sch, build_list = _unpack_schedule(
-            input_place, reshape, y, num, real_axis, dtype)
+        input_place = tvm.placeholder(new_shape,
+                                      name="input_place",
+                                      dtype=new_dtype)
+        sch, build_list = _unpack_schedule(input_place, reshape, y, num,
+                                           real_axis, dtype)
 
         with build_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)

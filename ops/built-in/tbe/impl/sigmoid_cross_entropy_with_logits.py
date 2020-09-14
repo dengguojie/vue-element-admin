@@ -23,6 +23,7 @@ from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -86,7 +87,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict,
     return loss
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(
         predict, target, loss,
         kernel_name="sigmoid_cross_entropy_with_logits"):
@@ -111,20 +112,17 @@ def sigmoid_cross_entropy_with_logits(
     shape_predict = predict.get("shape")
     dtype_predict = predict.get("dtype")
     input_dtype_predict = dtype_predict.lower()
-    util.check_shape_rule(shape_predict)
-    util.check_tensor_shape_size(shape_predict)
+    check_shape(shape_predict, param_name="predict")
 
     shape_target = target.get("shape")
     dtype_target = target.get("dtype")
     input_dtype_target = dtype_target.lower()
-    util.check_shape_rule(shape_target)
-    util.check_tensor_shape_size(shape_target)
+    check_shape(shape_target, param_name="target")
 
-    util.check_kernel_name(kernel_name)
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(input_dtype_predict, check_list)
-    util.check_dtype_rule(input_dtype_target, check_list)
+    check_dtype(input_dtype_predict, check_list, param_name="predict")
+    check_dtype(input_dtype_target, check_list, param_name="target")
     shape_predict, shape_target = \
         refine_shapes_for_broadcast(shape_predict, shape_target)
     data_predict = tvm.placeholder(shape_predict,

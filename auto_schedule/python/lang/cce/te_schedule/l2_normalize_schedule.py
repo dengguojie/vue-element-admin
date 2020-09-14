@@ -282,6 +282,9 @@ class L2NormalizeSchedule(VectorSchedule):
         if large:
             return False
 
+        if len(shape_before_reduce) == 1:
+            return False
+
         return True
 
     def _is_reduce_last_axis(self, shape_before_reduce, reduce_axis_index):

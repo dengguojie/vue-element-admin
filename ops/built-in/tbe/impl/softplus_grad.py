@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -58,7 +59,9 @@ def softplus_grad_compute(input_gradients, input_features, output_backprops,
     dtype = input_gradients.dtype
 
     if list(shape_dy) != list(shape_x):
-        shape_dy, shape_x, shape_max = util.produce_shapes(shape_dy, shape_x)
+        shape_dy, shape_x, shape_max = broadcast_shapes(shape_dy, shape_x,
+                                                        param_name_input1="input_gradients",
+                                                        param_name_input2="input_features")
         input_gradients = te.lang.cce.broadcast(input_gradients, shape_max, dtype)
         input_features = te.lang.cce.broadcast(input_features, shape_max, dtype)
     else:
@@ -94,7 +97,7 @@ def softplus_grad_compute(input_gradients, input_features, output_backprops,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def softplus_grad(input_gradients, input_features, output_backprops,
                   kernel_name="softplus_grad"):
     """
@@ -128,17 +131,15 @@ def softplus_grad(input_gradients, input_features, output_backprops,
              while the types are different")
     dtype = dtype_dy
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_dy)
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_dy)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_dy, param_name="input_gradients")
+    check_shape(shape_x, param_name="input_features")
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, check_list)
-    shape_dy, shape_x, shape_max = util.produce_shapes(shape_dy, shape_x)
-    util.check_tensor_shape_size(shape_max)
+    check_dtype(input_dtype, check_list, param_name="input_gradients")
+    shape_dy, shape_x, shape_max = broadcast_shapes(shape_dy, shape_x,
+                                                    param_name_input1="input_gradients",
+                                                    param_name_input2="input_features")
     reshape_dy, reshape_x = refine_shapes_for_broadcast(shape_dy, shape_x)
 
     data_dy = tvm.placeholder(reshape_dy, name="data_dy", dtype=input_dtype)

@@ -39,6 +39,16 @@ from impl import hwcn_2_fractal_z_c04
 from impl import four_2_five_c04
 from impl import dhwcn_2_fractal_z_3d
 from impl import fractal_z_3d_2_dhwcn
+from impl import nc1hwc0_2_nz
+from impl import fractal_nz_2_nc1hwc0
+from impl import zn_2_hwcn_lstm
+from impl import ncdhw_2_ndc1hwc0
+from impl import ndc1hwc0_2_ncdhw
+from impl import ncdhw_2_fractal_z_3d
+from impl import fractal_z_3d_2_ncdhw
+from impl import ndhwc_2_fractal_z_3d
+from impl import fractal_z_3d_2_ndhwc
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -70,7 +80,7 @@ def check_whether_2d(format, input_dict):
     return is_2d
 
 # pylint: disable=locally-disabled,too-many-branches
-@util.check_input_type(dict, dict, str, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, REQUIRED_ATTR_STR, KERNEL_NAME)
 def trans_data(src, dst, src_format, dst_format,
                kernel_name='trans_data'):
     """
@@ -141,6 +151,10 @@ def trans_data(src, dst, src_format, dst_format,
                  or dst_format.upper() == "FRACTAL_ZN_LSTM"):
         nchw_hwcn_zn.nchw_hwcn_zn(src, dst, src_format,
                                   dst_format, kernel_name)
+    elif src_format.upper() == "FRACTAL_ZN_LSTM" and \
+            dst_format.upper() == "HWCN":
+        zn_2_hwcn_lstm.zn_2_hwcn_lstm(src, dst, src_format,
+                                      dst_format, kernel_name)
     elif (src_format.upper() == "FRACTAL_ZN"
           or src_format.upper() == "FRACTAL_Z") \
             and dst_format.upper() == "HWCN":
@@ -206,6 +220,32 @@ def trans_data(src, dst, src_format, dst_format,
     elif src_format.upper() == "FRACTAL_Z_3D"\
             and dst_format.upper() == "DHWCN":
         fractal_z_3d_2_dhwcn.fractal_z_3d_2_dhwcn(src, dst, src_format,
+                                                  dst_format, kernel_name)
+    elif src_format.upper() == "NC1HWC0" and \
+            dst_format.upper() == "FRACTAL_Z":
+        nc1hwc0_2_nz.nc1hwc0_2_nz(src, dst, src_format,
+                                  dst_format, kernel_name)
+    elif src_format.upper() == "FRACTAL_NZ"\
+            and dst_format.upper() == "NC1HWC0":
+        fractal_nz_2_nc1hwc0.fractal_nz_2_nc1hwc0(src, dst, src_format,
+                                                  dst_format, kernel_name)
+    elif src_format.upper() == "NCDHW" and dst_format.upper() == "NDC1HWC0":
+        ncdhw_2_ndc1hwc0.ncdhw_2_ndc1hwc0(src, dst, src_format,
+                                          dst_format, kernel_name)
+    elif src_format.upper() == "NDC1HWC0" and dst_format.upper() == "NCDHW":
+        ndc1hwc0_2_ncdhw.ndc1hwc0_2_ncdhw(src, dst, src_format,
+                                          dst_format, kernel_name)
+    elif src_format.upper() == "NCDHW" and dst_format.upper() == "FRACTAL_Z_3D":
+        ncdhw_2_fractal_z_3d.ncdhw_2_fractal_z_3d(src, dst, src_format,
+                                                  dst_format, kernel_name)
+    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NCDHW":
+        fractal_z_3d_2_ncdhw.fractal_z_3d_2_ncdhw(src, dst, src_format,
+                                                  dst_format, kernel_name)
+    elif src_format.upper() == "NDHWC" and dst_format.upper() == "FRACTAL_Z_3D":
+        ndhwc_2_fractal_z_3d.ndhwc_2_fractal_z_3d(src, dst, src_format,
+                                                  dst_format, kernel_name)
+    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NDHWC":
+        fractal_z_3d_2_ndhwc.fractal_z_3d_2_ndhwc(src, dst, src_format,
                                                   dst_format, kernel_name)
     else:
         raise RuntimeError("not support this kind of format transfer !")

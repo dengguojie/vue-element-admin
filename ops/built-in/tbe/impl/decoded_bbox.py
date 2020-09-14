@@ -23,6 +23,7 @@ decoded_bbox
 
 from te import tik
 
+
 class DecodeBbox:
     """
     decode_bbox
@@ -447,6 +448,7 @@ class DecodeBbox:
         self.tik_instance.data_move(output_region_proposal[output_bbox_offset],
                                     self.output_region_proposal_ub[0, 0],
                                     0, 1, (self.N*16*8*8)*self.size//32, 0, 0, 0)
+
 
 class OneCoreProcess:
     """

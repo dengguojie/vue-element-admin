@@ -238,8 +238,7 @@ class SwapClass():
         self.fm_w = self.x_shape[3]
         self.hw = self.fm_h*self.fm_w
         self.x_shape_size = self.fm_batch*self.fm_c*self.hw
-        self.y_shape_size = self.y_shape[0]*self.y_shape[1]*self.y_shape[2]*\
-                            self.y_shape[3]*self.y_shape[4]
+        self.y_shape_size = self.y_shape[0]*self.y_shape[1]*self.y_shape[2]*self.y_shape[3]*self.y_shape[4]
 
         self.k2 = self.group_size*self.group_size
         self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
@@ -539,7 +538,7 @@ class SwapClass():
             # loop_i/inner_loop is loop sub group
             if params.hw_is_aligned:
                 addr_index.set_as(batch_id*params.src_one_batch_offset + \
-                    (loop_i / params.inner_loop)*params.cube_channel_distance +\
+                    (loop_i / params.inner_loop)*params.cube_channel_distance + \
                     (loop_index / params.loop_num)*self.hw + \
                     (params.s1_burst_len*BLOCK_SIZE//self.dsize)*inner_loop_i)
                 self.tik_instance.data_move(input_buf_ub, self.x[addr_index],
@@ -555,12 +554,9 @@ class SwapClass():
 
                 with self.tik_instance.for_range(0, move_times) as mov_i:
                     addr_index.set_as(batch_id*params.src_one_batch_offset + \
-                            (loop_i / params.inner_loop)* \
-                                    params.cube_channel_distance + \
-                            (loop_index / params.loop_num)*self.hw + \
-                            self.k2*mov_i*self.hw + \
-                            params.s1_burst_len*BLOCK_SIZE // self.dsize* \
-                                    inner_loop_i)
+                            (loop_i / params.inner_loop)*params.cube_channel_distance + \
+                            (loop_index / params.loop_num)*self.hw + self.k2*mov_i*self.hw + \
+                            params.s1_burst_len*BLOCK_SIZE // self.dsize*inner_loop_i)
                     self.tik_instance.data_move(
                         input_buf_ub[ub_addr_stride*mov_i], self.x[addr_index],
                         SID, bursts, burst_len, src_stride, dest_stride)
@@ -738,6 +734,7 @@ class SwapClass():
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x,),
                                    outputs=(self.y,))
+
 
 @op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT, 
                           op_utils.REQUIRED_ATTR_INT, op_utils.REQUIRED_ATTR_INT,

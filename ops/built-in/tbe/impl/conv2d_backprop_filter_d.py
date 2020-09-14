@@ -60,7 +60,8 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 PADDING_VAILD = [0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
 PADDING_SUPPORT = ('SAME', 'VALID')
-
+# conv1d situation support w not larger than 2^31-1
+CONV1D_MAX_W = 2147483647
 
 @util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list),
                        (str, tuple, list), (tuple, list), int, str, str)
@@ -154,6 +155,15 @@ def conv2d_backprop_filter_d(x, out_backprop, y, filter_size, strides, pads,
             dict_args["param_name"] = "dilations"
             raise RuntimeError(dict_args,
                                err_man.get_error_message(dict_args))
+        if list(filter_size) != list(ori_shape_res):
+            dict_args = {}
+            dict_args['errCode'] = "E64002"
+            dict_args['param1'] = "filter_size"
+            dict_args['param2'] = "ori_shape of y"
+            dict_args['actual_value'] = "{}, {}".\
+                format(filter_size, ori_shape_res)
+            raise RuntimeError(dict_args,
+                              err_man.get_error_message(dict_args))
 
     def _calcute_input_shape():
         if ori_format_x == "NHWC":
@@ -201,15 +211,13 @@ def conv2d_backprop_filter_d(x, out_backprop, y, filter_size, strides, pads,
     ori_format_out_backprop = out_backprop.get("ori_format")
     ori_format_res = y.get("ori_format")
 
-    dilations = get_shape_dilation(data_format, dilations)
-
     if len(strides) == 4:
         h_index = data_format.find('H')
         w_index = data_format.find('W')
         strides = [strides[h_index], strides[w_index]]
 
     _check_inputs_rules()
-
+    dilations = get_shape_dilation(data_format, dilations)
     shape_x, shape_out_backprop = _calcute_input_shape()
 
     if ori_format_res == "NCHW":
@@ -229,7 +237,6 @@ def conv2d_backprop_filter_d(x, out_backprop, y, filter_size, strides, pads,
         dict_args["format"] = ori_format_res
         raise RuntimeError(dict_args,
                            err_man.get_error_message(dict_args))
-
     conv2d_backprop_filter_cce(shape_x,
                                shape_out_backprop,
                                shape_res,
@@ -503,10 +510,23 @@ def check_conv2dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
 
     fmap_w_padding = fmap_w + pad_left + pad_right
     fmap_h_padding = fmap_h + pad_up + pad_down
-
     # special cases
     fmap_hw_min, dedy_hw_min = FMAP_HW_MIN, DEDY_HW_MIN
     dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
+
+    # exchange h and w will not change date in memmory
+    if fmap_w_padding == 1 and filter_w == 1 and dedy_w == 1:
+        shape_x = (fmap_batch, fmap_channel, fmap_w, fmap_h)
+        shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
+        filter_sizes = (filter_batch, filter_channel, filter_w, filter_h)
+        strides = stride_w, stride_h
+        dilations = dilation_n, dilation_c, dilation_w, dilation_h
+        fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
+        dedy_h, dedy_w = dedy_w, dedy_h
+        fmap_h, fmap_w = fmap_w, fmap_h
+        filter_h, filter_w = filter_w, filter_h
+        filter_h_dilation, filter_w_dilation = filter_w_dilation,\
+                                               filter_h_dilation
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1
@@ -514,12 +534,12 @@ def check_conv2dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         fmap_hw_min = 1
         dedy_hw_min = 1
 
-    # if conv1d situation, make sure w is in [1,16000]
+    # if conv1d situation, make sure w is in [1,2**31-1]
     if _is_conv1d_situation():
         dedy_hw_min = 1
         fmap_hw_min = 1
-        dedy_hw_max = 16000
-        fmap_hw_max = 16000
+        dedy_hw_max = CONV1D_MAX_W
+        fmap_hw_max = CONV1D_MAX_W
 
     # Dedy value limit
     _check_attr_range_dw("Dedy's H", dedy_h, dedy_hw_min, dedy_hw_max)
@@ -568,14 +588,14 @@ def check_conv2dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         if filter_w_dilation > fmap_w_padding:
             dict_args = dict()
             dict_args["errCode"] = "E60015"
-            dict_args["w_of_x,"] = str(fmap_w_padding)
+            dict_args["w_of_x"] = str(fmap_w_padding)
             dict_args["w_of_filter"] = str(filter_w_dilation)
             raise RuntimeError(dict_args,
                                err_man.get_error_message(dict_args))
         if filter_h_dilation > fmap_h_padding:
             dict_args = dict()
             dict_args["errCode"] = "E60014"
-            dict_args["h_of_x,"] = str(fmap_h_padding)
+            dict_args["h_of_x"] = str(fmap_h_padding)
             dict_args["h_of_filter"] = str(filter_h_dilation)
             raise RuntimeError(dict_args,
                                err_man.get_error_message(dict_args))
@@ -599,11 +619,14 @@ def check_conv2dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     def _min_l1_byte():
         # Forth : L1 limitation, Mainly required by chip
         al1_min_byte = C0 * C0 * 2
-
-        if dedy_w % C0 == 0:
-            bl1_min_byte = filter_h_dilation * fmap_w * C0 * 2
+        if not _is_conv1d_situation():
+            kl1_min = fmap_w
         else:
-            bl1_min_byte = (filter_h_dilation + stride_h) * fmap_w * C0 * 2
+            kl1_min = (C0 - 1) * stride_w + filter_w_dilation
+        if dedy_w % C0 == 0:
+            bl1_min_byte = filter_h_dilation * kl1_min * C0 * 2
+        else:
+            bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * 2
 
         l1_size = get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:

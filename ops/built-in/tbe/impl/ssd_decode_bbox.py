@@ -22,6 +22,7 @@ from te import platform as tbe_platform
 from impl import constant_util as constant
 from impl import common_util
 
+
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SSDDectionParamInit():
     """
@@ -56,8 +57,11 @@ class SSDDectionParamInit():
         self.num_classes = input_dict.get("num_classes")
         self.loc_coord = input_dict.get("mbox_loc").get("shape")[1] // 4
         self.priorbox_shape_1 = input_dict.get("mbox_priorbox").get("shape")[1]
+        self.priorbox_batch = input_dict.get("mbox_priorbox").get("shape")[0]
 
         self.background_label_id = input_dict.get("background_label_id")
+
+
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
 class SSDDecodeBBox(SSDDectionParamInit):
     """
@@ -620,7 +624,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
                            prior_bbox_dest_ub[1, 0],
                            handle_each_dst_loops, 1, 1, 1, 8, 8, 8)
 
-
         # 4. computer bbox
 
         # 4.1 true
@@ -678,7 +681,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                    prior_bbox_dest_ub[index, 0],
                                    decode_bbox_ori[index, 0],
                                    handle_each_dst_loops, 1, 1, 1, 8, 8, 8)
-
 
     def clip_bbox(self, decode_bbox_ori, decode_bbox_clip):
         """
@@ -801,7 +803,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             self.compute_decode_bbox_coord_corner_size(batch, data_offset,
                                                        is_tail, decode_bbox_ori)
 
-        if self.ascend_name in ("Ascend610", "Ascend620"):
+        if self.ascend_name in ("Ascend610", "Ascend710"):
             self.clip_bbox_v200(decode_bbox_ori, decode_bbox_clip)
         else:
             self.clip_bbox(decode_bbox_ori, decode_bbox_clip)
@@ -1159,7 +1161,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                                             data_offset//4],
                                     0, 1, loc_burst_val, 0, 0)
 
-
     # pylint: disable=too-many-locals
     def parser_conf_data(self, batch):
         """
@@ -1213,7 +1214,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                 dst_list = [conf_vnch_ub[16*i] for i in range(16)]
 
                 dst_rep_stride = 0 if self.num_classes <= 16 else 16
-                src_rep_stride = 0 if self.num_classes // 16 == 0 else 1
+                src_rep_stride = 0 if self.num_classes <= 16 else 1
 
                 self.instance.vnchwconv(False, False, dst_list, src_list,
                                         tail_loop_times, dst_rep_stride,
@@ -1315,8 +1316,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             with self.instance.for_range(0, priorbox_handle_loops) as \
                     priorbox_handle_index:
-                bbox_gm_start = batch * self.loc_num * self.priorbox_shape_1 + \
-                                priorbox_handle_index * handle_num
+                bbox_gm_start = priorbox_handle_index * handle_num
+                if self.priorbox_batch != 1:
+                    bbox_gm_start += \
+                        batch * self.loc_num * self.priorbox_shape_1
                 length = handle_num * 4 // 16
                 priorbox_gm_offset = priorbox_handle_index * handle_num // 4
                 priorbox_burst_val = math.ceil(handle_num // 4 / self.burnest_len)
@@ -1332,8 +1335,11 @@ class SSDDecodeBBox(SSDDectionParamInit):
             if self.loc_num % handle_num > 0:
                 priorbox_data_tail_num = self.loc_num - \
                                          priorbox_handle_loops * handle_num
-                bbox_gm_start = batch * self.loc_num * self.priorbox_shape_1 + \
-                                priorbox_handle_loops * handle_num
+                bbox_gm_start = priorbox_handle_loops * handle_num
+                if self.priorbox_batch != 1:
+                    bbox_gm_start += \
+                        batch * self.loc_num * self.priorbox_shape_1
+
                 length = math.ceil(priorbox_data_tail_num / 64) * 64 * 4 // 16
                 priorbox_gm_offset = priorbox_handle_loops * handle_num // 4
                 priorbox_burst_val = \
@@ -1381,9 +1387,11 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             with self.instance.for_range(0, priorbox_handle_loops) as \
                     priorbox_handle_index:
-                var_gm_start = batch * self.loc_num * self.priorbox_shape_1 + \
-                               self.loc_num + \
+                var_gm_start = self.loc_num + \
                                priorbox_handle_index * handle_num
+                if self.priorbox_batch != 1:
+                    var_gm_start += \
+                        batch * self.loc_num * self.priorbox_shape_1
                 length = handle_num * 4 // 16
                 priorbox_gm_offset = priorbox_handle_index * handle_num // 4
                 priorbox_burst_val = math.ceil(handle_num // 4 / self.burnest_len)
@@ -1399,8 +1407,12 @@ class SSDDecodeBBox(SSDDectionParamInit):
             if self.loc_num % handle_num > 0:
                 priorbox_data_tail_num = self.loc_num - \
                                          priorbox_handle_loops * handle_num
-                var_gm_start = batch * self.loc_num * self.priorbox_shape_1 + \
-                               self.loc_num + priorbox_handle_loops * handle_num
+                var_gm_start = self.loc_num + \
+                               priorbox_handle_loops * handle_num
+                if self.priorbox_batch != 1:
+                    var_gm_start += \
+                        batch * self.loc_num * self.priorbox_shape_1
+
                 length = math.ceil(priorbox_data_tail_num / 64) * 64 * 4 // 16
                 priorbox_gm_offset = priorbox_handle_loops * handle_num // 4
                 priorbox_burst_val = \
@@ -1522,8 +1534,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                prior_bbox_gm_offset = batch * self.loc_num + \
-                                       loc_handle_index * 4 * handle_num
+                prior_bbox_gm_offset = loc_handle_index * 4 * handle_num
+                if self.priorbox_batch != 1:
+                    prior_bbox_gm_offset += batch * self.loc_num
                 self.instance.data_move(prior_bbox_ub,
                                         self.mbox_prior_gm[prior_bbox_gm_offset],
                                         0, 1, 4 * handle_num // 16, 0, 0)
@@ -1557,8 +1570,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     prior_bbox_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                prior_bbox_gm_offset = batch * self.loc_num + \
-                                       handle_loops * 4 * handle_num
+                prior_bbox_gm_offset = handle_loops * 4 * handle_num
+                if self.priorbox_batch != 1:
+                    prior_bbox_gm_offset += batch * self.loc_num
                 loc_data_tail_num = self.loc_num - handle_loops * handle_num
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 
@@ -1623,8 +1637,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                prior_var_gm_offset = batch * self.loc_num + \
-                                      loc_handle_index * 4 * handle_num
+                prior_var_gm_offset = loc_handle_index * 4 * handle_num
+                if self.priorbox_batch != 1:
+                    prior_var_gm_offset += batch * self.loc_num
                 self.instance.data_move(prior_var_ub,
                                         self.mbox_prior_gm[prior_var_gm_offset + self.loc_num],
                                         0, 1, 4 * handle_num // 16, 0, 0)
@@ -1654,8 +1669,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     prior_var_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                prior_var_gm_offset = batch * self.loc_num + \
-                                      handle_loops * 4 * handle_num
+                prior_var_gm_offset = handle_loops * 4 * handle_num
+                if self.priorbox_batch != 1:
+                    prior_var_gm_offset += batch * self.loc_num
                 loc_data_tail_num = self.loc_num - handle_loops * handle_num
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 

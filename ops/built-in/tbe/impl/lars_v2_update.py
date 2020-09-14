@@ -14,19 +14,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 lars_v2_update op
 """
 
-import te.lang.cce
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.platform.cce_build import build_config
-from te.platform.cce_build import build_config_update
-from topi import generic
-from topi.cce import util
-from te import platform as tbe_platform
-
-from functools import reduce as functools_reduce
 import operator
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_SIZE_LIMIT = 2**30
+from functools import reduce as functools_reduce
+
+import te.lang.cce
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.cce_build import build_config, build_config_update
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
+from topi import generic
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -37,7 +34,6 @@ def lars_v2_update_compute(inputs_data,
                            use_clip,
                            out,
                            kernel_name="lars"):
-
     """
     lars_update compute
 
@@ -72,8 +68,10 @@ def lars_v2_update_compute(inputs_data,
 
     if use_clip:
         coeff_clip = te.lang.cce.vdiv(coeff, learning_rate)
-        coff_max = te.lang.cce.vmins(coeff_clip, tvm.const(1, dtype=weight.dtype))
-        clip_coff = te.lang.cce.vmaxs(coff_max, tvm.const(0, dtype=weight.dtype))
+        coff_max = te.lang.cce.vmins(coeff_clip,
+                                     tvm.const(1, dtype=weight.dtype))
+        clip_coff = te.lang.cce.vmaxs(coff_max, tvm.const(0,
+                                                          dtype=weight.dtype))
         coeff_broadcast = te.lang.cce.broadcast(clip_coff, weight.shape)
     else:
         coeff_broadcast = te.lang.cce.broadcast(coeff, weight.shape)
@@ -88,10 +86,22 @@ def lars_v2_update_compute(inputs_data,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, float,
-                       float, bool, str)
-def lars_v2_update(weight, grad, weight_s, grad_s, weight_decay, learning_rate,
-                   out, hyperparam=0.001, epsilon=1e-5, use_clip=False,
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+def lars_v2_update(weight,
+                   grad,
+                   weight_s,
+                   grad_s,
+                   weight_decay,
+                   learning_rate,
+                   out,
+                   hyperparam=0.001,
+                   epsilon=1e-5,
+                   use_clip=False,
                    kernel_name="lars_update"):
     """
     the opreator's compute
@@ -143,8 +153,6 @@ def lars_v2_update(weight, grad, weight_s, grad_s, weight_decay, learning_rate,
     None
     """
 
-
-    util.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
     inputs = [weight, grad, weight_s, grad_s, weight_decay, learning_rate]
 
@@ -168,20 +176,16 @@ def lars_v2_update(weight, grad, weight_s, grad_s, weight_decay, learning_rate,
     for i, input_val in enumerate(inputs):
         input_dtype = input_val.get("dtype").lower()
         input_shape = input_val.get("shape")
-        util.check_shape_rule(input_shape)
-        util.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
-        util.check_dtype_rule(input_dtype, check_list)
-        shape_one_dim = (functools_reduce(operator.mul, input_shape),)
-        input_place_holders.append(tvm.placeholder(shape_one_dim,
-                                                   name="input_data_%d" % i,
-                                                   dtype=input_dtype))
+        op_utils.check_shape(input_shape)
+        op_utils.check_dtype(input_dtype, check_list)
+        shape_one_dim = (functools_reduce(operator.mul, input_shape), )
+        input_place_holders.append(
+            tvm.placeholder(shape_one_dim,
+                            name="input_data_%d" % i,
+                            dtype=input_dtype))
 
-    res = lars_v2_update_compute(input_place_holders,
-                               hyperparam,
-                               epsilon,
-                               use_clip,
-                               out,
-                               kernel_name)
+    res = lars_v2_update_compute(input_place_holders, hyperparam, epsilon,
+                                 use_clip, out, kernel_name)
 
     with tvm.target.cce():
         schedule = generic.auto_schedule(res)
@@ -192,5 +196,3 @@ def lars_v2_update(weight, grad, weight_s, grad_s, weight_decay, learning_rate,
     new_config = build_config_update(build_config, "dummy_placeholder", True)
     with new_config:
         tvm.build(schedule, data, "cce", name=kernel_name)
-
-

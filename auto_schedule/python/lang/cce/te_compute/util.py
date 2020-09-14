@@ -9,6 +9,13 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
+from te.platform.cce_conf import VERSION_CLOUD
+from te.platform.cce_conf import VERSION_MINI
+from te.platform.cce_conf import VERSION_SHISI
+from te.platform.cce_conf import VERSION_MINI_1951
+from te.platform.cce_conf import VERSION_MINI_1951M
+from te.platform.cce_conf import VERSION_MINI_1951PG2
+from te.platform.cce_conf import CceProductParams as pver
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
@@ -26,426 +33,506 @@ DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
         "AllSoc": ("float16", "float32", "int32", "int16", "uint16", \
                    "int8", "uint8"),
-        "Ascend310": ("float16", "float32", "int32", "int16", "uint16", \
+        VERSION_MINI: ("float16", "float32", "int32", "int16", "uint16", \
                       "int8", "uint8"),
-        "Ascend910": ("float16", "float32", "int32", "int16", "uint16", \
+        VERSION_CLOUD: ("float16", "float32", "int32", "int16", "uint16", \
                       "int8", "uint8"),
-        "Ascend610": ("float16", "float32", "int32", "int16", "uint16", \
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16", "uint16", \
                       "int8", "uint8"),
-        "Ascend620": ("float16", "float32", "int32", "int16", "uint16", \
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16", "uint16", \
                       "int8", "uint8"),
-        "Hi3796CV300ES": ("float16", "float32", "int32", "int16", "uint16", \
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16", "uint16", \
+                      "int8", "uint8"),
+        VERSION_SHISI: ("float16", "float32", "int32", "int16", "uint16", \
                           "int8", "uint8"),
     },
 
     # segment
     "unsorted_segment_sum": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_mean": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_prod": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_min": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_max": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
 
-    # inplce
+    # inplace
     "inplace_add": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "inplace_sub": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
     "inplace_update": {
         "AllSoc": ("float16", "float32", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "float32", "int32"),
     },
 
     # ceil/floor/round/trunc
     "ceil": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "floor": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "round": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "trunc": {
         "AllSoc": ("float16",),
-        "Ascend310": (),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: (),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "round_d": {
         "AllSoc": ("float16",),
-        "Ascend310": (),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: (),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
 
     # reduce
     "reduce_sum": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"), # int32: nlst support, last not
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"), # int32: nlst support, last not
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "reduce_max": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"), # fp32:last need priority_flag
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"), # int32: nlst support, last not
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"), # fp32:last need priority_flag
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"), # int32: nlst support, last not
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "reduce_min": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"), # int32: nlst support, last not
-        "Ascend910": ("float16", "float32"), # fp32:last need priority_flag
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"), # int32: nlst support, last not
+        VERSION_CLOUD: ("float16", "float32"), # fp32:last need priority_flag
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"), # int32: nlst/last support
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"), # int32: nlst/last support
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
 
     # elewise
     "vadd": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vsub": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmul": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vdiv": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmod": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vmin": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmax": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vadds": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmins": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmaxs": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vmuls": {
         "AllSoc": ("float16", "int32"),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32", "int32"),
-        "Ascend620": ("float16", "float32", "int32"),
-        "Hi3796CV300ES": ("float16", "int32"),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32", "int32"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32"),
+        VERSION_SHISI: ("float16", "int32"),
     },
     "vnot": {
         "AllSoc": ("int16", "uint16"),
-        "Ascend310": ("int16", "uint16"),
-        "Ascend910": ("int16", "uint16"),
-        "Ascend610": ("int16", "uint16"),
-        "Ascend620": ("int16", "uint16"),
-        "Hi3796CV300ES": ("int16", "uint16"),
+        VERSION_MINI: ("int16", "uint16"),
+        VERSION_CLOUD: ("int16", "uint16"),
+        VERSION_MINI_1951: ("int16", "uint16"),
+        VERSION_MINI_1951M: ("int16", "uint16"),
+        VERSION_MINI_1951PG2: ("int16", "uint16"),
+        VERSION_SHISI: ("int16", "uint16"),
     },
     "vor": {
         "AllSoc": ("int16", "uint16"),
-        "Ascend310": ("int16", "uint16"),
-        "Ascend910": ("int16", "uint16"),
-        "Ascend610": ("int16", "uint16"),
-        "Ascend620": ("int16", "uint16"),
-        "Hi3796CV300ES": ("int16", "uint16"),
+        VERSION_MINI: ("int16", "uint16"),
+        VERSION_CLOUD: ("int16", "uint16"),
+        VERSION_MINI_1951: ("int16", "uint16"),
+        VERSION_MINI_1951M: ("int16", "uint16"),
+        VERSION_MINI_1951PG2: ("int16", "uint16"),
+        VERSION_SHISI: ("int16", "uint16"),
     },
     "vand": {
         "AllSoc": ("int16", "uint16"),
-        "Ascend310": ("int16", "uint16"),
-        "Ascend910": ("int16", "uint16"),
-        "Ascend610": ("int16", "uint16"),
-        "Ascend620": ("int16", "uint16"),
-        "Hi3796CV300ES": ("int16", "uint16"),
+        VERSION_MINI: ("int16", "uint16"),
+        VERSION_CLOUD: ("int16", "uint16"),
+        VERSION_MINI_1951: ("int16", "uint16"),
+        VERSION_MINI_1951M: ("int16", "uint16"),
+        VERSION_MINI_1951PG2: ("int16", "uint16"),
+        VERSION_SHISI: ("int16", "uint16"),
     },
     "vcmp": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vlogic": {
         "AllSoc": ("bool",),
-        "Ascend310": ("bool",),
-        "Ascend910": ("bool",),
-        "Ascend610": ("bool",),
-        "Ascend620": ("bool",),
-        "Hi3796CV300ES": ("bool",),
+        VERSION_MINI: ("bool",),
+        VERSION_CLOUD: ("bool",),
+        VERSION_MINI_1951: ("bool",),
+        VERSION_MINI_1951M: ("bool",),
+        VERSION_MINI_1951PG2: ("bool",),
+        VERSION_SHISI: ("bool",),
     },
     "vsel": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vcmpsel": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vlog": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vexp": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vabs": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vrec": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vrelu": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16",),
-        "Ascend910": ("float16",),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16",),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vsqrt": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vrsqrt": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vaxpy": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vmla": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vmadd": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
     },
     "vmaddrelu": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32"),
-        "Ascend910": ("float16", "float32"),
-        "Ascend610": ("float16", "float32"),
-        "Ascend620": ("float16", "float32"),
-        "Hi3796CV300ES": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
+    },
+    "vlrelu": {
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32"),
+        VERSION_MINI_1951M: ("float16", "float32"),
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
+    },
+    "vaddrelu": {
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16",),
+        VERSION_MINI_1951: ("int16", "float16", "float32"),
+        VERSION_MINI_1951M: ("int16", "float16", "float32"),
+        VERSION_MINI_1951PG2: ("int16", "float16", "float32"),
+        VERSION_SHISI: ("int16", "float16",),
+    },
+    "vsubrelu": {
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16",),
+        VERSION_MINI_1951: ("int16", "float16", "float32"),
+        VERSION_MINI_1951M: ("int16", "float16", "float32"),
+        VERSION_MINI_1951PG2: ("int16", "float16", "float32"),
+        VERSION_SHISI: ("int16", "float16",),
     },
 
     # common
     "round_to": {
         "AllSoc": ("float16",),
-        "Ascend310": ("float16", "float32", "int32"),
-        "Ascend910": ("float16", "float32", "int32"),
-        "Ascend610": ("float16", "float32"), # int32: schedule not support
-        "Ascend620": ("float16", "float32"), # int32: schedule not support
-        "Hi3796CV300ES": ("float16",), # int32: schedule not support
+        VERSION_MINI: ("float16", "float32", "int32"),
+        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI_1951: ("float16", "float32"), # int32: schedule not support
+        VERSION_MINI_1951M: ("float16", "float32"), # int32: schedule not support
+        VERSION_MINI_1951PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",), # int32: schedule not support
     },
     "cast_to": {
         "AllSoc": ("f162f32", "f162s8", "f162u8", "f162s32", \
                    "s82f16", "s82u8", "u82f16", "u82s8", \
                    "s322f16", "s322s8", "s322u8", "s322f32"),
-        "Ascend310": ("f322f16", "f322s8", "f322u8", "f322s32", \
+        VERSION_MINI: ("f322f16", "f322s8", "f322u8", "f322s32", \
                       "f162f32", "f162s8", "f162u8", "f162s32", \
                       "s82f16", "s82u8", "u82f16", "u82s8", \
                       "s322f16", "s322s8", "s322u8", "s322f32"),
-        "Ascend910": ("f322f16", "f322s8", "f322u8", "f322s32", \
+        VERSION_CLOUD: ("f322f16", "f322s8", "f322u8", "f322s32", \
                       "f162f32", "f162s8", "f162u8", "f162s32", \
                       "s82f16", "s82u8", "u82f16", "u82s8", \
                       "s322f16", "s322s8", "s322u8", "s322f32"),
-        "Ascend610": ("f322f16", "f322s8", "f322u8", "f322s32", \
+        VERSION_MINI_1951: ("f322f16", "f322s8", "f322u8", "f322s32", \
                       "f162f32", "f162s8", "f162u8", "f162s32", \
                       "s82f16", "s82u8", "u82f16", "u82s8", \
                       "s322f16", "s322s8", "s322u8", "s322f32"),
-        "Ascend620": ("f322f16", "f322s8", "f322u8", "f322s32", \
+        VERSION_MINI_1951M: ("f322f16", "f322s8", "f322u8", "f322s32", \
                       "f162f32", "f162s8", "f162u8", "f162s32", \
                       "s82f16", "s82u8", "u82f16", "u82s8", \
                       "s322f16", "s322s8", "s322u8", "s322f32"),
-        "Hi3796CV300ES": ("f162f32", "f162s8", "f162u8", "f162s32", \
+        VERSION_MINI_1951PG2: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                      "f162f32", "f162s8", "f162u8", "f162s32", \
+                      "s82f16", "s82u8", "u82f16", "u82s8", \
+                      "s322f16", "s322s8", "s322u8", "s322f32"),
+        VERSION_SHISI: ("f162f32", "f162s8", "f162u8", "f162s32", \
                           "s82f16", "s82u8", "u82f16", "u82s8", \
                           "s322f16", "s322s8", "s322u8", "s322f32"),
     },
@@ -487,7 +574,7 @@ def dsl_support_dtype(dsl_name):
     if all_support_dtype is None:
         return []
 
-    soc_ver = get_soc_spec("SOC_VERSION")
+    soc_ver = pver().get_product_version()
     soc_support_dtype = all_support_dtype.get(soc_ver)
     if soc_support_dtype is None:
         soc_support_dtype = all_support_dtype.get("AllSoc")
@@ -515,7 +602,7 @@ def dsl_check_support(dsl_api, dtype=None):
     if all_support_dtype is None:
         return False
 
-    soc_ver = get_soc_spec("SOC_VERSION")
+    soc_ver = pver().get_product_version()
     soc_support_dtype = all_support_dtype.get(soc_ver)
     if soc_support_dtype is None:
         soc_support_dtype = all_support_dtype.get("AllSoc")
@@ -616,21 +703,33 @@ def is_cast_support(src_type, dst_type):
     """
     is_cast_support
     """
+    if src_type == dst_type:
+        return True
+
+    cast_type = get_cast_type(src_type, dst_type)
+    
+    if intrinsic_check_support("Intrinsic_vconv", cast_type):
+        return True
+    else:
+        # Default round mode set as 'z'
+        return intrinsic_check_support("Intrinsic_vconv", cast_type + "z")
+
+
+def get_cast_type(src_type, dst_type):
+    """
+    get cast type string for vconv_xxxxx
+    """
     if src_type not in DTYPE_MAP:
         raise RuntimeError("%s is unsupported dtype!" % src_type)
 
     if dst_type not in DTYPE_MAP:
         raise RuntimeError("%s is unsupported dtype!" % dst_type)
 
-    if src_type == dst_type:
-        return True
-
     cast_type = DTYPE_MAP[src_type] + "2" + DTYPE_MAP[dst_type]
 
     if cast_type == "s322f16":
         cast_type = "deq"
-
-    return intrinsic_check_support("Intrinsic_vconv", cast_type)
+    return cast_type
 
 
 def judge_var(num):

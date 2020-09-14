@@ -25,6 +25,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 NONETYPE = type(None)
 
@@ -148,22 +149,17 @@ def _shape_check(shape_x, shape_scale, shape_offset,
     _check_shape_dims(shape_scale, data_format)
     _check_shape_dims(shape_offset, data_format)
 
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_scale)
-    util.check_shape_rule(shape_offset)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_scale)
-    util.check_tensor_shape_size(shape_offset)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_scale, param_name="scale")
+    check_shape(shape_offset, param_name="offset")
     _check_dims_equal(shape_x, shape_scale, data_format)
     _check_dims_equal(shape_x, shape_offset, data_format)
 
     if not is_training:
         shape_mean = mean.get("shape")
         shape_variance = variance.get("shape")
-        util.check_shape_rule(shape_mean)
-        util.check_shape_rule(shape_variance)
-        util.check_tensor_shape_size(shape_mean)
-        util.check_tensor_shape_size(shape_variance)
+        check_shape(shape_mean, param_name="mean")
+        check_shape(shape_variance, param_name="variance")
         _check_shape_dims(shape_mean, data_format)
         _check_shape_dims(shape_variance, data_format)
         _check_dims_equal(shape_x, shape_mean, data_format)
@@ -423,9 +419,10 @@ def batch_norm_compute(x, scale, offset, mean, variance, y,
     return res
 
 
-@util.check_input_type(dict, dict, dict, (dict, NONETYPE), (dict, NONETYPE),
-                       dict, dict, dict, (dict, NONETYPE), (dict, NONETYPE),
-                       float, str, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
+                 OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 OPTION_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
                batch_variance, reserve_space_1, reserve_space_2,
                epsilon=0.0001, data_format="NHWC",
@@ -490,8 +487,8 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
     if not is_training:
         dtype_mean = mean.get("dtype")
         dtype_variance = variance.get("dtype")
-        util.check_dtype_rule(dtype_mean.lower(), ("float32", "float16"))
-        util.check_dtype_rule(dtype_variance.lower(), ("float32", "float16"))
+        check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
+        check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
     _format_check(x, data_format)
     format_data = x.get("format")
@@ -499,11 +496,10 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
     _shape_check(shape_x, shape_scale, shape_offset, mean,
                  variance, is_training, format_data)
 
-    util.check_kernel_name(kernel_name)
 
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
-    util.check_dtype_rule(dtype_scale.lower(), ("float32", "float16"))
-    util.check_dtype_rule(dtype_offset.lower(), ("float32", "float16"))
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
+    check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
 
     if format_data == "NHWC":
         shape_scale = [1, 1, 1] + list(shape_scale)

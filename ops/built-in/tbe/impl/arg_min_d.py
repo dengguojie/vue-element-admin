@@ -184,6 +184,7 @@ class ArgminBase(object):
         self.product_core_num = \
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
+
 # pylint: disable=too-many-instance-attributes
 class Argmin(ArgminBase):
     """
@@ -1489,8 +1490,8 @@ class Argmin(ArgminBase):
             second_max_index = self.tik_instance.Scalar("uint16")
             second_max_index.set_as(ub_result[1])
             self.result_int32.set_as(second_max_index)
-
     # pylint: disable=too-many-locals
+
     def do_argmin_last_axis_fp32(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float32

@@ -1,1 +1,1 @@
-include libs/libmodel_run_tool.so
+include op_test_frame/libs/libmodel_run_tool.so

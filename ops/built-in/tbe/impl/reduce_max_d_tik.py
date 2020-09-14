@@ -173,6 +173,7 @@ class ArgmaxBase(object):
         self.product_core_num = \
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
+
 # pylint: disable=too-many-instance-attributes
 class Argmax(ArgmaxBase):
     """
@@ -374,7 +375,8 @@ class Argmax(ArgmaxBase):
 
                 argmax_func = self.do_max_last_axis_fp32
                 self.result_out_scalar.set_as(SCALAR_MIN_FP32)
-                self.tik_instance.vector_dup(self.data_each_vector, self.ub_result_64,
+                self.tik_instance.vector_dup(self.data_each_vector,
+                                             self.ub_result_64,
                                              SCALAR_MIN_FP32, 1, 1, 8)
                 if loop_times != 0:
                     thread_num = 1
@@ -402,6 +404,23 @@ class Argmax(ArgmaxBase):
             _run(MAX_SEGMENT_LEN, _loop)
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
+
+    def get_half_max(self, tik_instance, vmax_ub, vector_num):
+        if vector_num == 1:
+            return 1
+        output_num = vector_num // 2
+        ub2_offset = output_num * 64
+
+        tik_instance.vmax(64, vmax_ub,
+                          vmax_ub, vmax_ub[ub2_offset],
+                          output_num, 1, 1, 1, 8, 8, 8)
+
+        if vector_num % 2 == 1:
+            tik_instance.vmax(64, vmax_ub,
+                          vmax_ub, vmax_ub[ub2_offset*2],
+                          1, 1, 1, 1, 8, 8, 8)
+        return output_num
+
 
     # pylint: disable=too-many-locals
     def do_max_last_axis_fp32(self, ub_buf_size, loop, n_i):
@@ -442,9 +461,15 @@ class Argmax(ArgmaxBase):
             self.tik_instance.vector_dup(
                 [mask_h, mask_l], ub_data[_offset * self.data_each_vector],
                 SCALAR_MIN_FP32, 1, 1, 8)
+        total_block = repeat
+        while total_block > 1:
+            total_block = self.get_half_max(self.tik_instance,
+                                            ub_data,
+                                            total_block)
+
         self.tik_instance.vmax(self.data_each_vector, self.ub_result_64,
                                ub_data, self.ub_result_64,
-                               repeat, 1, 1, 1, 0, 8, 0)
+                               1, 1, 1, 1, 0, 8, 0)
 
     def get_one_from_64(self, mode=None):
         """

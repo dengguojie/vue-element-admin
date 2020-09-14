@@ -87,6 +87,7 @@ from .erfc import erfc
 from .concat_v2_d import concat_v2_d
 from .max_pool import max_pool
 from .max_pool3d import max_pool3d
+from .max_pool3d_grad_grad_d import max_pool3d_grad_grad_d
 from .max_pool_ext2 import max_pool_ext2
 from .neg import neg
 from .batch_norm_ext2 import batch_norm_ext2
@@ -191,13 +192,10 @@ from .apply_rms_prop_d import apply_rms_prop_d
 from .conv2d import conv2d
 from .conv2d import conv_layer_cce
 from .conv2d import conv_layer_cce_para_check
-from .conv2d import conv_layer_fast_cce_para_check
-from .conv2d import conv_layer_fast_cce
 from .conv2d import conv2d_compute
 
 from .conv2d_compress import conv2dcompress
 from .conv2d_compress import conv_layer_compress_cce
-from .conv2d_compress import conv_layer_fast_compress_cce
 
 from .conv2d_backprop_filter_d import conv2d_backprop_filter_d
 from .conv2d_backprop_filter_d import check_conv2dbp_filter_params
@@ -206,10 +204,17 @@ from .conv2d_backprop_input_d import conv2d_backprop_input_d
 from .util.util_deconv_comm import check_conv2dbp_input_params
 from .conv2d_backprop_input_d import conv2d_backprop_input_cce
 from .deconvolution import deconvolution
+from .conv2d_transpose_d import conv2d_transpose_d
+from .conv2d_transpose_d import conv2d_transpose_d_compute
+from .conv2d_transpose_d import conv2d_transpose_cce
 from .conv3d import conv3d
-from .conv3d_backprop_input_d import conv3d_backprop_input_d, check_conv3dbp_input_params
+from .conv3d_backprop_input_d import conv3d_backprop_input_d
+from .conv3d_backprop_input_d import check_conv3dbp_input_params
 from .conv3d_backprop_input_d import conv3d_backprop_input_cce
 from .conv3d_backprop_filter_d import conv3d_backprop_filter_cce
+from .conv3d_backprop_filter_d import conv3d_backprop_filter_d
+from .conv3d_transpose_d import conv3d_transpose_d
+from .conv3d_transpose_d import conv3d_transpose_cce
 
 # Mobilenetv2
 from .avg_pool_grad_d import avg_pool_grad_d
@@ -326,6 +331,10 @@ from .extract_volume_patches import extract_volume_patches
 from .unsorted_segment_min_d import unsorted_segment_min_d
 from .unsorted_segment_prod_d import unsorted_segment_prod_d
 from .max_pool_grad import max_pool_grad
+from .max_pool3d_grad import max_pool3d_grad
+
+# hz it18
+from .unsorted_segment_max_d import unsorted_segment_max_d
 
 # tbe nj
 from .logical_and import logical_and
@@ -364,6 +373,7 @@ from .batch_to_space_d import batch_to_space_d
 from .depth_to_space import depth_to_space
 from .lrn_grad import lrn_grad
 from .basic_lstm_cell import basic_lstm_cell
+from .dynamic_lstm import dynamic_lstm
 from .square_sum_v1 import square_sum_v1
 from .square_sum_v2 import square_sum_v2
 from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
@@ -374,6 +384,7 @@ from .upsample import upsample
 from .yolo import yolo
 from .proposal_d import proposal_d
 from .fully_connection import fully_connection
+from .compress_fully_connection import compress_fully_connection
 from .roi_pooling import roi_pooling
 from .fsr_detection_output import fsr_detection_output
 # fused op
@@ -388,6 +399,7 @@ from .square_sum_all import square_sum_all
 # 2DH1 op
 from .clip_boxes_d import clip_boxes_d
 from .decode_bbox import decode_bbox
+from .to_absolute_bbox import to_absolute_bbox
 from .decode_boundaries_target import decode_boundaries_target
 from .decode_cornerpoints_target_bg import decode_cornerpoints_target_bg
 from .decode_cornerpoints_target_wrt_center_v1 import decode_cornerpoints_target_wrt_center_v1
@@ -430,4 +442,8 @@ from .muls import muls
 from .fills import fills
 from .axpy import axpy
 from .cumulativelogsumexp_d import cumulative_logsumexp_d
-from.kl_div import kl_div
+from .avg_pool3d import avg_pool3d
+from .avg_pool_1d import avg_pool_1d
+from .kl_div import kl_div
+from .stn_pre import stn_pre
+from .stn_compute import stn_compute

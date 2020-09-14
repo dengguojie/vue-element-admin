@@ -20,6 +20,7 @@ import numpy as np
 from te import platform as cce
 from te import tik
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=too-many-instance-attributes
@@ -83,18 +84,16 @@ class LstmCellGradInput():
         Returns:
         None
         """
-        for check_shape in (self.dgate_shape, self.x_shape, self.h_shape):
-            util.check_shape_rule(check_shape, min_dim=4, max_dim=4)
-            util.check_tensor_shape_size(check_shape)
-            for check_dim in (check_shape[2], check_shape[3]):
+        for shape_check in (self.dgate_shape, self.x_shape, self.h_shape):
+            check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
+            for check_dim in (shape_check[2], shape_check[3]):
                 if check_dim != 16:
                     raise RuntimeError("the shape do not match the format!")
 
-        util.check_dtype_rule(self.dgate_dtype.lower(), ("float16",))
-        util.check_dtype_rule(self.x_dtype.lower(), ("float16",))
-        util.check_dtype_rule(self.h_dtype.lower(), ("float16",))
+        check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
+        check_dtype(self.x_dtype.lower(), ("float16",), param_name="input_x")
+        check_dtype(self.h_dtype.lower(), ("float16",), param_name="hidden_state")
 
-        util.check_kernel_name(self.kernel_name)
 
         # check k axis length match
         if self.x_shape[1] != self.dgate_shape[1]:
@@ -524,7 +523,8 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, KERNEL_NAME)
 # pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_weight_grad(x,
                                 h,

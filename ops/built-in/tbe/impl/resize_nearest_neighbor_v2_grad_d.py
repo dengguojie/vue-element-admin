@@ -21,6 +21,7 @@ from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
 from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
+from te.utils.op_utils import *
 
 # C0 size
 C0_SIZE = 16
@@ -64,6 +65,7 @@ def clear_ub(tik_instance, dst_ub):
                                 0, 1, 1, 8)
 
     dst_ub.reshape(shape)
+
 
 def _prod(values):
     """
@@ -609,7 +611,8 @@ def check_supported(grads, y, size, align_corners=False,
     return True
 
 
-@util.check_input_type(dict, dict, (list, tuple), bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def resize_nearest_neighbor_v2_grad_d(
         grads, y, size, align_corners=False, half_pixel_centers=False,
         kernel_name="resize_nearest_neighbor_v2_grad"):
@@ -640,10 +643,9 @@ def resize_nearest_neighbor_v2_grad_d(
     for input_data in input_list:
         input_shape = input_data.get("shape")
         input_dtype = input_data.get("dtype").lower()
-        util.check_shape_rule(input_shape)
-        util.check_kernel_name(kernel_name)
+        check_shape(input_shape, param_name="grads")
         check_list = {"float32"}
-        util.check_dtype_rule(input_dtype, check_list)
+        check_dtype(input_dtype, check_list, param_name="grads")
     if half_pixel_centers:
         if align_corners:
             raise RuntimeError("If half_pixel_centers is True, "
@@ -651,7 +653,6 @@ def resize_nearest_neighbor_v2_grad_d(
     if len(size) != 2:
         raise RuntimeError("the length of size should be 2")
     grads_shape = grads.get("shape")
-    util.check_tensor_shape_size(grads_shape)
     if len(grads_shape) != 5:
         raise RuntimeError(
             "the length of grads_sharp must be 5,"

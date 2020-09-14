@@ -183,6 +183,7 @@ class ArgmaxBase(object):
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
 
+
 # pylint: disable=too-many-instance-attributes
 class Argmax(ArgmaxBase):
     """
@@ -360,7 +361,7 @@ class Argmax(ArgmaxBase):
                 core_number = 1
             core_number_all = self.first_dim_size
             core_loop = core_number_all // core_number
-            core_over = core_number_all - (core_loop * 32)
+            core_over = core_number_all - (core_loop * core_number)
 
             with self.tik_instance.for_range(
                     0, core_number, block_num=core_number) as num_core_i:
@@ -463,6 +464,7 @@ class Argmax(ArgmaxBase):
         -------
         None
         """
+        data_align = max(self.data_each_block , 8)
         with self.tik_instance.for_range(0, segment_loop) as segm_i:
             gm_in_offset = first_i * self.axis_size * self.last_dim_size + \
                            segm_i * self.segment
@@ -470,17 +472,17 @@ class Argmax(ArgmaxBase):
                             segm_i * self.segment
             self.do_not_last(self.segment, gm_in_offset, gm_out_offset)
 
-        if segment_tail != 0 and segment_tail_data % 8 == 0:
+        if segment_tail != 0 and segment_tail_data % data_align == 0:
             gm_in_offset = first_i * self.axis_size * self.last_dim_size + \
                            segment_loop * self.segment + offset
             gm_out_offset = first_i * self.last_dim_size + \
                             segment_loop * self.segment + offset
             self.do_not_last(segment_tail_data, gm_in_offset, gm_out_offset)
 
-        elif segment_tail != 0 and segment_tail_data > 8:
+        elif segment_tail != 0 and segment_tail_data > data_align:
             # last_axis < segment and not 8 alagn
             pro_len = _get_ceil_int(segment_tail_data, 2)
-            pro_len = _get_ceil_int(pro_len, 8) * 8
+            pro_len = _get_ceil_int(pro_len, data_align) * data_align
             offset = segment_tail_data - pro_len
             gm_in_offset = first_i * self.axis_size * self.last_dim_size + \
                            segment_loop * self.segment

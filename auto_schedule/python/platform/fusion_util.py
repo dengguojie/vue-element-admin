@@ -24,6 +24,7 @@ import sys
 import stat
 import inspect
 import json
+import traceback
 import importlib
 
 import te.lang.cce
@@ -35,6 +36,31 @@ from te.platform import set_L1_info
 import te.platform.fusion_manager as fm
 from te.platform.fusion_manager import fusion_manager
 from .cce_policy import OpImplPolicy
+from te.platform.operation import get_fusion_compute as dyn_get_compute
+from te.platform.operation import OperatorContext
+from te.platform.operation import ComputeContext
+from te.platform.operation import get_compile_info
+
+
+def trans_shape_fullycompress(data_node, node):
+    """
+    tansform fullyconnectioncompress op shape, input tensor order is
+    x, w, compress_index, b, and so on
+    :param data_node:
+    :param node:
+    """
+    # trans x shape
+    if data_node["name"] == node["input_desc"][0]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 5:
+            data_node["shape"] = [shape[0], shape[1] * \
+                                  shape[2]*shape[3]*shape[4]]
+
+    if data_node["name"] == node["input_desc"][3]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 5:
+            data_node["shape"] = [shape[1]*shape[4]]
+    return
 
 
 def trans_shape(data_node, op_list):
@@ -47,17 +73,10 @@ def trans_shape(data_node, op_list):
         for node in op_list:
             if node["type"] == "FullyConnection":
                 trans_fully_connection(data_node, node)
+            elif node["type"] == "FullyConnectionCompress":
+                trans_shape_fullycompress(data_node, node)
             elif node["type"] == "DepthwiseConv2D":
-                if data_node["name"] == node["input_desc"][0]["name"]:
-                    shape = data_node["shape"]
-                    if len(shape) == 5:
-                        data_node["shape"] = [shape[0], shape[1], 1,\
-                                             shape[2], shape[3], shape[4]]
-                if data_node["name"] == node["input_desc"][1]["name"]:
-                    shape = data_node["shape"]
-                    if len(shape) == 6:
-                        data_node["shape"] = [shape[0], shape[1], shape[2],\
-                                             shape[4], shape[5]]
+                trans_depthwise_conv2d(data_node, node)
             elif node["type"] == "MatMulV2":
                 trans_matmul_bias_shape(data_node, node)
             elif node["type"] == "BNInferenceD":
@@ -66,10 +85,79 @@ def trans_shape(data_node, op_list):
                 trans_avgpool_shape(data_node, node)
             elif node["type"] == "Mul":
                 trans_mul_shape(data_node, node, op_list)
+            elif node["type"] == "AscendRequantS16":
+                trans_arequant_s16(data_node, node)
             else:
                 continue
-    except:                     # pylint: disable=bare-except
+    except Exception:           # 'pylint: disable=broad-except
+        pass
+
+
+def trans_shape_by_pattern(data_node, op_list):
+    try:
+        for node in op_list:
+            if node.get('pattern') == 'ElemWise':
+                trans_elemwise_shape(data_node, node, op_list)
+    except Exception:           # 'pylint: disable=bare-except
+        pass
+
+
+def trans_elemwise_shape(data_node, node, op_list):
+    """
+    broadcast elemwise input shape if necessary
+    """
+    if data_node['shape'] != [] and data_node['shape'] != [1]:
         return
+
+    for op in op_list:
+        if op.get('pattern') in ('Convolution', 'Conv2d_backprop_input'):
+            # no need to broadcast in Conv+elemwise fusion
+            return
+
+    data_node_name = data_node['name']
+    max_input_dim = 0
+
+    input_names = [x['name'] for x in node['input_desc']]
+    if data_node_name not in input_names:
+        return
+
+    input_shapes = [x['shape'] for x in node['input_desc']]
+    for shape in input_shapes:
+        max_input_dim = max(len(shape), max_input_dim)
+
+    data_node['shape'] = [1] * max(1, max_input_dim)
+
+
+def trans_depthwise_conv2d(data_node, node):
+    """
+    tranform shape for depthwise_conv2d
+    """
+    if data_node["name"] == node["input_desc"][0]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 5:
+            data_node["shape"] = [shape[0], shape[1], 1,
+                                  shape[2], shape[3], shape[4]]
+    if data_node["name"] == node["input_desc"][1]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 6:
+            data_node["shape"] = [shape[0], shape[1], shape[2],
+                                  shape[4], shape[5]]
+
+
+def trans_arequant_s16(data_node, node):
+    """
+    transform AscendRequantS16 shape
+    """
+    if data_node["name"] == node["input_desc"][0]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 5:
+            data_node["shape"] = [shape[0], shape[1],
+                                  shape[2] * shape[3], shape[4]]
+    if data_node["name"] == node["input_desc"][2]["name"]:
+        shape = data_node["shape"]
+        if len(shape) == 5:
+            data_node["shape"] = [shape[0], shape[1],
+                                  shape[2] * shape[3], shape[4]]
 
 
 def trans_mul_shape(data_node, node, op_list):
@@ -83,11 +171,12 @@ def trans_mul_shape(data_node, node, op_list):
         for node_list in op_list:
             if node["input_desc"][0]["name"] == \
                 node_list["output_desc"][0]["name"] and \
-                node_list["type"] == "AvgPool":
+                (node_list["type"] == "AvgPool" or \
+                 node_list["type"] == "AscendDequant"):
                 shape = data_node["shape"]
                 data_node["shape"] = [shape[0], shape[1], 1,\
                                       shape[2] * shape[3], shape[4]]
-                return
+
     return
 
 
@@ -101,7 +190,7 @@ def trans_avgpool_shape(data_node, node):
     ksize = []
     if data_node["name"] == node["input_desc"][1]["name"]:
         shape = data_node["shape"]
-        for arg in fusion_manager.get_op_args(node["name"]):
+        for arg in node['prebuild_outs_attrs']['list_args']:
             all_out.append(arg)
         ksize = all_out[1]
         format_attr = all_out[4]
@@ -109,10 +198,20 @@ def trans_avgpool_shape(data_node, node):
             ksize_hw = ksize[1]
         else:
             ksize_hw = ksize[2]
-        if len(shape) == 4:
+
+        if len(shape) == 4 and data_node["data_type"] != "int8":
             data_node["shape"] = [shape[0] // (ksize_hw * ksize_hw), \
                                   ksize_hw, ksize_hw, shape[2], shape[3]]
-            return
+
+        if len(shape) == 6 and data_node["data_type"] == "int8":
+            shape = data_node["shape"]
+            data_node["shape"] = [shape[0], \
+                                  ksize_hw, ksize_hw, 32, 32]
+
+    if data_node["name"] == node["input_desc"][2]["name"]:
+        ori_shape = data_node["ori_shape"]
+        data_node["shape"] = ori_shape
+
     return
 
 
@@ -155,6 +254,7 @@ def trans_matmul_bias_shape(data_node, node):
             return
     return
 
+
 def _reshape_bias_shape(shape_bias):
     """
     tansform matmul bias op shape
@@ -196,19 +296,20 @@ def aipp_format_change(op_node, op_list):
             continue
 
 
-def conv2d_compress_node(op_node, op_list):
+def compress_node(op_node, op_list):
     """
     specific case for conv2d_compress placeholder
     :param data_node:
     :param op_list:
     """
     for op_operator in op_list:
-        if op_operator["type"] != "Conv2DCompress":
+        if op_operator["type"] != "Conv2DCompress" and \
+                op_operator["type"] != "FullyConnectionCompress":
             continue
 
-        conv2d_input = op_operator["input_desc"]
+        compress_index_input = op_operator["input_desc"]
         try:
-            if op_node["name"] != conv2d_input[2]["name"]:
+            if op_node["name"] != compress_index_input[2]["name"]:
                 continue
         except Exception:                 # 'pylint: disable=bare-except
             continue
@@ -255,15 +356,16 @@ def create_placeholder_tensor(op_node, tensor_list, input_list,
         addr_type = desc.get("addr_type", 0)
         valid_shape = desc.get("valid_shape", [])
         slice_offset = desc.get("slice_offset", [])
-        l1_workspace = desc.get("use_L1_workspace", 0)
         l1_fusion_type = desc.get("L1_fusion_type", -1)
-        l1_addr_offset = desc.get("L1_addr_offset", 0)
+        l1_addr_flag = desc.get("L1_addr_flag", -1)
+        l1_addr_offset = desc.get("L1_addr_offset", -1)
+        l1_valid_size = desc.get("L1_valid_size", -1)
 
         para_name = "params_%s" % str(params_count[0])
-
         trans_shape(desc, op_list)
+        trans_shape_by_pattern(desc, op_list)
 
-        out = conv2d_compress_node(op_node, op_list)
+        out = compress_node(op_node, op_list)
         if out is not None:
             tensor_list[desc["name"]] = out
         else:
@@ -274,9 +376,10 @@ def create_placeholder_tensor(op_node, tensor_list, input_list,
                 "addr_type": addr_type,
                 "valid_shape": valid_shape,
                 "slice_offset": slice_offset,
-                "use_L1_workspace": l1_workspace,
                 "L1_fusion_type":  l1_fusion_type,
-                "L1_addr_offset": l1_addr_offset}
+                "L1_addr_flag": l1_addr_flag,
+                "L1_addr_offset": l1_addr_offset,
+                "L1_valid_size": l1_valid_size}
 
             tensor_list[desc["name"]] = \
                 tvm.placeholder(desc["shape"], desc["data_type"],
@@ -347,7 +450,7 @@ def get_fusion_op_kernel_name(func_name, node_name, kernel_name):
             return {'kernel_name': kernel_name}
         else:
             return {}
-    except Exception:           # 'pylint: disable=bare-except
+    except Exception:           # 'pylint: disable=broad-except
         return {}
 
 
@@ -355,11 +458,6 @@ def get_op_outputs_attrs(op_node):
     """
     get op outputs and attrs
     """
-    if fusion_manager.has_op_params(op_node['name']):
-        list_args = fusion_manager.get_op_args(op_node["name"])
-        kwds_args = fusion_manager.get_op_kwds(op_node["name"])
-        return (list_args, kwds_args)
-
     if 'prebuild_outs_attrs' in op_node:
         outs_attrs = op_node['prebuild_outs_attrs']
         list_args = outs_attrs['list_args']
@@ -384,6 +482,27 @@ def import_op_module(op_node):
             opfunc = getattr(opm, op_node["func_name"])
             return opfunc
         return None
+    except Exception:       # pylint: disable=bare-except,broad-except
+        return None
+
+
+def import_dyn_op_module(op_node):
+    """
+    imort op py module if necessary.
+    return op func
+    """
+    py_module_path = op_node.get('py_module_path', '')
+    if py_module_path != '' and py_module_path not in sys.path:
+        sys.path.append(py_module_path)
+    try:
+        module_name = op_node.get('module_name', '')
+        if module_name != '':
+            dyn_op_module = module_name.split('.')
+            dyn_op_module[-1] = 'dynamic'
+            dyn_op_module = '.'.join(dyn_op_module)
+            importlib.import_module(dyn_op_module)
+            op_type = op_node['type']
+            return dyn_get_compute(op_type)
     except Exception:       # pylint: disable=bare-except,broad-except
         return None
 
@@ -569,6 +688,7 @@ def fusion_op_compute(json_str):
     is_used_tensor_list = set()
     # combine computes
     params_count = [0]
+
     for op_node in op_list:
         if op_node["type"] == "Data":
             # create placeholder
@@ -651,11 +771,14 @@ def get_real_output(sch, output_list):
     get_real_output
     """
     # some schedule will modify out tensor, need update real out tensor
-    if sch.cce_special["real_out_tensor"]:
-        real_output = sch.cce_special["real_out_tensor"]
-    else:
-        real_output = output_list
-    return real_output
+    try:
+        if sch.cce_special["real_out_tensor"]:
+            real_output = sch.cce_special["real_out_tensor"]
+        else:
+            real_output = output_list
+        return real_output
+    except Exception:           # 'pylint: disable=broad-except
+        return output_list
 
 
 def check_single_op(json):
@@ -706,29 +829,40 @@ def single_op_build(json_data):
     opfunc(*inputs, *list_args, kernel_name, **kwargs)
 
 
-def dump_fusion_json(json_str, json_file_name):
+def dump_fusion_json(json_str, dump_path):
     """
     dump fusion json to kernel_meta directory
     """
-    if os.getenv('TE_DUMP_FUSIONOP_JSON') != '1':
-        return
+    # get json data
+    json_data = json.loads(json_str)
+    json_file_name = json_data["fusion_op_name"]
 
-    kernel_path = os.path.join(os.getcwd(), "kernel_meta")
+    # delete '_rl'/'_gl' suffix
+    if json_file_name.endswith('_rl') or json_file_name.endswith('_ga'):
+        json_file_name = json_file_name[:-3]
+        json_data["fusion_op_name"] = json_file_name
+        json_str = json.dumps(json_data)
+
+    dump_path = os.path.realpath(dump_path)
+
     try:
-        if not os.path.exists(kernel_path):
-            os.mkdir(kernel_path)
-            os.chmod(kernel_path, stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
+        if not os.path.exists(dump_path):
+            os.mkdir(dump_path)
+            os.chmod(dump_path, stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
     except FileExistsError:
         pass
 
     try:
-        kernel_path = os.path.join(kernel_path,
-                                   "fusion_op_{}.json".format(json_file_name))
-        jsonf = open(kernel_path, "w")
+        dump_path = os.path.join(dump_path,
+                                 "fusion_op_{}.json".format(json_file_name))
+        jsonf = open(dump_path, "w")
         jsonf.write(json_str)
         jsonf.close()
-    except Exception:       # 'pylint: disable=bare-except,broad-except
-        return
+        return ""
+    except Exception:           # 'pylint: disable=broad-except
+        msg = traceback.format_exception_only(sys.exc_info()[0],
+                                              sys.exc_info()[1])
+        return "".join(msg)
 
 
 def init_op_cfg(json_data):
@@ -739,6 +873,57 @@ def init_op_cfg(json_data):
         set_L1_info("op_L1_space", json_data['l1_size'])
     else:
         set_L1_info("op_L1_space", -1)
+
+
+def has_dynshape(op_list):
+    """
+    check if dynamic shape
+    """
+    for node in op_list:
+        if node['type'] == 'Data':
+            for data in node['output_desc']:
+                if data['shape'] == 'NULL':
+                    continue
+                if [ele for ele in data['shape'] if ele < 0]:
+                    return True
+    return False
+
+
+def modify_duplicated_inputs(json_data):
+    """
+    rename names of duplicated inputs
+    """
+    dup_data_names = {}
+    for op in json_data['op_list']:
+        if op['type'] != 'Data':
+            continue
+        count = dup_data_names.setdefault(op['name'], [])
+        count.append(op)
+
+    dup_data_names = {key: value for (key, value)
+                      in dup_data_names.items()
+                      if len(value) > 1}
+
+    dup_indesc_names = {}
+    for op in json_data['op_list']:
+        if op['type'] == 'Data':
+            continue
+        for indesc in op['input_desc']:
+            if indesc['name'] in dup_data_names.keys():
+                count = dup_indesc_names.setdefault(indesc['name'], [])
+                count.append(indesc)
+    if len(dup_data_names) != len(dup_indesc_names):
+        raise RuntimeError('Duplicated names not match')
+
+    for name, ops in dup_data_names.items():
+        indesc_names = dup_indesc_names[name]
+        if len(ops) != len(indesc_names):
+            raise RuntimeError('Duplicated names not match')
+        for idx, op in enumerate(zip(ops, indesc_names)):
+            new_name = name + '___' + str(idx)
+            op[0]['name'] = new_name
+            op[0]['output_desc'][0]['name'] = new_name
+            op[1]['name'] = new_name
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
@@ -756,20 +941,19 @@ def fusion_op(json_str):
         end of execution
     """
     # get json data
-    try:
-        json_data = json.loads(json_str)
-    except Exception:
-        raise RuntimeError('Read input data error')
+    json_data = json.loads(json_str)
+
+    if has_dynshape(json_data["op_list"]):
+        return fusion_op_dynshape(json_data)
 
     init_op_cfg(json_data)
-
-    dump_fusion_json(json_str, json_data["fusion_op_name"])
+    fm.reset_fusion_build_cfg()
 
     if check_single_op(json_data):
         single_op_build(json_data)
-        return
+        return ""
 
-    fm.reset_fusion_build_cfg()
+    modify_duplicated_inputs(json_data)
 
     # get params from json_data
     fusion_op_name = str(json_data["fusion_op_name"])
@@ -865,3 +1049,94 @@ def fusion_op(json_str):
               "bool_storage_as_1bit": cmp_bool_storage_as_1bit}
 
     te.lang.cce.cce_build_code(sch, config)
+    return ""
+
+
+def dyn_op_compute(op_node, placeholders, res_tensors, tensor_usecount):
+    """
+    call dynmaic op compute
+    """
+    op_compute = import_dyn_op_module(op_node)
+    input_args = []
+    desc = op_node["input_desc"]
+    for op_input in desc:
+        if op_input["shape"] == "NULL":
+            input_args.append(None)
+        else:
+            data_type = op_input.get('data_type')
+            if data_type:
+                op_input['dtype'] = data_type
+            input_param = res_tensors.get(op_input['name'])
+            if input_param is None:
+                # use dict as op compute input
+                input_args.append(op_input)
+            else:
+                # use tensor as op compute input
+                input_args.append(input_param)
+                count = tensor_usecount.get(input_param, 0)
+                tensor_usecount[input_param] = count + 1
+
+    output_args, kw_args = get_op_outputs_attrs(op_node)
+    op_res = op_compute(*input_args, *output_args, **kw_args)
+
+    op_res_placeholders = op_res['op_placeholder']
+    op_res_tensors = op_res['op_res']
+
+    op_input_names = [opin['name'] for opin in desc if opin['shape'] != 'NULL']
+    for idx, name in enumerate(op_input_names):
+        # save op_placeholder
+        if op_res_placeholders[idx] not in input_args:
+            placeholders[name] = op_res_placeholders[idx]
+
+    op_output_names = [opout['name'] for opout in op_node['output_desc']]
+    for idx, name in enumerate(op_output_names):
+        # save op res
+        res_tensors[name] = op_res_tensors[idx]
+    return op_res
+
+
+def fusion_op_dynshape(json_data):
+    """
+    fusion op for dynamic shape
+    """
+    init_op_cfg(json_data)
+    fm.reset_fusion_build_cfg()
+
+    op_list = json_data["op_list"]
+    fusion_op_name = str(json_data["fusion_op_name"])
+
+    check_kernel_name(fusion_op_name)
+
+    # check fusion op type
+    check_fusion_op_type(op_list)
+
+    placeholders = {}
+    res_tensors = {}
+    tensor_usecount = {}
+    all_res = []
+    op_types = [op['type'] for op in op_list if op['type'] != 'Data']
+    with OperatorContext(te.op.OpMode.DYNAMIC) as opc:
+        opc.set_op_type(op_types)
+        with ComputeContext():
+            for op_node in op_list:
+                if op_node['type'] == 'Data':
+                    continue
+                dyn_op_compute(op_node, placeholders,
+                               res_tensors, tensor_usecount)
+
+            for tensor in res_tensors.values():
+                if tensor_usecount.get(tensor, 0) == 0:
+                    all_res.append(tensor)
+
+        with tvm.target.cce():
+            sch = generic.auto_schedule(all_res)
+
+        real_output = get_real_output(sch, all_res)
+        tensor_list = list(placeholders.values()) + real_output
+
+        config = {"name": fusion_op_name,
+                  "tensor_list": tensor_list,
+                  "build_args": fm.get_fusion_build_cfg()}
+
+        te.lang.dynamic.build(sch, config)
+        return json.dumps(get_compile_info())

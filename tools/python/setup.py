@@ -29,7 +29,7 @@ class BinaryDistribution(Distribution):
 
 
 with open("MANIFEST.in", "w") as fo:
-    fo.write("include libs/libmodel_run_tool.so\n")
+    fo.write("include op_test_frame/libs/libmodel_run_tool.so\n")
 
 setup_kwargs = {
     "include_package_data": True

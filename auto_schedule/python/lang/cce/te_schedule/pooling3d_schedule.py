@@ -16,15 +16,16 @@ See the License for the specific language governing permissions and
 limitations under the Licenses.
 """
 
+import math
 from te import platform as cce
 from te import tvm
-from te.platform.cce_conf import CceProductParams
+from te import platform as cceconf
+from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule
 
 ASCEND_QUANT_TAG = "quant"
 POOLING3D_TAG_PREFIX = "pooling3d_"
 ASCEND_ANTI_QUANT_TAG = "anti_quant"
-C0_DIMENSION_DATA_SIZE = 32
-
+C0_DIMENSION_DATA_SIZE_MAP = {"float16": 32, "float32": 64, "double": 128}
 
 def pooling3d_schedule(res, sch_list):
     """
@@ -36,11 +37,24 @@ def pooling3d_schedule(res, sch_list):
     if res.op.tag == POOLING3D_TAG_PREFIX + "max":
         return _pooling3d_max_schedule(res, sch_list)
 
+    if res.op.tag == POOLING3D_TAG_PREFIX + "max_grad_grad":
+        return pooling3d_max_grad_grad_schedule(res, sch_list)
+
     raise RuntimeError("Not suport tag in pooling3d_schedule.")
 
 
 # 'pylint: disable=too-many-locals,invalid-name,unused-argument
 def _pooling3d_max_schedule(res, sch_list):
+
+    def _split_select():
+        split_select = {"split_select": 1}
+        #if kernel is 7 and stride is 2, pass will compile failure with this flag.
+        if context["kd"] >= 7 and context["kh"] >= 7 and context["kw"] >= 7 and\
+           context["sd"] <= 2 and context["sh"] <= 2 and context["sw"] <= 2:
+            return
+        return split_select
+
+
     sch = sch_list[0]
     pool_tensors = _crawl_pool_tensor(res)
 
@@ -66,15 +80,19 @@ def _pooling3d_max_schedule(res, sch_list):
     context["do"], context["ho"], context["wo"] = o_d, o_h, o_w
     context["kd"], context["kh"], context["kw"] = k_d, k_h, k_w
     context["sd"], context["sh"], context["sw"] = s_d, s_h, s_w
+    context["dtype"] = pool_params["dtype"].value
 
     d_factor, h_factor, w_factor = _calc_d_h_w_factor(context)
     d_out, d_in = _split_d_axis(res, sch, d_factor)
     h_out, h_in = _split_h_axis(res, sch, h_factor)
     w_out, w_in = _split_w_axis(res, sch, w_factor)
-
-    sch[res].reorder(res.op.axis[0], res.op.axis[1], d_out, h_out, w_out, d_in, h_in, w_in,
-                     res.op.axis[5])
-
+    sch[res].reorder(res.op.axis[0], res.op.axis[2],
+                     d_out, h_out, w_out, d_in, h_in, w_in, res.op.axis[5])
+    fuse = sch[res].fuse(res.op.axis[0], res.op.axis[2])
+    core_num = cceconf.get_soc_spec("CORE_NUM")
+    fuse_o, fuse_i = sch[res].split(fuse, nparts=core_num)
+    thread_block = tvm.thread_axis("blockIdx.x")
+    sch[res].bind(fuse_o, thread_block)
     _set_scope(sch, pool_tensors.values(), cce.scope_ubuf)
 
     for tensor in pool_tensors.values():
@@ -92,14 +110,14 @@ def _pooling3d_max_schedule(res, sch_list):
     _mem_reuse(sch, [tx_ub_ft, tx_ub_bk, tx_ub_t, tx_ub_b, tx_ub_l, tx_ub_r, tx_ub], tx_ub_c)
 
     split_select = {"split_select": 1}
-    sch[tx_ub_c].emit_insn(tx_ub_c.op.axis[0], 'dma_copy', split_select)
-    sch[tx_ub_ft].emit_insn(tx_ub_ft.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub_bk].emit_insn(tx_ub_bk.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub_t].emit_insn(tx_ub_t.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub_b].emit_insn(tx_ub_b.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub_l].emit_insn(tx_ub_l.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub_r].emit_insn(tx_ub_r.op.axis[0], 'vector_dup', split_select)
-    sch[tx_ub].emit_insn(tx_ub.op.axis[0], "phony_insn", split_select)
+    sch[tx_ub_c].emit_insn(tx_ub_c.op.axis[0], 'dma_copy', _split_select())
+    sch[tx_ub_ft].emit_insn(tx_ub_ft.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub_bk].emit_insn(tx_ub_bk.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub_t].emit_insn(tx_ub_t.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub_b].emit_insn(tx_ub_b.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub_l].emit_insn(tx_ub_l.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub_r].emit_insn(tx_ub_r.op.axis[0], 'vector_dup', _split_select())
+    sch[tx_ub].emit_insn(tx_ub.op.axis[0], "phony_insn", _split_select())
 
     for tensor in pool_tensors.values():
         if tensor.op.tag == "reduce_max":
@@ -110,15 +128,22 @@ def _pooling3d_max_schedule(res, sch_list):
 
 
 def _calc_process_per_window_ub_size(context):
+    c0_size = C0_DIMENSION_DATA_SIZE_MAP[context["dtype"]]
     k_d, k_h, k_w = context["kd"], context["kh"], context["kw"]
-    fmap_size = k_d * k_h * k_w * C0_DIMENSION_DATA_SIZE
-    reduce_intermediate_data = (k_d * k_h * C0_DIMENSION_DATA_SIZE) + (k_d * C0_DIMENSION_DATA_SIZE)
-    res_size = C0_DIMENSION_DATA_SIZE
+    s_d, s_h, s_w = context["sd"], context["sh"], context["sw"]
+    dd = k_d if k_d > s_d else s_d
+    hh = k_h if k_h > s_h else s_h
+    ww = k_w if k_w > s_w else s_w
+    fmap_size = dd * hh * ww * c0_size
+    reduce_intermediate_data = (k_d * k_h * c0_size) + (k_d * c0_size)
+    res_size = c0_size
     return fmap_size + reduce_intermediate_data + res_size
 
 
 def _calc_window_numbers_per_batch(context):
-    ub_size = CceProductParams().getParams("Unified_Buffer")
+    ub_size = cce.get_soc_spec("UB_SIZE")
+    #For the reason pass may generate multi tx_rd/tx_rh/tx_rw tensors, so use half of the ub size
+    ub_size = ub_size // 2
     return ub_size // _calc_process_per_window_ub_size(context)
 
 
@@ -166,7 +191,7 @@ def _split_c1_axis(pool_params, res, sch):
 #'             ^                                 ^
 #'             |                                 |
 def _split_d_axis(res, sch, d_factor):
-    return sch[res].split(res.op.axis[2], factor=d_factor)
+    return sch[res].split(res.op.axis[1], factor=d_factor)
 
 
 # 'N  C1o/C1i  Do/Di  H  W  C0  =>  N  C1o/C1i  Do/Di  Ho/Hi  W  C0

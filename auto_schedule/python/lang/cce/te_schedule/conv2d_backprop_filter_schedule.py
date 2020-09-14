@@ -17,8 +17,6 @@ from te.platform import get_soc_spec
 from te.domain.tiling.tiling_query import tiling_query
 from te.utils.error_manager import error_manager_util as err_man
 
-L1_SIZE = get_soc_spec("L1_SIZE")  # L1 size
-
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True
@@ -91,6 +89,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self.need_tensorize = need_tensorize
         self.need_pragma = need_pragma
         self.spec_node_list = []
+        self.l1_size = get_soc_spec("L1_SIZE")  # L1 size
 
     def schedule(self,  # pylint: disable=R0914,R0915
                  res, spec_node_list, sch_list):
@@ -274,25 +273,28 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             """
             al1_min_byte = CUBE_DIM * CUBE_DIM * FLOAT16_SIZE
+            if not flag_conv1d_case:
+                Kl1_min = width_fmap
+            else:
+                Kl1_min = (CUBE_DIM - 1) * stride_width + kw_dilation
             if width_grads >= CUBE_DIM:
                 if width_grads % CUBE_DIM == 0:
-                    bl1_min_byte = kernel_height * width_fmap * CUBE_DIM *\
+                    bl1_min_byte = kernel_height * Kl1_min * CUBE_DIM *\
                                    FLOAT16_SIZE
                 else:
                     bl1_min_byte = (kernel_height+stride_height) \
-                                   * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                                   * Kl1_min * CUBE_DIM * FLOAT16_SIZE
             else:
                 bl1_align_factor = ceil_div(CUBE_DIM, width_grads)
                 if CUBE_DIM % width_grads == 0:
                     bl1_min_byte = (kernel_height+(bl1_align_factor-1)
-                                    * stride_height) * width_fmap * CUBE_DIM *\
-                                   FLOAT16_SIZE
+                                    * stride_height) * Kl1_min *\
+                                    CUBE_DIM * FLOAT16_SIZE
                 else:
                     bl1_min_byte = (kernel_height +
                                     bl1_align_factor * stride_height) \
-                                    * width_fmap * CUBE_DIM * FLOAT16_SIZE
-
-            if (al1_min_byte + bl1_min_byte) > L1_SIZE:
+                                    * Kl1_min * CUBE_DIM * FLOAT16_SIZE
+            if (al1_min_byte + bl1_min_byte) > self.l1_size:
                 dict_args = dict()
                 dict_args["errCode"] = "E60026"
                 raise RuntimeError(dict_args,
@@ -342,7 +344,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # if k is fully load in BL1 and
             # there is multi load in N1 and N1 in BL1
             # isn't aligned to kernel_height*kernel_width, then align to it
-            if tiling.get("BL1_shape") and tiling.get("BL1_shape")[1] > 1 and \
+            if tiling.get("BL1_shape") and \
                     tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1] \
                     % (kernel_height * kernel_width) != 0:
                 tiling["BL1_shape"][1] = align(tiling.get("BL1_shape")[1] *
@@ -659,10 +661,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         featuremap_channel = c1_fmap*c0_fmap
         featuremap_height = height_fmap
         featuremap_width = width_fmap
-
+        kw_dilation = (kernel_width - 1) * dilation_width + 1
         weight_shape = [c1_grads*c0_grads, c1_fmap,
                         kernel_height, kernel_width, c0_fmap]
-        _l1_limit_check()
+
         sch = sch_list[0]
 
         def _flag_all_one():
@@ -670,6 +672,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # (1) height & weight of x/output_backprop/filter are all 1
             # (2) strides is [1,1]
             flag_all_one_case = False
+            flag_conv1d_case = False
             height_all_one = False
             width_all_one = False
             if stride_height == 1 and height_grads == 1 and height_fmap == 1 \
@@ -683,10 +686,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 if DEBUG_MODE:
                     print("schedule: this is all one case,"
                           " using special branch")
-            return flag_all_one_case
+            if height_all_one and not width_all_one:
+                flag_conv1d_case = True
+            return flag_all_one_case, flag_conv1d_case
 
-        flag_all_one_case = _flag_all_one()
-
+        flag_all_one_case, flag_conv1d_case = _flag_all_one()
+        _l1_limit_check()
         tiling = tiling_query(grads_shape, fmap_shape, weight_shape,
                               a_dtype=grads.dtype, b_dtype=fmap.dtype,
                               c_dtype=dw_cc.dtype, mad_dtype=dw_cc.dtype,
@@ -741,12 +746,18 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         #                               C0_fmap)
         if not flag_all_one_case:
             fmap_l1 = sch.cache_read(fmap, scope_cbuf, [fmap_matrix])
-
-            sch[fmap_matrix].buffer_align((1, 1), (width_grads, width_grads),
-                                          (1, 1),
-                                          (kernel_height, kernel_height),
-                                          (kernel_width, kernel_width),
-                                          (1, CUBE_DIM))
+            if not flag_conv1d_case:
+                sch[fmap_matrix].buffer_align((1, 1),
+                                              (width_grads, width_grads),
+                                              (1, 1),
+                                              (kernel_height, kernel_height),
+                                              (kernel_width, kernel_width),
+                                              (1, CUBE_DIM))
+            else:
+                sch[fmap_matrix].buffer_align((1, 1), (1, 1), (1, 1),
+                                              (1, 1),
+                                              (kernel_width, kernel_width),
+                                              (1, CUBE_DIM))
         else:
             sch[fmap_matrix].storage_align(
                 sch[fmap_matrix].op.axis[1], CUBE_MUL_SHAPE, 0)
@@ -934,6 +945,46 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                    'json_info_batchBindOnly')
             return fused_multi_core
         fused_multi_core = _bind_core()
+
+        def _split_w_for_conv1d():
+            if flag_conv1d_case:
+                # the offset according to multicore
+                block_div = block_dim_batch * block_dim_cout * block_dim_cin
+                hw_block_offset = fused_multi_core // block_div * \
+                                      ceil_div(hw_pad_1 * CUBE_DIM,
+                                               block_dim_hw)
+                if tiling["BL1_shape"] and\
+                        (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1):
+                    if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
+                        # hw splited one time before BL1  attach
+                        hw_parts_offset = \
+                            hw_mad_1_l1_out_at * tiling["BL1_shape"][0]
+                    else:
+                        # hw splited 2 times before BL1 attach
+                        hw_parts_offset = \
+                            (hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
+                             grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *\
+                            tiling["BL1_shape"][0]
+
+                    hw_offset = hw_block_offset + hw_parts_offset
+                else:
+                    # k axis is full load
+                    hw_offset = hw_block_offset
+                # the offset of w according to that of k_axis
+                hw_offset_with_pad = stride_width * hw_offset - pad_left
+                # the extend of w according to that of k_axis
+                if not tiling["BL1_shape"]:
+                    kbl1_data = ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
+                else:
+                    kbl1_data = tiling["BL1_shape"][0]
+                hw_extend =\
+                    (kbl1_data-1)*stride_width + kw_dilation
+                sch[fmap_l1].buffer_tile((None, None),
+                                         (None, None),
+                                         (None, None),
+                                         (hw_offset_with_pad, hw_extend),
+                                         (None, None))
+        _split_w_for_conv1d()
         _l0_attach()
         _al1_attach()
         _bl1_attach()

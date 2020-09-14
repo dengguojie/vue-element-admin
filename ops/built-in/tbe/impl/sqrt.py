@@ -24,6 +24,7 @@ from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -64,7 +65,7 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     return result
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sqrt(input_x, output_y, kernel_name="sqrt"):
     """
     algorithm: sqrt
@@ -86,10 +87,8 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(input_dtype, ("float16", "float32"))
+    check_shape(input_shape, param_name="input_x")
+    check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, input_shape)

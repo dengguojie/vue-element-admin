@@ -25,6 +25,7 @@ from topi.cce import util
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -159,10 +160,9 @@ def _check_params(params_map):
     -------
     None
     """
-    util.check_kernel_name(params_map.get("kernel_name"))
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(params_map.get("dtype"), check_list)
+    check_dtype(params_map.get("dtype"), check_list, param_name="input_dy")
 
     _check_shape(params_map)
 
@@ -195,13 +195,10 @@ def _check_shape(params_map):
     shape_mean = params_map.get("shape_mean")
     shape_gamma = params_map.get("shape_gamma")
 
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_mean)
-    util.check_shape_rule(shape_gamma)
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_mean, param_name="input_mean")
+    check_shape(shape_gamma, param_name="input_gamma")
 
-    util.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_mean, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_gamma, SHAPE_SIZE_LIMIT)
 
     _check_shape_mean(shape_x, shape_mean)
     _check_shape_gamma(shape_x, shape_gamma)
@@ -1008,7 +1005,8 @@ def layer_norm_x_back_nz_compute(data_dy, data_x, data_variance,
     return pd_x
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,
                           kernel_name="layer_norm_x_backprop"):

@@ -30,6 +30,7 @@ MIN_FP32 = 2**(-126)
 # min float16 value
 MIN_FP16 = 2**(-24)
 
+
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _greater_compare(data, shape, dtype, data_min):

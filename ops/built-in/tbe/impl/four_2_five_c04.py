@@ -52,7 +52,7 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     sum_core = tik_instance.Scalar("uint64")
     with tik_instance.if_scope(num_core < total_core_loop_num %
                                MAX_CORE_NUM):
-        core_loop.set_as((total_core_loop_num + core_number - 1)//
+        core_loop.set_as((total_core_loop_num + core_number - 1) //
                          core_number)
         sum_core.set_as(core_loop*num_core)
     with tik_instance.else_scope():
@@ -67,7 +67,7 @@ def factorization(number, core_num, hwc0, step_move):
 
     number_0 = 1
     number_1 = number
-    n0n1=[number_0, number_1]
+    n0n1 = [number_0, number_1]
 
     i = 2
     while i**2 <= number:
@@ -102,7 +102,7 @@ def factorization(number, core_num, hwc0, step_move):
     elif max_value <= 0:
         n0 = core_list[core_list_copy.index(max(core_list_copy))]
     else:
-        core_list_copy_2 = [i for i in core_list_copy if i >=0]
+        core_list_copy_2 = [i for i in core_list_copy if i >= 0]
         n0 = min(core_list_copy_2) + core_num
 
     return n0
@@ -142,7 +142,7 @@ class four2fiveCompute(object):
         sum_result = 1
         if len(shape) == 0:
             return sum_result
-        for i in range(len(shape)):
+        for i, _ in enumerate(range(len(shape))):
             sum_result = sum_result * shape[i]
         return sum_result
 
@@ -170,11 +170,11 @@ class four2fiveCompute(object):
 
     def set_ub_tensor(self, tik_instance, psm_out, psm_in):
 
-        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in,], name="input_x_ub",
+        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in, ], name="input_x_ub",
                                          scope=tik.scope_ubuf)
-        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out,], name="input_y_ub",
+        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out, ], name="input_y_ub",
                                          scope=tik.scope_ubuf)
-        input_z_ub = tik_instance.Tensor(self.dtype, [16,], name="input_z_ub",
+        input_z_ub = tik_instance.Tensor(self.dtype, [16, ], name="input_z_ub",
                                          scope=tik.scope_ubuf)
 
         return input_x_ub, input_y_ub, input_z_ub
@@ -357,7 +357,7 @@ class four2fiveCompute(object):
                 else:
                     nburst_ub2gm = 1
                     burstlen_ub2gm = math.ceil(len_hw * c0 * n_new / self.step_move)
-                    burstlen_ub2gm = burstlen_ub2gm * self.step_move * self.num_bit //32
+                    burstlen_ub2gm = burstlen_ub2gm * self.step_move * self.num_bit // 32
                     srcstride_ub2gm = 0
                     dststride_ub2gm = 0
                     tik_instance.data_move(dst_gm_tensor[dst_gm_index],
@@ -376,7 +376,7 @@ class four2fiveCompute(object):
         burstlen_ub2gm = c0 * len_hw * self.num_bit // 32
         dststride_ub2gm = (self.input_shape[0] * self.input_shape[1] * c0 - c0 * len_hw) * self.num_bit
         condition_0 = dststride_ub2gm <= MAX_STRIDE
-        condition_1 = dststride_ub2gm % 32 ==0
+        condition_1 = dststride_ub2gm % 32 == 0
         if condition_0 and condition_1:
             dststride_ub2gm = dststride_ub2gm // 32
             tik_instance.data_move(dst_gm_tensor[dst_gm_index],
@@ -389,7 +389,7 @@ class four2fiveCompute(object):
         else:
             dst_gm_gap = self.input_shape[0] * self.input_shape[1] * c0
             src_y_gap = len_hw * c0
-            with tik_instance.for_range(0,n_new) as i:
+            with tik_instance.for_range(0, n_new) as i:
                 tik_instance.data_move(dst_gm_tensor[dst_gm_index + i * dst_gm_gap],
                                        src_ub_tensor[i * src_y_gap],
                                        0,
@@ -433,11 +433,11 @@ class four2fiveCompute(object):
             tail = hw // split_hw
             tail_block = hw % split_hw
 
-        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in,], name="input_x_ub",
+        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in, ], name="input_x_ub",
                                          scope=tik.scope_ubuf)
-        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out,], name="input_y_ub",
+        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out, ], name="input_y_ub",
                                          scope=tik.scope_ubuf)
-        input_z_ub = tik_instance.Tensor(self.dtype, [16,], name="input_z_ub",
+        input_z_ub = tik_instance.Tensor(self.dtype, [16, ], name="input_z_ub",
                                          scope=tik.scope_ubuf)
         reg = tik_instance.Scalar(dtype=self.dtype)
 
@@ -685,11 +685,11 @@ class four2fiveCompute(object):
             tail_n1 = n1 // split_n1
             tail_block_n1 = n1 % split_n1
 
-        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in,], name="input_x_ub",
+        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in, ], name="input_x_ub",
                                          scope=tik.scope_ubuf)
-        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out,], name="input_y_ub",
+        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out, ], name="input_y_ub",
                                          scope=tik.scope_ubuf)
-        input_z_ub = tik_instance.Tensor(self.dtype, [16,], name="input_z_ub",
+        input_z_ub = tik_instance.Tensor(self.dtype, [16, ], name="input_z_ub",
                                          scope=tik.scope_ubuf)
         reg = tik_instance.Scalar(dtype=self.dtype)
         src_x_offset = tik_instance.Scalar(dtype="int64")
@@ -954,11 +954,11 @@ class four2fiveCompute(object):
         tail = hw // split_hw
         tail_block = hw % split_hw
 
-        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in,], name="input_x_ub",
+        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in, ], name="input_x_ub",
                                          scope=tik.scope_ubuf)
-        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out,], name="input_y_ub",
+        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out, ], name="input_y_ub",
                                          scope=tik.scope_ubuf)
-        input_z_ub = tik_instance.Tensor(self.dtype, [16,], name="input_z_ub",
+        input_z_ub = tik_instance.Tensor(self.dtype, [16, ], name="input_z_ub",
                                          scope=tik.scope_ubuf)
         reg = tik_instance.Scalar(dtype=self.dtype)
 
@@ -1127,11 +1127,11 @@ class four2fiveCompute(object):
             tail_n1 = n1 // split_n1
             tail_block_n1 = n1 % split_n1
 
-        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in,], name="input_x_ub",
+        input_x_ub = tik_instance.Tensor(self.dtype, [psm_in, ], name="input_x_ub",
                                          scope=tik.scope_ubuf)
-        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out,], name="input_y_ub",
+        input_y_ub = tik_instance.Tensor(self.dtype, [psm_out, ], name="input_y_ub",
                                          scope=tik.scope_ubuf)
-        input_z_ub = tik_instance.Tensor(self.dtype, [16,], name="input_z_ub",
+        input_z_ub = tik_instance.Tensor(self.dtype, [16, ], name="input_z_ub",
                                          scope=tik.scope_ubuf)
         reg = tik_instance.Scalar(dtype=self.dtype)
         src_x_offset = tik_instance.Scalar(dtype="int64")
@@ -1432,7 +1432,7 @@ class four2fiveCompute(object):
                                             index_y_ub = i * src_y_gap + c0 * tail_block_hw - self.step_move + j
                                             reg.set_as(input_y_ub[index_y_ub])
                                             input_z_ub[j].set_as(reg)
-                                        dst_gm = dst_gm + i * dst_gm_gap + c0 *tail_block_hw - self.step_move
+                                        dst_gm = dst_gm + i * dst_gm_gap + c0 * tail_block_hw - self.step_move
                                         tik_instance.data_move(self.output_y_gm[dst_gm],
                                                                input_z_ub[0],
                                                                0,
@@ -1443,7 +1443,7 @@ class four2fiveCompute(object):
                             else:
                                 nburst_ub2gm = 1
                                 burstlen_ub2gm = math.ceil(tail_block_hw * c0 * n / self.step_move)
-                                burstlen_ub2gm = burstlen_ub2gm * self.step_move * self.num_bit //32
+                                burstlen_ub2gm = burstlen_ub2gm * self.step_move * self.num_bit // 32
                                 srcstride_ub2gm = 0
                                 dststride_ub2gm = 0
                                 tik_instance.data_move(self.output_y_gm[dst_gm],
@@ -1823,7 +1823,7 @@ class four2fiveCompute(object):
                                         index_y_ub = i * src_y_gap + c0 * tail_block_hw - self.step_move + j
                                         reg.set_as(input_y_ub[index_y_ub])
                                         input_z_ub[j].set_as(reg)
-                                    dst_gm_n_align = dst_gm_n_align + i * dst_gm_gap + c0 *tail_block_hw - self.step_move
+                                    dst_gm_n_align = dst_gm_n_align + i * dst_gm_gap + c0 * tail_block_hw - self.step_move
                                     tik_instance.data_move(self.output_y_gm[dst_gm_n_align],
                                                            input_z_ub[0],
                                                            0,
@@ -1876,7 +1876,7 @@ class four2fiveCompute(object):
                         dststride_ub2gm = (self.input_shape[0] * self.input_shape[1] * c0 - c0 * split_hw) * self.num_bit
 
                         condition_0 = dststride_ub2gm <= MAX_STRIDE
-                        condition_1 = dststride_ub2gm % 32 ==0
+                        condition_1 = dststride_ub2gm % 32 == 0
                         if condition_0 and condition_1:
                             dststride_ub2gm = dststride_ub2gm // 32
                             tik_instance.data_move(self.output_y_gm[dst_gm],
@@ -1889,7 +1889,7 @@ class four2fiveCompute(object):
                         else:
                             dst_gm_gap = self.input_shape[0] * self.input_shape[1] * c0
                             src_y_gap = split_hw * c0
-                            with tik_instance.for_range(0,n) as i:
+                            with tik_instance.for_range(0, n) as i:
                                 tik_instance.data_move(self.output_y_gm[dst_gm + i * dst_gm_gap],
                                                        input_y_ub[i * src_y_gap],
                                                        0,
@@ -1947,9 +1947,9 @@ class four2fiveCompute(object):
         else:
             core_num = MAX_CORE_NUM
 
-        param_split_shape = {"core_num": core_num,"total_core_loop_num": total_core_loop_num,
-                             "tiling_shape":tiling_shape,"psm_in_ac":psm_in_ac,
-                             "psm_out_ac":psm_out_ac,"psm_move_out":psm_move_out,"psm_move_in":psm_move_in}
+        param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
+                             "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
+                             "psm_out_ac": psm_out_ac, "psm_move_out": psm_move_out, "psm_move_in": psm_move_in}
 
         return param_split_shape
 
@@ -1973,9 +1973,9 @@ class four2fiveCompute(object):
         if n % n0 != 0:
             raise RuntimeError("n0 is illegal in the branch")
         if src_format == "NHWC":
-            tiling_shape = [n1,h,w,c]
+            tiling_shape = [n1, h, w, c]
         elif src_format == "NCHW":
-            tiling_shape = [n1,c,h,w]
+            tiling_shape = [n1, c, h, w]
 
         chw_in = self.calc_element(tiling_shape)
         chw_out = n1 * h * w * c0
@@ -1993,9 +1993,9 @@ class four2fiveCompute(object):
         else:
             core_num = MAX_CORE_NUM
 
-        param_split_shape = {"core_num": core_num,"total_core_loop_num": total_core_loop_num,
-                             "tiling_shape":tiling_shape,"psm_in_ac":psm_in_ac,
-                             "psm_out_ac":psm_out_ac,"psm_move_out":psm_move_out,"psm_move_in":psm_move_in}
+        param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
+                             "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
+                             "psm_out_ac": psm_out_ac, "psm_move_out": psm_move_out, "psm_move_in": psm_move_in}
 
         return param_split_shape
 
@@ -2007,9 +2007,9 @@ class four2fiveCompute(object):
         maximum_size_ub = self.maximum_size_ub
 
         if src_format == "NCHW":
-            n,c,h,w = shape[0], shape[1], shape[2],shape[3]
+            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
         elif src_format == "NHWC":
-            n,h,w,c = shape[0], shape[1], shape[2],shape[3]
+            n, h, w, c = shape[0], shape[1], shape[2], shape[3]
 
         hw = h * w
         chw_in = hw * c
@@ -2030,9 +2030,9 @@ class four2fiveCompute(object):
         else:
             core_num = MAX_CORE_NUM
 
-        param_split_shape = {"core_num": core_num,"total_core_loop_num": total_core_loop_num,
-                             "tiling_shape":tiling_shape,"psm_in_ac":psm_in_ac,
-                             "psm_out_ac":psm_out_ac,"psm_move_out":psm_move_out,"psm_move_in":psm_move_in}
+        param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
+                             "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
+                             "psm_out_ac": psm_out_ac, "psm_move_out": psm_move_out, "psm_move_in": psm_move_in}
 
         return param_split_shape
 
@@ -2063,9 +2063,9 @@ class four2fiveCompute(object):
         else:
             core_num = MAX_CORE_NUM
 
-        param_split_shape = {"core_num": core_num,"total_core_loop_num": total_core_loop_num,
-                             "tiling_shape":tiling_shape,"psm_in_ac":psm_in_ac,
-                             "psm_out_ac":psm_out_ac,"psm_move_out":psm_move_out,"psm_move_in":psm_move_in}
+        param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
+                             "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
+                             "psm_out_ac": psm_out_ac, "psm_move_out": psm_move_out, "psm_move_in": psm_move_in}
 
         return param_split_shape
 
@@ -2195,13 +2195,14 @@ def check_format_rule(format, check_list):
     if format.upper() not in check_list:
         raise RuntimeError("only support %s while format is %s" % (",".join(check_list), format))
 
+
 def check_c_axis_rule(format, shape):
     """
     The common check rule for tensor dtype
     """
     if format == 'NCHW':
         c = shape[1]
-        if c > 4 or c < 1 :
+        if c > 4 or c < 1:
             raise RuntimeError("value of C axis is illeagl")
 
 # pylint: disable=invalid-name,unused-argument
@@ -2229,26 +2230,26 @@ def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c
     """
     input_shape = src.get("shape")
     if src_format.upper() == "NCHW":
-        n,c,h,w = input_shape[0], input_shape[1],input_shape[2],input_shape[3]
+        n, c, h, w = input_shape[0], input_shape[1], input_shape[2], input_shape[3]
         c1 = 1
         c0 = 4
     elif src_format.upper() == "NHWC":
-        n,h,w,c = input_shape[0], input_shape[1],input_shape[2],input_shape[3]
+        n, h, w, c = input_shape[0], input_shape[1], input_shape[2], input_shape[3]
         c1 = 1
         c0 = 4
     else:
-        h,w,c,n = input_shape[0], input_shape[1],input_shape[2],input_shape[3]
+        h, w, c, n = input_shape[0], input_shape[1], input_shape[2], input_shape[3]
         c1 = 1
         c0 = 4
-    output_shape = [n,c1,h,w,c0]
+    output_shape = [n, c1, h, w, c0]
     dtype = src.get("dtype").lower()
     util.check_kernel_name(kernel_name)
     util.check_shape_rule(input_shape)
     util.check_tensor_shape_size(input_shape)
-    check_list_dtype = ("float16","float32")
+    check_list_dtype = ("float16", "float32")
     util.check_dtype_rule(dtype, check_list_dtype)
     src_format = src_format.upper()
-    check_list_format = ("NCHW", "NHWC","HWCN")
+    check_list_format = ("NCHW", "NHWC", "HWCN")
     check_format_rule(src_format, check_list_format)
     check_c_axis_rule(src_format, input_shape)
     result = four2fiveCompute(input_shape, output_shape, dtype, src_format, kernel_name)

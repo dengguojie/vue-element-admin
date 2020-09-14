@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # compute needed,scalar -1
 SCALAR_MINUS_ONE = -1
@@ -70,7 +71,8 @@ def softmax_cross_entropy_with_logits_nchw_compute(
 
     if list(shape_features) != list(shape_labels):
         shape_features, shape_labels, shape_broadcast = \
-            util.produce_shapes(shape_features, shape_labels)
+            broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
+                             param_name_input2="input_labels")
         input_features = te.lang.cce.broadcast(input_features, shape_broadcast,
                                                dtype)
         input_labels = te.lang.cce.broadcast(input_labels, shape_broadcast,
@@ -136,7 +138,8 @@ def softmax_cross_entropy_with_logits_compute(
 
     if list(shape_features) != list(shape_labels):
         shape_features, shape_labels, shape_broadcast = \
-            util.produce_shapes(shape_features, shape_labels)
+            broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
+                                param_name_input2="input_labels")
         input_features = te.lang.cce.broadcast(input_features, shape_broadcast,
                                                dtype)
         input_labels = te.lang.cce.broadcast(input_labels, shape_broadcast,
@@ -218,7 +221,8 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
 
     if list(shape_features) != list(shape_labels):
         shape_features, shape_labels, shape_broadcast = \
-            util.produce_shapes(shape_features, shape_labels)
+            broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
+                             param_name_input2="input_labels")
         input_features = te.lang.cce.broadcast(input_features, shape_broadcast,
                                                dtype)
         input_labels = te.lang.cce.broadcast(input_labels, shape_broadcast,
@@ -281,7 +285,7 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def softmax_cross_entropy_with_logits(
         input_features,
         input_labels,
@@ -315,15 +319,12 @@ def softmax_cross_entropy_with_logits(
     shape_labels = input_labels.get("shape")
 
     util.compare_tensor_dict_key(input_features, input_labels, "dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_features, max_shape_num=MAX_SHAPE_NUM)
-    util.check_shape_rule(shape_labels, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_features)
-    util.check_tensor_shape_size(shape_labels)
+    check_shape(shape_features, param_name="input_features")
+    check_shape(shape_labels, param_name="input_labels")
 
     check_list = ("float16", "float32")
     input_dtype = input_features.get("dtype").lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_features")
 
     if len(shape_features) == 4:
         if len(shape_features) != len(shape_labels):
@@ -347,8 +348,8 @@ def softmax_cross_entropy_with_logits(
                                "or broadcasted to 2-dimensional")
         if len(shape_features) == 1 or len(shape_labels) == 1:
             shape_features, shape_labels, shape_broadcast = \
-                util.produce_shapes(shape_features, shape_labels)
-            util.check_tensor_shape_size(shape_broadcast)
+                broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
+                                    param_name_input2="input_labels")
 
         data_features = tvm.placeholder(shape_features, dtype=input_dtype,
                                         name="data_features")

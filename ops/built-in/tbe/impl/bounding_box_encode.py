@@ -18,6 +18,7 @@ BoundingBoxEncode
 from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # the number of bits per byte
@@ -186,23 +187,23 @@ class BoundingBoxEncode():
         dtype = "float16"
         # set means value [0, 0, 0, 0]
         means_0_scalar = self.tik_instance.Scalar(dtype, name="means_0_scalar")
-        means_0_scalar.set_as(means[0])
+        means_0_scalar.set_as(-means[0])
         means_1_scalar = self.tik_instance.Scalar(dtype, name="means_1_scalar")
-        means_1_scalar.set_as(means[1])
+        means_1_scalar.set_as(-means[1])
         means_2_scalar = self.tik_instance.Scalar(dtype, name="means_2_scalar")
-        means_2_scalar.set_as(means[2])
+        means_2_scalar.set_as(-means[2])
         means_3_scalar = self.tik_instance.Scalar(dtype, name="means_3_scalar")
-        means_3_scalar.set_as(means[3])
+        means_3_scalar.set_as(-means[3])
 
         # set stds value [1, 1, 1, 1]
         stds_0_scalar = self.tik_instance.Scalar(dtype, name="stds_0_scalar")
-        stds_0_scalar.set_as(stds[0])
+        stds_0_scalar.set_as(1.0 / stds[0])
         stds_1_scalar = self.tik_instance.Scalar(dtype, name="stds_1_scalar")
-        stds_1_scalar.set_as(stds[1])
+        stds_1_scalar.set_as(1.0 / stds[1])
         stds_2_scalar = self.tik_instance.Scalar(dtype, name="stds_2_scalar")
-        stds_2_scalar.set_as(stds[2])
+        stds_2_scalar.set_as(1.0 / stds[2])
         stds_3_scalar = self.tik_instance.Scalar(dtype, name="stds_3_scalar")
-        stds_3_scalar.set_as(stds[3])
+        stds_3_scalar.set_as(1.0 / stds[3])
 
         return (means_0_scalar, means_1_scalar, means_2_scalar, means_3_scalar,
                 stds_0_scalar, stds_1_scalar, stds_2_scalar, stds_3_scalar)
@@ -589,7 +590,7 @@ class BoundingBoxEncode():
         self.tik_instance.vadds(128, delta_tmp_ub, delta_tmp_ub,
                                 scalar_list[0], repeat_times, 4, 4, 32, 32)
         self.tik_instance.vmuls(128, delta_tmp_ub, delta_tmp_ub,
-                                scalar_list[5], repeat_times, 4, 4, 32, 32)
+                                scalar_list[4], repeat_times, 4, 4, 32, 32)
 
         # dy = ( (gy - py)/ph + (-means[1]) * (1/stds[1])
         delta_tmp_ub16 = delta_tmp_ub[16]
@@ -671,7 +672,8 @@ class BoundingBoxEncode():
 
 
 # pylint: disable=too-many-arguments
-@util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_FLOAT,
+                 OPTION_ATTR_LIST_FLOAT, KERNEL_NAME)
 def bounding_box_encode(anchorbox_in_dict,
                         ground_truth_in_dict,
                         delta_out_dict,
@@ -703,11 +705,9 @@ def bounding_box_encode(anchorbox_in_dict,
     anchor_box_shape = anchorbox_in_dict.get("shape")
     ground_truth_box_shape = ground_truth_in_dict.get("shape")
 
-    util.check_shape_rule(anchor_box_shape)
-    util.check_tensor_shape_size(anchor_box_shape)
+    check_shape(anchor_box_shape, param_name="anchorbox_in_dict")
 
-    util.check_shape_rule(ground_truth_box_shape)
-    util.check_tensor_shape_size(ground_truth_box_shape)
+    check_shape(ground_truth_box_shape, param_name="ground_truth_in_dict")
 
     bounding_box_encode_ = BoundingBoxEncode(
         anchorbox_in_dict, ground_truth_in_dict, delta_out_dict, means_attrs,

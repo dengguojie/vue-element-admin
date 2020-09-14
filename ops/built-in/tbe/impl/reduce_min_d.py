@@ -21,6 +21,7 @@ import te.lang.cce
 from topi import generic
 from topi.cce import util
 from impl import reduce_min_d_tik
+from te.utils.op_utils import *
 
 # define the type of None
 NONETYPE = type(None)
@@ -67,8 +68,8 @@ def reduce_min_d_compute(input_min, output_min, axis,
     return res
 
 
-@util.check_input_type(dict, dict, (int, list, tuple, NONETYPE),
-                       (bool, NONETYPE), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_min_d(input_min, output_min, axis,
                  keep_dims=None, kernel_name="reduce_min_d"):
     """
@@ -95,11 +96,10 @@ def reduce_min_d(input_min, output_min, axis,
     """
     shape_input = input_min.get("shape")
     dtype_input = input_min.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input)
+    check_shape(shape_input, param_name="input_min")
 
     check_list = ("float16", "float32", "int8", "uint8")
-    util.check_dtype_rule(dtype_input.lower(), check_list)
+    check_dtype(dtype_input.lower(), check_list, param_name="input_min")
 
     shape_len = len(shape_input)
 
@@ -110,22 +110,26 @@ def reduce_min_d(input_min, output_min, axis,
         axis = list(axis)
 
     axis = util.axis_check(shape_len, axis)
-    util.check_tensor_shape_size(shape_input)
 
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_min, axis, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(input_min, axis)
     if not is_5hdc:
         shape_input, axis = util.shape_refine(list(shape_input), axis)
         shape_input, axis = util.simplify_axis_shape(shape_input, axis)
 
     data_input = tvm.placeholder(shape_input, name="data_input_" + kernel_name,
                                  dtype=dtype_input.lower())
+    shape_len = len(shape_input)
     if dtype_input.lower() in ("float32", "int32") and len(axis) == 1 \
             and ((axis[0] == (shape_len - 1)) or (axis[0] == -1)):
-        reduce_min_d_tik.reduce_min_d_tik(input_min, output_min, axis[0],
+        input_min["shape"] = tuple(shape_input)
+        reduce_min_d_tik.reduce_min_d_tik(input_min, output_min, -1,
                                           kernel_name)
     else:
         res = reduce_min_d_compute(data_input, output_min, axis, keep_dims,
                                    kernel_name)
+        if is_5hdc:
+            res.ori_shape = input_min["ori_shape"]
+            res.ori_format = input_min["ori_format"]
         with tvm.target.cce():
             sch = generic.auto_schedule(res)
 

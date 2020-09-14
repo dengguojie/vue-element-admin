@@ -15,13 +15,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 sparse_apply_rms_prop_d
 """
 from impl.sparse_apply_common import SparseApply
-
-from topi.cce import util
 from te import platform as tbe_platform
-
-# when input_dtype is float32 and shape_size_limit >= 2**29, then
-# calculated address value in DMA caused Signed integer overflow.
-SHAPE_SIZE_LIMIT = (2**29 - 1)
+from te.utils import op_utils
 
 
 class SparseApplyRMSProp(SparseApply):
@@ -30,17 +25,8 @@ class SparseApplyRMSProp(SparseApply):
     """
 
     # pylint: disable=too-many-statements
-    def __init__(self,
-                 var,
-                 mean_square,
-                 mom,
-                 learning_rate,
-                 grad,
-                 indices,
-                 rho,
-                 momentum,
-                 epsilon,
-                 kernel_name):
+    def __init__(self, var, mean_square, mom, learning_rate, grad, indices,
+                 rho, momentum, epsilon, kernel_name):
         """
         Init sparse_apply_rms_prop base parameters
 
@@ -119,22 +105,15 @@ class SparseApplyRMSProp(SparseApply):
             raise RuntimeError(
                 "Input dtype is float32, but do not support on the platform")
 
-        util.check_shape_rule(self.var_shape)
-        util.check_shape_rule(self.ms_shape)
-        util.check_shape_rule(self.mom_shape)
-        util.check_shape_rule(self.lr_shape)
+        op_utils.check_shape(self.var_shape, param_name="var")
+        op_utils.check_shape(self.ms_shape, param_name="ms")
+        op_utils.check_shape(self.mom_shape, param_name="mom")
+        op_utils.check_shape(self.lr_shape, param_name="lr")
+        op_utils.check_dtype(self.var_dtype, ("float32", ), param_name="var")
+        op_utils.check_dtype(self.ms_dtype, ("float32", ), param_name="ms")
+        op_utils.check_dtype(self.mom_dtype, ("float32", ), param_name="mom")
+        op_utils.check_dtype(self.lr_dtype, ("float32", ), param_name="lr")
 
-
-        util.check_shape_size(self.var_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.ms_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.mom_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.lr_shape, SHAPE_SIZE_LIMIT)
-
-        check_list_var_dtype = ("float32")
-        util.check_dtype_rule(self.var_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.ms_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.mom_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.lr_dtype, check_list_var_dtype)
 
         if self.ms_shape != self.var_shape:
             raise RuntimeError("ms's shape must be the same as var's shape")
@@ -163,45 +142,49 @@ class SparseApplyRMSProp(SparseApply):
             grad_ub = self.grad_ub[offset]
 
         # ms_ = ms * rho + grad * grad * (1 - rho)
-        self.tik_instance.vmuls(mask, ms_ub, ms_ub,
-                                self.rho, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmuls(mask, ms_ub, ms_ub, self.rho, repeat_times, 1,
+                                1, 8, 8)
+        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat_times, 1,
+                               1, 1, 8, 8, 8)
         self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, (1 - self.rho),
                                 repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vadd(mask, ms_ub, ms_ub, tmp_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, ms_ub, ms_ub, tmp_ub, repeat_times, 1, 1,
+                               1, 8, 8, 8)
 
         # mom_ = mom * momentum + (ms_ + epsilon).rsqrt() * lr * grad
-        self.tik_instance.vmuls(mask, mom_ub, mom_ub,
-                                self.momentum, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vadds(mask, tmp_ub, ms_ub,
-                                self.epsilon, repeat_times, 1, 1, 8, 8)
-
-        self.tik_instance.vsqrt(mask, tmp_ub, tmp_ub,
+        self.tik_instance.vmuls(mask, mom_ub, mom_ub, self.momentum,
                                 repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vmuls(mask, grad_ub, grad_ub,
-                                self.lr_scalar, repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vadds(mask, tmp_ub, ms_ub, self.epsilon,
+                                repeat_times, 1, 1, 8, 8)
+
+        self.tik_instance.vsqrt(mask, tmp_ub, tmp_ub, repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, grad_ub, grad_ub, self.lr_scalar,
+                                repeat_times, 1, 1, 8, 8)
 
         if self.vdiv_support:
-            self.tik_instance.vdiv(mask, tmp_ub, grad_ub, tmp_ub,
-                                   repeat_times, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vdiv(mask, tmp_ub, grad_ub, tmp_ub, repeat_times,
+                                   1, 1, 1, 8, 8, 8)
         else:
-            self.tik_instance.vrec(mask, tmp_ub, tmp_ub,
-                                   repeat_times, 1, 1, 8, 8)
-            self.tik_instance.vmul(mask, tmp_ub, grad_ub,
-                                   tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, mom_ub, mom_ub, tmp_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vrec(mask, tmp_ub, tmp_ub, repeat_times, 1, 1, 8,
+                                   8)
+            self.tik_instance.vmul(mask, tmp_ub, grad_ub, tmp_ub, repeat_times,
+                                   1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, mom_ub, mom_ub, tmp_ub, repeat_times, 1,
+                               1, 1, 8, 8, 8)
 
         # var_ = var - mom_
-        self.tik_instance.vsub(mask, var_ub, var_ub, mom_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vsub(mask, var_ub, var_ub, mom_ub, repeat_times, 1,
+                               1, 1, 8, 8, 8)
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, dict,
-                       float, float, float, bool, str)
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_FLOAT,
+    op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_FLOAT,
+    op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def sparse_apply_rms_prop_d(var,
                             ms,
                             mom,
@@ -258,10 +241,9 @@ def sparse_apply_rms_prop_d(var,
     Returns:
     None
     """
-    sparse_apply_rms_prop = SparseApplyRMSProp(var, ms, mom, lr,
-                                               grad, indices, rho,  momentum,
-                                               epsilon, kernel_name)
-
+    sparse_apply_rms_prop = SparseApplyRMSProp(var, ms, mom, lr, grad, indices,
+                                               rho, momentum, epsilon,
+                                               kernel_name)
 
     var_shape = var.get("shape")
     var_dtype = var.get("dtype").lower()

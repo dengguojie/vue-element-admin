@@ -154,6 +154,7 @@ def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
 
     return tvm.compute(var.shape, _compute, name="outputs")
 
+
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
                  REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_BOOL, KERNEL_NAME)

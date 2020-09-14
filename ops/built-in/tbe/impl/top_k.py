@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 # pylint: disable=too-many-lines
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (C) 2019-2020. Huawei Technologies Co., Ltd. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.You may not use
@@ -17,14 +17,24 @@ http://www.apache.org/licenses/LICENSE-2.0
 topk
 """
 
+from enum import Enum, unique
+
 from te import platform as tbe_platform
 from te import tvm
 from te.platform.cce_build import build_config
+from te.utils import op_utils
 
-from topi.cce import util
-
-SHAPE_SIZE_LIMIT = 1 << 30
 FP16_MINIMUM = -65504
+
+
+@unique
+class Mode(Enum):
+    """Mode for Region proposal"""
+    X1 = 0
+    Y1 = 1
+    X2 = 2
+    Y2 = 3
+    Score = 4
 
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -1055,7 +1065,8 @@ def topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start,
                          cols=cols,
                          col_start=0,
                          gm_offset=row_start_in_core * cols +
-                         core_rows_start * cols, largest=largest)
+                         core_rows_start * cols,
+                         largest=largest)
     copy_gm_to_ubuf(tvm_ir,
                     indices_ub,
                     indices_gm,
@@ -1070,37 +1081,52 @@ def topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start,
                     cols=cols,
                     col_start=cols,
                     gm_offset=0)
-    emit_vconcat(tvm_ir, region_ub, data_ub, mode=4, cnt=rows * cols_padding)
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 data_ub,
+                 mode=Mode.Score.value,
+                 cnt=rows * cols_padding)
+    # for Ascend310 can't support extract score
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 data_ub,
+                 mode=Mode.Y2.value,
+                 cnt=rows * cols_padding)
     with tvm_ir.for_range(0, rows, name='i0') as i:
         emit_vconcat(tvm_ir,
                      region_ub,
                      indices_ub,
-                     mode=1,
+                     mode=Mode.X1.value,
                      cnt=cols_padding,
                      dst_offset=i * cols_padding * 8,
                      src_offset=0)
         emit_vconcat(tvm_ir,
                      region_ub,
                      offset_ub,
-                     mode=2,
+                     mode=Mode.Y1.value,
                      cnt=cols_padding,
                      dst_offset=i * cols_padding * 8,
                      src_offset=0)
     result_ub = sort_region(tvm_ir, region_sorted_ub, region_ub, rows,
                             cols_padding)
-    emit_vextract(tvm_ir, data_ub, result_ub, mode=4, cnt=rows * cols_padding)
+    # for Ascend310 can't support extract score
+    emit_vextract(tvm_ir,
+                  data_ub,
+                  result_ub,
+                  mode=Mode.Y2.value,
+                  cnt=rows * cols_padding)
     with tvm_ir.for_range(0, rows, name='i0') as i:
         emit_vextract(tvm_ir,
                       indices_out_fp16_ub,
                       result_ub,
-                      mode=1,
+                      mode=Mode.X1.value,
                       cnt=cols_padding,
                       dst_offset=i * cols_padding,
                       src_offset=i * cols_padding * 8)
         emit_vextract(tvm_ir,
                       offset_fp16_ub,
                       result_ub,
-                      mode=2,
+                      mode=Mode.Y1.value,
                       cnt=cols_padding,
                       dst_offset=i * cols_padding,
                       src_offset=i * cols_padding * 8)
@@ -1174,7 +1200,8 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                          num_rows=1,
                          cols=cols_per_part,
                          col_start=0,
-                         gm_offset=gm_offset, largest=largest)
+                         gm_offset=gm_offset,
+                         largest=largest)
     copy_gm_to_ubuf(tvm_ir,
                     indices_ub,
                     indices_gm,
@@ -1189,9 +1216,27 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                     cols=cols_per_part,
                     col_start=cols,
                     gm_offset=0)
-    emit_vconcat(tvm_ir, region_ub, data_ub, mode=4, cnt=cols_per_part)
-    emit_vconcat(tvm_ir, region_ub, indices_ub, mode=1, cnt=cols_per_part)
-    emit_vconcat(tvm_ir, region_ub, offset_ub, mode=2, cnt=cols_per_part)
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 data_ub,
+                 mode=Mode.Score.value,
+                 cnt=cols_per_part)
+    # for Ascend310 can't support extract score
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 data_ub,
+                 mode=Mode.Y2.value,
+                 cnt=cols_per_part)
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 indices_ub,
+                 mode=Mode.X1.value,
+                 cnt=cols_per_part)
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 offset_ub,
+                 mode=Mode.Y1.value,
+                 cnt=cols_per_part)
     result_ub = sort_region(tvm_ir, region_sorted_ub, region_ub, 1,
                             cols_per_part)
     copy_region(tvm_ir, dst=region_k_ub, src=result_ub, num=cols_per_part)
@@ -1203,7 +1248,8 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                              num_rows=1,
                              cols=cols_per_part,
                              col_start=cols_per_part * (i + 1),
-                             gm_offset=gm_offset, largest=largest)
+                             gm_offset=gm_offset,
+                             largest=largest)
         copy_gm_to_ubuf(tvm_ir,
                         indices_ub,
                         indices_gm,
@@ -1218,9 +1264,27 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                         cols=cols_per_part,
                         col_start=cols + cols_per_part * (i + 1),
                         gm_offset=0)
-        emit_vconcat(tvm_ir, region_ub, data_ub, mode=4, cnt=cols_per_part)
-        emit_vconcat(tvm_ir, region_ub, indices_ub, mode=1, cnt=cols_per_part)
-        emit_vconcat(tvm_ir, region_ub, offset_ub, mode=2, cnt=cols_per_part)
+        emit_vconcat(tvm_ir,
+                     region_ub,
+                     data_ub,
+                     mode=Mode.Score.value,
+                     cnt=cols_per_part)
+        # for Ascend310 can't support extract score
+        emit_vconcat(tvm_ir,
+                     region_ub,
+                     data_ub,
+                     mode=Mode.Y2.value,
+                     cnt=cols_per_part)
+        emit_vconcat(tvm_ir,
+                     region_ub,
+                     indices_ub,
+                     mode=Mode.X1.value,
+                     cnt=cols_per_part)
+        emit_vconcat(tvm_ir,
+                     region_ub,
+                     offset_ub,
+                     mode=Mode.Y1.value,
+                     cnt=cols_per_part)
         result_ub = sort_region(tvm_ir, region_sorted_ub, region_ub, 1,
                                 cols_per_part)
 
@@ -1276,7 +1340,8 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                          num_rows=1,
                          cols=last_part_cols,
                          col_start=(part_cnt - 1) * cols_per_part,
-                         gm_offset=gm_offset, largest=largest)
+                         gm_offset=gm_offset,
+                         largest=largest)
     copy_gm_to_ubuf(tvm_ir,
                     indices_ub,
                     indices_gm,
@@ -1294,17 +1359,23 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
     emit_vconcat(tvm_ir,
                  region_ub,
                  data_ub,
-                 mode=4,
+                 mode=Mode.Score.value,
+                 cnt=last_part_cols_padding)
+    # for Ascend310 can't support extract score
+    emit_vconcat(tvm_ir,
+                 region_ub,
+                 data_ub,
+                 mode=Mode.Y2.value,
                  cnt=last_part_cols_padding)
     emit_vconcat(tvm_ir,
                  region_ub,
                  indices_ub,
-                 mode=1,
+                 mode=Mode.X1.value,
                  cnt=last_part_cols_padding)
     emit_vconcat(tvm_ir,
                  region_ub,
                  offset_ub,
-                 mode=2,
+                 mode=Mode.Y1.value,
                  cnt=last_part_cols_padding)
     result_ub = sort_region(tvm_ir, region_sorted_ub, region_ub, 1,
                             last_part_cols_padding)
@@ -1315,17 +1386,22 @@ def topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start,
                             len_region_k=5120,
                             len_region_sorted=last_part_cols_padding)
 
-    emit_vextract(tvm_ir, region_k_ub, region_k2_ub, mode=4, cnt=k_padding)
+    # for Ascend310 can't support extract score
     emit_vextract(tvm_ir,
                   region_k_ub,
                   region_k2_ub,
-                  mode=1,
+                  mode=Mode.Y2.value,
+                  cnt=k_padding)
+    emit_vextract(tvm_ir,
+                  region_k_ub,
+                  region_k2_ub,
+                  mode=Mode.X1.value,
                   cnt=k_padding,
                   dst_offset=k_padding)
     emit_vextract(tvm_ir,
                   region_k_ub,
                   region_k2_ub,
-                  mode=2,
+                  mode=Mode.Y1.value,
                   cnt=k_padding,
                   dst_offset=k_padding * 2)
     if not largest:
@@ -1366,12 +1442,14 @@ def tiling(rows, cols):
     """
     ret = []  # rows for each core
 
-    num_cores = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    num_cores = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.CORE_NUM)
     if rows < num_cores:
         for i in range(rows):
             ret.append(1)
         return ret, rows, 1
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.UB_SIZE)
     # 1.2. data and indices tail block 3. vmrgsort4 addr block
     ub_bytes = ub_size_bytes - 32 - 32 - 32
     cols_padding = ((cols + 15) // 16) * 16
@@ -1573,7 +1651,8 @@ def _kernel_ir(ins, outs, k, largest):
                                    cols=cols,
                                    k=k,
                                    core_rows_start=core_rows_start,
-                                   multi_core=multi_core, largest=largest)
+                                   multi_core=multi_core,
+                                   largest=largest)
         else:
             with tvm_ir.for_range(0, loops1, name='i0') as i:
                 topk_rows(tvm_ir,
@@ -1582,7 +1661,8 @@ def _kernel_ir(ins, outs, k, largest):
                           cols=cols,
                           k=k,
                           core_rows_start=core_rows_start,
-                          multi_core=multi_core, largest=largest)
+                          multi_core=multi_core,
+                          largest=largest)
             if remain1 > 0:
                 topk_rows(tvm_ir,
                           row_start_in_core=loops1 * batch,
@@ -1590,7 +1670,8 @@ def _kernel_ir(ins, outs, k, largest):
                           cols=cols,
                           k=k,
                           core_rows_start=core_rows_start,
-                          multi_core=multi_core, largest=largest)
+                          multi_core=multi_core,
+                          largest=largest)
 
     with tvm_ir.if_scope(block_index.var >= turn):
         core_rows_start = (rows_per_core1 *
@@ -1602,7 +1683,8 @@ def _kernel_ir(ins, outs, k, largest):
                                    cols=cols,
                                    k=k,
                                    core_rows_start=core_rows_start,
-                                   multi_core=multi_core, largest=largest)
+                                   multi_core=multi_core,
+                                   largest=largest)
         else:
             with tvm_ir.for_range(0, loops2, name='i0') as i:
                 topk_rows(tvm_ir,
@@ -1611,7 +1693,8 @@ def _kernel_ir(ins, outs, k, largest):
                           cols=cols,
                           k=k,
                           core_rows_start=core_rows_start,
-                          multi_core=multi_core, largest=largest)
+                          multi_core=multi_core,
+                          largest=largest)
             if remain2 > 0:
                 topk_rows(tvm_ir,
                           row_start_in_core=loops2 * batch,
@@ -1619,7 +1702,8 @@ def _kernel_ir(ins, outs, k, largest):
                           cols=cols,
                           k=k,
                           core_rows_start=core_rows_start,
-                          multi_core=multi_core, largest=largest)
+                          multi_core=multi_core,
+                          largest=largest)
 
     return tvm_ir.get()
 
@@ -1650,7 +1734,11 @@ def check_supported(input_tensor,
 
 
 # pylint: disable=redefined-builtin,unused-argument
-@util.check_input_type(dict, dict, dict, dict, int, bool, int, bool, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_INT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.OPTION_ATTR_INT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def top_k(input_tensor,
           indices_tensor,
           out_tensor,
@@ -1682,19 +1770,23 @@ def top_k(input_tensor,
     """
 
     shape = input_tensor.get("shape")
-    dtype = input_tensor.get("dtype")
+    input_dtype = input_tensor.get("dtype").lower()
     indices_shape = indices_tensor.get("shape")
-    indices_dtype = indices_tensor.get("dtype")
+    input_indices_dtype = indices_tensor.get("dtype").lower()
     out_shape = out_tensor.get("shape")
-    out_dtype = out_tensor.get("dtype")
+    out_dtype = out_tensor.get("dtype").lower()
+    out_indices_shape = out_indices_tensor.get("shape")
     out_indices_dtype = out_indices_tensor.get("dtype")
-    check_list = ("float16", )
-    util.check_dtype_rule(dtype, check_list)
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(out_dtype, check_list)
-    util.check_dtype_rule(out_indices_dtype, ("int32", "uint32"))
+    op_utils.check_dtype(input_dtype, ("float16", ), param_name='input_tensor')
+    op_utils.check_dtype(input_indices_dtype, ("float16", ),
+                         param_name='indices_tensor')
+    op_utils.check_dtype(out_dtype, ("float16", ), param_name='out_tensor')
+    op_utils.check_dtype(out_indices_dtype, ("int32", ),
+                         param_name='out_indices_tensor')
+    op_utils.check_shape(shape, param_name='input_tensor')
+    op_utils.check_shape(indices_shape, param_name='indices_tensor')
+    op_utils.check_shape(out_shape, param_name='out_tensor')
+    op_utils.check_shape(out_indices_shape, param_name='out_indices_tensor')
 
     shape_dim = len(shape)
     out_shape_dim = len(out_shape)
@@ -1711,20 +1803,21 @@ def top_k(input_tensor,
         raise RuntimeError("K must in ( 1,shape[-1] ]")
     if k > 5120:
         raise RuntimeError("k cannot bigger than 5120")
-    data_input = tvm.placeholder(shape, dtype=dtype.lower(), name='data_a')
+    data_input = tvm.placeholder(shape, dtype=input_dtype, name='data_a')
     indices = tvm.placeholder(indices_shape,
-                              dtype=indices_dtype.lower(),
+                              dtype=input_indices_dtype,
                               name='indices')
-    data_buf = tvm.decl_buffer(out_shape, dtype='float16')
-    indices_buf = tvm.decl_buffer(out_shape, dtype='int32')
-    res, indices_out = tvm.extern([shape, indices_shape],
-                                  [data_input, indices],
-                                  lambda ins, outs:
-                                  _kernel_ir(ins, outs, k, largest),
-                                  name='output',
-                                  dtype=dtype.lower(),
-                                  out_buffers=[data_buf, indices_buf])
+    data_buf = tvm.decl_buffer(out_shape, dtype=input_dtype)
+    indices_buf = tvm.decl_buffer(out_shape, dtype=out_indices_dtype)
+    res, indices_out = tvm.extern(
+        [shape, indices_shape], [data_input, indices],
+        lambda ins, outs: _kernel_ir(ins, outs, k, largest),
+        name='output',
+        dtype=input_dtype,
+        out_buffers=[data_buf, indices_buf])
     sch = tvm.create_schedule([res.op, indices_out.op])
+
     with build_config:
         tvm.build(sch, [data_input, indices, res, indices_out],
-                  'cce', name=kernel_name)
+                  'cce',
+                  name=kernel_name)

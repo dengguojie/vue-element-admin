@@ -127,6 +127,7 @@ def get_pool_ub_cost_4c0(fm_h, fm_w, fm_c0, dtype, pooled_h, pooled_w):
     return proposal_fm_data_cost + (pooled_h_res_cost + pooled_res_cost) * 2 \
            + get_4c0_ub_roi_cost(pooled_h, pooled_w)
 
+
 def get_bin_one_ub(pooled_h, pooled_w, feature_batch, dtype):
     proposal_num_l1_ub_tiling = 128
     output_offset = feature_batch * 64 * 4 
@@ -140,6 +141,8 @@ def get_bin_one_ub(pooled_h, pooled_w, feature_batch, dtype):
     proposals_ub = 5 * proposal_num_l1_ub_tiling * TYPELEN_DICT[dtype]
     res = output_offset+roi_actual_num_ub+roi_height+roi_width+const_value+const_zero+bin_w_fp16+bin_h_fp16+proposals_ub
     return res
+
+
 # 1 C0
 def get_roi_onec0_ub_cost(fm_h, fm_w, fm_c0, dtype, pooled_h, pooled_w, feature_batch):
     fm_w_align = align(fm_w, 8)
@@ -152,8 +155,8 @@ def get_roi_onec0_ub_cost(fm_h, fm_w, fm_c0, dtype, pooled_h, pooled_w, feature_
                       TYPELEN_DICT[dtype]
 
     return proposal_fm_data_cost + (pooled_h_res_cost+pooled_res_cost) * 2 + \
-           get_4c0_ub_roi_cost(pooled_h, pooled_w)+ get_bin_one_ub(pooled_h, pooled_w, feature_batch, dtype)
-
+           get_4c0_ub_roi_cost(pooled_h, pooled_w) + \
+           get_bin_one_ub(pooled_h, pooled_w, feature_batch, dtype)
 
 
 # 1 C0 and rois in L1

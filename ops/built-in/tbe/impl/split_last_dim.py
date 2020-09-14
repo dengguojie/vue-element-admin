@@ -522,8 +522,12 @@ def check_use_last_dim_branch(shape,
     split_l = SplitLastDim(shape, dtype, split_dim, num_split, size_splits)
     half_ub = split_l.ub_max_data // 2
     out_split_size = shape[split_dim] // num_split
-    is_shape_support = ((out_split_size % 8 == 0 and out_split_size < half_ub)
-                        or out_split_size < 8)
+    if dtype in ("float16",):
+        data_len_one_block = 16
+    else:
+        data_len_one_block = 8
+    is_shape_support = ((out_split_size % data_len_one_block == 0 and out_split_size < half_ub)
+                        or out_split_size < data_len_one_block)
 
     return is_shape_support and is_dtype_support and is_split and is_last_dim
 

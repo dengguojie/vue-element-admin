@@ -19,16 +19,15 @@ max_pool_grad_grad
 import math
 from enum import Enum
 
-import te.lang.cce
-from te import tvm
-from te import platform as tbe_platform
 import te.lang.cce.te_compute.common as common
 import te.platform.cce_params as cce_params
-from topi.cce import util
+from te import platform as tbe_platform
+from te import tvm
+from te.utils import op_utils
 
 SHAPE_DIM_SIZE = 5
 BLOCK_SIZE = 16
-SHAPE_SIZE_LIMIT = 2**30
+VSEL_MAX_SUPPORT_REPEAT = 255
 
 
 def _check_dict_key(input_dict, input_key, input_name):
@@ -43,10 +42,8 @@ def _check_dtype(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_type = grads_dict.get('dtype').lower()
     output_type = output_dict.get('dtype').lower()
 
-    if orig_input_type != orig_output_type or \
-            orig_input_type != grads_type or \
-            orig_input_type != output_type or \
-            orig_input_type != "float16":
+    if orig_input_type != orig_output_type or orig_input_type != grads_type \
+        or orig_input_type != output_type or orig_input_type != "float16":
         raise RuntimeError("Type must be same in orig_input/orig_output/"
                            "grads/outputm, and only supported float16.")
 
@@ -57,14 +54,13 @@ def _check_shape(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_shape = list(grads_dict.get('shape'))
     output_shape = list(output_dict.get('shape'))
 
-    if orig_input_shape != grads_shape or \
-            len(grads_shape) != SHAPE_DIM_SIZE or \
-            grads_shape[-1] != BLOCK_SIZE:
+    if orig_input_shape != grads_shape or len(
+            grads_shape) != SHAPE_DIM_SIZE or grads_shape[-1] != BLOCK_SIZE:
         raise RuntimeError("The shape of orig_input and grads must be same, "
                            "and shape must be 5HD.")
-    if orig_output_shape != output_shape or \
-            len(orig_output_shape) != SHAPE_DIM_SIZE or \
-            orig_output_shape[-1] != BLOCK_SIZE:
+    if orig_output_shape != output_shape or len(
+            orig_output_shape
+    ) != SHAPE_DIM_SIZE or orig_output_shape[-1] != BLOCK_SIZE:
         raise RuntimeError("The shape of orig_output and output must be same, "
                            "and shape must be 5HD.")
 
@@ -74,10 +70,9 @@ def _check_format(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     orig_y_format = orig_y_dict.get('format')
     grads_format = grads_dict.get('format')
     output_format = output_dict.get('format')
-    if orig_x_format not in ("NC1HWC0", "5HD") or \
-            orig_y_format not in ("NC1HWC0", "5HD") or \
-            grads_format not in ("NC1HWC0", "5HD") or \
-            output_format not in ("NC1HWC0", "5HD"):
+    if orig_x_format not in ("NC1HWC0", "5HD") or orig_y_format not in (
+            "NC1HWC0", "5HD") or grads_format not in (
+                "NC1HWC0", "5HD") or output_format not in ("NC1HWC0", "5HD"):
         raise RuntimeError("The format must be NC1HWC0 in orig_input/"
                            "orig_output/grads/output.")
 
@@ -85,7 +80,7 @@ def _check_format(orig_x_dict, orig_y_dict, grads_dict, output_dict):
 def _ceil_to(value, ceil_value):
     if ceil_value <= 0:
         return value
-    return ((value + ceil_value - 1) // ceil_value)*ceil_value
+    return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
 class BlockTilingType(Enum):
@@ -177,8 +172,8 @@ def get_load3d_tiling(fmap_shape,
     stride_h, stride_w = strides
     dilation_h, dilation_w = dilation
     kernel_h, kernel_w = ksize
-    kernel_h = (kernel_h - 1)*dilation_h + 1
-    kernel_w = (kernel_w - 1)*dilation_w + 1
+    kernel_h = (kernel_h - 1) * dilation_h + 1
+    kernel_w = (kernel_w - 1) * dilation_w + 1
     output_h, _, _ = common.tf_get_windowed_output_size_verbose(
         fmap_h, kernel_h, stride_h, padding.upper())
     output_w, _, _ = common.tf_get_windowed_output_size_verbose(
@@ -194,7 +189,7 @@ def get_load3d_tiling(fmap_shape,
     def _ceil_to(value, ceil_value):
         if ceil_value <= 0:
             return value
-        return ((value + ceil_value - 1) // ceil_value)*ceil_value
+        return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
     def _get_block_tiling(block_axis_value):
         device_core_num = tbe_platform.cce_conf.get_soc_spec(
@@ -239,7 +234,7 @@ def get_load3d_tiling(fmap_shape,
         # hi' = ho' * stride_h + filter_h - stride_h
         if output_length >= out_value:
             return fmap_value
-        return min(fmap_value, output_length*stride + kernel_size - stride)
+        return min(fmap_value, output_length * stride + kernel_size - stride)
 
     def _get_l1_tiling():
         # get the tiling params in l1
@@ -258,7 +253,7 @@ def get_load3d_tiling(fmap_shape,
             tiling["type"] = L1TilingType.NO_ENOUGH_MEMORY
             return tiling
         # Not supported
-        if max_hiwi_l1 < kernel_h*_get_input_length(
+        if max_hiwi_l1 < kernel_h * _get_input_length(
                 BLOCK_SIZE, kernel_w, stride_w, output_w, fmap_w):
             tiling["result"] = False
             tiling["type"] = L1TilingType.NOT_SUPPORTED
@@ -269,14 +264,15 @@ def get_load3d_tiling(fmap_shape,
         # align for BLOCK_SIZE with multiply output_w
         wo_gcd_block = math.gcd(output_w, BLOCK_SIZE)
         ho_gcd_block = BLOCK_SIZE // wo_gcd_block
-        if max_ho_l1 >= DOUBLE_BUFFER*ho_gcd_block:
+        if max_ho_l1 >= DOUBLE_BUFFER * ho_gcd_block:
             tiling["buffer"] = DOUBLE_BUFFER
             max_ho_l1 = max_ho_l1 // DOUBLE_BUFFER
-            max_ho_l1 = (max_ho_l1 // ho_gcd_block*
+            max_ho_l1 = (max_ho_l1 // ho_gcd_block *
                          ho_gcd_block) if max_ho_l1 < output_h else output_h
             tiling["shape"]["ho"] = max_ho_l1
-            tiling["shape"]["hi"] = _get_input_length(
-                tiling["shape"]["ho"], kernel_h, stride_h, output_h, fmap_h)
+            tiling["shape"]["hi"] = _get_input_length(tiling["shape"]["ho"],
+                                                      kernel_h, stride_h,
+                                                      output_h, fmap_h)
             tiling["shape"]["wo"] = output_w
             tiling["shape"]["wi"] = fmap_w
             tiling["result"] = True
@@ -286,22 +282,24 @@ def get_load3d_tiling(fmap_shape,
         # cut w
         l1_wi = max_hiwi_l1 // kernel_h
         l1_wo = (l1_wi + stride_w - kernel_w) // stride_w
-        if l1_wo >= DOUBLE_BUFFER*BLOCK_SIZE:
+        if l1_wo >= DOUBLE_BUFFER * BLOCK_SIZE:
             l1_wo = l1_wo // DOUBLE_BUFFER
             if l1_wo >= output_w:
                 l1_wo = output_w
             else:
-                l1_wo = (l1_wo // BLOCK_SIZE)*BLOCK_SIZE
+                l1_wo = (l1_wo // BLOCK_SIZE) * BLOCK_SIZE
             tiling["buffer"] = DOUBLE_BUFFER
         else:
-            l1_wo = (l1_wo // BLOCK_SIZE)*BLOCK_SIZE
+            l1_wo = (l1_wo // BLOCK_SIZE) * BLOCK_SIZE
             tiling["buffer"] = 1
         tiling["shape"]["wo"] = l1_wo
-        tiling["shape"]["wi"] = _get_input_length(
-            tiling["shape"]["wo"], kernel_w, stride_w, output_w, fmap_w)
+        tiling["shape"]["wi"] = _get_input_length(tiling["shape"]["wo"],
+                                                  kernel_w, stride_w, output_w,
+                                                  fmap_w)
         tiling["shape"]["ho"] = 1
-        tiling["shape"]["hi"] = _get_input_length(
-            tiling["shape"]["ho"], kernel_h, stride_h, output_h, fmap_h)
+        tiling["shape"]["hi"] = _get_input_length(tiling["shape"]["ho"],
+                                                  kernel_h, stride_h, output_h,
+                                                  fmap_h)
         tiling["result"] = True
         tiling["type"] = L1TilingType.CUT_W
         return tiling
@@ -327,7 +325,7 @@ def get_load3d_tiling(fmap_shape,
             return tiling
 
         # not enough to put whole kernel
-        if max_howokhkw_l0ub < kernel_h*kernel_w:
+        if max_howokhkw_l0ub < kernel_h * kernel_w:
             # double buffer or not
             tiling["buffer"] = 1
             if max_howokhkw_l0ub >= DOUBLE_BUFFER:
@@ -338,20 +336,20 @@ def get_load3d_tiling(fmap_shape,
             tiling["shape"]["khkw"] = max_howokhkw_l0ub
             tiling["type"] = L0ubTilingType.CUT_KHKW
         else:
-            howo_pad = _ceil_to(output_h*output_w, BLOCK_SIZE_C0)
+            howo_pad = _ceil_to(output_h * output_w, BLOCK_SIZE_C0)
             howo_block = howo_pad // BLOCK_SIZE_C0
 
             # double buffer or not
             tiling["buffer"] = 1
-            if max_howokhkw_l0ub >= DOUBLE_BUFFER*kernel_h*kernel_w:
+            if max_howokhkw_l0ub >= DOUBLE_BUFFER * kernel_h * kernel_w:
                 max_howokhkw_l0ub = max_howokhkw_l0ub // DOUBLE_BUFFER
                 tiling["buffer"] = DOUBLE_BUFFER
 
             tiling["shape"]["howo"] = min(
-                howo_block, max_howokhkw_l0ub // (kernel_h*kernel_w))
+                howo_block, max_howokhkw_l0ub // (kernel_h * kernel_w))
             tiling["shape"]["howo"] = min(tiling["shape"]["howo"],
                                           LOAD3D_MAX_REPEAT)
-            tiling["shape"]["khkw"] = kernel_h*kernel_w
+            tiling["shape"]["khkw"] = kernel_h * kernel_w
             tiling["type"] = L0ubTilingType.CUT_HOWO
         tiling["shape"]["howo"] *= BLOCK_SIZE
         tiling["result"] = True
@@ -364,7 +362,7 @@ def get_load3d_tiling(fmap_shape,
     # get min howo in l1 and l0/ub
     l0ub_tiling["shape"]["howo"] = min(
         l0ub_tiling["shape"]["howo"],
-        _ceil_to(l1_tiling["shape"]["ho"]*l1_tiling["shape"]["wo"],
+        _ceil_to(l1_tiling["shape"]["ho"] * l1_tiling["shape"]["wo"],
                  BLOCK_SIZE))
     tiling["result"] = True
     tiling["block_tiling"] = block_tiling
@@ -435,22 +433,24 @@ def max_pool_grad_grad_ir_builder(ins,
     if output_h != out_h or output_w != out_w:
         raise RuntimeError("The shape of the ori_input does not match "
                            "the shape of the ori_output.")
-    # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if util.get_product_version() == util.VERSION_CLOUD and \
-            (out_h != 1 or out_w != 1):
+    # cloud,dc out_size_h = 1 or out_size_w = 1, img2col does not act normally
+    if tbe_platform.cce_conf.get_soc_spec(
+            tbe_platform.cce_conf.SOC_VERSION) in (
+                "Ascend910", "Ascend710") and (out_h != 1 or out_w != 1):
         if fmap_w + pad_l + pad_r - kernel_w < stride_w:
-            raise RuntimeError("Invalid params in the platform of cloud, "
-                               "it must be fmap_w + pad_l + pad_r - kernel_w "
-                               ">= stride_w")
+            raise RuntimeError(
+                "Platform cloud and DC DO NOT support these invalid params, "
+                "it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w")
 
     BUFFER_SIZE_IN_SEL_GRAD = 4
     BUFFER_SIZE_OF_INPUT = 4
     max_valid_ub_for_load3d = (
         tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) -
-        ((VECTOR_INST_BLOCK_SIZE + kernel_h*kernel_w*fmap_c0*DOUBLE_BUFFER) +
-         BUFFER_SIZE_IN_SEL_GRAD*(fmap_c0*fmap_c0*DOUBLE_BUFFER))*data_size
-    )*kernel_h*kernel_w // (
-        kernel_h*kernel_w + BUFFER_SIZE_IN_SEL_GRAD + BUFFER_SIZE_OF_INPUT)
+        ((VECTOR_INST_BLOCK_SIZE + kernel_h * kernel_w * fmap_c0 *
+          DOUBLE_BUFFER) + BUFFER_SIZE_IN_SEL_GRAD *
+         (fmap_c0 * fmap_c0 * DOUBLE_BUFFER)) * data_size
+    ) * kernel_h * kernel_w // (kernel_h * kernel_w + BUFFER_SIZE_IN_SEL_GRAD +
+                                BUFFER_SIZE_OF_INPUT)
     tiling = get_load3d_tiling(
         (fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0), (kernel_h, kernel_w),
         (stride_h, stride_w), padding,
@@ -507,27 +507,28 @@ def max_pool_grad_grad_ir_builder(ins,
         buf_var = tvm_ir.allocate(dtype, shape, name=name, scope=scope)
         if double_buffer == DOUBLE_BUFFER:
             tvm_ir.scope_attr(buf_var.asnode(), "double_buffer_scope", 1)
-        new_buffer = tvm.decl_buffer(
-            shape, buf_var.dtype, name=name, scope=scope, data=buf_var)
+        new_buffer = tvm.decl_buffer(shape,
+                                     buf_var.dtype,
+                                     name=name,
+                                     scope=scope,
+                                     data=buf_var)
 
         return new_buffer
 
     def _re_decl_ub_buffer(ub_buffer, decl_dtype):
-        return tvm.decl_buffer(
-            ub_buffer.shape,
-            decl_dtype,
-            name=ub_buffer.name,
-            data=ub_buffer.data,
-            scope=tbe_platform.scope_ubuf)
+        return tvm.decl_buffer(ub_buffer.shape,
+                               decl_dtype,
+                               name=ub_buffer.name,
+                               data=ub_buffer.data,
+                               scope=tbe_platform.scope_ubuf)
 
     def _dup_const_0():
         const_0_shape = (VECTOR_INST_BLOCK_SIZE)
-        const_0_ub = _new_alloc(
-            tvm_ir,
-            grads.dtype,
-            const_0_shape,
-            "const_0_ub",
-            scope=tbe_platform.scope_ubuf)
+        const_0_ub = _new_alloc(tvm_ir,
+                                grads.dtype,
+                                const_0_shape,
+                                "const_0_ub",
+                                scope=tbe_platform.scope_ubuf)
         tvm_ir.emit(
             tvm.call_extern(grads.dtype, "vector_dup",
                             const_0_ub.access_ptr("w"),
@@ -535,8 +536,8 @@ def max_pool_grad_grad_ir_builder(ins,
         return const_0_ub
 
     def _img_to_cubf(ho_o, wo_o, actual_pad_top_value, actual_pad_left_value):
-        tiling_l1_hi_length = tiling_l1_ho_i*stride_h + kernel_h - stride_h
-        tiling_l1_wi_length = tiling_l1_wo_i*stride_w + kernel_w - stride_w
+        tiling_l1_hi_length = tiling_l1_ho_i * stride_h + kernel_h - stride_h
+        tiling_l1_wi_length = tiling_l1_wo_i * stride_w + kernel_w - stride_w
         tiling_l1_hi_i = min(tiling_l1_hi_length,
                              fmap_h) if wo_o is None else kernel_h
         tiling_l1_wi_i = min(tiling_l1_wi_length,
@@ -548,38 +549,44 @@ def max_pool_grad_grad_ir_builder(ins,
                               tbe_platform.scope_cbuf, l1_tiling["buffer"])
         # need scalar handle
         if wo_o is None:
-            hi_min = tvm_ir.allocate(
-                SCALAR_DTYPE, (1), name='hi_min', scope=tbe_platform.scope_reg)
-            hi_max = tvm_ir.allocate(
-                SCALAR_DTYPE, (1), name='hi_max', scope=tbe_platform.scope_reg)
-            hi_min[0] = ho_o*tvm.const(tiling_l1_ho_i*stride_h,
-                                       SCALAR_DTYPE) - pad_t
+            hi_min = tvm_ir.allocate(SCALAR_DTYPE, (1),
+                                     name='hi_min',
+                                     scope=tbe_platform.scope_reg)
+            hi_max = tvm_ir.allocate(SCALAR_DTYPE, (1),
+                                     name='hi_max',
+                                     scope=tbe_platform.scope_reg)
+            hi_min[0] = ho_o * tvm.const(tiling_l1_ho_i * stride_h,
+                                         SCALAR_DTYPE) - pad_t
             hi_max[0] = hi_min[0] + tiling_l1_hi_length
             with tvm_ir.if_scope(hi_min[0] < 0):
                 hi_min[0] = tvm.const(0, SCALAR_DTYPE)
             with tvm_ir.if_scope(hi_max[0] > fmap_h):
                 hi_max[0] = tvm.const(fmap_h, SCALAR_DTYPE)
-            burst_length = (hi_max[0] - hi_min[0])*fmap_w
-            offset = (((n*fmap_c1 + c1)*fmap_h + hi_min[0])*fmap_w)*fmap_c0
+            burst_length = (hi_max[0] - hi_min[0]) * fmap_w
+            offset = ((
+                (n * fmap_c1 + c1) * fmap_h + hi_min[0]) * fmap_w) * fmap_c0
             repeat_time = 1
             src_repeat_burst_length = 0
 
         else:
-            wi_min = tvm_ir.allocate(
-                SCALAR_DTYPE, (1), name='wi_min', scope=tbe_platform.scope_reg)
-            wi_max = tvm_ir.allocate(
-                SCALAR_DTYPE, (1), name='wi_max', scope=tbe_platform.scope_reg)
-            wi_min[0] = wo_o*tvm.const(tiling_l1_wo_i*stride_w,
-                                       SCALAR_DTYPE) - pad_l
+            wi_min = tvm_ir.allocate(SCALAR_DTYPE, (1),
+                                     name='wi_min',
+                                     scope=tbe_platform.scope_reg)
+            wi_max = tvm_ir.allocate(SCALAR_DTYPE, (1),
+                                     name='wi_max',
+                                     scope=tbe_platform.scope_reg)
+            wi_min[0] = wo_o * tvm.const(tiling_l1_wo_i * stride_w,
+                                         SCALAR_DTYPE) - pad_l
             wi_max[0] = wi_min[0] + tiling_l1_wi_length
             with tvm_ir.if_scope(wi_min[0] < 0):
                 wi_min[0] = tvm.const(0, SCALAR_DTYPE)
             with tvm_ir.if_scope(wi_max[0] > fmap_w):
                 wi_max[0] = tvm.const(fmap_w, SCALAR_DTYPE)
             burst_length = (wi_max[0] - wi_min[0])
-            offset = (((n*fmap_c1 + c1)*fmap_h + ho_o*stride_h)*fmap_w +
-                      wi_min[0])*fmap_c0
-            repeat_time = tvm.min(kernel_h, fmap_h - ho_o*stride_h)
+            offset = ((
+                (n * fmap_c1 + c1) * fmap_h + ho_o * stride_h) * fmap_w +
+                      wi_min[0]) * fmap_c0
+            repeat_time = tvm.min(kernel_h, fmap_h - ho_o * stride_h)
             src_repeat_burst_length = fmap_w - burst_length
             _set_cut_w_fmatrix(repeat_time, burst_length, actual_pad_top_value,
                                pad_b, actual_pad_left_value, pad_r)
@@ -598,19 +605,21 @@ def max_pool_grad_grad_ir_builder(ins,
         return orig_x_l1, grads_l1
 
     def _get_ori_y_offset(ho_o, wo_o, howo_o):
-        offset_in_wo = wo_o*tiling_l1_wo_i if wo_o is not None else 0
-        orig_y_offset = (((n*out_c1 + c1)*out_h + ho_o*tiling_l1_ho_i)*out_w +
-                         offset_in_wo + howo_o*tiling_ub_howo_i*out_c0)*out_c0
+        offset_in_wo = wo_o * tiling_l1_wo_i if wo_o is not None else 0
+        orig_y_offset = (
+            ((n * out_c1 + c1) * out_h + ho_o * tiling_l1_ho_i) * out_w +
+            offset_in_wo + howo_o * tiling_ub_howo_i * out_c0) * out_c0
         return orig_y_offset
 
     def _get_ori_y_burst_length(actual_tiling_l1_wo_i, ho_o, wo_o, howo_o):
-        length_in_ho = tvm.min(
-            tiling_l1_ho_i, out_h - ho_o*tiling_l1_ho_i) if wo_o is None else 0
-        length_in_wo = tvm.min(actual_tiling_l1_wo_i, out_w -
-                               wo_o*tiling_l1_wo_i) if wo_o is not None else 0
+        length_in_ho = tvm.min(tiling_l1_ho_i, out_h -
+                               ho_o * tiling_l1_ho_i) if wo_o is None else 0
+        length_in_wo = tvm.min(
+            actual_tiling_l1_wo_i, out_w -
+            wo_o * tiling_l1_wo_i) if wo_o is not None else 0
         orig_y_burst_length = tvm.min(
-            tiling_ub_howo_i*out_c0,
-            length_in_ho*out_w + length_in_wo - howo_o*tiling_ub_howo_i*out_c0)
+            tiling_ub_howo_i * out_c0, length_in_ho * out_w + length_in_wo -
+            howo_o * tiling_ub_howo_i * out_c0)
         return orig_y_burst_length
 
     def _mov_orig_y(actual_tiling_l1_wo_i, ho_o, wo_o, howo_o):
@@ -637,8 +646,8 @@ def max_pool_grad_grad_ir_builder(ins,
         return actual_pad_top, pad_l
 
     def _set_const_fmatrix(fmap_h, pad_t, pad_b, pad_l, pad_r):
-        config = fmap_w | fmap_h << 16 | pad_l << 32 | pad_r << 40 |\
-                        pad_t << 48 | pad_b << 56
+        config = fmap_w | fmap_h << 16 | pad_l << 32 | \
+            pad_r << 40 | pad_t << 48 | pad_b << 56
         tvm_ir.emit(
             tvm.call_extern(orig_x.dtype, "set_fmatrix",
                             tvm.const(config, dtype=FMATRIX_DTYPE)))
@@ -649,11 +658,11 @@ def max_pool_grad_grad_ir_builder(ins,
 
     def _get_first_lefttop(howo_o, howo_i, actual_pad_top_value,
                            actual_pad_left_value):
-        howo_offset = (howo_o*tiling_ub_howo_i + howo_i)*fmap_c0
+        howo_offset = (howo_o * tiling_ub_howo_i + howo_i) * fmap_c0
         first_ho = howo_offset // out_w
-        first_wo = howo_offset - out_w*first_ho
-        first_w = first_wo*stride_w - actual_pad_left_value
-        first_h = first_ho*stride_h - actual_pad_top_value
+        first_wo = howo_offset - out_w * first_ho
+        first_w = first_wo * stride_w - actual_pad_left_value
+        first_h = first_ho * stride_h - actual_pad_top_value
         return first_w, first_h
 
     def _img_to_col_horizontal(l1_buffer, ub_buffer, actual_tiling_ub_howo_i,
@@ -662,18 +671,19 @@ def max_pool_grad_grad_ir_builder(ins,
         conv_format_shape = (kernel_h, kernel_w, fmap_c0, fmap_c0)
         csize_call = tvm.call_pure_intrin("int32", "tvm_cce_string_print",
                                           'CSIZE0')
-        first_w, first_h = _get_first_lefttop(
-            howo_o, howo_i, actual_pad_top_value, actual_pad_left_value)
+        first_w, first_h = _get_first_lefttop(howo_o, howo_i,
+                                              actual_pad_top_value,
+                                              actual_pad_left_value)
 
         def _load3d(ub_buffer):
-            cnt = (
-                kernel_w*kernel_h + LOAD3D_MAX_REPEAT - 1) // LOAD3D_MAX_REPEAT
-            with tvm_ir.for_range(
-                    0, cnt - 1, name="l_i", dtype=SCALAR_DTYPE) as l_i:
-                cur_khkw = l_i*LOAD3D_MAX_REPEAT
-                offset = cur_khkw*BLOCK_SIZE*BLOCK_SIZE
+            cnt = (kernel_w * kernel_h + LOAD3D_MAX_REPEAT -
+                   1) // LOAD3D_MAX_REPEAT
+            with tvm_ir.for_range(0, cnt - 1, name="l_i",
+                                  dtype=SCALAR_DTYPE) as l_i:
+                cur_khkw = l_i * LOAD3D_MAX_REPEAT
+                offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
                 first_kh = cur_khkw // kernel_w
-                first_kw = cur_khkw - first_kh*kernel_w
+                first_kw = cur_khkw - first_kh * kernel_w
                 tvm_ir.emit(
                     tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub",
                                     ub_buffer.access_ptr("w", offset=offset),
@@ -681,11 +691,11 @@ def max_pool_grad_grad_ir_builder(ins,
                                     first_kh, first_w, first_h, 0, stride_w,
                                     stride_h, kernel_w, kernel_h, 1, 1, 1, 0,
                                     LOAD3D_MAX_REPEAT, csize_call))
-            cur_khkw = (cnt - 1)*LOAD3D_MAX_REPEAT
-            offset = cur_khkw*BLOCK_SIZE*BLOCK_SIZE
+            cur_khkw = (cnt - 1) * LOAD3D_MAX_REPEAT
+            offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
             first_kh = cur_khkw // kernel_w
-            first_kw = cur_khkw - first_kh*kernel_w
-            last_repeat = kernel_w*kernel_h - cur_khkw
+            first_kw = cur_khkw - first_kh * kernel_w
+            last_repeat = kernel_w * kernel_h - cur_khkw
             tvm_ir.emit(
                 tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub",
                                 ub_buffer.access_ptr("w", offset=offset),
@@ -697,21 +707,25 @@ def max_pool_grad_grad_ir_builder(ins,
         if actual_tiling_ub_howo_i == 1:
             _load3d(ub_buffer)
         else:
-            conv_format = _new_alloc(
-                tvm_ir, ub_buffer.dtype, conv_format_shape, "conv_format",
-                tbe_platform.scope_ubuf, ub_tiling["buffer"])
+            conv_format = _new_alloc(tvm_ir, ub_buffer.dtype,
+                                     conv_format_shape, "conv_format",
+                                     tbe_platform.scope_ubuf,
+                                     ub_tiling["buffer"])
             _load3d(conv_format)
-            ub_offset = howo_i*fmap_c0*fmap_c0
-            for i in range(fmap_c0*fmap_c0 // VECTOR_INST_BLOCK_SIZE):
+            ub_offset = howo_i * fmap_c0 * fmap_c0
+            for i in range(fmap_c0 * fmap_c0 // VECTOR_INST_BLOCK_SIZE):
                 tvm_ir.emit(
                     tvm.call_extern(
                         ub_buffer.dtype, "vadds",
-                        ub_buffer.access_ptr(
-                            "w", offset=ub_offset + i*VECTOR_INST_BLOCK_SIZE),
-                        conv_format.access_ptr(
-                            "r", offset=i*VECTOR_INST_BLOCK_SIZE),
-                        tvm.const(0.0, ub_buffer.dtype), kernel_h*kernel_w, 1,
-                        1, BLOCK_SIZE*actual_tiling_ub_howo_i, BLOCK_SIZE))
+                        ub_buffer.access_ptr("w",
+                                             offset=ub_offset +
+                                             i * VECTOR_INST_BLOCK_SIZE),
+                        conv_format.access_ptr("r",
+                                               offset=i *
+                                               VECTOR_INST_BLOCK_SIZE),
+                        tvm.const(0.0,
+                                  ub_buffer.dtype), kernel_h * kernel_w, 1, 1,
+                        BLOCK_SIZE * actual_tiling_ub_howo_i, BLOCK_SIZE))
 
     #pylint: disable=invalid-name
     def _img_to_col_vertical(l1_buffer,
@@ -725,8 +739,8 @@ def max_pool_grad_grad_ir_builder(ins,
                              is_ub_offset=False):
         csize_call = tvm.call_pure_intrin("float16", "tvm_cce_string_print",
                                           'CSIZE0')
-        ub_offset = 0 if not is_ub_offset else actual_tiling_ub_howo_i*fmap_c0*\
-                                               fmap_c0*(kh*kernel_w + kw)
+        ub_offset = 0 if not is_ub_offset else \
+            actual_tiling_ub_howo_i * fmap_c0 * fmap_c0 * (kh * kernel_w + kw)
         first_w, first_h = _get_first_lefttop(howo_o, 0, actual_pad_top_value,
                                               actual_pad_left_value)
         tvm_ir.emit(
@@ -738,18 +752,19 @@ def max_pool_grad_grad_ir_builder(ins,
 
     def _orig_x_to_col(orig_x_l1, actual_tiling_ub_howo_i,
                        actual_pad_top_value, actual_pad_left_value, howo_o):
-        orig_x_col_shape = (tiling_ub_howo_i, kernel_h*kernel_w, fmap_c0,
+        orig_x_col_shape = (tiling_ub_howo_i, kernel_h * kernel_w, fmap_c0,
                             fmap_c0)
         orig_x_ub = _new_alloc(tvm_ir, orig_x_l1.dtype, orig_x_col_shape,
                                "orig_x_ub", tbe_platform.scope_ubuf,
                                ub_tiling["buffer"])
-        if actual_tiling_ub_howo_i < kernel_h*kernel_w:
+        if actual_tiling_ub_howo_i < kernel_h * kernel_w:
             _set_padding_value(FP16_MIN_VALUE)
-            with tvm_ir.for_range(
-                    0, actual_tiling_ub_howo_i, name="howo_i") as howo_i:
-                _img_to_col_horizontal(
-                    orig_x_l1, orig_x_ub, actual_tiling_ub_howo_i, howo_o,
-                    howo_i, actual_pad_top_value, actual_pad_left_value)
+            with tvm_ir.for_range(0, actual_tiling_ub_howo_i,
+                                  name="howo_i") as howo_i:
+                _img_to_col_horizontal(orig_x_l1, orig_x_ub,
+                                       actual_tiling_ub_howo_i, howo_o, howo_i,
+                                       actual_pad_top_value,
+                                       actual_pad_left_value)
         else:
             _set_padding_value(FP16_MIN_VALUE)
             with tvm_ir.for_range(0, kernel_h, name="kh") as kh:
@@ -787,43 +802,106 @@ def max_pool_grad_grad_ir_builder(ins,
         grads_sel_ub = _new_alloc(tvm_ir, grads_ub.dtype, img_shape,
                                   "grads_sel_ub", tbe_platform.scope_ubuf,
                                   ub_tiling["buffer"])
-        # vsel
-        with tvm_ir.for_range(0, tiling_ub_howo_i, name="mask_r") as mask_r:
-            fractal_repeat = fmap_c0*fmap_c0 // VECTOR_INST_BLOCK_SIZE
-            with tvm_ir.for_range(
-                    0, fractal_repeat, name="fractal_r") as fractal_r:
-                mask_type_bit_size = tbe_platform.cce_intrin.get_bit_len(
-                    MASK_DTYPE.lower())
-                mask_offset = (mask_r*fractal_repeat + fractal_r)*\
-                              VECTOR_INST_BLOCK_SIZE // mask_type_bit_size
+        # v200 support vsel repeat
+        if tbe_platform.cce_conf.get_soc_spec(
+                tbe_platform.cce_conf.SOC_VERSION) in ("Ascend910",
+                                                       "Ascend310"):
+            # case v100
+            with tvm_ir.for_range(0, tiling_ub_howo_i,
+                                  name="mask_r") as mask_r:
+                fractal_repeat = fmap_c0 * fmap_c0 // VECTOR_INST_BLOCK_SIZE
+                with tvm_ir.for_range(0, fractal_repeat,
+                                      name="fractal_r") as fractal_r:
+                    mask_type_bit_size = tbe_platform.cce_intrin.get_bit_len(
+                        MASK_DTYPE.lower())
+                    mask_offset = (
+                        mask_r * fractal_repeat + fractal_r
+                    ) * VECTOR_INST_BLOCK_SIZE // mask_type_bit_size
+                    tvm_ir.emit(
+                        tvm.call_extern(
+                            grads_ub.dtype, "set_cmpmask",
+                            mask_ub.access_ptr("w", offset=mask_offset)))
+                    grads_ub_offset = ((mask_r) * fractal_repeat +
+                                       fractal_r) * VECTOR_INST_BLOCK_SIZE
+                    grads_sel_ub_offset = (mask_r * fractal_repeat +
+                                           fractal_r) * VECTOR_INST_BLOCK_SIZE
+                    tvm_ir.emit(
+                        tvm.call_extern(
+                            grads.dtype, "vsel",
+                            grads_sel_ub.access_ptr(
+                                "w", offset=grads_sel_ub_offset),
+                            grads_ub.access_ptr("r", offset=grads_ub_offset),
+                            const_0_ub.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
+        else:  # case v200
+            grads_ub_shape = [i.value for i in grads_sel_ub.shape]
+            grads_ele = 1
+            for i in grads_ub_shape:
+                grads_ele *= i
+            grads_ub_tiling = grads_ele // (VSEL_MAX_SUPPORT_REPEAT *
+                                            VECTOR_INST_BLOCK_SIZE)
+            mask_type_bit_size = tbe_platform.cce_intrin.get_bit_len(
+                MASK_DTYPE.lower())
+            for i in range(grads_ub_tiling):
+                data_offset = i * VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE
                 tvm_ir.emit(
-                    tvm.call_extern(
-                        grads_ub.dtype, "set_cmpmask",
-                        mask_ub.access_ptr("w", offset=mask_offset)))
-                grads_ub_offset = (
-                    (mask_r)*fractal_repeat + fractal_r)*VECTOR_INST_BLOCK_SIZE
-                grads_sel_ub_offset = (
-                    mask_r*fractal_repeat + fractal_r)*VECTOR_INST_BLOCK_SIZE
+                    tvm.call_extern(grads_ub.dtype, "set_cmpmask",
+                                    const_0_ub.access_ptr("r")))
+                # VSEL case mode 0 does not work when repeat value is not 1
+                # There use case mode 1. Xt[49:48]=01(b)
+                # Xt[63:56] is the repeat time. In this case repeat time is 255
+                # The meaning of all bits in Xt are as follow:
+                # Xt[7:0]:dstBlockStride        here is 1
+                # Xt[15:8]:src0BlockStride      here is 1
+                # Xt[23:16]:src1BlockStride     here is 1
+                # Xt[31:24]:dstRepeatStride     here is 8
+                # Xt[39:32]:src0RepeatStride    here is 8
+                # Xt[47:40]:src1RepeatStride    here is 0
+                # Xt[49:48]:caseModel           here is 1
+                # Xt[53:50]:unKnown             here is 0
+                # Xt[54]:repeatStrideMode       here is 0
+                # Xt[55]:strideSizeMode         here is 0
+                # Xt[63:56] is the repeat time. here is 255
+                Xt = 0x0001000808010101 | (VSEL_MAX_SUPPORT_REPEAT << 56)
                 tvm_ir.emit(
                     tvm.call_extern(
                         grads.dtype, "vsel",
-                        grads_sel_ub.access_ptr(
-                            "w", offset=grads_sel_ub_offset),
-                        grads_ub.access_ptr("r", offset=grads_ub_offset),
-                        const_0_ub.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
+                        grads_sel_ub.access_ptr("w", offset=data_offset),
+                        grads_ub.access_ptr("r", offset=data_offset),
+                        mask_ub.access_ptr("r",
+                                           offset=data_offset //
+                                           mask_type_bit_size), Xt))
+            if grads_ele % (VSEL_MAX_SUPPORT_REPEAT *
+                            VECTOR_INST_BLOCK_SIZE) is not 0:
+                # Tile
+                tile_offset = grads_ub_tiling * VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE
+                tvm_ir.emit(
+                    tvm.call_extern(grads_ub.dtype, "set_cmpmask",
+                                    const_0_ub.access_ptr("r")))
+                repeat = math.ceil(
+                    grads_ele %
+                    (VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE) //
+                    VECTOR_INST_BLOCK_SIZE)
+                Xt = 0x0001000808010101 | (repeat << 56)
+                tvm_ir.emit(
+                    tvm.call_extern(
+                        grads.dtype, "vsel",
+                        grads_sel_ub.access_ptr("w", offset=tile_offset),
+                        grads_ub.access_ptr("r", offset=tile_offset),
+                        mask_ub.access_ptr("r",
+                                           offset=tile_offset //
+                                           mask_type_bit_size), Xt))
         return grads_sel_ub
 
     def _sel_grads(grads_l1, orig_x_ub, orig_y_ub, actual_tiling_ub_howo_i,
                    actual_pad_top_value, actual_pad_left_value, howo_o):
         # shapes in ub are (howo, c0, c0) and (khkw, howo, c0, c0)
-        mask_shape = (_ceil_to(tiling_ub_howo_i, VECTOR_INST_BLOCK_NUM),
-                      fmap_c0)
-        mask_repeat = actual_tiling_ub_howo_i*fmap_c0*fmap_c0 //\
-                      VECTOR_INST_BLOCK_SIZE
-        b16_repeat = (actual_tiling_ub_howo_i*fmap_c0 + VECTOR_INST_BLOCK_SIZE
-                      - 1) // VECTOR_INST_BLOCK_SIZE
+        mask_shape = (_ceil_to(tiling_ub_howo_i,
+                               VECTOR_INST_BLOCK_NUM), fmap_c0)
+        mask_repeat = actual_tiling_ub_howo_i * fmap_c0 * fmap_c0 // VECTOR_INST_BLOCK_SIZE
+        b16_repeat = (actual_tiling_ub_howo_i * fmap_c0 +
+                      VECTOR_INST_BLOCK_SIZE - 1) // VECTOR_INST_BLOCK_SIZE
         _set_padding_value(0)
-        if kernel_h*kernel_w == 1:
+        if kernel_h * kernel_w == 1:
             # mask_ub = mask_ori
             grads_ub = _img_to_col_grads(grads_l1, howo_o, 0, 0,
                                          actual_pad_top_value,
@@ -857,7 +935,8 @@ def max_pool_grad_grad_ir_builder(ins,
                                          "mask_ub", tbe_platform.scope_ubuf,
                                          ub_tiling["buffer"])
                     orig_x_ub_offset = (
-                        kh*kernel_w + kw)*tiling_ub_howo_i*fmap_c0*fmap_c0
+                        kh * kernel_w +
+                        kw) * tiling_ub_howo_i * fmap_c0 * fmap_c0
                     # orig_x_ub_offset = 0
                     with tvm_ir.if_scope(tvm.all(kh == 0, kw == 0)):
                         # mask_ori = vcmpv(orig_x, orig_y)
@@ -869,16 +948,16 @@ def max_pool_grad_grad_ir_builder(ins,
                             tvm.call_extern(
                                 CMPV_DTYPE, "vcmpv_eq",
                                 mask_ub_cmp.access_ptr("w"),
-                                orig_x_ub.access_ptr(
-                                    "r", offset=orig_x_ub_offset),
+                                orig_x_ub.access_ptr("r",
+                                                     offset=orig_x_ub_offset),
                                 orig_y_ub.access_ptr("r"), mask_repeat, 1, 1,
                                 1, 8, 8, 8))
 
                         tvm_ir.emit(
                             tvm.call_extern(mask_ub.dtype, "copy_ubuf_to_ubuf",
                                             mask_or.access_ptr("w"),
-                                            mask_ub.access_ptr("r"),
-                                            0, 1, b16_repeat * 8, 0, 0))
+                                            mask_ub.access_ptr("r"), 0, 1,
+                                            b16_repeat * 8, 0, 0))
                         tvm_ir.emit(
                             tvm.call_extern(mask_ub.dtype, "vnot",
                                             mask_not.access_ptr("w"),
@@ -896,8 +975,8 @@ def max_pool_grad_grad_ir_builder(ins,
                             tvm.call_extern(
                                 CMPV_DTYPE, "vcmpv_eq",
                                 mask_orig_cmp.access_ptr("w"),
-                                orig_x_ub.access_ptr(
-                                    "r", offset=orig_x_ub_offset),
+                                orig_x_ub.access_ptr("r",
+                                                     offset=orig_x_ub_offset),
                                 orig_y_ub.access_ptr("r"), mask_repeat, 1, 1,
                                 1, 8, 8, 8))
                         tvm_ir.emit(
@@ -942,19 +1021,20 @@ def max_pool_grad_grad_ir_builder(ins,
     def _calculation(actual_tiling_l1_ho_i, actual_tiling_l1_wo_i, ho_o, wo_o,
                      actual_pad_top_value, actual_pad_left_value):
         tiling_ub_howo_o = (
-            (actual_tiling_l1_ho_i*out_w + actual_tiling_l1_wo_i + fmap_c0 - 1)
-            // fmap_c0 + tiling_ub_howo_i - 1) // tiling_ub_howo_i
+            (actual_tiling_l1_ho_i * out_w + actual_tiling_l1_wo_i + fmap_c0 -
+             1) // fmap_c0 + tiling_ub_howo_i - 1) // tiling_ub_howo_i
         orig_x_l1, grads_l1 = _img_to_cubf(ho_o, wo_o, actual_pad_top_value,
                                            actual_pad_left_value)
-        l1_howo_pad = (actual_tiling_l1_ho_i*out_w + actual_tiling_l1_wo_i +
+        l1_howo_pad = (actual_tiling_l1_ho_i * out_w + actual_tiling_l1_wo_i +
                        fmap_c0 - 1) // fmap_c0
         actual_tiling_ub_howo_o = tiling_ub_howo_o
         if l1_howo_pad % tiling_ub_howo_i != 0:
             actual_tiling_ub_howo_o -= 1
 
-        with tvm_ir.for_range(
-                0, actual_tiling_ub_howo_o, name="howo_o",
-                dtype=SCALAR_DTYPE) as howo_o:
+        with tvm_ir.for_range(0,
+                              actual_tiling_ub_howo_o,
+                              name="howo_o",
+                              dtype=SCALAR_DTYPE) as howo_o:
             orig_y_ub = _mov_orig_y(actual_tiling_l1_wo_i, ho_o, wo_o, howo_o)
             orig_x_ub = _orig_x_to_col(orig_x_l1, tiling_ub_howo_i,
                                        actual_pad_top_value,
@@ -980,29 +1060,29 @@ def max_pool_grad_grad_ir_builder(ins,
     def _calculation_in_each_block():
         cut_w_flag = True if l1_tiling["type"] == L1TilingType.CUT_W else False
         if cut_w_flag:
-            cur_pad_top = tvm_ir.allocate(
-                FMATRIX_DTYPE, (1),
-                name='pad_top',
-                scope=tbe_platform.scope_reg)
+            cur_pad_top = tvm_ir.allocate(FMATRIX_DTYPE, (1),
+                                          name='pad_top',
+                                          scope=tbe_platform.scope_reg)
             cur_pad_top[0] = tvm.const(pad_t, FMATRIX_DTYPE)
             actual_pad_top_value, actual_pad_left_value = cur_pad_top[0], pad_l
-            with tvm_ir.for_range(
-                    0, out_h, name="ho_o", dtype=SCALAR_DTYPE) as ho_o:
+            with tvm_ir.for_range(0, out_h, name="ho_o",
+                                  dtype=SCALAR_DTYPE) as ho_o:
                 tiling_l1_wo_o = (out_w + tiling_l1_wo_i - 1) // tiling_l1_wo_i
                 actual_tiling_l1_wo_o = tiling_l1_wo_o
                 actual_tiling_l1_wo_i = tiling_l1_wo_i
                 if out_w % tiling_l1_wo_i != 0:
                     actual_tiling_l1_wo_o -= 1
-                with tvm_ir.for_range(
-                        0, actual_tiling_l1_wo_o, name="wo_o",
-                        dtype=SCALAR_DTYPE) as wo_o:
+                with tvm_ir.for_range(0,
+                                      actual_tiling_l1_wo_o,
+                                      name="wo_o",
+                                      dtype=SCALAR_DTYPE) as wo_o:
                     _calculation(0, actual_tiling_l1_wo_i, ho_o, wo_o,
                                  actual_pad_top_value, actual_pad_left_value)
                     if actual_tiling_l1_wo_o > 1:
                         actual_pad_left_value = 0
                 if actual_tiling_l1_wo_o != tiling_l1_wo_o:
                     wo_o = actual_tiling_l1_wo_o
-                    actual_tiling_l1_wo_i = out_w - wo_o*tiling_l1_wo_i
+                    actual_tiling_l1_wo_i = out_w - wo_o * tiling_l1_wo_i
                     actual_pad_left_value = 0
                     _calculation(0, actual_tiling_l1_wo_i, ho_o, wo_o,
                                  actual_pad_top_value, actual_pad_left_value)
@@ -1018,20 +1098,21 @@ def max_pool_grad_grad_ir_builder(ins,
                 actual_tiling_l1_ho_o -= 1
             actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(
                 l1_hi, pad_t, pad_b, pad_l, pad_r)
-            with tvm_ir.for_range(
-                    0, actual_tiling_l1_ho_o, name="ho_o",
-                    dtype=SCALAR_DTYPE) as ho_o:
+            with tvm_ir.for_range(0,
+                                  actual_tiling_l1_ho_o,
+                                  name="ho_o",
+                                  dtype=SCALAR_DTYPE) as ho_o:
                 _calculation(actual_tiling_l1_ho_i, 0, ho_o, None,
                              actual_pad_top_value, actual_pad_left_value)
                 if actual_tiling_l1_ho_o > 1:
-                    actual_pad_top_value, actual_pad_left_value = \
-                        _set_const_fmatrix(l1_hi, 0, 0, pad_l, pad_r)
+                    actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(
+                        l1_hi, 0, 0, pad_l, pad_r)
             if actual_tiling_l1_ho_o != tiling_l1_ho_o:
                 ho_o = actual_tiling_l1_ho_o
-                actual_tiling_l1_ho_i = out_h - ho_o*tiling_l1_ho_i
-                last_hi = fmap_h + pad_t - ho_o*tiling_l1_ho_i*stride_h
-                actual_pad_top_value, actual_pad_left_value = \
-                    _set_const_fmatrix(last_hi, 0, pad_b, pad_l, pad_r)
+                actual_tiling_l1_ho_i = out_h - ho_o * tiling_l1_ho_i
+                last_hi = fmap_h + pad_t - ho_o * tiling_l1_ho_i * stride_h
+                actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(
+                    last_hi, 0, pad_b, pad_l, pad_r)
                 _calculation(actual_tiling_l1_ho_i, 0, ho_o, None,
                              actual_pad_top_value, actual_pad_left_value)
 
@@ -1040,27 +1121,26 @@ def max_pool_grad_grad_ir_builder(ins,
 
     const_0_ub = _dup_const_0()
     if block_tiling["type"] == BlockTilingType.DIVISIBLE:
-        with tvm_ir.for_range(
-                0, block_tiling["shape"]["n"], name="n_i",
-                dtype=SCALAR_DTYPE) as n_i:  # tiling for batch
-            with tvm_ir.for_range(
-                    0,
-                    block_tiling["shape"]["c1"],
-                    name="c1_i",
-                    dtype=SCALAR_DTYPE) as c1_i:  # tiling for c1
+        with tvm_ir.for_range(0,
+                              block_tiling["shape"]["n"],
+                              name="n_i",
+                              dtype=SCALAR_DTYPE) as n_i:  # tiling for batch
+            with tvm_ir.for_range(0,
+                                  block_tiling["shape"]["c1"],
+                                  name="c1_i",
+                                  dtype=SCALAR_DTYPE) as c1_i:  # tiling for c1
                 n_o = block_index // (fmap_c1 // block_tiling["shape"]["c1"])
-                n = n_o*block_tiling["shape"]["n"] + n_i
-                c1_o = block_index - n_o*(
-                    fmap_c1 // block_tiling["shape"]["c1"])
-                c1 = c1_o*block_tiling["shape"]["c1"] + c1_i
+                n = n_o * block_tiling["shape"]["n"] + n_i
+                c1_o = block_index - n_o * (fmap_c1 //
+                                            block_tiling["shape"]["c1"])
+                c1 = c1_o * block_tiling["shape"]["c1"] + c1_i
                 _calculation_in_each_block()
     else:
-        with tvm_ir.for_range(
-                0,
-                block_tiling["fuse_factor"],
-                name="fuse_factor",
-                dtype=SCALAR_DTYPE) as fuse_factor:
-            nc1 = block_index*block_tiling["fuse_factor"] + fuse_factor
+        with tvm_ir.for_range(0,
+                              block_tiling["fuse_factor"],
+                              name="fuse_factor",
+                              dtype=SCALAR_DTYPE) as fuse_factor:
+            nc1 = block_index * block_tiling["fuse_factor"] + fuse_factor
             with tvm_ir.if_scope(nc1 < block_tiling["fuse"]):
                 n = nc1 // fmap_c1
                 c1 = nc1 % fmap_c1
@@ -1069,8 +1149,12 @@ def max_pool_grad_grad_ir_builder(ins,
     return tvm_ir.get()
 
 
-@util.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple),
-                       str, str, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_STR, op_utils.OPTION_ATTR_STR,
+                          op_utils.KERNEL_NAME)
 def max_pool_grad_grad(orig_x_dict,
                        orig_y_dict,
                        grads_dict,
@@ -1139,30 +1223,32 @@ def max_pool_grad_grad(orig_x_dict,
         raise RuntimeError("The shape of strides must be (4,),"
                            " N-dim and C-dim must be 1.")
 
-    util.check_kernel_name(kernel_name)
-
     shape_in = orig_x_dict.get('shape')
-    util.check_shape_rule(shape_in, SHAPE_DIM_SIZE, SHAPE_DIM_SIZE,
-                          SHAPE_SIZE_LIMIT)
-    shape_out = output_dict.get('shape')
-    util.check_shape_rule(shape_out, SHAPE_DIM_SIZE, SHAPE_DIM_SIZE,
-                          SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(shape_in,
+                         min_rank=SHAPE_DIM_SIZE,
+                         max_rank=SHAPE_DIM_SIZE,
+                         param_name="orig_x_dict")
 
-    if strides[h_pos] > 63 or strides[h_pos] < 1 or \
-            strides[w_pos] > 63 or strides[w_pos] < 1:
+    shape_out = output_dict.get('shape')
+    op_utils.check_shape(shape_out,
+                         min_rank=SHAPE_DIM_SIZE,
+                         max_rank=SHAPE_DIM_SIZE,
+                         param_name="output_dict")
+
+    if strides[h_pos] > 63 or strides[h_pos] < 1 or strides[
+            w_pos] > 63 or strides[w_pos] < 1:
         raise RuntimeError("Invalid strides params, "
                            "stride size must be [1, 63].")
-    if ksize[h_pos] > 255 or ksize[h_pos] < 1 or \
-            ksize[w_pos] > 255 or ksize[w_pos] < 1:
+    if ksize[h_pos] > 255 or ksize[h_pos] < 1 or ksize[w_pos] > 255 or ksize[
+            w_pos] < 1:
         raise RuntimeError("Invalid ksize params, "
                            "ksize size must be [1, 255].")
 
     out_n, out_c1, out_ho, out_wo, out_c0 = shape_out
-    howo_pad = ((out_ho*out_wo + out_c0 - 1) // out_c0)*out_c0
-    shape_load3d = (out_n, howo_pad, out_c1, ksize[h_pos]*ksize[n_pos], out_c0)
-    util.check_shape_size(shape_load3d, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_in, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_out, SHAPE_SIZE_LIMIT)
+    howo_pad = ((out_ho * out_wo + out_c0 - 1) // out_c0) * out_c0
+    shape_load3d = (out_n, howo_pad, out_c1, ksize[h_pos] * ksize[n_pos],
+                    out_c0)
+    op_utils.check_shape(shape_load3d)
 
     in_dtype = orig_x_dict.get('dtype').lower()
     orig_x = tvm.placeholder(shape_in, dtype=in_dtype, name='orig_x')
@@ -1170,8 +1256,8 @@ def max_pool_grad_grad(orig_x_dict,
     orig_y = tvm.placeholder(shape_out, dtype=in_dtype, name='orig_y')
 
     ir_fun = lambda ins, outs: max_pool_grad_grad_ir_builder(
-        ins, outs, (ksize[h_pos], ksize[w_pos]), (strides[h_pos], strides[
-            w_pos]), padding, kernel_name)
+        ins, outs, (ksize[h_pos], ksize[w_pos]),
+        (strides[h_pos], strides[w_pos]), padding, kernel_name)
     res = tvm.extern([shape_in, shape_out, shape_in], [orig_x, orig_y, grads],
                      ir_fun,
                      name="res",

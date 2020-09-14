@@ -18,18 +18,15 @@ pooling3d compute
 
 import math
 from te import tvm
-from te.platform.cce_conf import CceProductParams
+from te.platform.cce_conf import get_soc_spec
 
 POOL3D_TAG = "pooling3d_"
-SIZE_OF_FP16 = 2
-BLOCK_SIZE = 16
 CAFFE_DATA_MODE = 0
 TENSORFLOW_DATA_MODE = 1
-C0_DIMENSION_DATA_SIZE = 32
 
 MIN_VAL_MAP = {"float16": -65504.0, "float32": 3.4e-38, "double": 1.7e-308}
 SIZEOF_DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
-
+C0_DIMENSION_DATA_SIZE_MAP = {"float16": 32, "float32": 64, "double": 128}
 
 # 'pylint: disable=too-many-locals, too-many-arguments, invalid-name
 # 'pylint: disable=unused-argument,too-many-statements, cell-var-from-loop
@@ -138,7 +135,7 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
     pooling_params["stride_h"] = s_h
     pooling_params["stride_w"] = s_w
     pooling_params["size_of_data"] = SIZEOF_DTYPE_MAP[tensor_in.dtype]
-
+    pooling_params["dtype"] = tensor_in.dtype
     # copy ub to gm
     res = tvm.compute(
         shape,
@@ -154,6 +151,13 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
 
 def _reduce_w(n, c1, d_p, h_p, o_w, c0, s_w, k_w, tx_ub_c):
     shape = (n, c1, d_p, h_p, o_w, c0)
+
+    if k_w == 1:
+        tx_rw = tvm.compute(shape,
+                            lambda *i: tx_ub_c[i[0], i[1], i[2], i[3], i[4] * s_w, i[5]],
+                            name="tx_rw1", tag="reduce_max")
+        return tx_rw
+
     tx_rw1 = tvm.compute(
         shape,
         lambda *i: tvm.max(tx_ub_c[i[0], i[1], i[2], i[3], i[4] * s_w, i[5]],
@@ -175,6 +179,13 @@ def _reduce_w(n, c1, d_p, h_p, o_w, c0, s_w, k_w, tx_ub_c):
 
 def _reduce_h(n, c1, d_p, o_h, o_w, c0, s_h, k_h, tx_rw):
     shape = (n, c1, d_p, o_h, o_w, c0)
+
+    if k_h == 1:
+        tx_rh = tvm.compute(shape,
+                            lambda *i: tx_rw[i[0], i[1], i[2], i[3] * s_h, i[4], i[5]],
+                            name="tx_rh1", tag="reduce_max")
+        return tx_rh
+
     tx_rh1 = tvm.compute(
         shape,
         lambda *i: tvm.max(tx_rw[i[0], i[1], i[2], i[3] * s_h, i[4], i[5]],
@@ -197,6 +208,13 @@ def _reduce_h(n, c1, d_p, o_h, o_w, c0, s_h, k_h, tx_rw):
 
 def _reduce_d(n, c1, o_d, o_h, o_w, c0, s_d, k_d, tx_rh):
     shape = (n, c1, o_d, o_h, o_w, c0)
+
+    if k_d == 1:
+        tx_rd = tvm.compute(shape,
+                            lambda *i: tx_rh[i[0], i[1], i[2] * s_d, i[3], i[4], i[5]],
+                            name="tx_rd1", tag="reduce_max")
+        return tx_rd
+
     tx_rd1 = tvm.compute(
         shape,
         lambda *i: tvm.max(tx_rh[i[0], i[1], i[2] * s_d, i[3], i[4], i[5]],
@@ -288,21 +306,22 @@ def _get_tensorflow_out_and_pad(padding_mode, in_size_d, in_size_h, in_size_w,
            pad_bottom, pad_left, pad_right
 
 
-def _check_ub_tiling(window_d, window_h, window_w, pooling_mode):
+def _check_ub_tiling(window_d, window_h, window_w, pooling_mode, dtype):
     if pooling_mode == "MAX":
         data_size = _get_ub_least_data_size_for_max(window_d, window_h, window_w)
     else:
         raise RuntimeError("Not suport pooling_mode yet.")
 
-    if data_size > CceProductParams().getParams("Unified_Buffer"):
+    if data_size > get_soc_spec("UB_SIZE"):
         raise RuntimeError("Window size greater than UB.")
 
 
-def _get_ub_least_data_size_for_max(window_d, window_h, window_w):
-    fmap_size = window_d * window_h * window_w * C0_DIMENSION_DATA_SIZE
-    reduce_intermediate_data = (window_d * window_h * C0_DIMENSION_DATA_SIZE) + \
-                               (window_d * C0_DIMENSION_DATA_SIZE)
-    res_size = C0_DIMENSION_DATA_SIZE
+def _get_ub_least_data_size_for_max(window_d, window_h, window_w, dtype):
+    c0_size = C0_DIMENSION_DATA_SIZE_MAP[dtype]
+    fmap_size = window_d * window_h * window_w * c0_size
+    reduce_intermediate_data = (window_d * window_h * c0_size) + \
+                               (window_d * c0_size)
+    res_size = c0_size
     data_size = fmap_size + reduce_intermediate_data + res_size
 
     return data_size

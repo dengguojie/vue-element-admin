@@ -18,6 +18,7 @@ sparse_apply_proximal_adagrad
 # pylint: disable=import-error
 from te import tik
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # max elememts can be put into ub, foor loop will be used for larger shape
@@ -30,6 +31,9 @@ HARD_CORE_NUM = 32
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,unused-argument,invalid-name
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
                                     grad, indices, var_out,
                                     accum_out,
@@ -102,11 +106,11 @@ def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
     l2_dtype = l2.get("dtype").lower()
     grad_dtype = grad.get("dtype").lower()
     check_list = ("float32")
-    util.check_dtype_rule(accum_dtype, check_list)
-    util.check_dtype_rule(lr_dtype, check_list)
-    util.check_dtype_rule(l1_dtype, check_list)
-    util.check_dtype_rule(l2_dtype, check_list)
-    util.check_dtype_rule(grad_dtype, check_list)
+    check_dtype(accum_dtype, check_list, param_name="accum")
+    check_dtype(lr_dtype, check_list, param_name="lr")
+    check_dtype(l1_dtype, check_list, param_name="l1")
+    check_dtype(l2_dtype, check_list, param_name="l2")
+    check_dtype(grad_dtype, check_list, param_name="grad")
     _param_check(var_shape, var_dtype, idx_shape, idx_dtype, kernel_name)
 
     grad_shape = (idx_shape[0], ) + var_shape[1:]
@@ -120,16 +124,15 @@ def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
 
 
 def _param_check(var_shape, var_dtype, idx_shape, idx_dtype, kernel_name):
-    util.check_shape_rule(var_shape, min_dim=1, max_dim=8)
-    util.check_shape_rule(idx_shape, min_dim=1, max_dim=1)
+    check_shape(var_shape, min_rank=1, max_rank=8, param_name="var")
+    check_shape(idx_shape, min_rank=1, max_rank=1, param_name="indices")
 
     var_dtype_list = ("float16", "float32")
-    util.check_dtype_rule(var_dtype.lower(), var_dtype_list)
+    check_dtype(var_dtype.lower(), var_dtype_list, param_name="var")
 
     index_dtype_list = ("int32", "uint32", "int16", "uint16", "int64", "uint64")
-    util.check_dtype_rule(idx_dtype.lower(), index_dtype_list)
+    check_dtype(idx_dtype.lower(), index_dtype_list, param_name="indices")
 
-    util.check_kernel_name(kernel_name)
 
 
 class SparseApplyProximalAdagrad:

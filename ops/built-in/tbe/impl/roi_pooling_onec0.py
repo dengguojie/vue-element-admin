@@ -36,6 +36,7 @@ BLOCKNUM = 8
 # pylint: disable=too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,attribute-defined-outside-init
 
+
 def align(value, factor):
     """
     make value align to factor
@@ -109,7 +110,7 @@ class RoiOneC0Class(RoiClass):
                    kernel_name):
         super(RoiOneC0Class, self).init_param(roinum_pooledimg, shapedict_list,
                                               spatial_scale_list, kernel_name)
-        self.res_pad = 0 if((self.pooled_h%8) == 0) else \
+        self.res_pad = 0 if((self.pooled_h % 8) == 0) else \
             (align(self.pooled_h, 8)-self.pooled_h)
         self.fm_w_align = align(self.fm_w, 8)
 
@@ -311,7 +312,7 @@ class RoiOneC0Class(RoiClass):
                                     0,
                                     1,
                                     self.pooled_h*self.proposal_num_per_tiling\
-                                        *4 // 32,
+                                        * 4 // 32,
                                     0,
                                     0)
 
@@ -320,7 +321,7 @@ class RoiOneC0Class(RoiClass):
                                     0,
                                     1,
                                     self.pooled_w*self.proposal_num_per_tiling\
-                                        *4 // 32,
+                                        * 4 // 32,
                                     0,
                                     0)
 
@@ -329,7 +330,7 @@ class RoiOneC0Class(RoiClass):
                                     0,
                                     1,
                                     self.pooled_h*self.proposal_num_per_tiling\
-                                        *4 // 32,
+                                        * 4 // 32,
                                     0,
                                     0)
 
@@ -337,7 +338,7 @@ class RoiOneC0Class(RoiClass):
                                     0,
                                     1,
                                     self.pooled_w*self.proposal_num_per_tiling\
-                                        *4 // 32,
+                                        * 4 // 32,
                                     0,
                                     0)
 
@@ -346,7 +347,7 @@ class RoiOneC0Class(RoiClass):
                                     0,
                                     1,
                                     self.pooled_w*self.proposal_num_per_tiling\
-                                        *4 // 32,
+                                        * 4 // 32,
                                     0,
                                     0)
 
@@ -478,7 +479,8 @@ class RoiOneC0Class(RoiClass):
             "double_buffer_non_reuse": True,
             "out_of_bound_sync_check": True
         }
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS","Hi3796CV300ES"):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in\
+                ("Hi3796CV300CS", "Hi3796CV300ES"):
             if self.roi_actual_num_effect:
                 self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                          inputs=(self.x,
@@ -511,7 +513,7 @@ class RoiOneC0Class(RoiClass):
         None
         """
         self.proposal_num_per_tiling = 128
-        if self.roi_max_num%self.proposal_num_per_tiling == 0:
+        if self.roi_max_num % self.proposal_num_per_tiling == 0:
             self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling
         else:
             self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling\
@@ -793,8 +795,8 @@ class RoiOneC0Class(RoiClass):
                 self.tik_instance.vec_dup(
                     256 // TYPELEN_DICT[self.dtype],
                     self.pooled_res[0, 0, 0], 0,
-                    ((self.pooled_h+self.res_pad)*self.pooled_w)*
-                    self.fm_c0*TYPELEN_DICT[self.dtype] // 256, 8)
+                    ((self.pooled_h + self.res_pad) * self.pooled_w) * 
+                    self.fm_c0 * TYPELEN_DICT[self.dtype] // 256, 8)
                 self.proposal_pooling_h(block_id, inner_proposal_id, \
                         fm_c1_index, roi_start_h, roi_start_w, roi_width, \
                         roi_bin_h)
@@ -839,7 +841,7 @@ class RoiOneC0Class(RoiClass):
                                         (self.fm_w_align-self.fm_w)*coeff)
 
             if self.feature_batch == 1:
-                self.calced_rois.set_as(self.proposal_num_per_tiling*\
+                self.calced_rois.set_as(self.proposal_num_per_tiling * \
                                         tiling_index)
 
             if self.isOneC0PosL1 == 0:

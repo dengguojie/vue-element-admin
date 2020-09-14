@@ -2025,7 +2025,7 @@ class ND2NzCompute:
                 with tik_instance.for_range(0, self.dst_shape[-3]) as num_cube:
                     with tik_instance.for_range(0, CUBE_SIZE) as num_cube_row:
                         with tik_instance.if_scope(num_cube * CUBE_SIZE +
-                                                   num_cube_row >
+                                                   num_cube_row >=
                                                    self.src_shape[-2]):
                             pass
                         with tik_instance.else_scope():
@@ -3387,7 +3387,7 @@ class ND2NzComputeInt8:
         self.cast_num_data = DATA_MOVE_MIN_UNIT // self.cast_num_byte
         util.check_shape_rule(self.dst_shape)
         # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // self.cast_num_byte // 4
+        self.ub_memory = min(TOTAL_UB_MEMORY, 248 * 1024) // self.cast_num_byte // 4
         self.src_gm = None
         self.dst_gm = None
 

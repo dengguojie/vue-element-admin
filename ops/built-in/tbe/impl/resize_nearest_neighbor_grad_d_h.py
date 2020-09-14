@@ -19,6 +19,7 @@ from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
 
+
 def _ceil_div(value, factor):
     """
     caculate floor value of div
@@ -453,7 +454,7 @@ class ResizeNearestGrad():
                                                  128 * k  * repeat],
                                         ub_output[8 * i + 128 * k  +
                                                   one_num * 16 * loop_index],
-                                        reg_repeat1, 2, repeat * 2, 2, 0, 0, 0)
+                                        1, 2, repeat * 2, 2, 0, 0, 0)
                                 if tail1 != 0:
                                     self.tik_instance.vadd(
                                         8 * tail1, ub_output[

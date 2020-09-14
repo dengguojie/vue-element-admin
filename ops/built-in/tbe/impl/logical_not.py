@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument
 @fusion_manager.register("logical_not")
@@ -57,7 +58,7 @@ def logical_not_compute(x, y, kernel_name="logical_not"):
 
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def logical_not(x, y, kernel_name="logical_not"):
     """
     calculating data
@@ -79,10 +80,8 @@ def logical_not(x, y, kernel_name="logical_not"):
     shape_x = x.get("shape")
     dtype_x = x.get("dtype").lower()
 
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
-    util.check_dtype_rule(dtype_x.lower(), ("int8",))
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_x, param_name="x")
+    check_dtype(dtype_x.lower(), ("int8",), param_name="x")
 
     reshape_x = (functools_reduce(lambda x, y: x*y, shape_x[:]),)
     data = tvm.placeholder(reshape_x, name="data", dtype=dtype_x)

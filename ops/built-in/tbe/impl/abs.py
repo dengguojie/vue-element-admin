@@ -81,9 +81,7 @@ def abs(x, y, kernel_name="abs"):
 
     check_list = ["float16", "float32", "int32"]
     inp_dtype = x.get("dtype").lower()
-    if not inp_dtype in check_list:
-        raise RuntimeError(
-            "Dtype of input only support float16, float32, int32")
+    check_dtype(inp_dtype, check_list, param_name="x")
 
     shape = util.shape_refine(shape)
     fuseshape = [1]

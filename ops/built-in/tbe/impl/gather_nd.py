@@ -14,15 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 gather_nd
 """
 from functools import reduce as functools_reduce
+
 from te import platform as tbe_platform
 from te import tvm
 from te.platform import insn_cmd
-from te.platform.cce_build import build_config
-from te.platform.cce_build import build_config_update
-from topi.cce import util
-from te.utils.op_utils import *
+from te.platform.cce_build import build_config, build_config_update
+from te.utils import op_utils
 
-SHAPE_SIZE_LIMIT = 2**30
 
 def _new_alloc(ir_build, dtype, shape, name, scope):
     """decl new buffer
@@ -166,7 +164,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
     if tiling_times > 0:
         with ir_build.for_range(0, tiling_times,
                                 name='indice_row') as indice_row:
-            indice_burst_len = calculate_burst_len_by_dtype(indices, indies_part_num)
+            indice_burst_len = calculate_burst_len_by_dtype(
+                indices, indies_part_num)
             ir_build.emit(
                 tvm.call_extern(
                     indices.dtype, "copy_gm_to_ubuf",
@@ -176,7 +175,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
                     1, indice_burst_len, 0, 0))
 
             burst_length_tiling_last = burst_length % half_ele
-            burst_len_last = calculate_burst_len_by_dtype(data, burst_length_tiling_last)
+            burst_len_last = calculate_burst_len_by_dtype(
+                data, burst_length_tiling_last)
             indices_move_length = jump_step
             ele_num_per_indice_ub = total_ele_per_indice_ub(
                 indies_part_num, jump_step, shape_data, shape_indices)
@@ -201,7 +201,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
                 # 1 means tiling starts
                 if burst_length_tiling.value >= 1:
                     burst_length_tiling_last = burst_length % half_ele
-                    burst_len, burst_len_last = calculate_last_burst_len(data, half_ele, burst_length_tiling_last)
+                    burst_len, burst_len_last = calculate_last_burst_len(
+                        data, half_ele, burst_length_tiling_last)
 
                     # calculate offset to move last 32B number to independent ub space
                     block_length = param_ele_per_block_by_dtype(data)
@@ -270,7 +271,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
                                             block_ub.access_ptr("r"), 0, 1,
                                             1, 0, 0))
                 else:
-                    half_param, half_param_ub_shape = calculate_ele_num_by_dtype(data, burst_len_last)
+                    half_param, half_param_ub_shape = calculate_ele_num_by_dtype(
+                        data, burst_len_last)
                     buf_param_var = ir_build.allocate(
                         data.dtype,
                         half_param_ub_shape,
@@ -311,7 +313,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
                 0, 1, indice_burst_len, 0, 0))
 
         burst_length_tiling_last = burst_length % half_ele
-        burst_len_last = calculate_burst_len_by_dtype(data, burst_length_tiling_last)
+        burst_len_last = calculate_burst_len_by_dtype(
+            data, burst_length_tiling_last)
 
         indices_move_length = jump_step
         # this deals with indices unit
@@ -404,7 +407,8 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data,
                                         block_ub.access_ptr("r"), 0, 1,
                                         1, 0, 0))
             else:
-                half_param, half_param_ub_shape = calculate_ele_num_by_dtype(data, burst_len_last)
+                half_param, half_param_ub_shape = calculate_ele_num_by_dtype(
+                    data, burst_len_last)
                 buf_param_var = ir_build.allocate(
                     data.dtype,
                     half_param_ub_shape,
@@ -538,8 +542,8 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data,
     indice_ele_per_core = ele_per_core * shape_indices[-1]
     indice_last_ele_per_core = last_ele_per_core * shape_indices[-1]
     last_moved_param_ele = ele_per_core + last_ele_per_core
-    core_len, core_len_last = calculate_last_burst_len(
-        data, ele_per_core, last_moved_param_ele)
+    core_len, core_len_last = calculate_last_burst_len(data, ele_per_core,
+                                                       last_moved_param_ele)
 
     indice_core_len, indice_core_len_last = indice_core_len_by_dtype(
         indices, indice_ele_per_core, indice_last_ele_per_core)
@@ -571,8 +575,9 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data,
                                     name='reg_tmp',
                                     scope=tbe_platform.scope_reg)
         compile_plat = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        if compile_plat in ("Ascend310",):
-            with ir_build.for_range(0, ele_per_core, name='core_row') as core_row:
+        if compile_plat in ("Ascend310", ):
+            with ir_build.for_range(0, ele_per_core,
+                                    name='core_row') as core_row:
                 reg_gm[0] = tvm.const(0, dtype=indices.dtype)
                 reg_mul[0] = tvm.const(params_total_size, dtype=indices.dtype)
                 gm_offset = 0
@@ -768,8 +773,9 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step,
     indice_last_ele_per_core = last_ele_per_core * shape_indices[-1]
     post_step = params_total_size // step_indices
 
-    param_moved_ele_per_core = ele_per_core*post_step
-    last_param_moved_ele_per_core = (ele_per_core + last_ele_per_core) * post_step
+    param_moved_ele_per_core = ele_per_core * post_step
+    last_param_moved_ele_per_core = (ele_per_core +
+                                     last_ele_per_core) * post_step
 
     param_core_len = calculate_burst_len_by_dtype(data, post_step)
     core_len, core_len_last = calculate_last_burst_len(
@@ -870,11 +876,12 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step,
                 gm_offset += reg[row2] * shape_list[row2]
                 # calculate the start position to fetch num
             ir_build.emit(
-                tvm.call_extern(data.dtype, "copy_gm_to_ubuf",
-                                output_ub.access_ptr("w",
-                                                     offset=post_step*last_core_row),
-                                data.access_ptr('r', offset=gm_offset), 0, 1,
-                                param_core_len, 0, 0))
+                tvm.call_extern(
+                    data.dtype, "copy_gm_to_ubuf",
+                    output_ub.access_ptr("w",
+                                         offset=post_step * last_core_row),
+                    data.access_ptr('r', offset=gm_offset), 0, 1,
+                    param_core_len, 0, 0))
         ir_build.emit(
             tvm.call_extern(
                 dst.dtype, "copy_ubuf_to_gm",
@@ -912,9 +919,8 @@ def calculate_last_burst_len(data, ele_num, last_ele_num):
     elif data.dtype == "int8" or data.dtype == "uint8":
         burst_len = (ele_num + type_dict["dtype8_ele"] -
                      1) // type_dict["dtype8_ele"]
-        burst_len_last = (
-            last_ele_num +
-            type_dict["dtype8_ele"] - 1) // type_dict["dtype8_ele"]
+        burst_len_last = (last_ele_num + type_dict["dtype8_ele"] -
+                          1) // type_dict["dtype8_ele"]
     return burst_len, burst_len_last
 
 
@@ -1012,7 +1018,8 @@ def reassign_aglined_number(data, ele_num):
     return ele_num
 
 
-def indice_core_len_by_dtype(indices, indice_ele_per_core, indice_last_ele_per_core):
+def indice_core_len_by_dtype(indices, indice_ele_per_core,
+                             indice_last_ele_per_core):
     """
     calculate indice core len
     """
@@ -1059,7 +1066,7 @@ def branch_two_check(shape_data, shape_indices):
     total_param_moved_part = ele_per_core * param_moved_part
     last_total_param_moved_part = last_ele_per_core * param_moved_part
     # 35000 is param local ub length
-    if(last_total_param_moved_part > 35000 or total_param_moved_part > 35000):
+    if (last_total_param_moved_part > 35000 or total_param_moved_part > 35000):
         return False
     return True
 
@@ -1174,16 +1181,102 @@ def total_ele_per_indice_ub(indies_part_num, jump_step, shape_data,
     return result
 
 
-def check_supported(dict_data, dict_indices, dict_out,
-                    kernel_name='gather_nd'):
+def compute_repeat(indice_shape):
     """
-    support aicpu route
+    calculate how much time need to repeat for param input when indice[-1] is 0
     """
-    return True
+    return int(functools_reduce(lambda i, j: i * j, indice_shape[0:-1]))
+
+
+def tvm_dummy_placeholder(input_dtype,
+                          indice_dtype,
+                          kernel_name="dummy_placeholder"):
+    """
+    do nothing in operator
+    """
+    shape = (1, )
+    data = tvm.placeholder(shape, dtype=input_dtype, name='data')
+    indice = tvm.placeholder(shape,
+                             dtype=indice_dtype,
+                             name='dummy_placeholder')
+    data_ub = tvm.compute(shape, lambda *i: data(*i), name='data_ub')
+    res = tvm.compute(shape, lambda *i: data_ub(*i), name='res')
+
+    s = tvm.create_schedule(res.op)
+    build_list = [data, indice, res]
+    s[data_ub].set_scope(tbe_platform.scope_ubuf)
+    s[data_ub].emit_insn(data_ub.op.axis[0], insn_cmd.DMA_COPY)
+    s[res].emit_insn(res.op.axis[0], insn_cmd.PHONY_INSN)
+    new_config = build_config_update(build_config, "dummy_placeholder", True)
+
+    with new_config:
+        tvm.build(s, build_list, "cce", name=kernel_name)
+
+
+def tilling_axis(shape, dtype):
+    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.UB_SIZE)
+    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
+    total_ele = ub_size_bytes // dtype_bytes_size
+    split_axis = 0
+    split_factor = 1
+    ele_cnt = shape[-1]
+    if ele_cnt > total_ele:
+        split_factor = total_ele
+        split_axis = -1
+
+    return split_axis, split_factor
+
+
+def just_dma(src_shape, indice_shape, dst_shape, dtype,
+             kernel_name="just_dma"):
+    """
+    copy src several times to dst
+    """
+    data = tvm.placeholder(src_shape, dtype=dtype, name='data')
+    data_indice = tvm.placeholder(indice_shape,
+                                  dtype=dtype,
+                                  name='data_indice')
+    data_ub = tvm.compute(src_shape, lambda *i: data(*i), name='data_ub')
+    res = tvm.compute(dst_shape, lambda i, j: data_ub[j], name='res')
+
+    s = tvm.create_schedule(res.op)
+    build_list = [data, data_indice, res]
+    split_axis, split_factor = tilling_axis(dst_shape, dtype)
+
+    axis_outer, axis_inner = s[res].split(res.op.axis[split_axis],
+                                          factor=split_factor)
+    real_split_axis = axis_outer
+
+    if int(res.shape[-1]) >= 16:
+        core_num = tbe_platform.cce_conf.get_soc_spec(
+            tbe_platform.cce_conf.CORE_NUM)
+        block_split_axis = axis_outer
+        need_split_two_axis = False
+        if split_axis != 0 and int(res.shape[0]) > 1:
+            block_split_axis = res.op.axis[0]
+            need_split_two_axis = True
+        block_axis, block_inner = s[res].split(block_split_axis,
+                                               nparts=core_num)
+        thread = tvm.thread_axis('blockIdx.x')
+        s[res].bind(block_axis, thread)
+        if not need_split_two_axis:
+            real_split_axis = block_inner
+
+    s[data_ub].compute_at(s[res], real_split_axis)
+    s[data_ub].set_scope(tbe_platform.scope_ubuf)
+
+    s[data_ub].emit_insn(data_ub.op.axis[0], insn_cmd.DMA_COPY)
+    s[res].emit_insn(axis_inner, insn_cmd.DMA_COPY)
+
+    new_config = build_config_update(build_config, "dummy_placeholder", True)
+    with new_config:
+        tvm.build(s, build_list, "cce", name=kernel_name)
 
 
 # pylint: disable=too-many-boolean-expressions,unnecessary-lambda
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.KERNEL_NAME)
 def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
     """
     Gather slices from params into a Tensor with shape specified by indices.
@@ -1225,13 +1318,12 @@ def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
     indice_dtype = indice_dtype.lower()
     check_list_params = ("float16", "float32", "int32", "int8", "uint8")
     check_list_indices = ("int64", "int32")
-    check_dtype(data_dtype, check_list_params, param_name="dict_data")
-    check_dtype(indice_dtype, check_list_indices, param_name="dict_indices")
-    check_shape(shape_data, param_name="dict_data")
-
-    if shape_indices[0] != 0:
-        check_shape(shape_indices, param_name="dict_indices")
-        check_shape(shape_data, param_name="dict_data")
+    op_utils.check_dtype(data_dtype, check_list_params, param_name="dict_data")
+    op_utils.check_dtype(indice_dtype,
+                         check_list_indices,
+                         param_name="dict_indices")
+    op_utils.check_shape(shape_data, param_name="dict_data")
+    if shape_indices[0] != 0 or len(shape_indices) != 1:
         # init times as 0
         jump_step = shape_indices[-1]
         # init step_indices as 1
@@ -1277,92 +1369,67 @@ def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
             param_ele_per_block = 16
         elif data_dtype == "int8" or data_dtype == "uint8":
             param_ele_per_block = 32
-        ele_per_core = int((indice_num / shape_indices[-1]) // 32)
-        post_step = param_num // step_indices.value
-        post_step_aligned_check = post_step % param_ele_per_block
-        # check 32B in one block
-        block_num_check = int(ele_per_core * post_step // ele_per_block)
-        param_block_num_check = int(ele_per_core * post_step //
-                                    param_ele_per_block)
-        branch_two_param_ub_check = branch_two_check(shape_data, shape_indices)
-        # performence improvement only apply for little shape in net
-        # param shape:0~15000
-        # indice_shape:0~26000
-        if (shape_indices[-1] == len(shape_data) and indice_num < 26000
-                and param_num < 15000 and block_num_check != 0
-                and param_block_num_check != 0 and indice_dtype != "int64"):
-            res = tvm.extern(
-                [shape_data, shape_indices], [data_1dim, indices_1dim],
-                lambda ins, outs: _scalar_performence_indice_unit_tiling(
-                    outs[0], ins[0], ins[1], step_indices, jump_step,
-                    shape_data, shape_indices, dict_out),
-                name="res",
-                dtype=data_dtype)
-        elif (block_num_check != 0 and ele_per_core * post_step < 35000
-              and indice_num < 14000 and post_step_aligned_check == 0
-              and branch_two_param_ub_check == True):
-            res = tvm.extern(
-                [shape_data, shape_indices], [data_1dim, indices_1dim],
-                lambda ins, outs:
-                _large_param_shape_performence_indice_unit_tiling(
-                    outs[0], ins[0], ins[1], step_indices, jump_step,
-                    shape_data, shape_indices, dict_out),
-                name="res",
-                dtype=data_dtype)
+        if shape_indices[-1] != 0:
+            # normal case
+            ele_per_core = int((indice_num / shape_indices[-1]) // 32)
+            post_step = param_num // step_indices.value
+            post_step_aligned_check = post_step % param_ele_per_block
+            # check 32B in one block
+            block_num_check = int(ele_per_core * post_step // ele_per_block)
+            param_block_num_check = int(ele_per_core * post_step //
+                                        param_ele_per_block)
+            branch_two_param_ub_check = branch_two_check(
+                shape_data, shape_indices)
+            # performence improvement only apply for little shape in net
+            # param shape:0~15000
+            # indice_shape:0~26000
+            if (shape_indices[-1] == len(shape_data) and indice_num < 26000
+                    and param_num < 15000 and block_num_check != 0
+                    and param_block_num_check != 0
+                    and indice_dtype != "int64"):
+                res = tvm.extern(
+                    [shape_data, shape_indices], [data_1dim, indices_1dim],
+                    lambda ins, outs: _scalar_performence_indice_unit_tiling(
+                        outs[0], ins[0], ins[1], step_indices, jump_step,
+                        shape_data, shape_indices, dict_out),
+                    name="res",
+                    dtype=data_dtype)
+            elif (block_num_check != 0 and ele_per_core * post_step < 35000
+                  and indice_num < 14000 and post_step_aligned_check == 0
+                  and branch_two_param_ub_check):
+                res = tvm.extern(
+                    [shape_data, shape_indices], [data_1dim, indices_1dim],
+                    lambda ins, outs:
+                    _large_param_shape_performence_indice_unit_tiling(
+                        outs[0], ins[0], ins[1], step_indices, jump_step,
+                        shape_data, shape_indices, dict_out),
+                    name="res",
+                    dtype=data_dtype)
+            else:
+                res = tvm.extern(
+                    [shape_data, shape_indices], [data_1dim, indices_1dim],
+                    lambda ins, outs: _indice_unit_tiling(
+                        outs[0], ins[0], ins[1], step_indices, jump_step,
+                        shape_data, shape_indices, dict_out),
+                    name="res",
+                    dtype=data_dtype)
+            tensor_list = [data_1dim, indices_1dim, res]
+            schedule = tvm.create_schedule(res.op)
+
+            with build_config:
+                tvm.build(schedule, tensor_list, "cce", name=kernel_name)
         else:
-            res = tvm.extern(
-                [shape_data, shape_indices], [data_1dim, indices_1dim],
-                lambda ins, outs: _indice_unit_tiling(outs[0], ins[0], ins[
-                    1], step_indices, jump_step, shape_data, shape_indices,
-                                                      dict_out),
-                name="res",
-                dtype=data_dtype)
-
-        tensor_list = [data_1dim, indices_1dim, res]
-        schedule = tvm.create_schedule(res.op)
-
-        with build_config:
-            tvm.build(schedule, tensor_list, "cce", name=kernel_name)
+            repeat = compute_repeat(shape_indices)
+            if repeat == 0:
+                # Case [] output
+                tvm_dummy_placeholder(data_dtype, indice_dtype, kernel_name)
+            else:
+                ele_cnt = functools_reduce(lambda x, y: x * y, shape_data)
+                just_dma((ele_cnt, ), shape_indices, (repeat, ele_cnt),
+                         data_dtype, kernel_name)
     else:
-        check_shape(shape_data, param_name="dict_data")
-        check_shape(shape_indices, param_name="dict_indices")
-        ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE)
-        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(data_dtype) // 8
-        total_ele = ub_size_bytes // dtype_bytes_size
-        split_factor = total_ele
-
+        op_utils.check_shape(shape_data, param_name="dict_data")
+        op_utils.check_shape(shape_indices, param_name="dict_indices")
         ele_cnt = functools_reduce(lambda x, y: x * y, shape_data)
-        data_dtype = data_dtype.lower()
-        shape_data_new = (ele_cnt, )
-        shape_indice = (1, )
-
-        data = tvm.placeholder(shape_data_new,
-                               dtype=data_dtype,
-                               name="input_data")
-        data2 = tvm.placeholder(shape_indice, dtype="int32", name='data2')
-        res_ub = tvm.compute(shape_data_new,
-                             lambda *i: data(*i),
-                             name='res_ub')
-        res = tvm.compute(shape_data_new, lambda *i: res_ub(*i), name="res")
-
-        tensor_list = [data, data2, res]
-        sch = tvm.create_schedule(res.op)
-        sch[res_ub].set_scope(tbe_platform.scope_ubuf)
-
-        thread_block = tvm.thread_axis('blockIdx.x')
-        sch[res].bind(res.op.axis[0], thread_block)
-        axis_outer, axis_inner = sch[res].split(res.op.axis[0],
-                                                factor=split_factor)
-
-        tile_out_axis = axis_outer
-        dma_in_axis = res_ub.op.axis[0]
-        dma_out_axis = axis_inner
-
-        sch[res_ub].compute_at(sch[res], tile_out_axis)
-        sch[res_ub].emit_insn(dma_in_axis, insn_cmd.DMA_COPY)
-        sch[res].emit_insn(dma_out_axis, insn_cmd.DMA_COPY)
-        new_config = build_config_update(build_config, "dummy_placeholder",
-                                         True)
-        with new_config:
-            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+        just_dma((ele_cnt, ), shape_indices, (1, ele_cnt), data_dtype,
+                 kernel_name)

@@ -737,6 +737,8 @@ class CceConv3dOp:
         setfmatrix_dict["conv_fm_w"] = fmap.op.shape[4]
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         if cyclebuffer_flag:
+            # Specifies AL1 memory
+            sch[al1].mem_unique()
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         else:
             sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
@@ -1238,9 +1240,6 @@ class CceConv3dOp:
                                          res_c)
         m_outer_inner_outer, m_outer_inner_inner = sch[res_c].split(
             m_outer_inner, nparts=1)
-
-        if te_util.get_and_res(tiling["n_bef_batch_flag"], not reorder_flag):
-            sch[res_c].reorder(c_outer_outer_outer_inner, noo)
 
         # ============ tile CUB ========================
         c_outer_inner_outer, c_outer_inner_inner = sch[res_c].split(

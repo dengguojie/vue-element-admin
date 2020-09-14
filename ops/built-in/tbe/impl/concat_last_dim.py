@@ -365,24 +365,29 @@ class ConcatWith5HD:
         self.ori_format = input_data[0].get("ori_format")
         self.input_shapes = []
         self.input_ori_shapes = []
+        self.src_size_list = []
         self.axis = axis
         for _, input_dict in enumerate(input_data):
             shape_input = input_dict.get("shape")
             self.input_shapes.append(shape_input)
             shape_input = input_dict.get("ori_shape")
             self.input_ori_shapes.append(shape_input)
+            src_size = int(self.get_tensor_size_in_fp16(shape_input))
+            self.src_size_list.append(src_size)
 
         self.last_ori_dim = 0
+        self.last_ori_dim_list = []
         self.shape_5hd_c0 = 16
         self.input_num = len(input_data)
         self.output_shape = output_data.get("shape")
+        self.output_ori_shape = output_data.get("ori_shape")
         self.kernel_name = kernel_name
-        self.src_size = int(self.get_tensor_size_in_fp16(self.input_shapes[0]))
         self.dst_size = int(self.get_tensor_size_in_fp16(self.output_shape))
         self.gm_out = None
         self.gm_in = []
         self.tik_instance = None
         self.core_num = 0
+        self.is_the_same_c = False
 
     def check_shape_support(self):
         """check_shape_support
@@ -395,19 +400,31 @@ class ConcatWith5HD:
             return False, -1
 
         if len(self.input_ori_shapes[0]) != 4:
-            return False, -1
+            return False, shape_c_dim
 
         input_shape = self.input_ori_shapes[0]
+        self.is_the_same_c = True
+
         for i, _ in enumerate(self.input_ori_shapes):
             if input_shape != self.input_ori_shapes[i]:
-                return False, -1
+                self.is_the_same_c = False
+
+        output_support = False
+        output_shape_c = self.output_ori_shape[shape_c_dim]
+        if output_shape_c <= 16:
+            output_support = True
 
         input_shape_c = input_shape[shape_c_dim]
 
-        if input_shape_c not in (2, 4, 8):
-            return False, -1
+        # shape equal and c in (2, 4, 8)
+        if self.is_the_same_c and input_shape_c in (2, 4, 8):
+            return True, shape_c_dim
 
-        return True, shape_c_dim
+        # shape not equal and output c < one block
+        if output_support and not self.is_the_same_c:
+            return True, shape_c_dim
+
+        return False, shape_c_dim
 
     def check_op_select(self):
         """function for op_select_format in concat
@@ -425,6 +442,7 @@ class ConcatWith5HD:
         """check_5hd_vnchw
         """
         is_shape_support, c_dim_num = self.check_shape_support()
+
         if not is_shape_support:
             return False
         if self.format not in ("NC1HWC0",):
@@ -434,7 +452,10 @@ class ConcatWith5HD:
                 or self.data_dtype not in ("float16", "int16", "uint16"):
             return False
 
-        self.last_ori_dim = self.input_ori_shapes[0][c_dim_num]
+        for i, _ in enumerate(self.input_ori_shapes):
+            input_c = self.input_ori_shapes[i][c_dim_num]
+            self.last_ori_dim_list.append(input_c)
+        self.last_ori_dim = max(self.last_ori_dim_list)
 
         return True
 
@@ -448,7 +469,7 @@ class ConcatWith5HD:
         for index, _ in enumerate(self.input_shapes):
             self.gm_in.append(
                 self.tik_instance.Tensor(
-                    "float16", (self.src_size,),
+                    "float16", (self.src_size_list[index],),
                     scope=tik.scope_gm,
                     name="data_gm_in_{}".format(index)))
 
@@ -524,7 +545,13 @@ class ConcatWith5HD:
             int(tbe_platform.CceProductParams().getParams("Unified_Buffer")
                 // 2 // 2 - 16)
 
-        inner_sigment = self.shape_5hd_c0 // self.last_ori_dim
+        if self.is_the_same_c:
+            inner_sigment = self.shape_5hd_c0 // self.last_ori_dim
+        else:
+            inner_sigment = self.input_num
+            if sum(self.last_ori_dim_list) != 16:
+                inner_sigment = inner_sigment + 1
+
         max_transpose_sigment = \
             ub_half_size // TRANSPOSE_SIZE // 3
 
@@ -592,12 +619,14 @@ class ConcatWith5HD:
                                         _dst_rep_stride, _src_rep_stride)
 
             # copy vnchw_ub_0 to out_ub_0
-            nburst = self.last_ori_dim
-            des_offset = \
-                (input_idx % inner_sigment) \
-                * ONE_BLOCK_FP16_SIZE * self.last_ori_dim
-            src_repeat_block = self.shape_5hd_c0 - self.last_ori_dim
-            des_repeat_block = self.shape_5hd_c0 - self.last_ori_dim
+            nburst = self.last_ori_dim_list[input_idx]
+            des_c_dim = \
+                sum(self.last_ori_dim_list[:input_idx]) % ONE_BLOCK_FP16_SIZE
+            des_offset = des_c_dim * ONE_BLOCK_FP16_SIZE
+            src_repeat_block = \
+                self.shape_5hd_c0 - self.last_ori_dim_list[input_idx]
+            des_repeat_block = \
+                self.shape_5hd_c0 - self.last_ori_dim_list[input_idx]
             self.tik_instance.data_move(ub_out[des_offset],
                                         ub_vnchw,
                                         0, run_mov_num,

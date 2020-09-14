@@ -20,6 +20,7 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
 import te.platform.cce_params as cce
+from te.platform.cce_conf import CceProductParams as pver
 from te.platform import cce_conf
 from . import util
 from .vector_schedule import VectorSchedule
@@ -269,8 +270,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         dtype = reduce_tensor.dtype
         if dtype != "float32":
             return False
-        product = cce_conf.get_product()
-        if not product.startswith("1.60"):
+        is_support_atomic = pver().is_cloud_version() or \
+                            pver().is_1951_version()
+        if not is_support_atomic:
             return False
         tag = reduce_tensor.op.tag
         if tag.find("sum") != -1:
@@ -283,6 +285,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         shape_before_reduce = self._reduce_info["shape_before_reduce"]
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
         dtype = self._reduce_info["dtype"]
+
+        if self._is_reduce_all_axis(shape_before_reduce, reduce_axis_index):
+            return True
 
         def _is_not_reduce_for_one(shape_before_reduce):
             # for case (a , b, 1, 1) axis[1]
@@ -323,9 +328,6 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         if not __is_reduce_for_one_and_not_tuple_sum():
             return False
-
-        if self._is_reduce_all_axis(shape_before_reduce, reduce_axis_index):
-            return True
 
         def _do_mix_reduce_nlast_and_nlast():
             # reorder (ak+1,rk,..,r2,a2,r1,a1) to (ak+1,ak,...,a2, rk,..,r2,,r1,a1)

@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -78,7 +79,7 @@ def smooth_l1_loss_compute(input_predict,
     return res
 
 
-@util.check_input_type(dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def smooth_l1_loss(predict,
                    label,
                    loss,
@@ -110,23 +111,20 @@ def smooth_l1_loss(predict,
     shape_predict = predict.get("shape")
     dtype_predict = predict.get("dtype")
     input_predict_dtype = dtype_predict.lower()
-    util.check_dtype_rule(input_predict_dtype, check_list)
+    check_dtype(input_predict_dtype, check_list, param_name="predict")
 
     shape_label = label.get("shape")
     dtype_label = label.get("dtype")
     input_label_dtype = dtype_label.lower()
     dtype_loss = loss.get("dtype").lower()
-    util.check_dtype_rule(input_label_dtype, check_list)
-    util.check_dtype_rule(dtype_loss, check_list)
+    check_dtype(input_label_dtype, check_list, param_name="label")
+    check_dtype(dtype_loss, check_list, param_name="loss")
 
     util.compare_tensor_dict_key(predict, label, "shape")
-    util.check_shape_rule(shape_predict)
-    util.check_tensor_shape_size(shape_predict)
-    util.check_shape_rule(shape_label)
-    util.check_tensor_shape_size(shape_label)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_predict, param_name="predict")
+    check_shape(shape_label, param_name="label")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(input_predict_dtype, check_list)
+    check_dtype(input_predict_dtype, check_list, param_name="predict")
     shape_predict, shape_label = \
         refine_shapes_for_broadcast(shape_predict, shape_label)
     input_predict = tvm.placeholder(

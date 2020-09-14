@@ -22,10 +22,8 @@ from functools import reduce as functools_reduce
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
-
-SHAPE_SIZE_LIMIT = 2 << 30
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -125,17 +123,16 @@ def _get_placeholder(dict_list, name_list):
         if name == 'var':
             var_shape = list(shape)
         if name != 'lr' and name != 'momentum' and name != 'x2' \
-                and var_shape != list(shape):
+            and var_shape != list(shape):
             raise RuntimeError(
                 "The shapes of var, accum and x1 must be equal.")
         if (name == 'lr' or name == 'momentum'
-            or name == 'x2') and shape[0] != 1:
+                or name == 'x2') and shape[0] != 1:
             raise RuntimeError(
                 "The shapes of lr, momentum and x2 must be scalar.")
 
-        util.check_dtype_rule(dtype, ('float32', 'float16'))
-        util.check_shape_rule(shape, max_shape_num=SHAPE_SIZE_LIMIT)
-        util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+        op_utils.check_dtype(dtype, ('float32', 'float16'), param_name="var")
+        op_utils.check_shape(shape, param_name="var")
         shape_refine = (functools_reduce(operator.mul, shape), )
         list_placeholder.append(
             tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
@@ -143,8 +140,11 @@ def _get_placeholder(dict_list, name_list):
 
 
 # pylint: disable=unbalanced-tuple-unpacking
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, bool,
-                       str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def fused_mul_apply_momentum(var,
                              accum,
                              lr,
@@ -193,7 +193,6 @@ def fused_mul_apply_momentum(var,
     """
 
     input_name_list = ['var', 'accum', 'lr', 'x1', 'momentum', 'x2']
-    util.check_kernel_name(kernel_name)
     var, accum, lr, x1, momentum, x2 = _get_placeholder(
         [var, accum, lr, x1, momentum, x2], input_name_list)
     out_var, out_accum = _fused_mul_apply_momentum_compute(
@@ -205,4 +204,3 @@ def fused_mul_apply_momentum(var,
         sch = generic.auto_schedule(outs)
     config = {"name": kernel_name, "tensor_list": build_list}
     te.lang.cce.cce_build_code(sch, config)
-

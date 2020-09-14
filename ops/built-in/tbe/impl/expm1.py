@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1.0
@@ -190,7 +191,7 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def expm1(input_x, output_y, kernel_name="expm1"):
     """
     algorithm: expm1
@@ -210,12 +211,10 @@ def expm1(input_x, output_y, kernel_name="expm1"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    util.check_tensor_shape_size(shape)
-    util.check_shape_rule(shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="input_x")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
 
     shape_x = (functools_reduce(lambda x, y: x * y, shape[:]),)
     data_input = tvm.placeholder(shape_x, name="data_input", dtype=input_dtype)

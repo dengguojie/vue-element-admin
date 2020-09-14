@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 
 # pylint: disable=unused-argument,too-many-arguments
@@ -56,7 +57,9 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
 
     if list(shape_input_predict) != list(shape_input_label):
         shape_input_predict, shape_input_label, shape = \
-            util.produce_shapes(shape_input_predict, shape_input_label)
+            broadcast_shapes(shape_input_predict, shape_input_label,
+                             param_name_input1="predict",
+                             param_name_input2="label")
         predict = te.lang.cce.broadcast(predict, shape, dtype)
         label = te.lang.cce.broadcast(label, shape, dtype)
     out_sub = te.lang.cce.vsub(predict, label)
@@ -72,7 +75,8 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def smooth_l1_loss_grad(predict,
                         label,
                         dout,
@@ -119,17 +123,13 @@ def smooth_l1_loss_grad(predict,
     util.compare_tensor_dict_key(predict, label, "dtype")
     util.compare_tensor_dict_key(predict, dout, "dtype")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_dtype_rule(label_dtype, check_list)
-    util.check_dtype_rule(dout_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="predict")
+    check_dtype(label_dtype, check_list, param_name="label")
+    check_dtype(dout_dtype, check_list, param_name="dout")
 
-    util.check_shape_rule(predict_shape)
-    util.check_tensor_shape_size(predict_shape)
-    util.check_shape_rule(label_shape)
-    util.check_tensor_shape_size(label_shape)
-    util.check_shape_rule(dout_shape)
-    util.check_tensor_shape_size(dout_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(predict_shape, param_name="predict")
+    check_shape(label_shape, param_name="label")
+    check_shape(dout_shape, param_name="dout")
     shape = (functools_reduce(lambda x, y: x * y, predict_shape[:]),)
     predict_input = tvm.placeholder(
         shape, name="predict_input", dtype=input_dtype)

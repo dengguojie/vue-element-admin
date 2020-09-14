@@ -18,9 +18,11 @@ maximum_grad
 from __future__ import absolute_import
 from impl import fused_minimum_or_maximum_grad
 from topi.cce import util
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@util.check_input_type(dict, dict, dict, dict, dict, bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL, KERNEL_NAME)
 def maximum_grad(input_dz, input_x, input_y, output_dx, output_dy,
                  grad_x=True, grad_y=True, kernel_name="maximum_grad"):
     """

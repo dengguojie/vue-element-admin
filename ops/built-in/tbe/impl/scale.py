@@ -28,6 +28,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 NONETYPE = type(None)
 
+
 def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd_detection_output'):
     
     error_info = {}
@@ -38,8 +39,8 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd
     error_info['max_value'] = str(max_value)
     error_info['real_value'] = str(real_value)
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                         error_info['max_value'], error_info['real_value']))
+                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                          error_info['max_value'], error_info['real_value']))
                          
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
@@ -73,7 +74,7 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
     product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if length_x_ori == 4:
         # NC1HWC0+ND
-        if product_version in ("Hi3796CV300ES"):
+        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float16",
                                format="NC1HWC0,ND")
@@ -101,7 +102,7 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
                                 format="NC1HWC0,NC1HWC0,ND,ND")
     else:
         # ND+ND
-        if product_version in ("Hi3796CV300ES"):
+        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16",
                                format="ND")
@@ -161,7 +162,7 @@ def param_scale_check(shape_x, shape_scale):
             error_info['real_scale_dims'] = str(length_scale)
             raise RuntimeError(error_info, 
                 "In op[scale], the dims of input tensor x and tensor scale should be equal, but actually are [%s] and [%s]."
-                %(error_info['real_x_dims'], error_info['real_scale_dims']))
+                % (error_info['real_x_dims'], error_info['real_scale_dims']))
         
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
@@ -175,8 +176,9 @@ def param_scale_check(shape_x, shape_scale):
                 error_info['input2_shape'] = str(shape_scale)
                 raise RuntimeError(error_info, 
                     "In op[%s], the inputs[%s][%s] could not be broadcast together with shapes[%s][%s]."
-                    %(error_info['opname'], error_info['input1_name'], error_info['input2_name'],
-                      error_info['input1_shape'], error_info['input2_shape']))
+                    % (error_info['opname'], error_info['input1_name'], error_info['input2_name'],
+                       error_info['input1_shape'], error_info['input2_shape']))
+
 
 def get_param_scale_shape(shape_x, shape_scale):
     """
@@ -220,7 +222,7 @@ def _check_dtype(input_dtype, name):
     """
 
     product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if product_version in ("Hi3796CV300ES"):
+    if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
             raise RuntimeError("float32 is not support in ES")
         op_utils.check_dtype(input_dtype, ["float16"], param_name=name)
@@ -262,8 +264,8 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         error_info['max_value'] = str(length_x - 1)
         error_info['real_value'] = str(axis)
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
 
     if num_axes < -1:
         error_info['errCode'] = 'E81015'
@@ -271,7 +273,7 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         error_info['param_name'] = 'num_axes'
         error_info['real_value'] = str(num_axes)
         raise RuntimeError(error_info, "In op[scale], the parameter[%s] should be be non-negative or -1, but actually is [%s]."
-                           %(error_info['param_name'], error_info['real_value']))
+                           % (error_info['param_name'], error_info['real_value']))
 
     if axis < 0:
         axis_ = length_x + axis
@@ -391,7 +393,7 @@ def _fused_scale_compute(x, scale):
     is_cast = False
     product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
-    if product_version not in ("Ascend310", "Hi3796CV300ES"):
+    if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
             is_cast = True
             x = te.lang.cce.cast_to(x, 'float32')
@@ -436,7 +438,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     is_cast = False
     product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
-    if product_version not in ("Ascend310", "Hi3796CV300ES"):
+    if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
             is_cast = True
             x = te.lang.cce.cast_to(x, 'float32')

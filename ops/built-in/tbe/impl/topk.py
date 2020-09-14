@@ -34,6 +34,7 @@ UB_SIZE = 128 * 1024          # UB size in byte
 REGION_SIZE_INBYTE = 16      # fp16 region size in byte
 HALF_UB_REGION_CAPACITY = UB_SIZE // 2 // REGION_SIZE_INBYTE
 
+
 def check_topk_param(input_args, output_args):
     """
     check topk param
@@ -85,6 +86,7 @@ def check_topk_param(input_args, output_args):
     if output_args["regions_sorted"].shape[2] != 8:
         raise RuntimeError("regions_sorted.shape[2] != 8")
 
+
 def set_ub_size_by_product_type(data_type):
     """
     set topk param about ub
@@ -110,6 +112,7 @@ def set_ub_size_by_product_type(data_type):
     global HALF_UB_REGION_CAPACITY
     HALF_UB_REGION_CAPACITY = UB_SIZE // 2 // REGION_SIZE_INBYTE
 
+
 def tik_topk_min(tik_inst, val_a, val_b, result_):
     """
     get min val
@@ -129,6 +132,7 @@ def tik_topk_min(tik_inst, val_a, val_b, result_):
         result_.set_as(val_a)
     with tik_inst.else_scope():
         result_.set_as(val_b)
+
 
 def tik_topk(tik_inst, topk_in, topk_out):
     """
@@ -177,6 +181,7 @@ def tik_topk(tik_inst, topk_in, topk_out):
             tik_inst,
             (n_required, topk_in["k"], topk_in["score_threshold"], data_type),
             topk_out)
+
 
 # pylint: disable=too-many-statements
 def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
@@ -228,7 +233,7 @@ def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
     with tik_inst.for_range(n_required, n_required_apply) as index:
         required_score_ub[index, 4].set_as(init_scalar)
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310","Ascend910","Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
         count_scalar = tik_inst.Scalar("int32", "count_scalar", 0)
 
         ones_ub = tik_inst.Tensor(data_type, (ceil_num,), name="ones_ub",
@@ -289,11 +294,11 @@ def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
 
         with tik_inst.for_range(0, n_required_apply // 16 // 255) as index:
             vex_offset = index * 16 * 255
-            tik_inst.vextract(vex_score_ub[vex_offset,],
+            tik_inst.vextract(vex_score_ub[vex_offset, ],
                               required_score_ub[vex_offset, 0], 255, 4)
         with tik_inst.if_scope(n_required_apply // 16 % 255 > 0):
             vex_offset = n_required_apply // 16 // 255 * 16 * 255
-            tik_inst.vextract(vex_score_ub[vex_offset,],
+            tik_inst.vextract(vex_score_ub[vex_offset, ],
                               required_score_ub[vex_offset, 0],
                               n_required_apply // 16 % 255, 4)
 
@@ -303,6 +308,7 @@ def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
                          1, 1, 8, 1, 0, count_scalar, mask_mode="counter")
 
         tik_topk_min(tik_inst, k, count_scalar, top_output["proposal_actual_num"])
+
 
 def tik_topk_split_proposal_group(tik_inst, proposal_store, split_param):
     """
@@ -422,7 +428,7 @@ def tik_topk_internal_vbs(tik_inst, vbs_src, dest_pos_ub):
 
     region_info_list = []
 
-    region_info_list.append({"offset": 0, "length":1,
+    region_info_list.append({"offset": 0, "length": 1,
                              "repeat": src_region_num_list[0]})
     if region_info_list[0]["length"] == 1:
         if n_total_regions % 16 != 0:
@@ -443,9 +449,10 @@ def tik_topk_internal_vbs(tik_inst, vbs_src, dest_pos_ub):
         if offset != n_total_regions:
             raise RuntimeError("offset != n_total_regions")
 
-        region_info = {"offset":0, "length":16, "repeat":n_total_regions//16}
+        region_info = {"offset": 0, "length": 16, "repeat": n_total_regions//16}
         region_info_list.append(region_info)
     return region_info_list
+
 
 def tik_topk_internal_vms4(tik_inst, mem_ub, dest_pos_ub, region_info_list):
     """
@@ -496,6 +503,7 @@ def tik_topk_internal_vms4(tik_inst, mem_ub, dest_pos_ub, region_info_list):
                 region_info_list, new_region_info_list)
         region_info_list = new_region_info_list
     return dest_pos_ub
+
 
 def tik_topk_merge_sort_internal(tik_inst, inter_sort_store, inter_split_param):
     """
@@ -559,13 +567,14 @@ def tik_topk_merge_sort_internal(tik_inst, inter_sort_store, inter_split_param):
 
     # 4. Move Data from UB to OUT
     nburst_val = region_info_list[0]["offset"]
-    if region_info_list[0]["offset"] == 0:
+    if region_info_list[0]["offset"] == 0 or nburst_val > n_required:
         nburst_val = n_required
 
     tik_inst.data_move(regions_sorted[batch_id, dest_pos, 0],
                        mem_ub[0, dest_pos_ub, 0], sid=0, nburst=1,
                        burst=math.ceil(REGION_SIZE_INBYTE * 4 / 32) * (nburst_val // 4),
                        src_stride=0, dst_stride=0)
+
 
 def tik_topk_merge_subgroup(tik_inst, subgroup_store, subgroup_split_param):
     """
@@ -619,6 +628,7 @@ def tik_topk_merge_subgroup(tik_inst, subgroup_store, subgroup_split_param):
     tik_topk_merge_sort_external(
         tik_inst, (mem_ub, merge_result, regions_orig, batch_id, n_required),
         (subtsk_dest_pos_list, subtsk_n_required_list, dest_pos))
+
 
 def tik_topk_merge_sort_same_subgroup(tik_inst, ub_info, region_info_list,
                                       new_region_info_list):
@@ -677,6 +687,7 @@ def tik_topk_merge_sort_same_subgroup(tik_inst, ub_info, region_info_list,
         region_info_list = region_info_list[1:]
 
     return region_info_list
+
 
 def tik_topk_merge_sort_reassign_subgroup(tik_inst, ub_info, region_info_list,
                                           new_region_info_list):
@@ -743,6 +754,7 @@ def tik_topk_merge_sort_reassign_subgroup(tik_inst, ub_info, region_info_list,
     region_info_list[0]["repeat"] -= merge_sort_factor
 
     return region_info_list
+
 
 def tik_topk_merge_sort_tail_subgroup(tik_inst, ub_info, region_info_list,
                                       new_region_info_list):
@@ -815,6 +827,7 @@ def tik_topk_merge_sort_tail_subgroup(tik_inst, ub_info, region_info_list,
                            src_stride=0, dst_stride=0)
     new_region_info_list.append(new_region_info)
     return region_info_list
+
 
 def tik_topk_external_out_to_ub(tik_inst, data_src, slot_val):
     """
@@ -890,6 +903,7 @@ def tik_topk_external_out_to_ub(tik_inst, data_src, slot_val):
 
     return ms_valid_bit_, list_slot_map_, n_burst_, ms_src_list
 
+
 def tik_top_external_set_slot_data(tik_inst, src_list_set):
     """
     setting slot data when sortting external
@@ -937,6 +951,7 @@ def tik_top_external_set_slot_data(tik_inst, src_list_set):
                                                    - num_exhausted_[slot_idx])
 
     return n_selected_
+
 
 def tik_top_external_ub_to_out(tik_inst, sorted_data, move_data_param):
     """
@@ -992,6 +1007,7 @@ def tik_top_external_ub_to_out(tik_inst, sorted_data, move_data_param):
         n_total_rem_.set_as(n_total_rem_ - n_selected_)
     with tik_inst.else_scope():
         n_total_rem_.set_as(0)
+
 
 def tik_topk_merge_sort_external(tik_inst, data_store, sub_list):
     """
@@ -1050,7 +1066,7 @@ def tik_topk_merge_sort_external(tik_inst, data_store, sub_list):
                         range(VMS4_ELEMENT_NUM)]
 
     for slot_idx in range(n_src_list):
-        ms_src_list[slot_idx] = mem_ub[0, slot_capacity *slot_idx, 0]
+        ms_src_list[slot_idx] = mem_ub[0, slot_capacity * slot_idx, 0]
         ms_src_list_len_[slot_idx].set_as(0)
 
     min_input_length = min(src_region_num_list)

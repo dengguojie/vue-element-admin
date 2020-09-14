@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -48,7 +49,7 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sign(input_x, output_y, kernel_name="sign"):
     """
                                  x*32768
@@ -69,9 +70,7 @@ def sign(input_x, output_y, kernel_name="sign"):
     None
     """
     shape = input_x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    check_shape(shape, param_name="input_x")
 
     check_list = ["float16", "float32", "int32"]
     inp_dtype = input_x.get("dtype").lower()

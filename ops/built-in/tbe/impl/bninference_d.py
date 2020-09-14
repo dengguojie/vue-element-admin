@@ -53,7 +53,7 @@ def _format_check(arg_input):
     """
     format_data = arg_input.get("format")
     excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
-    check_format(format_data, excepted_format_list)
+    check_format(format_data, excepted_format_list, param_name="arg_input")
 
 
 def _check_dims_equal(shape_x, shape, data_format):
@@ -136,8 +136,8 @@ def param_scale_check(shape_x, shape_scale):
             error_info['real_x_dims'] = str(length_x)
             error_info['real_scale_dims'] = str(length_scale)
             raise RuntimeError(error_info,
-                "In op[scale], the dims of input tensor x and tensor scale should be equal, but actually are [%s] and [%s]."
-                %(error_info['real_x_dims'], error_info['real_scale_dims']))
+                               "In op[scale], the dims of input tensor x and tensor scale should be equal, but actually are [%s] and [%s]."
+                               % (error_info['real_x_dims'], error_info['real_scale_dims']))
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
@@ -150,8 +150,8 @@ def param_scale_check(shape_x, shape_scale):
                 error_info['input2_shape'] = str(shape_scale)
                 raise RuntimeError(error_info,
                     "In op[%s], the inputs[%s][%s] could not be broadcast together with shapes[%s][%s]."
-                    %(error_info['opname'], error_info['input1_name'], error_info['input2_name'],
-                      error_info['input1_shape'], error_info['input2_shape']))
+                    % (error_info['opname'], error_info['input1_name'], error_info['input2_name'],
+                       error_info['input1_shape'], error_info['input2_shape']))
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -179,10 +179,10 @@ def _shape_check(shape_x, shape_mean, shape_variance, scale, format_x):
     None
     """
 
-    check_shape(shape_x)
+    check_shape(shape_x, param_name="x")
     if format_x in ["NHWC", "NCHW", "ND"]:
-        check_shape(shape_mean, max_rank=1)
-        check_shape(shape_variance, max_rank=1)
+        check_shape(shape_mean, max_rank=1, param_name="mean")
+        check_shape(shape_variance, max_rank=1, param_name="variance")
     _check_shape_dims(shape_x, format_x)
 
     _check_dims_equal(shape_x, shape_mean, format_x)
@@ -369,16 +369,16 @@ def _dtype_scale_offset_check(x, mean, variance, scale, offect):
         checklist = ["float16"]
     else:
         checklist = ["float32", "float16"]
-    check_dtype(dtype_mean.lower(), checklist)
-    check_dtype(dtype_x.lower(), checklist)
-    check_dtype(dtype_variance.lower(), checklist)
+    check_dtype(dtype_mean.lower(), checklist, param_name="mean")
+    check_dtype(dtype_x.lower(), checklist, param_name="x")
+    check_dtype(dtype_variance.lower(), checklist, param_name="variance")
 
     if scale is not None:
         dtype_scale = scale.get("dtype")
-        check_dtype(dtype_scale.lower(), checklist)
+        check_dtype(dtype_scale.lower(), checklist, param_name="scale")
     if offect is not None and bool(offect):
         dtype_offect = offect.get("dtype")
-        check_dtype(dtype_offect.lower(), checklist)
+        check_dtype(dtype_offect.lower(), checklist, param_name="offect")
 
 
 def _dtype_check(x, mean, variance):
@@ -391,9 +391,9 @@ def _dtype_check(x, mean, variance):
         checklist = ["float16"]
     else:
         checklist = ["float32", "float16"]
-    check_dtype(dtype_mean.lower(), checklist)
-    check_dtype(dtype_x.lower(), checklist)
-    check_dtype(dtype_variance.lower(), checklist)
+    check_dtype(dtype_mean.lower(), checklist, param_name="mean")
+    check_dtype(dtype_x.lower(), checklist, param_name="x")
+    check_dtype(dtype_variance.lower(), checklist, param_name="variance")
 
 
 def para_shape_scale_offset_check(x, mean, variance, scale, offect, format_x):
@@ -407,15 +407,15 @@ def para_shape_scale_offset_check(x, mean, variance, scale, offect, format_x):
     shape_mean = mean.get("shape")
     shape_variance = variance.get("shape")
     shape_x = x.get("shape")
-    check_shape(shape_mean)
-    check_shape(shape_variance)
+    check_shape(shape_mean, param_name="mean")
+    check_shape(shape_variance, param_name="variance")
 
     if scale is not None:
         shape_scale = scale.get("shape")
-        check_shape(shape_scale)
+        check_shape(shape_scale, param_name="scale")
     if offect is not None and bool(offect):
         shape_offect = offect.get("shape")
-        check_shape(shape_offect)
+        check_shape(shape_offect, param_name="offect")
 
     _shape_check(shape_x, shape_mean, shape_variance, scale, format_x)
 
@@ -431,9 +431,10 @@ def para_shape_check(x, mean, variance, scale, format_x):
     shape_mean = mean.get("shape")
     shape_variance = variance.get("shape")
     shape_x = x.get("shape")
-    check_shape(shape_mean)
-    check_shape(shape_variance)
+    check_shape(shape_mean, param_name="mean")
+    check_shape(shape_variance, param_name="variance")
     _shape_check(shape_x, shape_mean, shape_variance, scale, format_x)
+
 
 def para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, kernel_name):
     """
@@ -460,6 +461,7 @@ def para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, ke
                               dictArgs['excepted_value'],
                               dictArgs['real_value']))
     para_shape_scale_offset_check(x, mean, variance, scale, offect, format_x)
+
 
 def para_check(x, mean, variance, scale, use_global_stats, kernel_name):
     """

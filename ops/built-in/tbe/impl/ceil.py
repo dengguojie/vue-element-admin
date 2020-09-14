@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,unused-argument
 @fusion_manager.register("ceil")
@@ -49,7 +50,7 @@ def ceil_compute(input_x, output_y, kernel_name="ceil"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def ceil(input_x, output_y, kernel_name="ceil"):
     """
     algorithm: ceil
@@ -72,11 +73,9 @@ def ceil(input_x, output_y, kernel_name="ceil"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
+    check_shape(shape, param_name="input_x")
     check_list = {"float16", "float32"}
-    util.check_dtype_rule(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape)

@@ -492,14 +492,14 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                     tvm.call_extern(src.dtype, "vector_dup",
                                     src.access_ptr(
                                         "rw",
-                                        offset=
-                                        src_offset +
+                                        offset=src_offset +
                                         repeat * batch_cnt * dtype_factor),
                                     dup_value, 1, 1, 1, 8, 8))
 
         ib_.emit(
             tvm.call_extern("uint64", 'set_vector_mask', uint64_all_one,
                             uint64_all_one))
+
 
 def _mov_data_p2p(args):
     """
@@ -571,8 +571,7 @@ def _mov_data_p2p(args):
                             dst_ub.dtype, "reg_mov",
                             dst_ub.access_ptr(
                                 "w",
-                                offset=
-                                (dst_offset +
+                                offset=(dst_offset +
                                  (left_loop + hw_loop * c0_factor) * 16 +
                                  (reg_w_index))),
                             tvm.call_extern(reg.dtype, "reg",
@@ -593,8 +592,7 @@ def _mov_data_p2p(args):
                                                 reg[reg_r_index]),
                                 src_ub.access_ptr(
                                     "r",
-                                    offset=
-                                    (src_offset +
+                                    offset=(src_offset +
                                      hw_i +
                                      (reg_r_index +
                                       c0_loop_i * reg_count) * interv_len))))
@@ -605,8 +603,7 @@ def _mov_data_p2p(args):
                                 dst_ub.dtype, "reg_mov",
                                 dst_ub.access_ptr(
                                     "w",
-                                    offset=
-                                    (dst_offset +
+                                    offset=(dst_offset +
                                      hw_i * 16 + (
                                          reg_w_index + c0_loop_i * reg_count))),
                                 tvm.call_extern(reg.dtype, "reg",
@@ -1086,6 +1083,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                         # so it's better to split the input data by 16 lines
                         repeat_conv2 = \
                             (actual_head_col_size + axis_c - 1) // axis_c
+
                         def _inner_vnconv_c_less_c0():
                             ib_.emit(
                                 tvm.call_extern(
@@ -1130,12 +1128,12 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                 _emit_copy_gm_ubuf(
                                     ib_, 'copy_ubuf_to_gm',
                                     output.dtype,
-                                    repeat_conv2 * axis_c0 *16,
+                                    repeat_conv2 * axis_c0 * 16,
                                     output,
                                     n_index * (c1_range * axis_c0) *
                                     axis_h * axis_w + cube_i *
-                                    (repeat_conv2 * axis_c0 *16) +
-                                    params.block.var * (c_per_core *axis_c0) +
+                                    (repeat_conv2 * axis_c0 * 16) +
+                                    params.block.var * (c_per_core * axis_c0) +
                                     out_offset,
                                     output_ub, offset)
                             with ib_.else_scope():
@@ -1143,12 +1141,12 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     ib_, 'copy_ubuf_to_gm',
                                     output.dtype,
                                     c_per_core *
-                                    axis_c0 - repeat_conv2 * axis_c0 *16 *
+                                    axis_c0 - repeat_conv2 * axis_c0 * 16 *
                                     (loop_range - 1),
                                     output,
                                     n_index * (c1_range * axis_c0) * axis_h *
                                     axis_w + cube_i *
-                                    (repeat_conv2 * axis_c0 *16) +
+                                    (repeat_conv2 * axis_c0 * 16) +
                                     params.block.var * (c_per_core * axis_c0) +
                                     out_offset,
                                     output_ub, offset)
@@ -1236,11 +1234,11 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     _emit_copy_gm_ubuf(
                                         ib_, 'copy_ubuf_to_gm',
                                         output.dtype,
-                                        repeat_conv2 * axis_c0 *16,
+                                        repeat_conv2 * axis_c0 * 16,
                                         output,
                                         n_index * (c1_range * axis_c0) *
                                         axis_h * axis_w + cube_i *
-                                        (repeat_conv2 * axis_c0 *16) +
+                                        (repeat_conv2 * axis_c0 * 16) +
                                         params.block.var *
                                         (c_per_core*axis_c0) +
                                         c0_i * (axis_c0 * axis_h * axis_w) +
@@ -1257,10 +1255,10 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                         tail_size // c1_range,
                                         output,
                                         n_index * (c1_range * axis_c0) *
-                                        axis_h * axis_w + cube_i * \
-                                        (repeat_conv2 * axis_c0 *16) +
+                                        axis_h * axis_w + cube_i *
+                                        (repeat_conv2 * axis_c0 * 16) +
                                         params.block.var *
-                                        (c_per_core*axis_c0) + \
+                                        (c_per_core * axis_c0) +
                                         c0_i * (axis_c0 * axis_h * axis_w) +
                                         out_offset,
                                         output_ub, offset)
@@ -1568,6 +1566,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                     if axis_c <= axis_c0:
                         repeat_conv2 = \
                             (actual_head_col_size + axis_c - 1) // axis_c
+
                         def _inner_vnconv_c_less_c0_n():
                             # to padding the column axis_c to axis_c0
                             # caution! the option maybe cover memory larger than
@@ -1615,13 +1614,13 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                 _emit_copy_gm_ubuf(
                                     ib_, 'copy_ubuf_to_gm',
                                     output.dtype,
-                                    repeat_conv2 * axis_c0 *16,
+                                    repeat_conv2 * axis_c0 * 16,
                                     output,
                                     (params.block.var +
                                      n_loop_index * params.device_core_num) *
                                     (c1_range * axis_c0) *
                                     axis_h * axis_w + cube_i *
-                                    (repeat_conv2 * axis_c0 *16) +
+                                    (repeat_conv2 * axis_c0 * 16) +
                                     out_offset,
                                     output_ub, offset)
                             with ib_.else_scope():
@@ -1629,14 +1628,14 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     ib_, 'copy_ubuf_to_gm',
                                     output.dtype,
                                     axis_h * axis_w * axis_c0 -
-                                    repeat_conv2 * axis_c0 *16 *
+                                    repeat_conv2 * axis_c0 * 16 *
                                     (loop_range - 1),
                                     output,
                                     (params.block.var +
                                      n_loop_index * params.device_core_num) *
                                     (c1_range * axis_c0) * axis_h *
                                     axis_w + cube_i *
-                                    (repeat_conv2 * axis_c0 *16) +
+                                    (repeat_conv2 * axis_c0 * 16) +
                                     out_offset,
                                     output_ub, offset)
                         output_result(0)
@@ -1722,14 +1721,14 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     _emit_copy_gm_ubuf(
                                         ib_, 'copy_ubuf_to_gm',
                                         output.dtype,
-                                        repeat_conv2 * axis_c0 *16,
+                                        repeat_conv2 * axis_c0 * 16,
                                         output,
                                         (params.block.var +
                                          n_loop_index *
                                          params.device_core_num) *
                                         (c1_range * axis_c0) *
                                         axis_h * axis_w + cube_i *
-                                        (repeat_conv2 * axis_c0 *16) +
+                                        (repeat_conv2 * axis_c0 * 16) +
                                         c0_i * (axis_c0 * axis_h * axis_w) +
                                         out_offset,
                                         output_ub, offset)
@@ -1747,8 +1746,8 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                          n_loop_index *
                                          params.device_core_num) *
                                         (c1_range * axis_c0) *
-                                        axis_h * axis_w + cube_i * \
-                                        (repeat_conv2 * axis_c0 *16) +
+                                        axis_h * axis_w + cube_i *
+                                        (repeat_conv2 * axis_c0 * 16) +
                                         c0_i * (axis_c0 * axis_h * axis_w) +
                                         out_offset,
                                         output_ub, offset)

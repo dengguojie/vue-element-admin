@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 def _compare_value_int32(data_x, data_y, shape_dz):
@@ -128,7 +129,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
 
 
 @fusion_manager.register("minimum_grad")
-def minimum_grad_compute(data_x, data_y, data_dz, y1, y2,
+def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
                          kernel_name="minimum_grad"):
     """
     algorithm:
@@ -183,7 +184,8 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL, KERNEL_NAME)
 def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
                  kernel_name="minimum_grad"):
     """
@@ -218,12 +220,12 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
     dtype_x = x1.get("dtype").lower()
     dtype_y = x2.get("dtype").lower()
     dtype_dz = grads.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_shape_rule(shape_max)
-    util.check_tensor_shape_size(shape_max)
+    check_shape(shape_x, param_name="x1")
+    check_shape(shape_y, param_name="x2")
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                   param_name_input1="x1",
+                                                   param_name_input2="x2")
+    check_shape(shape_max, param_name="shape_max")
 
     if list(shape_dz) != list(shape_max):
         raise RuntimeError("minimum_grad shape_dz != shape_max")
@@ -232,14 +234,15 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
         raise RuntimeError("the dtypes of intputs should be same")
 
     check_list = ("float16", "float32", "int32")
-    util.check_dtype_rule(dtype_dz, check_list)
-    util.check_dtype_rule(dtype_x, check_list)
-    util.check_dtype_rule(dtype_y, check_list)
+    check_dtype(dtype_dz, check_list, param_name="grads")
+    check_dtype(dtype_x, check_list, param_name="x1")
+    check_dtype(dtype_y, check_list, param_name="x2")
 
     data_x = tvm.placeholder(shape_x, dtype=dtype_x, name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=dtype_y, name="data_y")
     data_dz = tvm.placeholder(shape_dz, dtype=dtype_dz, name="data_dz")
-    res = minimum_grad_compute(data_x, data_y, data_dz, y1, y2, kernel_name)
+    res = minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x,
+                               grad_y, kernel_name)
 
     with tvm.target.cce():
         if (grad_x, grad_y) == (True, False):

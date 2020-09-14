@@ -20,8 +20,9 @@ yolov_3_cls_prob
 from te import tik
 from topi.cce import util
 from te.utils import op_utils
-from impl.constant_util import BLOCK_SIZE, \
-    VECTOR_BYTE_SIZE, STRIDE_ONE
+from impl.constant_util import BLOCK_SIZE
+from impl.constant_util import VECTOR_BYTE_SIZE
+from impl.constant_util import STRIDE_ONE
 from impl.yolo_v3_correct_region_box import GetCorrectBoxComputer
 from impl import constant_util as constant
 from impl import common_util as common
@@ -51,6 +52,7 @@ SID = 0
 # value zero
 VALUE_ZERO = 0
 
+
 def check_param_range(param_name, min_value, max_value, real_value, op_name='yolo_v3_detection_output_d'):
     
     error_info = {}
@@ -61,8 +63,9 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='yol
     error_info['max_value'] = str(max_value)
     error_info['real_value'] = str(real_value)
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                         error_info['max_value'], error_info['real_value']))
+                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                          error_info['max_value'], error_info['real_value']))
+
 
 # pylint: disable=too-many-ancestors
 class ClsProbComputer(GetCorrectBoxComputer):
@@ -339,7 +342,7 @@ class ClsProbComputer(GetCorrectBoxComputer):
         self.instance.data_move(param['ub_a'], param['obj_data'][batch, 0], SID,
                                 NBURST_ONE, param['burlen'], GAP_ZERO, GAP_ZERO)
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in (
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES"):
             self.instance.data_move(self.obj_data[param['obj_gm_offset']],
                                     param['ub_a'], SID,
                                     NBURST_ONE, param['burlen'], GAP_ZERO,
@@ -778,7 +781,7 @@ def check_param(input_dict):
     pre_nms_topn = input_dict.get("pre_nms_topn")
 
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES"):
         op_utils.check_dtype(input_dict.get("box1_info").get("dtype"), ["float16"], param_name="box1_info")
         op_utils.check_dtype(input_dict.get("box2_info").get("dtype"), ["float16"], param_name="box2_info")
         op_utils.check_dtype(input_dict.get("box3_info").get("dtype"), ["float16"], param_name="box3_info")
@@ -799,8 +802,8 @@ def check_param(input_dict):
         error_info['real_value'] = str(coords)
         raise RuntimeError(error_info, 
             "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-            %(error_info['opname'], error_info['param_name'], error_info['expect_value'], 
-            error_info['real_value']))
+            % (error_info['opname'], error_info['param_name'], error_info['expect_value'],
+               error_info['real_value']))
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("box1_info").get("dtype")
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
@@ -822,7 +825,7 @@ def check_param(input_dict):
         error_info['real_value'] = str(max_box_number_per_batch)
         raise RuntimeError(error_info, 
             "In op[%s], max_box_number_per_batch should be a multiple of 16, but actually is [%s]."
-            %(error_info['opname'], error_info['real_value']))
+            % (error_info['opname'], error_info['real_value']))
 
     if max_box_number_per_batch < pre_nms_topn or pre_nms_topn <= 0:
         check_param_range("pre_nms_topn", 1, max_box_number_per_batch-1, pre_nms_topn)

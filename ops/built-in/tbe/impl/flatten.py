@@ -23,6 +23,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from topi.cce import util
+from te.utils.op_utils import *
 
 # max block num
 MAX_BLOCK = 65535
@@ -74,7 +75,7 @@ def _tile_axis(data_list, shape, dtype):
 
 
 # pylint: disable=invalid-name,unnecessary-lambda,unused-argument
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def flatten(x, y, kernel_name="flatten"):
     """return a copy of the tensor collapsed into one dimension.
 
@@ -97,10 +98,8 @@ def flatten(x, y, kernel_name="flatten"):
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_dtype_rule(dtype_lower, check_list)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="x")
+    check_dtype(dtype_lower, check_list, param_name="x")
 
     size = 1
     for i, _ in enumerate(shape):

@@ -15,21 +15,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 unsorted_segment_prod_d
 """
-from te import tvm
 import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
 
-#General limitation of the size for input shape
-SHAPE_SIZE_LIMIT = 2**30
 #block length in number
 BLOCK_LENGTH = 32
 #max ub size
 UB_SIZE_MAX = 293952
-# the max num of each axis of shape
-MAX_SHAPE_NUM = 1000000
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -42,29 +38,28 @@ def check_supported(x,
     fusion pass test if num_segments is int32
     """
     shape = x.get("shape")
-    dtype = x.get("dtype")
+    dtype = x.get("dtype").lower()
     segment_ids_shape = segment_ids.get("shape")
-    segment_ids_dtype = segment_ids.get("dtype")
-    check_list = ("float16", "float32", "int32")
-    if dtype.lower() not in check_list:
-        return False
-    util.check_dtype_rule(dtype, check_list)
-
+    segment_ids_dtype = segment_ids.get("dtype").lower()
+    check_list = ("float16", "float32", "int32", "int16")
+    op_utils.check_dtype(dtype, check_list, param_name="x")
     check_list_ids = ("int32")
-    if segment_ids_dtype.lower() not in check_list_ids:
-        return False
+    op_utils.check_dtype(segment_ids_dtype,
+                         check_list_ids,
+                         param_name="segment_ids")
     if num_segments <= 0:
         return False
     first_shape = int(shape[0])
     ids_length = int(segment_ids_shape[0])
     if first_shape != ids_length:
         return False
-    total_ub_size = (num_segments + first_shape)*BLOCK_LENGTH + (
+    total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
         (BLOCK_LENGTH // 2 - first_shape %
-         (BLOCK_LENGTH // 4)) + first_shape)*(BLOCK_LENGTH // 8)
+         (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
     if total_ub_size > UB_SIZE_MAX // 2:
         return False
     return True
+
 
 # pylint: disable=unused-argument,invalid-name,no-member
 @fusion_manager.register("unsorted_segment_prod_d")
@@ -79,8 +74,11 @@ def unsorted_segment_prod_d_compute(x,
     res = te.lang.cce.unsorted_segment_prod(x, segment_ids, num_segments)
     return res
 
+
 # pylint: disable =too-many-locals
-@util.check_input_type(dict, dict, dict, int, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_INT,
+                          op_utils.KERNEL_NAME)
 def unsorted_segment_prod_d(x,
                             segment_ids,
                             y,
@@ -114,30 +112,27 @@ def unsorted_segment_prod_d(x,
         None
     """
     shape = x.get("shape")
-    dtype = x.get("dtype")
+    dtype = x.get("dtype").lower()
     segment_ids_shape = segment_ids.get("shape")
-    segment_ids_dtype = segment_ids.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape, max_shape_num=MAX_SHAPE_NUM)
-    util.check_shape_rule(segment_ids_shape, max_shape_num=MAX_SHAPE_NUM)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(segment_ids_shape, SHAPE_SIZE_LIMIT)
+    segment_ids_dtype = segment_ids.get("dtype").lower()
+    op_utils.check_shape(shape, param_name="x")
+    op_utils.check_shape(segment_ids_shape, param_name="segment_ids")
 
-    check_list = ("float16", "float32", "int32")
-    util.check_dtype_rule(dtype, check_list)
-
-    check_list_ids = ("int32",)
-    util.check_dtype_rule(segment_ids_dtype, check_list_ids)
+    check_list = ("float16", "float32", "int32", "int16")
+    op_utils.check_dtype(dtype, check_list, param_name="x")
+    check_list_ids = ("int32", )
+    op_utils.check_dtype(segment_ids_dtype,
+                         check_list_ids,
+                         param_name="segment_ids")
     prod_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmul", "float32")
     if dtype == "float32" and not prod_support:
         raise RuntimeError(
             "Input dtype only support float16 while input dtype is float32")
     if num_segments <= 0:
-        raise RuntimeError(
-            "unsorted_segment_prod_d only supports num_segments"
-            " greater than 0, while num_segments is %d" %
-            (num_segments))
+        raise RuntimeError("unsorted_segment_prod_d only supports num_segments"
+                           " greater than 0, while num_segments is %d" %
+                           (num_segments))
 
     first_shape = int(shape[0])
     ids_length = int(segment_ids_shape[0])
@@ -145,16 +140,14 @@ def unsorted_segment_prod_d(x,
         raise RuntimeError(
             "unsorted_segment_prod_d only support inputs[0] equal "
             "to segment_ids_shape[0], while inputs[0] is %d, "
-            "segment_ids_shape[0] is %d" %
-            (first_shape, ids_length))
-    total_ub_size = (num_segments + first_shape)*BLOCK_LENGTH + (
+            "segment_ids_shape[0] is %d" % (first_shape, ids_length))
+    total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
         (BLOCK_LENGTH // 2 - first_shape %
-         (BLOCK_LENGTH // 4)) + first_shape)*(BLOCK_LENGTH // 8)
+         (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
     if total_ub_size > UB_SIZE_MAX // 2:
         raise RuntimeError(
             "unsorted_segment_prod_d num_segments=%d, shape[0]=%d, "
-            "greater than UB_SIZE_MAX"
-            % (num_segments, shape[0]))
+            "greater than UB_SIZE_MAX" % (num_segments, shape[0]))
 
     dtype = dtype.lower()
     data_inputs = tvm.placeholder(shape, name="data_inputs", dtype=dtype)
@@ -162,8 +155,8 @@ def unsorted_segment_prod_d(x,
                                        name="data_segments_id",
                                        dtype=segment_ids_dtype)
     with tvm.target.cce():
-        res = unsorted_segment_prod_d_compute(data_inputs, data_segments_id,
-                                              y, num_segments, kernel_name)
+        res = unsorted_segment_prod_d_compute(data_inputs, data_segments_id, y,
+                                              num_segments, kernel_name)
 
         sch = generic.auto_schedule(res)
 

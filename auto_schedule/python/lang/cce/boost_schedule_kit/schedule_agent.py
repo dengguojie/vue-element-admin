@@ -196,7 +196,10 @@ class ScopeManager:
         if len(stage.leaf_iter_vars) != len(stage.all_iter_vars):
             raise_schedule_agent_err("Op should be init before schedule")
         for axis in stage.leaf_iter_vars:
-            self._axis_unit[axis] = [1, axis.dom.extent.value]
+            if isinstance(axis.dom.extent, tvm.expr.IntImm):
+                self._axis_unit[axis] = [1, axis.dom.extent.value]
+            else:
+                self._axis_unit[axis] = [1, axis.dom.extent]
             self._active_scopes.append(axis)
             self._origin_axis.append(axis)
 
@@ -276,7 +279,7 @@ class ScopeManager:
     def reorder(self, *args):
         """
         stage's reorder function
-        need check if axises in args is valid
+        need check if axes in args is valid
         do not need all axised in this scope
         """
         visited_scope = set()
@@ -365,7 +368,7 @@ class ScopeManager:
 
     def nlast_scopes(self, n_scope):
         """
-        get n last axises of this stage
+        get n last axes of this stage
         """
         if n_scope <= 0:
             raise ValueError("n_scope must >0")
@@ -379,7 +382,7 @@ class ScopeManager:
         """
         this function developed for mmad
         split the axis of scope and reorder
-        return the nlast axises for emit insn
+        return the nlast axes for emit insn
         """
         n_scope_intrin = len(self._origin_axis)
         nlast = n_scope_intrin if nlast == 0 else nlast
@@ -418,11 +421,11 @@ class ScopeManager:
     def bind_core(self, scope_list, core_num_list):
         """
         bind core : use the chip better
-        finally fuse all the outter axises
+        finally fuse all the outter axes
 
         Parameters
         ----------
-        scope_list : the list that axises to bind
+        scope_list : the list that axes to bind
         core_num_list : the list that core use
 
         Returns
@@ -471,9 +474,19 @@ class ScopeManager:
         leaf_ivars = self._stage.leaf_iter_vars
         return leaf_ivars[1]
 
+    def get_bindcore_m_axis(self):
+        """
+        get the axis that conv1d used to compute al1_size
+        c_ddr bindcore axes's sequence:
+                        [fused_axis, batch_axis_inner,
+                         n_axis_inner, m_axis_inner, ...]
+        """
+        leaf_ivars = self._stage.leaf_iter_vars
+        return leaf_ivars[3]
+
     def get_relate_scope(self, scope_key, scope_end=None):
         """
-        get the axises whose name contain scope_key
+        get the axes whose name contain scope_key
         """
         scope_list = list()
         for scope in self._stage.leaf_iter_vars:
@@ -590,7 +603,8 @@ class ScheduleAgent:
         def start_attach(factor_list, ax_list):
             origin_axis = scopes.origin_axis
             for factor, axis in zip(factor_list, ax_list):
-                if factor is not None and (factor > 1 or axis in origin_axis):
+                if factor is not None and (isinstance(factor, tvm.expr.Expr) \
+                    or factor > 1 or axis in origin_axis):
                     axo, axi = scopes.split(axis, factor=factor)
                     self._attach_map.update_scope(axis, axi)
                     axis_outer.append(axo)

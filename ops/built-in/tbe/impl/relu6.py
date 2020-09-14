@@ -18,15 +18,14 @@ f(x) = min(max(0,x), 6)
 """
 
 from functools import reduce as reduce_ins
-from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-import topi
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 
-SHAPE_SIZE_LIMIT = 2**30  # shape limit
+import te.lang.cce
+import topi
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
+from topi.cce import util
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -54,7 +53,8 @@ def relu6_compute(input_x, output_y, kernel_name="relu6"):
     return final_res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.KERNEL_NAME)
 def relu6(input_x, output_y, kernel_name="relu6"):
     """
        f(x)= 6(x >= 6)
@@ -76,7 +76,7 @@ def relu6(input_x, output_y, kernel_name="relu6"):
     """
     input_shape = util.scalar2tensor_one(input_x.get("shape"))
     input_dtype = input_x.get("dtype").lower()
-    check_shape(input_shape, param_name="input_x")
+    op_utils.check_shape(input_shape, param_name="input_x")
 
     vmaxs_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmaxs", "float32")
@@ -86,16 +86,13 @@ def relu6(input_x, output_y, kernel_name="relu6"):
 
     # check input tensor data_type
     check_list = ("int32", "float16", "float32")
-    if not input_dtype in check_list:
-        raise RuntimeError("relu6 only support int32 float16 float32.")
+    op_utils.check_dtype(input_dtype, check_list, param_name="input_x")
 
     input_shape = [reduce_ins(lambda x, y: x * y, input_shape[:])]
     input_data = tvm.placeholder(input_shape,
                                  name="input_data",
                                  dtype=input_dtype)
-    final_res = relu6_compute(input_data,
-                              output_y,
-                              kernel_name="relu6")
+    final_res = relu6_compute(input_data, output_y, kernel_name="relu6")
 
     with tvm.target.cce():
         auto_sch = topi.generic.auto_schedule(final_res)

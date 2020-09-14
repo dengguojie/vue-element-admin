@@ -23,6 +23,7 @@ from topi import generic
 from topi.cce import util
 from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 @fusion_manager.register("truncate_mod")
@@ -50,8 +51,9 @@ def truncate_mod_compute(input_x, input_y, output_z,
     """
     input_data_x = te.lang.cce.util.shape_to_list(input_x.shape)
     input_data_y = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_list = util.produce_shapes(input_data_x, input_data_y)
-    util.check_tensor_shape_size(shape_list[2])
+    shape_list = broadcast_shapes(input_data_x, input_data_y,
+                                  param_name_input1="input_x",
+                                  param_name_input2="input_y")
     dtype = input_x.dtype
     tran_x = te.lang.cce.cast_to(input_x, "float32")
     tran_y = te.lang.cce.cast_to(input_y, "float32")
@@ -68,7 +70,7 @@ def truncate_mod_compute(input_x, input_y, output_z,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):
     """
     algorithm: truncatemod
@@ -94,17 +96,15 @@ def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):
     shape_y = input_y.get("shape")
     dtype_y = input_y.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
 
-    shape_list = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_list[2])
+    shape_list = broadcast_shapes(shape_x, shape_y,
+                                  param_name_input1="input_x",
+                                  param_name_input2="input_y")
     check_list = ("float16", "float32", "int8", "uint8", "int32")
-    util.check_dtype_rule(dtype_x, check_list)
-    util.check_dtype_rule(dtype_y, check_list)
+    check_dtype(dtype_x, check_list, param_name="input_x")
+    check_dtype(dtype_y, check_list, param_name="input_y")
 
     shape_x, shape_y = refine_shapes_for_broadcast(shape_list[0],
                                                    shape_list[1])

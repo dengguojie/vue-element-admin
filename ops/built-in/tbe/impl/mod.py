@@ -22,6 +22,7 @@ from te import platform as tbe_platform
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 @fusion_manager.register("mod")
@@ -61,8 +62,9 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
         has_improve_precision = True
 
     if list(shape_x) != list(shape_y):
-        shape_x, shape_y, shape_broadcast = util.produce_shapes(shape_x,
-                                                                shape_y)
+        shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
+                                                             param_name_input1="input_x",
+                                                             param_name_input2="input_y")
         input_x = te.lang.cce.broadcast(input_x, shape_broadcast, "float32")
         input_y = te.lang.cce.broadcast(input_y, shape_broadcast, "float32")
     else:
@@ -91,7 +93,7 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def mod(input_x, input_y, output_z, kernel_name="mod"):
     """
     Returns element-wise remainder of division.
@@ -117,18 +119,14 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
     shape_y = input_y.get("shape")
 
     util.compare_tensor_dict_key(input_x, input_y, "dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
 
     check_list = ("float16", "float32", "int8", "uint8", "int32")
     input_dtype = input_x.get("dtype").lower()
-    util.check_dtype_rule(input_dtype, check_list)
-    shape_x, shape_y, shape_broadcast = util.produce_shapes(shape_x, shape_y)
+    check_dtype(input_dtype, check_list, param_name="input_x")
+    shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x", param_name_input2="input_y")
 
-    util.check_tensor_shape_size(shape_broadcast)
 
     reshape_x, reshape_y = refine_shapes_for_broadcast(shape_x, shape_y)
     data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")

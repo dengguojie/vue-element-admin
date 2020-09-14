@@ -52,6 +52,7 @@ ES_UB_SIZE = 192
 class RoiAlign():
     def __init__(self, feature_map_dict,
                  rois_dict,
+                 roisn_dict,
                  output_dict,
                  spatial_scale,
                  output_h,
@@ -66,6 +67,12 @@ class RoiAlign():
         self.input_dtype = feature_map_dict.get("dtype")
         self.rois_shape = rois_dict.get("shape")
         self.rois_dtype = rois_dict.get("dtype")
+        if roisn_dict:
+            self.roisn_effect = True
+            self.roisn_shape = roisn_dict.get("shape")
+            self.roisn_dtype = roisn_dict.get("dtype")
+        else:
+            self.roisn_effect = False
 
         self.input_n = self.input_shape[0]
         self.input_c1 = self.input_shape[1]
@@ -94,6 +101,9 @@ class RoiAlign():
                                                 scope=tik.scope_gm)
         self.rois = self.tik_inst.Tensor(self.input_dtype, self.rois_shape,
                                          name="rois", scope=tik.scope_gm)
+        if self.roisn_effect:
+            self.roisn = self.tik_inst.Tensor(self.roisn_dtype, self.roisn_shape,
+                                              name="roisn", scope=tik.scope_gm)
         self.output_gm = self.tik_inst.Tensor(self.input_dtype,
                                               (rois_total_num, self.input_shape[1],  output_h, output_w,
                                                self.input_shape[4]), name="output_gm",
@@ -116,18 +126,40 @@ class RoiAlign():
         if ub_size_bytes != ES_UB_SIZE:
             if self.sample_ratio * self.pooled_h > 128 or \
                     self.sample_ratio * self.pooled_w > 128:
-                raise RuntimeError("sample_ratio * pooled_h should \
-                                    no more than 128, \
-                                    sample_ratio * pooled_w should \
-                                    no more than 128")
+                error_info = {}
+                error_info['errCode'] = 'E80002'
+                error_info['param_name1'] = 'sample_ratio * pooled_h'
+                error_info['param_name2'] = 'sample_ratio * pooled_w'
+                error_info['op_name'] = 'roi_align'
+                error_info['min_value'] = '-inf'
+                error_info['max_value'] = '128'
+                error_info['param_value1'] = self.sample_ratio * self.pooled_h
+                error_info['param_value2'] = self.sample_ratio * self.pooled_w
+                raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s] should be "
+                                               "in the range of [%s, %s], but actually is [%s]/[%s]."
+                                   % (error_info['op_name'], error_info['param_name1'], \
+                                      error_info['param_name2'],
+                                      error_info['min_value'], error_info['max_value'], \
+                                      error_info['param_value1'], error_info['param_value2']))
             self.max_fmap_ub_size = 164 * 32
         else:
             if self.sample_ratio * self.pooled_h > 58 or \
                     self.sample_ratio * self.pooled_w > 58:
-                raise RuntimeError("sample_ratio * pooled_h should \
-                                    no more than 58, \
-                                    sample_ratio * pooled_w should \
-                                    no more than 58")
+                error_info = {}
+                error_info['errCode'] = 'E80002'
+                error_info['param_name1'] = 'sample_ratio * pooled_h'
+                error_info['param_name2'] = 'sample_ratio * pooled_w'
+                error_info['op_name'] = 'roi_align'
+                error_info['min_value'] = '-inf'
+                error_info['max_value'] = '58'
+                error_info['param_value1'] = self.sample_ratio * self.pooled_h
+                error_info['param_value2'] = self.sample_ratio * self.pooled_w
+                raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s] should be "
+                                               "in the range of [%s, %s], but actually is [%s]/[%s]."
+                                   % (error_info['op_name'], error_info['param_name1'], \
+                                      error_info['param_name2'],
+                                      error_info['min_value'], error_info['max_value'], \
+                                      error_info['param_value1'], error_info['param_value2']))
             self.max_fmap_ub_size = 108 * 32
 
         self.flowtable_scale = [0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625]
@@ -152,8 +184,13 @@ class RoiAlign():
         self.last_core_block_num = \
             int(math.ceil(float(self.last_core_rois_num) / ROINUM))
 
+        self.roi_actual_num_ub = None
+        self.calced_rois = None
+        self.range_end = None
+
+
     def update_flowtable(self):
-        data = self.spatial_scale  #0.0625(1 / 16)
+        data = self.spatial_scale  # 0.0625(1 / 16)
         self.flowtable_scale[0] = data
         self.flowtable_scale_fp32[0] = data
 
@@ -170,7 +207,7 @@ class RoiAlign():
         self.flowtable_scale[3] = data
         self.flowtable_scale_fp32[3] = data
 
-        scale = self.pooled_w* self.sample_ratio
+        scale = self.pooled_w * self.sample_ratio
         data = 1.0 / scale
         self.flowtable_scale[4] = data
         self.flowtable_scale_fp32[4] = data
@@ -185,8 +222,24 @@ class RoiAlign():
 
     def roialign_compute(self):
         last_core_index = self.aicore_num - 1
-        with self.tik_inst.for_range(0, self.aicore_num, block_num = self.aicore_num) as i:
-            block_offset = self.tik_inst.Scalar("int32", init_value = 0)
+        with self.tik_inst.for_range(0, self.aicore_num, block_num=self.aicore_num) as i:
+            if self.roisn_effect:
+                roisn_ub = self.tik_inst.Tensor("int32", (8, ), \
+                                                scope = tik.scope_ubuf, name = "roisn_ub")
+                self.tik_inst.data_move(roisn_ub, \
+                                        self.roisn[0, 0], 0, 1, 1, 0, 0)
+                self.roi_actual_num_ub = self.tik_inst.Scalar("int32")
+                self.roi_actual_num_ub.set_as(roisn_ub[0])
+            else:
+                self.roi_actual_num_ub = self.tik_inst.Scalar("int32")
+                self.roi_actual_num_ub.set_as(self.rois_shape[0])
+
+            self.calced_rois = self.tik_inst.Scalar("int32")
+            self.calced_rois.set_as(0)
+            self.range_end = self.tik_inst.Scalar("int32")
+            self.range_end.set_as(self.roi_actual_num_ub)
+
+            block_offset = self.tik_inst.Scalar("int32", init_value=0)
             block_offset.set_as(i * self.each_core_rois_num)
             with self.tik_inst.if_scope(i != last_core_index):
                 self.roialign_compute_each_core(self.each_core_block_num, block_offset, \
@@ -194,9 +247,12 @@ class RoiAlign():
             with self.tik_inst.else_scope():
                 self.roialign_compute_each_core(self.last_core_block_num, block_offset, \
                                                 self.last_core_block_left)
-
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
-                               inputs=[self.feature_map, self.rois], outputs=[self.output_gm])
+        if self.roisn_effect:
+            self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
+                                   inputs=[self.feature_map, self.rois, self.roisn], outputs=[self.output_gm])
+        else:
+            self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
+                                   inputs=[self.feature_map, self.rois], outputs=[self.output_gm])
         return self.tik_inst
 
     def roialign_compute_each_core(self, block_num, block_offset, block_left):
@@ -219,11 +275,11 @@ class RoiAlign():
         height = self.tik_inst.Scalar("int32")
 
         src_stride = self.tik_inst.Scalar("int32")
-        dst_stride = self.tik_inst.Scalar("int32", init_value = 0)
+        dst_stride = self.tik_inst.Scalar("int32", init_value=0)
         cont_scalar = self.tik_inst.Scalar("int32")
 
-        grid_h = self.tik_inst.Scalar("int32", init_value = self.sample_ratio)
-        grid_w = self.tik_inst.Scalar("int32", init_value = self.sample_ratio)
+        grid_h = self.tik_inst.Scalar("int32", init_value=self.sample_ratio)
+        grid_w = self.tik_inst.Scalar("int32", init_value=self.sample_ratio)
 
         stride_h = self.tik_inst.Scalar("int32")
         stride_h.set_as(self.pooled_h * grid_h)
@@ -286,53 +342,53 @@ class RoiAlign():
 
         out_index = self.tik_inst.Scalar("int32")
 
-        valid_rois_num = self.tik_inst.Scalar("int32", init_value = ROINUM)
+        valid_rois_num = self.tik_inst.Scalar("int32", init_value=ROINUM)
         invalid_rois_num = self.tik_inst.Scalar("int32")
 
-        last_block_index = self.tik_inst.Scalar("int32", init_value = block_num - 1)
+        last_block_index = self.tik_inst.Scalar("int32", init_value=block_num - 1)
 
         rois_block_ub = self.tik_inst.Tensor("float16", (128, 16), \
-                                             scope = tik.scope_ubuf, name = "rois_block_ub")
+                                             scope=tik.scope_ubuf, name="rois_block_ub")
         feature_map_ub = self.tik_inst.Tensor("float16", (self.max_fmap_ub_size * 16, ), \
-                                              scope = tik.scope_ubuf, name = "feature_map")
+                                              scope=tik.scope_ubuf, name="feature_map")
         output_ub = self.tik_inst.Tensor("float16", \
                                          (self.repeat * self.pooled_w * 8 * C0SIZE, ), \
-                                         scope = tik.scope_ubuf, name = "output_ub")
+                                         scope=tik.scope_ubuf, name="output_ub")
         val_ub = self.tik_inst.Tensor("float16", (self.repeat * ONEVECTOR * 4, ), \
-                                      scope = tik.scope_ubuf, name = "val_ub")
+                                      scope=tik.scope_ubuf, name="val_ub")
 
         batch_index_int32 = self.tik_inst.Tensor("int32", (128, ), \
-                                                 scope = tik.scope_ubuf, name = "batch_index_int32")
+                                                 scope=tik.scope_ubuf, name="batch_index_int32")
 
         y_low_int = self.tik_inst.Tensor("int32", (128, ), \
-                                         scope = tik.scope_ubuf, name = "y_low_int")
+                                         scope=tik.scope_ubuf, name="y_low_int")
         y_high_int = self.tik_inst.Tensor("int32", (128, ), \
-                                          scope = tik.scope_ubuf, name = "y_high_int")
+                                          scope=tik.scope_ubuf, name="y_high_int")
         x_low_int = self.tik_inst.Tensor("int32", (128, ), \
-                                         scope = tik.scope_ubuf, name = "x_low_int")
+                                         scope=tik.scope_ubuf, name="x_low_int")
         x_high_int = self.tik_inst.Tensor("int32", (128, ), \
-                                          scope = tik.scope_ubuf, name = "x_high_int")
+                                          scope=tik.scope_ubuf, name="x_high_int")
 
         ly = self.tik_inst.Tensor("float16", (128, ), \
-                                  scope = tik.scope_ubuf, name = "ly")
+                                  scope=tik.scope_ubuf, name="ly")
         lx = self.tik_inst.Tensor("float16", (128, ), \
-                                  scope = tik.scope_ubuf, name = "lx")
+                                  scope=tik.scope_ubuf, name="lx")
         hy = self.tik_inst.Tensor("float16", (128, ), \
-                                  scope = tik.scope_ubuf, name = "hy")
+                                  scope=tik.scope_ubuf, name="hy")
         hx = self.tik_inst.Tensor("float16", (128, ), \
-                                  scope = tik.scope_ubuf, name = "hx")
+                                  scope=tik.scope_ubuf, name="hx")
 
         n_grid_h = self.tik_inst.Tensor("int32", (128, ), \
-                                        scope =tik.scope_ubuf, name = "n_grid_h")
+                                        scope=tik.scope_ubuf, name="n_grid_h")
         n_grid_w = self.tik_inst.Tensor("int32", (128, ), \
-                                        scope =tik.scope_ubuf, name = "n_grid_w")
+                                        scope=tik.scope_ubuf, name="n_grid_w")
 
         roi_gridh_fp32 = self.tik_inst.Tensor("float32", (128, ), \
-                                              scope =tik.scope_ubuf, name = "roi_gridh_fp32")
+                                              scope=tik.scope_ubuf, name="roi_gridh_fp32")
         roi_gridw_fp32 = self.tik_inst.Tensor("float32", (128, ), \
-                                              scope =tik.scope_ubuf, name = "roi_gridw_fp32")
+                                              scope=tik.scope_ubuf, name="roi_gridw_fp32")
         bin_scale = self.tik_inst.Tensor("float16", (128, ), \
-                                         scope =tik.scope_ubuf, name = "bin_scale")
+                                         scope=tik.scope_ubuf, name="bin_scale")
 
         x_start_ub = self.tik_inst.Tensor("float16", (ROINUM,), \
                                           name="x_start_ub", scope=tik.scope_ubuf)
@@ -345,10 +401,10 @@ class RoiAlign():
                                          name="index_arr", scope=tik.scope_ubuf)
 
         cont = self.tik_inst.Tensor("int32", (128, ), \
-                                    name="cont", scope = tik.scope_ubuf)
+                                    name="cont", scope=tik.scope_ubuf)
 
         with self.tik_inst.new_stmt_scope():
-            tmp = self.tik_inst.Scalar("float16", init_value = 0.5)
+            tmp = self.tik_inst.Scalar("float16", init_value=0.5)
             index_arr_int32 = self.tik_inst.Tensor("int32", (ROINUM, ), \
                                                    name="index_arr_int32", scope=tik.scope_ubuf)
             with self.tik_inst.for_range(0, 128) as i:
@@ -356,9 +412,11 @@ class RoiAlign():
             self.tik_inst.vec_conv(64, '', index_arr, index_arr_int32, \
                                    2, 4, 8, 1.0)
             self.tik_inst.vec_adds(128, index_arr, index_arr, tmp, 1, 8, 8)
+
         #get block
         with self.tik_inst.for_range(0, block_num) as loop_b:
             rois_index.set_as(block_offset + loop_b * ROINUM)
+            self.calced_rois.set_as(block_offset + loop_b * ROINUM)
             if block_left == 0:
                 rois_process_num.set_as(ROINUM)
                 with self.tik_inst.for_range(0, 128) as i:
@@ -378,7 +436,7 @@ class RoiAlign():
 
             #transe rois coordinate
             self.tik_inst.vec_dup(64, cont, 1, 2, 8)
-            valid_rois_num = self.roi_align_perf_scale(rois_block_ub, x_start_ub,rois_process_num, \
+            valid_rois_num = self.roi_align_perf_scale(rois_block_ub, x_start_ub, rois_process_num, \
                                                        self.sample_ratio, n_grid_w, n_grid_h, \
                                                        x_start_fp32_ub, y_start_fp32_ub, \
                                                        roi_gridw_fp32, roi_gridh_fp32, batch_index_int32, \
@@ -386,238 +444,238 @@ class RoiAlign():
             invalid_rois_num.set_as(rois_process_num - valid_rois_num)
             #get ROINUM
             with self.tik_inst.for_range(0, rois_process_num) as loop_n:
-                cont_scalar.set_as(cont[loop_n])
-                with self.tik_inst.if_scope(cont_scalar == 0):
-                    batch_index.set_as(batch_index_int32[loop_n])
-                    with self.tik_inst.new_stmt_scope():
-                        self.roialign_perf_gen_grid(
-                            index_arr,
-                            n_grid_w, n_grid_h, loop_n,
-                            lx, ly, hx, hy,
-                            x_low_int, y_low_int, x_high_int, y_high_int,
-                            x_start_fp32_ub, y_start_fp32_ub,
-                            roi_gridh_fp32, roi_gridw_fp32,
-                            self.input_w, self.input_h)
+                with self.tik_inst.if_scope(
+                            (self.calced_rois + loop_n) < self.range_end):
+                    cont_scalar.set_as(cont[loop_n])
+                    with self.tik_inst.if_scope(cont_scalar == 0):
+                        batch_index.set_as(batch_index_int32[loop_n])
+                        with self.tik_inst.new_stmt_scope():
+                            self.roialign_perf_gen_grid(
+                                index_arr,
+                                n_grid_w, n_grid_h, loop_n,
+                                lx, ly, hx, hy,
+                                x_low_int, y_low_int, x_high_int, y_high_int,
+                                x_start_fp32_ub, y_start_fp32_ub,
+                                roi_gridh_fp32, roi_gridw_fp32,
+                                self.input_w, self.input_h)
 
-                    if self.sample_ratio <= 0:
-                        grid_h.set_as(n_grid_h[loop_n])
-                        grid_w.set_as(n_grid_w[loop_n])
-                        scale.set_as(bin_scale[loop_n])
+                        if self.sample_ratio <= 0:
+                            grid_h.set_as(n_grid_h[loop_n])
+                            grid_w.set_as(n_grid_w[loop_n])
+                            scale.set_as(bin_scale[loop_n])
 
-                        stride_h.set_as(self.pooled_h * grid_h - 1)
-                        stride_w.set_as(self.pooled_w * grid_w - 1)
+                            stride_h.set_as(self.pooled_h * grid_h - 1)
+                            stride_w.set_as(self.pooled_w * grid_w - 1)
 
-                    hstart.set_as(y_low_int[0])
-                    hend.set_as(y_high_int[stride_h])
-                    wstart.set_as(x_low_int[0])
-                    wend.set_as(x_high_int[stride_w])
+                        hstart.set_as(y_low_int[0])
+                        hend.set_as(y_high_int[stride_h])
+                        wstart.set_as(x_low_int[0])
+                        wend.set_as(x_high_int[stride_w])
 
-                    #cce : wend = (wend == W) ? W : wend + 1
-                    with self.tik_inst.if_scope(wend != self.input_w):
-                        wend.set_as(wend + 1)
-                    with self.tik_inst.else_scope():
-                        pass
-                    #cce : hend = (hend == H) ? H : hend + 1
-                    with self.tik_inst.if_scope(hend != self.input_h):
-                        hend.set_as(hend + 1)
-                    with self.tik_inst.else_scope():
-                        pass
-
-                    width.set_as(wend - wstart)
-                    height.set_as(hend - hstart)
-                    src_stride.set_as(self.input_w - width)
-                    tile_h.set_as(max_length // width)
-
-                    grid_start.set_as(0)
-                    grid_end.set_as(0)
-                    curr_grid.set_as(-1)
-                    curr_pos.set_as(0)
-
-                    h_dim.set_as(self.pooled_h * grid_h)
-                    w_dim.set_as(self.pooled_w * grid_w)
-                    gh_left.set_as(0)
-
-                    tile_start.set_as(y_low_int[0])
-                    tile_end.set_as(tile_start + 1)
-
-                    #cce : for (ph = 0; ph <= hDim; ph++)
-                    with self.tik_inst.for_range(0, h_dim + 1) as loop_ph:
-                        with self.tik_inst.if_scope(loop_ph < h_dim):
-                            curr_grid.set_as(curr_grid + 1)
-                            curr_pos.set_as(y_high_int[loop_ph])
+                        #cce : wend = (wend == W) ? W : wend + 1
+                        with self.tik_inst.if_scope(wend != self.input_w):
+                            wend.set_as(wend + 1)
+                        with self.tik_inst.else_scope():
+                            pass
+                        #cce : hend = (hend == H) ? H : hend + 1
+                        with self.tik_inst.if_scope(hend != self.input_h):
+                            hend.set_as(hend + 1)
                         with self.tik_inst.else_scope():
                             pass
 
-                        with self.tik_inst.if_scope(tik.all(((curr_pos - tile_start) < tile_h), \
-                                                            (loop_ph < h_dim))):
-                            tile_end.set_as(curr_pos)
-                            grid_end.set_as(curr_grid)
-                        with self.tik_inst.else_scope():
-                            tile_height.set_as(tile_end - tile_start + 1)
-                            s.set_as(tile_height * width)
-                            #cce : for (uint64_t currC1 = 0; currC1 < C1; currC1++) {
-                            with self.tik_inst.for_range(0, self.input_c1) as loop_c1:
-                                self.tik_inst.data_move(feature_map_ub[loop_c1 * s * C0SIZE], \
-                                                        self.feature_map[batch_index, loop_c1, tile_start, wstart, 0], \
-                                                        0, tile_height, width, src_stride, dst_stride)
+                        width.set_as(wend - wstart)
+                        height.set_as(hend - hstart)
+                        src_stride.set_as(self.input_w - width)
+                        tile_h.set_as(max_length // width)
 
+                        grid_start.set_as(0)
+                        grid_end.set_as(0)
+                        curr_grid.set_as(-1)
+                        curr_pos.set_as(0)
 
-                            #cce : for (gh = gridStart; gh < (gridEnd + 1); gh++)
-                            grid_len.set_as(grid_end - grid_start + 1)
-                            with self.tik_inst.for_range(0, grid_len) as loop_gh:
-                                #loop_gh.set_as(loop_gh + grid_start)
-                                loop_gh = loop_gh + grid_start
-                                curr_y.set_as(y_low_int[loop_gh])
-                                curr_yh.set_as(y_high_int[loop_gh])
-                                ly0.set_as(ly[loop_gh])
-                                hy0.set_as(hy[loop_gh])
+                        h_dim.set_as(self.pooled_h * grid_h)
+                        w_dim.set_as(self.pooled_w * grid_w)
+                        gh_left.set_as(0)
 
-                                py.set_as(curr_y - tile_start)
-                                pyh.set_as(curr_yh - tile_start)
+                        tile_start.set_as(y_low_int[0])
+                        tile_end.set_as(tile_start + 1)
 
-                                widthl.set_as(py * width)
-                                widthh.set_as(pyh * width)
-
-                                gh_left.set_as(loop_gh % grid_h)
-                                #cce : if (ghLeft == 0)
-                                with self.tik_inst.if_scope(gh_left == 0):
-                                    self.tik_inst.vec_dup(128, output_ub, 0, \
-                                                          self.repeat * self.pooled_w, 8)
-                                with self.tik_inst.else_scope():
-                                    pass
-
-                                n_grid_w_scalar.set_as(-1)
-                                with self.tik_inst.for_range(0, w_dim) as loop_gw:
-
-                                    pw_c0.set_as(loop_gw // grid_w * C0SIZE)
-                                    #cce : ngridW++
-                                    n_grid_w_scalar.set_as(n_grid_w_scalar + 1)
-
-                                    curr_x.set_as(x_low_int[n_grid_w_scalar])
-                                    curr_xh.set_as(x_high_int[n_grid_w_scalar])
-
-                                    lx0.set_as(lx[n_grid_w_scalar])
-                                    hx0.set_as(hx[n_grid_w_scalar])
-
-                                    px.set_as(curr_x - wstart)
-                                    pxh.set_as(curr_xh - wstart)
-
-                                    #m1*hx, m2*lx, m3*hx, m4*lx
-                                    id1.set_as((widthl + px) * C0SIZE)
-                                    id2.set_as((widthl + pxh) * C0SIZE)
-                                    id3.set_as((widthh + px) * C0SIZE)
-                                    id4.set_as((widthh + pxh) * C0SIZE)
-
-                                    if self.repeat == 1:
-                                        mask_tmp = self.input_c1 * 16
-                                        self.tik_inst.vmuls(mask_tmp, val_ub[0], \
-                                                            feature_map_ub[id1], \
-                                                            hx0, 1, 1, s, 8, 8)
-                                        self.tik_inst.vmuls(mask_tmp, val_ub[len_c1], \
-                                                            feature_map_ub[id2], \
-                                                            lx0, 1, 1, s, 8, 8)
-                                        self.tik_inst.vmuls(mask_tmp, val_ub[len_c2], \
-                                                            feature_map_ub[id3], \
-                                                            hx0, 1, 1, s, 8, 8)
-                                        self.tik_inst.vmuls(mask_tmp, val_ub[len_c3], \
-                                                            feature_map_ub[id4], \
-                                                            lx0, 1, 1, s, 8, 8)
-                                    else :
-                                        loop_repeat = self.input_c1 // 8
-                                        left_mask = (self.input_c1 % 8) * 16
-                                        with self.tik_inst.for_range(0, loop_repeat) as i:
-                                            self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR], \
-                                                                feature_map_ub[i*s*ONEVECTOR + id1], \
-                                                                hx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c1], \
-                                                                feature_map_ub[i*s*ONEVECTOR + id2], \
-                                                                lx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c2], \
-                                                                feature_map_ub[i*s*ONEVECTOR + id3], \
-                                                                hx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c3], \
-                                                                feature_map_ub[i*s*ONEVECTOR + id4], \
-                                                                lx0, 1, 1, s, 8, 8)
-                                        if left_mask != 0:
-                                            self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR], \
-                                                                feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id1], \
-                                                                hx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c1], \
-                                                                feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id2], \
-                                                                lx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c2], \
-                                                                feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id3], \
-                                                                hx0, 1, 1, s, 8, 8)
-                                            self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c3], \
-                                                                feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id4], \
-                                                                lx0, 1, 1, s, 8, 8)
-
-                                    #m1*hx + m2*lx
-                                    self.tik_inst.vec_add(128, val_ub, val_ub, val_ub[len_c1], \
-                                                          self.repeat, 8, 8, 8)
-                                    #m3*hx + m4*lx
-                                    self.tik_inst.vec_add(128, val_ub[len_c2], val_ub[len_c2], \
-                                                          val_ub[len_c3], self.repeat, 8, 8, 8)
-                                    #(m1*hx + m2*lx) * hy
-                                    self.tik_inst.vec_muls(128, val_ub, val_ub, hy0, \
-                                                           self.repeat, 8, 8)
-                                    #(m3*hx + m4*lx) * ly
-                                    self.tik_inst.vec_muls(128, val_ub[len_c2], val_ub[len_c2], \
-                                                           ly0, self.repeat, 8, 8)
-                                    #add(m1*hx + m2*lx) * hy to vout
-                                    self.tik_inst.vadd(128, output_ub[pw_c0], output_ub[pw_c0], \
-                                                       val_ub, self.repeat, \
-                                                       self.pooled_w, self.pooled_w, 1, \
-                                                       8 * self.pooled_w, 8 * self.pooled_w, 8)
-                                    #add(m3*hx + m4*lx) * ly to vout
-                                    self.tik_inst.vadd(128, output_ub[pw_c0], output_ub[pw_c0], \
-                                                       val_ub[len_c2], self.repeat, \
-                                                       self.pooled_w, self.pooled_w, 1, \
-                                                       8 * self.pooled_w, 8 * self.pooled_w, 8)
-
-                                #end of loop_gw
-                                #if is the last grid in pooling bin,
-                                #do average pooling and move data from ub to out
-                                t.set_as(grid_h - 1)
-                                if self.sample_ratio != 1:
-                                    with self.tik_inst.if_scope(gh_left == t):
-                                        #cce : vmuls scale  scale = 1 / pow(sample_ratio, 2)
-                                        self.tik_inst.vec_muls(128, output_ub, output_ub, scale, \
-                                                               self.repeat * self.pooled_w, 8, 8)
-
-                                with self.tik_inst.if_scope(gh_left == (grid_h - 1)):
-                                    #mov ub to gm
-                                    out_index.set_as(loop_gh // grid_h)
-                                    #out_index.set_as(1)
-                                    self.tik_inst.data_move(self.output_gm[rois_index + loop_n, 0, \
-                                                                           out_index, 0, 0], output_ub, 0, \
-                                                            self.input_c1, self.pooled_w, 0, \
-                                                            (self.pooled_h - 1) * self.pooled_w)
-                            #end of loop_gh
+                        #cce : for (ph = 0; ph <= hDim; ph++)
+                        with self.tik_inst.for_range(0, h_dim + 1) as loop_ph:
                             with self.tik_inst.if_scope(loop_ph < h_dim):
-                                tile_start.set_as(y_low_int[loop_ph])
+                                curr_grid.set_as(curr_grid + 1)
+                                curr_pos.set_as(y_high_int[loop_ph])
+                            with self.tik_inst.else_scope():
+                                pass
+
+                            with self.tik_inst.if_scope(tik.all(((curr_pos - tile_start) < tile_h), \
+                                                                (loop_ph < h_dim))):
                                 tile_end.set_as(curr_pos)
-                                grid_start.set_as(curr_grid)
                                 grid_end.set_as(curr_grid)
-                        #end of else
-                    #end of loop_ph
-                with self.tik_inst.else_scope():
-                    #for the redundant Rois, write zero to output
-                    self.tik_inst.vec_dup(128, feature_map_ub, 0, self.zeros_buf_dup_repeat, 8)
-                    with self.tik_inst.for_range(0, self.input_c1) as loop_j:
-                        #mov ub to out
-                        self.tik_inst.data_move(self.output_gm[block_offset + loop_b * ROINUM + loop_n, loop_j, 0, 0, 0], \
-                                                feature_map_ub, 0, 1, self.pooled_h * self.pooled_w, 0, 0)
-                        # end of loop_j
-                    # end of loop_n1
-            #end of loop_n
+                            with self.tik_inst.else_scope():
+                                tile_height.set_as(tile_end - tile_start + 1)
+                                s.set_as(tile_height * width)
+                                #cce : for (uint64_t currC1 = 0; currC1 < C1; currC1++) {
+                                with self.tik_inst.for_range(0, self.input_c1) as loop_c1:
+                                    self.tik_inst.data_move(feature_map_ub[loop_c1 * s * C0SIZE], \
+                                                            self.feature_map[batch_index, loop_c1, tile_start, wstart, 0], \
+                                                            0, tile_height, width, src_stride, dst_stride)
+
+                                #cce : for (gh = gridStart; gh < (gridEnd + 1); gh++)
+                                grid_len.set_as(grid_end - grid_start + 1)
+                                with self.tik_inst.for_range(0, grid_len) as loop_gh:
+                                    loop_gh = loop_gh + grid_start
+                                    curr_y.set_as(y_low_int[loop_gh])
+                                    curr_yh.set_as(y_high_int[loop_gh])
+                                    ly0.set_as(ly[loop_gh])
+                                    hy0.set_as(hy[loop_gh])
+
+                                    py.set_as(curr_y - tile_start)
+                                    pyh.set_as(curr_yh - tile_start)
+
+                                    widthl.set_as(py * width)
+                                    widthh.set_as(pyh * width)
+
+                                    gh_left.set_as(loop_gh % grid_h)
+                                    #cce : if (ghLeft == 0)
+                                    with self.tik_inst.if_scope(gh_left == 0):
+                                        self.tik_inst.vec_dup(128, output_ub, 0, \
+                                                              self.repeat * self.pooled_w, 8)
+                                    with self.tik_inst.else_scope():
+                                        pass
+
+                                    n_grid_w_scalar.set_as(-1)
+                                    with self.tik_inst.for_range(0, w_dim) as loop_gw:
+
+                                        pw_c0.set_as(loop_gw // grid_w * C0SIZE)
+                                        #cce : ngridW++
+                                        n_grid_w_scalar.set_as(n_grid_w_scalar + 1)
+
+                                        curr_x.set_as(x_low_int[n_grid_w_scalar])
+                                        curr_xh.set_as(x_high_int[n_grid_w_scalar])
+
+                                        lx0.set_as(lx[n_grid_w_scalar])
+                                        hx0.set_as(hx[n_grid_w_scalar])
+
+                                        px.set_as(curr_x - wstart)
+                                        pxh.set_as(curr_xh - wstart)
+
+                                        #m1*hx, m2*lx, m3*hx, m4*lx
+                                        id1.set_as((widthl + px) * C0SIZE)
+                                        id2.set_as((widthl + pxh) * C0SIZE)
+                                        id3.set_as((widthh + px) * C0SIZE)
+                                        id4.set_as((widthh + pxh) * C0SIZE)
+
+                                        if self.repeat == 1:
+                                            mask_tmp = self.input_c1 * 16
+                                            self.tik_inst.vmuls(mask_tmp, val_ub[0], \
+                                                                feature_map_ub[id1], \
+                                                                hx0, 1, 1, s, 8, 8)
+                                            self.tik_inst.vmuls(mask_tmp, val_ub[len_c1], \
+                                                                feature_map_ub[id2], \
+                                                                lx0, 1, 1, s, 8, 8)
+                                            self.tik_inst.vmuls(mask_tmp, val_ub[len_c2], \
+                                                                feature_map_ub[id3], \
+                                                                hx0, 1, 1, s, 8, 8)
+                                            self.tik_inst.vmuls(mask_tmp, val_ub[len_c3], \
+                                                                feature_map_ub[id4], \
+                                                                lx0, 1, 1, s, 8, 8)
+                                        else:
+                                            loop_repeat = self.input_c1 // 8
+                                            left_mask = (self.input_c1 % 8) * 16
+                                            with self.tik_inst.for_range(0, loop_repeat) as i:
+                                                self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR], \
+                                                                    feature_map_ub[i*s*ONEVECTOR + id1], \
+                                                                    hx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c1], \
+                                                                    feature_map_ub[i*s*ONEVECTOR + id2], \
+                                                                    lx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c2], \
+                                                                    feature_map_ub[i*s*ONEVECTOR + id3], \
+                                                                    hx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c3], \
+                                                                    feature_map_ub[i*s*ONEVECTOR + id4], \
+                                                                    lx0, 1, 1, s, 8, 8)
+                                            if left_mask != 0:
+                                                self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR], \
+                                                                    feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id1], \
+                                                                    hx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c1], \
+                                                                    feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id2], \
+                                                                    lx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c2], \
+                                                                    feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id3], \
+                                                                    hx0, 1, 1, s, 8, 8)
+                                                self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR + len_c3], \
+                                                                    feature_map_ub[(loop_repeat - 1) * s * ONEVECTOR + id4], \
+                                                                    lx0, 1, 1, s, 8, 8)
+
+                                        #m1*hx + m2*lx
+                                        self.tik_inst.vec_add(128, val_ub, val_ub, val_ub[len_c1], \
+                                                              self.repeat, 8, 8, 8)
+                                        #m3*hx + m4*lx
+                                        self.tik_inst.vec_add(128, val_ub[len_c2], val_ub[len_c2], \
+                                                              val_ub[len_c3], self.repeat, 8, 8, 8)
+                                        #(m1*hx + m2*lx) * hy
+                                        self.tik_inst.vec_muls(128, val_ub, val_ub, hy0, \
+                                                               self.repeat, 8, 8)
+                                        #(m3*hx + m4*lx) * ly
+                                        self.tik_inst.vec_muls(128, val_ub[len_c2], val_ub[len_c2], \
+                                                               ly0, self.repeat, 8, 8)
+                                        #add(m1*hx + m2*lx) * hy to vout
+                                        self.tik_inst.vadd(128, output_ub[pw_c0], output_ub[pw_c0], \
+                                                           val_ub, self.repeat, \
+                                                           self.pooled_w, self.pooled_w, 1, \
+                                                           8 * self.pooled_w, 8 * self.pooled_w, 8)
+                                        #add(m3*hx + m4*lx) * ly to vout
+                                        self.tik_inst.vadd(128, output_ub[pw_c0], output_ub[pw_c0], \
+                                                           val_ub[len_c2], self.repeat, \
+                                                           self.pooled_w, self.pooled_w, 1, \
+                                                           8 * self.pooled_w, 8 * self.pooled_w, 8)
+
+                                    #end of loop_gw
+                                    #if is the last grid in pooling bin,
+                                    #do average pooling and move data from ub to out
+                                    t.set_as(grid_h - 1)
+                                    if self.sample_ratio != 1:
+                                        with self.tik_inst.if_scope(gh_left == t):
+                                            #cce : vmuls scale  scale = 1 / pow(sample_ratio, 2)
+                                            self.tik_inst.vec_muls(128, output_ub, output_ub, scale, \
+                                                                   self.repeat * self.pooled_w, 8, 8)
+
+                                    with self.tik_inst.if_scope(gh_left == (grid_h - 1)):
+                                        #mov ub to gm
+                                        out_index.set_as(loop_gh // grid_h)
+                                        #out_index.set_as(1)
+                                        self.tik_inst.data_move(self.output_gm[rois_index + loop_n, 0, \
+                                                                               out_index, 0, 0], output_ub, 0, \
+                                                                self.input_c1, self.pooled_w, 0, \
+                                                                (self.pooled_h - 1) * self.pooled_w)
+                                #end of loop_gh
+                                with self.tik_inst.if_scope(loop_ph < h_dim):
+                                    tile_start.set_as(y_low_int[loop_ph])
+                                    tile_end.set_as(curr_pos)
+                                    grid_start.set_as(curr_grid)
+                                    grid_end.set_as(curr_grid)
+                            #end of else
+                        #end of loop_ph
+                    with self.tik_inst.else_scope():
+                        #for the redundant Rois, write zero to output
+                        self.tik_inst.vec_dup(128, feature_map_ub, 0, self.zeros_buf_dup_repeat, 8)
+                        with self.tik_inst.for_range(0, self.input_c1) as loop_j:
+                            #mov ub to out
+                            self.tik_inst.data_move(self.output_gm[block_offset + loop_b * ROINUM + loop_n, loop_j, 0, 0, 0], \
+                                                    feature_map_ub, 0, 1, self.pooled_h * self.pooled_w, 0, 0)
+                            # end of loop_j
+                        # end of loop_n1
+                #end of loop_n
         # end of loop_b
 
     def roi_align_perf_scale(self, rois, xstart, roisnum, sample_ratio,
                              roi_gridw, roi_gridh, x_start_fp32_ub,
                              y_start_fp32_ub, roi_gridw_fp32,
                              roi_gridh_fp32, batch_index_int32,
-                             binscale, cont, roi_end_mode = 0):
+                             binscale, cont, roi_end_mode=0):
         """
         calc roiAlgin scale
         :param rois: rois tensor. shape:(n, c1, 1, 1, 16) dtype: float16
@@ -682,7 +740,7 @@ class RoiAlign():
                                                name="roi_buf2_ub", scope=tik.scope_ubuf)
             batch_index_fp16 = self.tik_inst.Tensor("float16", (ROINUM, ), \
                                                     name="batch_index_fp16", scope=tik.scope_ubuf)
-            tmp_value = self.tik_inst.Scalar("int32", init_value = 0)
+            tmp_value = self.tik_inst.Scalar("int32", init_value=0)
 
             self.tik_inst.vec_dup(128, cmp_buf, self.flowtable_threshold, 1, 8)
             self.tik_inst.vcmpv_ge(cmp_res, rois, cmp_buf, 1, 1, 1, 8, 8)
@@ -738,7 +796,7 @@ class RoiAlign():
             self.tik_inst.vec_muls(64, y_start_fp32_ub, y_start_fp32_ub, \
                                    spatialScale_fp32, 2, 8, 8)
             #add roi_end_mode
-            if roi_end_mode > 0 :
+            if roi_end_mode > 0:
                 self.tik_inst.vec_adds(64, x_end_fp32_ub, x_end_fp32_ub, \
                                        roi_end_mode, 2, 8, 8)
                 self.tik_inst.vec_adds(64, y_end_fp32_ub, y_end_fp32_ub, \
@@ -765,13 +823,12 @@ class RoiAlign():
             sel = self.tik_inst.Tensor("uint16", (8, ),
                                        name="sel", scope=tik.scope_ubuf)
             self.tik_inst.vec_dup(8, sel, 0, 1, 8)
-            # roi_height = max(roi_end_h - roi_start_h, 1.0)
+
             self.tik_inst.vec_dup(128, cmp_buf, ONE, 1, 8)
             self.tik_inst.vec_cmpv_lt(sel, roi_h_ub, cmp_buf, 1, 8, 8)
             self.tik_inst.vec_sel(128, 0, roi_h_ub, sel, cmp_buf, roi_h_ub, \
                                   1, 8, 8, 8)
 
-            # roi_width = max(roi_end_w - roi_start_w, 1.0)
             self.tik_inst.vec_cmpv_lt(sel, roi_w_ub, cmp_buf, 1, 8, 8)
             self.tik_inst.vec_sel(128, 0, roi_w_ub, sel, cmp_buf, roi_w_ub, \
                                   1, 8, 8, 8)
@@ -922,7 +979,7 @@ class RoiAlign():
         delta_h.set_as(roi_grid_h_fp32[curr_roi])
 
         w0 = tik_instance.Scalar("float32", name="w0")
-        h0= tik_instance.Scalar("float32", name="h0")
+        h0 = tik_instance.Scalar("float32", name="h0")
         w0.set_as(x_start_fp32[curr_roi])
         h0.set_as(y_start_fp32[curr_roi])
 
@@ -1304,7 +1361,7 @@ class RoiAlign():
                              1, 8, 8, 8)
 
 
-def roi_align_cce(feature_map_dict, rois_dict, output_dict, \
+def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
                   spatialScale, output_h, output_w, sample_ratio, \
                   roi_end_mode, kernel_name_val):
     input_shape = feature_map_dict.get("shape")
@@ -1317,15 +1374,17 @@ def roi_align_cce(feature_map_dict, rois_dict, output_dict, \
     pooled_w = output_w
 
     if (input_c0 * input_c1 > 1280) or \
-       (pooled_h> input_h or pooled_w > input_w) or \
+       (pooled_h > input_h or pooled_w > input_w) or \
        ((input_h * input_w > 5248) and (input_c0 * input_c1 * input_w >= 40960)):
         # feature map channel should less than 1280
-        return roi_align_tik(feature_map_dict, rois_dict, output_dict,
-                         spatialScale, output_h, output_w, sample_ratio,
-                         roi_end_mode, kernel_name_val)
+        return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
+                             output_dict, spatialScale, output_h,
+                             output_w, sample_ratio, roi_end_mode,
+                             kernel_name_val)
     else:
         obj = RoiAlign(feature_map_dict,
                        rois_dict,
+                       roisn_dict,
                        output_dict,
                        spatialScale,
                        output_h,
@@ -1375,7 +1434,7 @@ def get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
     else:
         tik_instance.vextract(roi_fp32_fm_index[0], proposal[0, 0], 8, 0)
         tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
-                              roi_fp32_fm_index[0], 2 , 8, 8 // dtype_num)
+                              roi_fp32_fm_index[0], 2, 8, 8 // dtype_num)
 
     tik_instance.vec_muls(64 * dtype_num, proposals_ub_x0[0, 0],
                           proposals_ub_x0[0, 0],
@@ -1530,6 +1589,7 @@ def newton(tik_instance, mask, dst_ub, src1, src2, repeat, dtype):
                                 scope=tik.scope_ubuf)
     reciprocal(tik_instance, mask, rec_2, src2, repeat, dtype)
     tik_instance.vec_mul(mask, dst_ub, rec_2, src1, repeat, 8, 8, 8)
+
 
 def reciprocal(tik_instance, mask, dest_ub, src1, repeat, dtype):
     """
@@ -2038,6 +2098,7 @@ def compute_roi_with_single_point(tik_instance, feature_shape, dtype,
                                     current_cb * c_block +
                                     c_iter_i, p_h, p_w, 0],
                                 val[c_iter_i, 0], 0, 1, n_bust, 0, 0)
+
 
 def bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                          x_hi, y_lo, y_hi, raw_x, raw_y, sample_num_w,
@@ -2735,8 +2796,8 @@ def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
                                           fm_to_ub, w_number_ub, feature_map_ub)
 
 
-def roi_align_tik(feature_map_dict, rois_dict, output, \
-                  scale, pool_h, pool_w, sample_ratio, \
+def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
+                  output, scale, pool_h, pool_w, sample_ratio, \
                   roi_end_mode, kernel_name):
 
     tik_instance = tik.Tik(tik.Dprofile(), True)
@@ -2747,6 +2808,12 @@ def roi_align_tik(feature_map_dict, rois_dict, output, \
         dtype, feature_shape, name="feature_map", scope=tik.scope_gm)
     rois = tik_instance.Tensor(
         dtype, rois_shape, name="rois", scope=tik.scope_gm)
+    if roisn_dict:
+        roisn_shape = roisn_dict.get("shape")
+        roisn_dtype = roisn_dict.get("dtype")
+        roisn = tik_instance.Tensor(
+            roisn_dtype, roisn_shape, name="roisn", scope=tik.scope_gm)
+
     fm_c1 = feature_shape[1]
     fm_c0 = 16
     proposal_num = rois_shape[0]
@@ -2766,6 +2833,10 @@ def roi_align_tik(feature_map_dict, rois_dict, output, \
     else:
         n_bust = 1
     l1_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+    if roisn_dict:
+        roisn_ub = tik_instance.Tensor(roisn_dtype, [1, 16], \
+                                       name="roisn_ub", scope=tik.scope_ubuf)
+        tik_instance.data_move(roisn_ub[0, 0], roisn[0, 0], 0, 1, 1, 0, 0)
     # every block, process 128 rois
     with tik_instance.for_range(
             0, (proposal_num + (block_num - 1)) // block_num,
@@ -2900,22 +2971,26 @@ def roi_align_tik(feature_map_dict, rois_dict, output, \
                     feature_map_to_l1_verify, feature_map_to_ub_verify,
                     w_number_ub)
 
-    tik_instance.BuildCCE(
-        kernel_name=kernel_name, inputs=[feature_map, rois], outputs=[ret])
+    if roisn_dict:
+        tik_instance.BuildCCE(
+            kernel_name=kernel_name, inputs=[feature_map, rois, roisn], outputs=[ret])
+    else:
+        tik_instance.BuildCCE(
+            kernel_name=kernel_name, inputs=[feature_map, rois], outputs=[ret])
     return tik_instance
 
 # pylint: disable=unused-argument
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                       REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
+                 REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
 def roi_align(feature_map_dict,
               rois_dict,
-              roisn,
+              roisn_dict,
               output,
               scale,
               pool_h,
               pool_w,
-              sample_ratio = 2,
-              roi_end_mode = 1,
+              sample_ratio=2,
+              roi_end_mode=1,
               kernel_name="roi_align"):
     """
     ROIAlign operator
@@ -2923,17 +2998,17 @@ def roi_align(feature_map_dict,
     dtype = feature_map_dict.get("dtype")
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
-    if ((cce_product in ("Ascend610", "Ascend620" )) \
+    if ((cce_product in ("Ascend610", "Ascend710")) \
         and (dtype == "float16") and \
         (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
         return roi_align_vbi.roi_align_vbi(feature_map_dict, \
                                            rois_dict, kernel_name)
     elif (dtype == "float16") and \
          (cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS")):
-        return roi_align_cce(feature_map_dict, rois_dict, output,
-                             scale, pool_h, pool_w, sample_ratio,
-                             roi_end_mode, kernel_name)
+        return roi_align_cce(feature_map_dict, rois_dict, roisn_dict,
+                             output, scale, pool_h, pool_w,
+                             sample_ratio, roi_end_mode, kernel_name)
     else:
-        return roi_align_tik(feature_map_dict, rois_dict, output,
-                             scale, pool_h, pool_w, sample_ratio,
-                             roi_end_mode, kernel_name)
+        return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
+                             output, scale, pool_h, pool_w,
+                             sample_ratio, roi_end_mode, kernel_name)

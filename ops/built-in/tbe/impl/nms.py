@@ -23,6 +23,7 @@ from te import platform as tbe_platform
 # pylint: disable=R0914
 # pylint: disable=C0121
 
+
 class NmsProcess:
     """
     NmsProcess
@@ -422,7 +423,6 @@ def nms_extract(tik_instance, ret_ub, select_proposal_ub, repeat):
     :param repeat:
     :return:
     """
-    # tik_instance.vextract(ret_ub[0, 0], select_proposal_ub[0], repeat, 5)
     tik_instance.vextract(ret_ub[1, 0], select_proposal_ub[0], repeat, 0)
     tik_instance.vextract(ret_ub[2, 0], select_proposal_ub[0], repeat, 1)
     tik_instance.vextract(ret_ub[3, 0], select_proposal_ub[0], repeat, 2)
@@ -1133,7 +1133,8 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
                                                                                  "Ascend610",
-                                                                                 "Ascend620"):
+                                                                                 "Ascend710",
+                                                                                 "Ascend615"):
                             get_scale_factor_lhisi(tik_instance, im_info, batch_index, scale_factor)
                         elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):
                             get_scale_factor_mini(tik_instance, im_info, batch_index, scale_factor)
@@ -1144,7 +1145,8 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
                                                                                  "Ascend610",
-                                                                                 "Ascend620"):
+                                                                                 "Ascend710",
+                                                                                 "Ascend615"):
                             get_scale_factor_lhisi(tik_instance, im_info, real_batch_index,
                                                    scale_factor)
                         elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):

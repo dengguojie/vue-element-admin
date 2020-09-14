@@ -21,6 +21,7 @@ from topi.cce import util
 from te import platform as tbe_platform
 from te import tik
 from impl.strided_slice_d import _init_parameter
+from te.utils.op_utils import *
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 BLOCK_SIZE = 32
@@ -428,7 +429,6 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
     """
     # length of 'shape_x, shape_dy, begin, end, strides' must be the same
     if not (len(end) == len(begin) and \
-            len(shape_x) == len(shape_dy) and \
             len(shape_x) == len(begin) and \
             len(shape_x) == len(strides)):
         raise RuntimeError("shape length mismatch!")
@@ -450,7 +450,7 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
             raise RuntimeError("Value of the strides[%d]:%d must be 1!" % (i, strides_i))
 
 
-def _check_mask(input_mask):
+def _check_mask(input_mask, is_shrink=False):
     """ Check whether the value of the input mask is 0.
 
     Parameters
@@ -462,14 +462,47 @@ def _check_mask(input_mask):
     -------
     None.
     """
-    if input_mask != 0:
-        raise RuntimeError("ellipsis_mask,new_axis_mask,shrink_axis_mask only support 0 currently")
+    if is_shrink:
+        if input_mask != 0 and input_mask != 2:
+            raise RuntimeError("shrink_axis_mask only support 0/2 currently")
+    elif input_mask != 0:
+        raise RuntimeError("ellipsis_mask,new_axis_mask"
+                           " only support 0 currently")
+
+
+def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
+    """Check whether the shape of begin and shape is not equal,
+       and masks are not 0
+
+    Parameters
+    ----------
+    shape : list or tuple.
+        shape of input
+    begin: list or tuple.
+        represents the index of the first value to select.
+    ellipsis_mask: int
+        a bitmask where bit `i` being 1 means the `i`th
+        position is actually an ellipsis.
+    shrink_axis_mask: int
+        a bitmask where bit `i` implies that the `i`th
+        specification should shrink the dimensionality.
+    Returns
+    -------
+    bool result
+    """
+    is_check_pass = False
+    if len(shape) > len(begin) and len(begin) == 2 and \
+            ellipsis_mask == 1 and shrink_axis_mask == 2:
+        is_check_pass = True
+
+    return is_check_pass, begin
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 
-@util.check_input_type(dict, dict, (list, tuple), (list, tuple), (list, tuple), (list, tuple),
-                       int, int, int, int, int, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
+                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_INT, OPTION_ATTR_INT,
+                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
 def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
                          end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                          kernel_name="strided_slice_grad_d"):
@@ -518,15 +551,16 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     ori_format_dy = dy.get("ori_format")
     input_dtype = dy.get("dtype").lower()
 
-    util.check_dtype_rule(input_dtype, ("float16", "float32", "int8", "uint8", "int32"))
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_rule(shape_dy)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_dy, SHAPE_SIZE_LIMIT)
+    check_dtype(input_dtype, ("float16", "float32", "int8", "uint8", "int32"), param_name="dy")
+    check_shape(shape, param_name="shape")
+    check_shape(shape_dy, param_name="dy")
 
     _check_mask(new_axis_mask)
-    _check_mask(shrink_axis_mask)
+    _check_mask(shrink_axis_mask, True)
+
+    is_not_aligned, ori_begin = _check_is_not_aligned_shape(shape, begin,
+                                                            ellipsis_mask,
+                                                            shrink_axis_mask)
 
     shape = list(shape)
     begin = list(begin)
@@ -543,11 +577,21 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
                                                       begin_shape,
                                                       shape_dy,
                                                       input_dtype, kernel_name)
+
     if last_dim_compute.check():
         if last_dim_compute.check_perf() and ellipsis_mask == 0:
             last_dim_compute.strided_slice_grad_perf()
         else:
             last_dim_compute.strided_slice_grad()
+    elif is_not_aligned:
+        shape_dy = list(shape_dy)
+        shape_dy += [1]
+        paddings = [[0, 0]] * (len(shape) - 1) + \
+                   [[ori_begin[1], shape[-1] - ori_begin[1] - 1]]
+        dy_dict = {"shape": shape_dy, "ori_shape": ori_shape_dy,
+                   "format": format_dy, "ori_format": ori_format_dy,
+                   "dtype": input_dtype}
+        pad_d(dy_dict, dy_dict, paddings, kernel_name)
     else:
         paddings = _get_paddings(shape, begin_shape, end_shape)
 

@@ -25,23 +25,29 @@ def get_dynamic_param_in_json(param_desc_list):
         param_dict["name"] = item.element.name
         param_dict["dtype"] = item.element.datatype
         param_dict["format"] = item.element.format
+        if item.element.unknownshape_format is not None:
+            param_dict["unknownshape_format"] = \
+                item.element.unknownshape_format
         param_dynamic[item.classify] = param_dict
     param_dynamic_in_json = json.dumps(param_dynamic, indent=4)
     return param_dynamic_in_json
 
 
-def gen_param(classify, name, datatype, format):
+# pylint: disable=locally-disabled,redefined-builtin
+def gen_param(classify, name, datatype, format, unknownshape_format=None):
     return ParamItem(classify=classify,
                      element=Element(name=name,
                                      datatype=datatype,
-                                     format=format))
+                                     format=format,
+                                     unknownshape_format=unknownshape_format))
 
 
 class Element:
-    def __init__(self, name, datatype, format):
+    def __init__(self, name, datatype, format, unknownshape_format):
         self.name = name
         self.datatype = datatype
         self.format = format
+        self.unknownshape_format = unknownshape_format
 
 
 class ParamItem:

@@ -53,7 +53,7 @@ CONFIG_UNIT = 1024
 MATRIX = 256
 MAX_REP_TIME = 255
 CONFIG_SCORE_THRESHOLD = 0
-IF_USE_V200 = ("Ascend610","Ascend620")
+IF_USE_V200 = ("Ascend610", "Ascend710")
 
 
 def ceil_div(num_a, num_bulk):
@@ -197,7 +197,9 @@ class InitGmTensor(InitScalar):
         # tensors after second topk and befor nms
         self.proposal_pre_nms = tik_instance.Tensor(data_type,
                                                     (CONFIG_ONE,
-                                                     ceil_div(input_param[CONFIG_TWO], CONFIG_MASK)*
+                                                    ceil_div(
+                                                    input_param[CONFIG_TWO],
+                                                              CONFIG_MASK) *
                                                      CONFIG_MASK,
                                                      CONFIG_EIGHT),
                                                     name="proposal_pre_nms",
@@ -663,7 +665,7 @@ def one_core_process(tik_instance, data_tensor, middle_tensor, tiling_para):
                            CONFIG_ONE,
                            0,
                            CONFIG_THREE)
-    tik_instance.data_move(middle_tensor.prob_ub[CONFIG_SIXTEEN *CONFIG_TWO],
+    tik_instance.data_move(middle_tensor.prob_ub[CONFIG_SIXTEEN * CONFIG_TWO],
                            data_tensor.prob_gm[num_offset + CONFIG_EIGHT],
                            0,
                            tiling_para.one_core_num//CONFIG_SIXTEEN,
@@ -1061,7 +1063,6 @@ def filter_with_height_weight(tik_instance, data_tensor, filter_tensor, input_pa
                             CONFIG_EIGHT)
 
     # clip box
-    # tik_instance.tikdb.debug_print("fliter_repeat_trans")
     if fliter_repeat_trans > MAX_REP_TIME:
         tik_instance.vrelu(CONFIG_DATA_TRANS,
                            filter_tensor.filter_trans_ub,
@@ -1429,7 +1430,6 @@ def rpn_proposals_d_compute(input_dict,
 
     # initial the tik container
     tik_instance = tik.Tik(tik.Dprofile(), disable_debug=True)
-    # tik_instance = tik.Tik(tik.Dprofile(), disable_debug=False)
 
     #  tiling parameters for data move
     tiling_para = TilingParam(input_dict)

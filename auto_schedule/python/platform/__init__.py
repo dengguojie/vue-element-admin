@@ -35,6 +35,7 @@ if __name__ == "platform":
     sys.path.insert(0, '')
     sys.path.append(TP)
 else:
+    from .cce_buffer import cur_cce_product_params
     from .cce_params import scope_cbuf, scope_ubuf, scope_ca, scope_cb,\
         scope_cc, scope_reg, scope_aicpu, dma_copy, dma_copy_global, \
         CUBE_MKN, scope_gm, scope_cbuf_fusion
@@ -47,7 +48,7 @@ else:
     from . import cce_intrin
     from . import cce_intrin_md
     from .cce_build import get_pass_list, build_config
-    from .cce_conf import cceProduct, getValue, CceProductParams, set_status_check, \
+    from .cce_conf import getValue, CceProductParams, set_status_check, \
         get_soc_spec, intrinsic_check_support, te_set_version, \
         api_check_support, SOC_VERSION, AICORE_TYPE, CORE_NUM
     from .cce_emitinsn_params import CceEmitInsnParams

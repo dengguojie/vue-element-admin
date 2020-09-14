@@ -835,11 +835,13 @@ def get_buffer(stmt_in, need_unique=False, buffer_shape=None,
         """
         get shape from stmt_op
         """
-        if isinstance(stmt_in, tvm.stmt.For):
+        if isinstance(stmt_op, tvm.stmt.For):
             buf_info["loop_var"].append(stmt_op.loop_var)
             shape.append(stmt_op.extent)
             if isinstance(stmt_op.body, tvm.stmt.For):
                 _get_shape(stmt_op.body)
+        elif isinstance(stmt_op, tvm.stmt.AttrStmt):
+            _get_shape(stmt_op.body)
 
     # ?? reduction shape
     _get_shape(stmt_in)

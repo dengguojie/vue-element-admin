@@ -18,8 +18,11 @@ yolo_v3_correct_region_box
 
 import math
 from te import tik
-from impl.constant_util import BLOCK_SIZE, VECTOR_BYTE_SIZE, STRIDE_ONE, AIC,\
-    CLOUD
+from impl.constant_util import BLOCK_SIZE
+from impl.constant_util import VECTOR_BYTE_SIZE
+from impl.constant_util import STRIDE_ONE
+from impl.constant_util import AIC
+from impl.constant_util import CLOUD
 from te import platform as tbe_platform
 
 # value zero
@@ -460,7 +463,6 @@ class CorrectBoxComputer(CommonInstruct):
            last_len: the number of elements of last loop
            """
         max_size = self.one_max_size
-        # max_size = 256
 
         mov_len = max_size // self.dsize
         mov_loop = (height * weight) // (max_size // self.dsize)
@@ -485,7 +487,7 @@ class CorrectBoxComputer(CommonInstruct):
           -------
           None
           """
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910", "Ascend610", "Ascend620"):
+        if tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
             self.t_vdiv(dst, divisor, dividend, repeat)
 
         else:
@@ -1113,7 +1115,7 @@ class CorrectBoxComputer(CommonInstruct):
                     with self.instance.for_range(0, self.hwtail_len) as index:
                         tmp_scalar = self.instance.Scalar(self.dtype)
                         tmp_scalar.set_as(
-                            param['ub_b'][self.hw_len -self.hwtail_len + index])
+                            param['ub_b'][self.hw_len - self.hwtail_len + index])
                         param['last_32b'][self.len_32b - \
                                           self.hwtail_len + \
                                           index].set_as(tmp_scalar)

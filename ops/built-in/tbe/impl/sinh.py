@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -87,7 +88,7 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sinh(input_data, output_data, kernel_name="sinh"):
     """
     algorithm: sinh
@@ -109,12 +110,10 @@ def sinh(input_data, output_data, kernel_name="sinh"):
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype")
 
-    util.check_shape_rule(shape_input)
-    util.check_tensor_shape_size(shape_input)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_input, param_name="input_data")
     check_list = ("float16", "float32")
     input_dtype = dtype_input.lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_data")
 
     reshape_input = (functools_reduce(lambda x, y: x * y, shape_input[:]),)
     data_input = tvm.placeholder(reshape_input,

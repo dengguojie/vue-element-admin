@@ -15,7 +15,8 @@ normalize_scale
 """
 
 import te.lang.cce
-from te import tvm, platform as tbe_platform
+from te import tvm
+from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
@@ -94,24 +95,12 @@ def normalize_scale_compute(x1, x2, x3, y,
 
     x1_scaled = te.lang.cce.vmul(x1_cast, x2_cast_broadcast)
 
-    if cce_product in ("Ascend910",):
-        # for cloud
+    if cce_product in ("Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", \
+                       "Ascend610", "Ascend710"):
         x1_sqr_sum_sqrt = te.lang.cce.vsqrt(x1_sqr_sum)
         x1_sqr_sum_sqrt_broadcast = te.lang.cce.broadcast(x1_sqr_sum_sqrt,
                                                           x1_shape)
         x1_normalized = te.lang.cce.vdiv(x1_scaled, x1_sqr_sum_sqrt_broadcast)
-    elif cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "Ascend610", "Ascend620") and \
-            hasattr(te.lang.cce, "te_compute") and \
-            hasattr(te.lang.cce.te_compute, "elewise_compute") and \
-            hasattr(te.lang.cce.te_compute.elewise_compute,
-                    "__binary_elewise_op"):
-        # customized for hisi-es
-        x1_sqr_sum_sqrt = te.lang.cce.vsqrt(x1_sqr_sum)
-        x1_sqr_sum_sqrt_broadcast = te.lang.cce.broadcast(x1_sqr_sum_sqrt,
-                                                          x1_shape)
-        x1_normalized = te.lang.cce.te_compute.elewise_compute. \
-            __binary_elewise_op(x1_scaled, x1_sqr_sum_sqrt_broadcast,
-                                "elewise_binary_div")
     elif cce_product in ("Ascend310",):
         # customized for mini, using newton
         x1_sqr_sum_sqrt = te.lang.cce.vsqrt(x1_sqr_sum)
@@ -159,17 +148,18 @@ def check_format(data_format, data_format_3):
     """
 
     if data_format != data_format_3:
-        error_Info = {}
-        error_Info['errCode'] = 'E80019'
-        error_Info['param_name1'] = 'data_format'
-        error_Info['param_name2'] = 'data_format_3'
-        error_Info['op_name'] = 'normalize_scale'
-        raise RuntimeError(error_Info,"In op[%s], the parameter[%s][%s] is not "
-                        "equal to the parameter[%s][%s]in format."
-                        %(error_Info['op_name'],error_Info['param_name1'],
-                        data_format,error_Info['param_name2'],data_format_3))
+        error_info = {}
+        error_info['errCode'] = 'E80019'
+        error_info['param_name1'] = 'data_format'
+        error_info['param_name2'] = 'data_format_3'
+        error_info['op_name'] = 'normalize_scale'
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
+                                       "equal to the parameter[%s][%s]in format."
+                           % (error_info['op_name'], error_info['param_name1'],
+                              data_format, error_info['param_name2'], data_format_3))
 
-    op_utils.check_format(data_format, ("NCHW", "NHWC"),param_name="x1")
+    op_utils.check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
+
 
 def check_dtype(dtype_1, dtype_3):
     """
@@ -211,9 +201,8 @@ def check_shape_1(shape_1):
     None
     """
 
-    op_utils.check_shape(shape_1,param_name="x1")
-    op_utils.check_shape(shape_1, min_rank=4, max_rank=4,param_name="x1")
-
+    op_utils.check_shape(shape_1, param_name="x1")
+    op_utils.check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
 
 
 def check_shape_2(shape_1, data_format, channel_shared):
@@ -271,58 +260,58 @@ def check_shape_3(shape_1, shape_3, data_format, across_spatial):
     if across_spatial:
         if not (shape_3[0] == shape_1[0] and shape_3[1] == 1 and
                 shape_3[2] == 1 and shape_3[3] == 1):
-            error_Info = {}
-            error_Info['errCode'] = 'E80017'
-            error_Info['param_name1'] = 'x3.shape'
-            error_Info['param_name2'] = 'x1.shape'
-            error_Info['op_name'] = 'normalize_scale'
-            error_Info['param1_shape1'] = shape_3
-            error_Info['param1_shape2'] = shape_1
-            error_Info['expect_shape'] = (shape_1[0],1,1,1)
-            raise RuntimeError(error_Info,"In op[%s], the parameter[%s][%s] is not "
-                           "match with the parameter[%s][%s],it should be [%s]."
-                           %(error_Info['op_name'],error_Info['param_name1'],
-                             error_Info['param1_shape1'],error_Info['param_name2'], \
-                             error_Info['param1_shape2'],error_Info['expect_shape']))
+            error_info = {}
+            error_info['errCode'] = 'E80017'
+            error_info['param_name1'] = 'x3.shape'
+            error_info['param_name2'] = 'x1.shape'
+            error_info['op_name'] = 'normalize_scale'
+            error_info['param1_shape1'] = shape_3
+            error_info['param1_shape2'] = shape_1
+            error_info['expect_shape'] = (shape_1[0], 1, 1, 1)
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
+                                           "match with the parameter[%s][%s],it should be [%s]."
+                               % (error_info['op_name'], error_info['param_name1'],
+                                  error_info['param1_shape1'], error_info['param_name2'],
+                                  error_info['param1_shape2'], error_info['expect_shape']))
 
     elif data_format == "NCHW":
         if not (shape_3[0] == shape_1[0] and shape_3[1] == 1 and
                 shape_3[2] == shape_1[2] and shape_3[3] == shape_1[3]):
-            error_Info = {}
-            error_Info['errCode'] = 'E80017'
-            error_Info['param_name1'] = 'x3.shape'
-            error_Info['param_name2'] = 'x1.shape'
-            error_Info['op_name'] = 'normalize_scale'
-            error_Info['param1_shape1'] = shape_3
-            error_Info['param1_shape2'] = shape_1
-            error_Info['expect_shape'] = (shape_1[0],1,shape_1[2],shape_1[3])
-            raise RuntimeError(error_Info,"In op[%s], the parameter[%s][%s] is not "
-                               "match with the parameter[%s][%s],it should be [%s]."
-                               %(error_Info['op_name'],error_Info['param_name1'],
-                                 error_Info['param1_shape1'],error_Info['param_name2'],\
-                                 error_Info['param1_shape2'],error_Info['expect_shape']))
+            error_info = {}
+            error_info['errCode'] = 'E80017'
+            error_info['param_name1'] = 'x3.shape'
+            error_info['param_name2'] = 'x1.shape'
+            error_info['op_name'] = 'normalize_scale'
+            error_info['param1_shape1'] = shape_3
+            error_info['param1_shape2'] = shape_1
+            error_info['expect_shape'] = (shape_1[0], 1, shape_1[2], shape_1[3])
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
+                                           "match with the parameter[%s][%s],it should be [%s]."
+                               % (error_info['op_name'], error_info['param_name1'],
+                                  error_info['param1_shape1'], error_info['param_name2'],
+                                  error_info['param1_shape2'], error_info['expect_shape']))
 
     elif data_format == "NHWC":
         if not (shape_3[0] == shape_1[0] and shape_3[1] == shape_1[1] and
                 shape_3[2] == shape_1[2] and shape_3[3] == 1):
-            error_Info = {}
-            error_Info['errCode'] = 'E80017'
-            error_Info['param_name1'] = 'x3.shape'
-            error_Info['param_name2'] = 'x1.shape'
-            error_Info['op_name'] = 'normalize_scale'
-            error_Info['param1_shape1'] = shape_3
-            error_Info['param1_shape2'] = shape_1
-            error_Info['expect_shape'] = (shape_1[0],shape_1[1],shape_1[2],1)
-            raise RuntimeError(error_Info,"In op[%s], the parameter[%s][%s] is not "
-                            "match with the parameter[%s][%s],it should be [%s]."
-                            %(error_Info['op_name'],error_Info['param_name1'],
-                              error_Info['param1_shape1'],error_Info['param_name2'],\
-                              error_Info['param1_shape2'],error_Info['expect_shape']))
+            error_info = {}
+            error_info['errCode'] = 'E80017'
+            error_info['param_name1'] = 'x3.shape'
+            error_info['param_name2'] = 'x1.shape'
+            error_info['op_name'] = 'normalize_scale'
+            error_info['param1_shape1'] = shape_3
+            error_info['param1_shape2'] = shape_1
+            error_info['expect_shape'] = (shape_1[0], shape_1[1], shape_1[2], 1)
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
+                                           "match with the parameter[%s][%s],it should be [%s]."
+                               % (error_info['op_name'], error_info['param_name1'],
+                                  error_info['param1_shape1'], error_info['param_name2'],\
+                                  error_info['param1_shape2'], error_info['expect_shape']))
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments
 # pylint: disable=locally-disabled,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,REQUIRED_INPUT,REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL,OPTION_ATTR_BOOL,OPTION_ATTR_FLOAT,KERNEL_NAME)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_BOOL, OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT, KERNEL_NAME)
 def normalize_scale(x1, x2, x3, y, across_spatial=True,
                     channel_shared=True, eps=1e-10,
                     kernel_name="normalize_scale"):

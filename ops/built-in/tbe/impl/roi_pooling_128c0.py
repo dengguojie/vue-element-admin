@@ -76,7 +76,7 @@ class RoiClass128C0(RoiClass):
 
         pooled_res = self.tik_instance.Tensor(self.dtype, \
                 shape=(EIGHT_C0, self.pooled_h, self.pooled_w, self.fm_c0), \
-                                    scope=tik.scope_ubuf,name="pooled_res")
+                                    scope=tik.scope_ubuf, name="pooled_res")
         with self.tik_instance.for_range(0, self.pooled_w) as w_index:
             self.tik_instance.vector_dup(256 // TYPELEN_DICT[self.dtype], \
                                          pooled_res[0, 0, w_index, 0],
@@ -91,7 +91,7 @@ class RoiClass128C0(RoiClass):
                                          self.fm_w,
                                          self.fm_w,
                                          1)
-            scalar_roi_start_h.set_as(self.roi_start_h[poolh,proposal_id])
+            scalar_roi_start_h.set_as(self.roi_start_h[poolh, proposal_id])
             scalar_roi_bin_h.set_as(self.roi_bin_h[poolh, proposal_id])
             with self.tik_instance.if_scope(tik.all(scalar_roi_bin_h != \
                                                     0, scalar_roi_width != 0)):
@@ -159,8 +159,8 @@ class RoiClass128C0(RoiClass):
                 pooled_res[0, 0, 0, 0],
                 0,
                 1,
-                EIGHT_C0*self.pooled_h*self.pooled_w*\
-                    TYPELEN_DICT[self.dtype]*self.fm_c0 // 32,
+                EIGHT_C0 * self.pooled_h * self.pooled_w * \
+                    TYPELEN_DICT[self.dtype] * self.fm_c0 // 32,
                 0,
                 0)
 
@@ -171,7 +171,7 @@ class RoiClass128C0(RoiClass):
                 pooled_res[0, 0, 0, 0],
                 0,
                 1,
-                (self.fm_c1 - fm_c1_index*EIGHT_C0)*self.pooled_h*\
+                (self.fm_c1 - fm_c1_index*EIGHT_C0) * self.pooled_h * \
                     self.pooled_w*TYPELEN_DICT[self.dtype]*self.fm_c0 // 32,
                 0,
                 0)
@@ -198,7 +198,7 @@ class RoiClass128C0(RoiClass):
                 256//TYPELEN_DICT[self.dtype],
                 pooled_res[0, poolh, poolw, 0],
                 pooled_h_res[0, 0, scalar_roi_start_w_from0, 0],
-                pooled_res[0, poolh,poolw, 0],
+                pooled_res[0, poolh, poolw, 0],
                 scalar_roi_bin_w,
                 self.pooled_w*self.pooled_h,
                 self.fm_w,
@@ -245,13 +245,13 @@ class RoiClass128C0(RoiClass):
 
         if self.feature_batch == 1:
             self.batch_factor = self.roi_max_num // self.device_core_num
-            self.batch_factor_tail = self.roi_max_num - self.batch_factor*\
+            self.batch_factor_tail = self.roi_max_num - self.batch_factor * \
                                      self.device_core_num
 
             self.proposal_pooling_onebatch()
         else:
             self.batch_factor = self.feature_batch // self.device_core_num
-            self.batch_factor_tail = self.feature_batch - self.batch_factor*\
+            self.batch_factor_tail = self.feature_batch - self.batch_factor * \
                                      self.device_core_num
 
             self.proposal_pooling_multibatch()
@@ -300,7 +300,7 @@ class RoiClass128C0(RoiClass):
             self.proposal_fm_data = self.tik_instance.Tensor(
                 self.dtype, (EIGHT_C0, self.fm_h, self.fm_w, self.fm_c0),
                 name="proposal_fm_data", scope=tik.scope_ubuf)
-            burst_len = self.fm_h*self.fm_w*self.fm_c0*\
+            burst_len = self.fm_h * self.fm_w * self.fm_c0 * \
                         TYPELEN_DICT[self.dtype] // 32
 
             with self.tik_instance.for_range(0, self.c1_looptime) as \
@@ -324,7 +324,7 @@ class RoiClass128C0(RoiClass):
                         burst_len,
                         0,
                         0)
-                self.calced_rois.set_as(self.proposal_num_per_tiling*\
+                self.calced_rois.set_as(self.proposal_num_per_tiling * \
                                         tiling_index)
                 with self.tik_instance.for_range(0, self.proposal_ub_validnum,
                                                  thread_num=2) as proposal_id:
@@ -351,7 +351,7 @@ class RoiClass128C0(RoiClass):
             self.proposal_fm_data = self.tik_instance.Tensor(
                 self.dtype, (EIGHT_C0, self.fm_h, self.fm_w, self.fm_c0),
                 name="proposal_fm_data", scope=tik.scope_ubuf)
-            burst_len = self.fm_h*self.fm_w*self.fm_c0*\
+            burst_len = self.fm_h * self.fm_w * self.fm_c0 * \
                         TYPELEN_DICT[self.dtype]//32
 
             with self.tik_instance.for_range(0, self.c1_looptime)\
@@ -378,7 +378,7 @@ class RoiClass128C0(RoiClass):
                 with self.tik_instance.for_range(0, self.proposal_ub_validnum, \
                                                  thread_num=2) as proposal_id:
                     with self.tik_instance.if_scope(
-                            (self.calced_rois + proposal_id)< self.range_end):
+                            (self.calced_rois + proposal_id) < self.range_end):
                         proposals_ub_batchid.set_as(self.proposals_ub_int32[0,\
                                                                 proposal_id])
                         with self.tik_instance.if_scope(

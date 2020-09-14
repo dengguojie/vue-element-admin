@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from impl.reduce_max_d_tik import reduce_max_d_tik
+from te.utils.op_utils import *
 
 NoneType = type(None)
 
@@ -65,8 +66,8 @@ def reduce_max_d_compute(x, y, axis, keepdims, kernel_name="reduce_max_d"):
 
 
 # pylint: disable=invalid-name
-@util.check_input_type(dict, dict, (int, list, tuple, NoneType),
-                       (bool, NoneType), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_max_d(x, y, axis, keepdims=False, kernel_name="reduce_max_d"):
     """
     calculating data
@@ -95,12 +96,10 @@ def reduce_max_d(x, y, axis, keepdims=False, kernel_name="reduce_max_d"):
     dtype = x.get("dtype")
     input_dtype = dtype.lower()
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="x")
 
     check_list = ["float16", "float32", "int8", "uint8", "int32"]
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="x")
 
     shape_len = len(shape)
 
@@ -112,11 +111,10 @@ def reduce_max_d(x, y, axis, keepdims=False, kernel_name="reduce_max_d"):
 
     axis = util.axis_check(shape_len, axis)
 
-    util.check_tensor_shape_size(shape)
 
     # Shape should not be modified in 5HD mode
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axis, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axis)
     if not is_5hdc:
         shape, axis = util.shape_refine(list(shape), axis)
         shape, axis = util.simplify_axis_shape(shape, axis)
@@ -131,6 +129,10 @@ def reduce_max_d(x, y, axis, keepdims=False, kernel_name="reduce_max_d"):
                                      dtype=input_dtype)
         res = reduce_max_d_compute(data_input, y, axis,
                                    keepdims, kernel_name)
+
+        if is_5hdc:
+            res.ori_shape = x["ori_shape"]
+            res.ori_format = x["ori_format"]
         with tvm.target.cce():
             sch = generic.auto_schedule(res)
 

@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import broadcast_shapes
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
+from te.utils.op_utils import *
 from topi import generic
 from topi.cce import util
 
@@ -46,8 +47,9 @@ def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     -------
     result res
     """
-    _, _, shape_max = util.produce_shapes(te.lang.cce.util.shape_to_list(
-        x1.shape), te.lang.cce.util.shape_to_list(x2.shape))
+    _, _, shape_max = broadcast_shapes(te.lang.cce.util.shape_to_list(
+        x1.shape), te.lang.cce.util.shape_to_list(x2.shape), param_name_input1="x1",
+        param_name_input2="x2")
     x1 = te.lang.cce.cast_to(x1, "float16")
     x2 = te.lang.cce.cast_to(x2, "float16")
     x1 = te.lang.cce.broadcast(x1, shape_max)
@@ -58,7 +60,7 @@ def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def logical_or(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or
@@ -91,17 +93,17 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
         dtype_x1 = "int8"
         dtype_x2 = "int8"
 
-    util.check_kernel_name(kernel_name)
-    check_shape(shape_x1)
-    check_shape(shape_x2)
+    check_shape(shape_x1, param_name="x1")
+    check_shape(shape_x2, param_name="x2")
 
     check_tuple = ("int8",)
-    check_dtype(dtype_x1, check_tuple)
-    check_dtype(dtype_x2, check_tuple)
+    check_dtype(dtype_x1, check_tuple, param_name="x1")
+    check_dtype(dtype_x2, check_tuple, param_name="x2")
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2)
+    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
+                                                     param_name_input1="x1",
+                                                     param_name_input2="x2")
     dtype = dtype_x1.lower()
-    check_shape(shape_max)
     data_x1 = tvm.placeholder(shape_x1, name="data_x1", dtype=dtype)
     data_x2 = tvm.placeholder(shape_x2, name="data_x2", dtype=dtype)
 

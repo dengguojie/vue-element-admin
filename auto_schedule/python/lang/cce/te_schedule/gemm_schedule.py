@@ -1531,6 +1531,10 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
     res: tensor
     sch_list: list of schedule
     """
+    Params.UB_SPACE_SIZE = get_soc_spec("UB_SIZE")
+    Params.L1_SPACE_SIZE = get_soc_spec("L1_SIZE")
+    Params.L0_SPACE_SIZE = get_soc_spec("L0A_SIZE")
+    Params.L0C_SPACE_SIZE = get_soc_spec("L0C_SIZE")
     sch = sch_list[0]
     set_data_layout(res, sch)
     kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
@@ -2358,6 +2362,7 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
             for i in tensor_list:
                 sch[i].buffer_align((1, 32), (1, 32))
 
+
     def _emit_insn_common():# pylint:disable=too-many-locals
         scopes_intrins = sch_agent[c_l0c].intrin_scopes(6)
         scope_insn = scopes_intrins[0]
@@ -2369,7 +2374,20 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
         sch_agent[b_normalize_ub].emit_insn(sch_agent[b_normalize_ub].op.axis[0], 'dma_copy')
         sch_agent[b_l0b].emit_insn(sch_agent[b_l0b].op.axis[0], 'dma_copy')
         sch_agent[a_normalize_ub].emit_insn(sch_agent[a_normalize_ub].op.axis[0], 'dma_copy')
-        sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], 'dma_copy')
+
+        if _is_int82fp32_nd() or (Params.ops_mode in ('fp16fp32', 'fp16fp16')):
+            nlast = 3
+        else:
+            nlast = 4
+
+        al1_scopes_intrins = sch_agent[a_l1].intrin_scopes(nlast)
+        al1_scope_insn = al1_scopes_intrins[0]
+        sch_agent[a_l1].emit_insn(al1_scope_insn, 'dma_copy')
+
+        bl1_intrins = sch_agent[b_l1].intrin_scopes(nlast)
+        bl1_fract_insn = bl1_intrins[0]
+        sch_agent[b_l1].emit_insn(bl1_fract_insn, 'dma_copy')
+
         sch_agent[a_l0a].emit_insn(sch_agent[a_l0a].op.axis[0], 'dma_copy')
 
         inner_k_axis = sch_agent[c_l0c].get_relate_scope(
@@ -2419,9 +2437,6 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
                 sch_agent[b_transpose_zero].op.axis[0], 'dma_copy')
 
     def _emit_insn_int8int32():
-        scopes_intrins_bl1 = sch_agent[b_l1].intrin_scopes(4)
-        scope_bl1 = scopes_intrins_bl1[0]
-        sch_agent[b_l1].emit_insn(scope_bl1, 'dma_copy')
         sch_agent[b_fract_ub].emit_insn(
             sch_agent[b_fract_ub].op.axis[0], 'dma_copy')
         sch_agent[a_fract_k_ub].emit_insn(
@@ -2453,7 +2468,6 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
 
 
     def _emit_insn_fp16fp16():
-        sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], 'dma_copy')
         a_fract_intrins = sch_agent[a_fract_k_ub].intrin_scopes(3)
         a_fract_insn = a_fract_intrins[1]
         sch_agent[a_fract_k_ub].emit_insn(a_fract_insn, 'vnchwconv')
@@ -2482,7 +2496,7 @@ def gemm_schedule(res, sch_list):# pylint: disable=r0914, r0915, r0912
     def _buffer_reuse_fp16fp16():
         sch_agent[c_before_mul_ub].reused_by(alpha_c_ub)
         if Params.ops_mode == 'fp16fp16':
-            sch_agent[float32_bias_ub].reused_by(beta_bias_ub)
+            sch_agent[float32_bias_ub].reused_by(beta_bias_ub, c_ub_temp)
             sch_agent[bias_ub].reused_by(c_ub)
         else:
             sch_agent[bias_ub].reused_by(beta_bias_ub)

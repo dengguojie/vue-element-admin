@@ -20,6 +20,7 @@ from functools import reduce as functools_reduce
 from te import platform as tbe_platform
 from te import tik
 from topi.cce import util
+from te.utils.op_utils import *
 
 # available ub size
 TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -145,8 +146,7 @@ class DepthToSpaceNHWCCompute:
 
         self.output_shape = (self.output_batch, self.output_height,
                              self.output_width, self.output_depth)
-        util.check_shape_rule(self.output_shape)
-        util.check_tensor_shape_size(self.output_shape)
+        check_shape(self.output_shape, param_name="y")
         # the number of data that UB can put in
         self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
         # minimum granularity of data_move
@@ -1099,7 +1099,7 @@ class DepthToSpaceNHWCCompute:
         return tik_instance
 
 # pylint: disable=invalid-name,unused-argument
-@util.check_input_type(dict, dict, int, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_STR, KERNEL_NAME)
 def depth_to_space(x, y, block_size, data_format='NHWC',
                    kernel_name="depth_to_space"):
     """
@@ -1127,12 +1127,10 @@ def depth_to_space(x, y, block_size, data_format='NHWC',
     """
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
+    check_shape(input_shape, param_name="x")
     check_list = ("int8", "int16", "int32", "uint8", "uint16",
                   "uint32", "uint64", "int64", "float16", "float32")
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="x")
 
     if len(input_shape) != 4:
         raise RuntimeError("length of input_shape should be 4 but got: %d" %

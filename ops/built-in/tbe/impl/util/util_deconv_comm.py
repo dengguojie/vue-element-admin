@@ -17,9 +17,11 @@ deconv_comm
 provide common function used by conv2d_backprop_input and deconvlution
 """
 from __future__ import absolute_import
+from te import tvm
 from te.platform import get_soc_spec
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util as err_man
+from te.lang.cce.te_compute.cube_util import shape_to_list
 from topi.cce import util
 
 
@@ -41,6 +43,9 @@ DEDY_HW_MAX = 4096
 # filterH, filterW must be in [1,255]
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
+
+# conv1d situation support w not larger than 2^31-1
+CONV1D_W_MAX = 2147483647
 
 # stride must be in [1,63] and h*w not lagger than 256
 STRIDE_HW_MIN = 1
@@ -71,6 +76,7 @@ PADDING_VAILD = [0, 0, 0, 0]
 
 NoneType = type(None)
 
+
 def get_filter_shape(ori_format_filters, ori_shape_filters):
     """
     Get filter shape of NCHW from original shape
@@ -93,12 +99,13 @@ def get_filter_shape(ori_format_filters, ori_shape_filters):
     else:
         args_dict = {
             "errCode": "E60004",
-            "param_name": "ori_format_filters",
+            "param_name": "filter",
             "expected_format_list": "[NCHW,NHWC,HWCN]",
             "format": ori_format_filters
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     return shape_filters
+
 
 def align(x_1, x_2):
     """
@@ -115,6 +122,7 @@ def align(x_1, x_2):
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     return (x_1 + x_2 - 1) // x_2 * x_2
+
 
 # pylint: disable=too-many-locals,
 def get_padlist(pads, shape_res, strides, shape_filters, dilations):
@@ -137,19 +145,20 @@ def get_padlist(pads, shape_res, strides, shape_filters, dilations):
     if pads == 'SAME':
         pad_h = align(fmap_h, stride_h) - stride_h \
                 + filter_h_dilation - fmap_h
-        pad_h = max(pad_h, 0)
+        pad_h = tvm.max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
         pad_w = align(fmap_w, stride_w) - stride_w \
                 + filter_w_dilation - fmap_w
-        pad_w = max(pad_w, 0)
+        pad_w = tvm.max(pad_w, 0)
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
         pads = [pad_up, pad_down, pad_left, pad_right]
     elif pads == "VALID":
         pads = PADDING_VAILD
-    pads = list(pads)
+    pads = shape_to_list(pads)
     return pads
+
 
 def get_shape_out_backprop(ori_format_out_backprop, ori_shape_out_backprop):
     """
@@ -168,13 +177,14 @@ def get_shape_out_backprop(ori_format_out_backprop, ori_shape_out_backprop):
     else:
         args_dict = {
             "errCode": "E60004",
-            "param_name": "ori_format_out_backprop",
+            "param_name": "out_backprop",
             "expected_format_list": "[NCHW,NHWC]",
             "format": ori_format_out_backprop
         }
         raise RuntimeError(args_dict,
                            err_man.get_error_message(args_dict))
     return shape_out_backprop
+
 
 def get_shape_dilation(ori_out_backprop_format, dilations):
     """
@@ -193,12 +203,13 @@ def get_shape_dilation(ori_out_backprop_format, dilations):
     else:
         args_dict = {
             "errCode": "E60004",
-            "param_name": "ori_out_backprop_format",
+            "param_name": "out_backprop",
             "expected_format_list": "[NCHW,NHWC]",
             "format": ori_out_backprop_format
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     return shape_dilations
+
 
 def get_shape_res(ori_format_res, ori_shape_res):
     """
@@ -216,12 +227,13 @@ def get_shape_res(ori_format_res, ori_shape_res):
     else:
         args_dict = {
             "errCode": "E60004",
-            "param_name": "ori_format_res",
+            "param_name": "y",
             "expected_format_list": "[NCHW,NHWC]",
             "format": ori_format_res
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     return shape_res
+
 
 # pylint: disable=too-many-arguments, too-many-locals, too-many-statements
 @util.check_input_type((list, tuple), (list, tuple), (list, tuple),
@@ -229,13 +241,17 @@ def get_shape_res(ori_format_res, ori_shape_res):
                        str,
                        str,
                        str,
-                       str)
+                       str,
+                       (NoneType, dict),
+                       (str, NoneType))
 def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                 strides, pads, dilations,
                                 filter_dtype,
                                 out_backprop_dtype,
                                 res_dtype,
-                                kernel_name):
+                                kernel_name,
+                                fusion_para=None,
+                                dynamic_mode=None):
     """
     The params check function of conv2d backprop input and deconvolution
 
@@ -264,6 +280,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     res_dtype : The dtype of result(De/Dx) data. Default value is float16.
 
     kernel_name : Cce kernel name. Default value is "conv2d_backprop_input_cce"
+
+    dynamic_mode : dynamic type, "dynamic_hw" or "dynamic_batch"
 
     Returns : All transformed params.
     ----------
@@ -345,7 +363,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": dedy_batch
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if filter_h_dilation > fmap_h_padding:
+        if filter_h_dilation > fmap_h_padding and h_match_rule:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_h_padding,
@@ -376,17 +394,26 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
     def _check_l1_size_limit():
+        c0_size = cce_params.C0_SIZE
+        c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
         w_value = dedy_w * stride_w
 
-        if fmap_w > 16:
+        if fmap_w > c0_size:
             h_value_max = filter_h_dilation + 1
-        elif 16 % fmap_w == 0:
-            h_value_max = filter_h_dilation + 16 // fmap_w - 1
+        elif c0_size % fmap_w == 0:
+            h_value_max = filter_h_dilation + c0_size // fmap_w - 1
         else:
-            h_value_max = filter_h_dilation + 16 // fmap_w + 1
+            h_value_max = filter_h_dilation + c0_size // fmap_w + 1
 
-        a_l1_size = h_value_max * w_value * 32
-        b_l1_size = filter_h_dilation * filter_w_dilation * 512
+        a_l1_size = h_value_max * w_value *\
+                    c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
+        if _is_conv1d_situation():
+            load3d_stride = 1
+            a_l1_m_length = (c0_size - 1) * load3d_stride + filter_w_dilation
+            a_l1_size = a_l1_m_length *\
+                        c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
+        b_l1_size = filter_h_dilation * filter_w_dilation *\
+                    c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
         l1_size = get_soc_spec("L1_SIZE")
         if (a_l1_size + b_l1_size) > l1_size:
             args_dict = {
@@ -433,6 +460,134 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             return True
         return False
 
+    def fusion_para_check(fusion_para, shape_out_backprop):
+        c0_k = cce_params.CUBE_MKN[filter_dtype]["mac"][1]
+
+        def handle_valid_shape():
+            if not slice_offset:
+                reason = "valid shape exists, slice shape cannot be []"
+                args_dict = {
+                    "errCode": "E60108",
+                    "reason": reason
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if not output_offset:
+                reason = "valid shape exists,output offset cannot be []"
+                args_dict = {
+                    "errCode": "E60108",
+                    "reason": reason
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+
+            if slice_offset[2] >= shape_out_backprop[2] \
+                    or slice_offset[2] < 0:
+                reason = "invalid slice_offset"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(slice_offset)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if output_offset[2] < 0:
+                reason = "invalid outputoffset"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(output_offset)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if slice_offset[0] != 0 or slice_offset[1] != 0 \
+                    or slice_offset[3] != 0 or slice_offset[4] != 0:
+                reason = "invalid slice_offset"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(slice_offset)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if output_offset[0] != 0 or output_offset[1] != 0 \
+                    or output_offset[3] != 0 or output_offset[4] != 0:
+                reason = "invalid output_offset"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(output_offset)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if valid_shape[2] + slice_offset[2] > shape_out_backprop[2] \
+                    or valid_shape[2] + slice_offset[2] < 0:
+                reason = "invalid valid_shape"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(valid_shape)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if valid_shape[0] != shape_out_backprop[0] \
+                    or valid_shape[3] != shape_out_backprop[3] \
+                    or valid_shape[1]*valid_shape[4] \
+                    != (shape_out_backprop[1] + c0_k - 1) // c0_k * c0_k:
+                reason = "invalid valid_shape"
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": reason,
+                    "value": str(valid_shape)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+
+        valid_shape = fusion_para.get("valid_shape")
+        slice_offset = fusion_para.get("slice_offset")
+        output_offset = fusion_para.get("output_offset")
+        l1_fusion_type = fusion_para.get("l1_fusion_type")
+        input_memory_type = fusion_para.get("input_memory_type")
+        output_memory_type = fusion_para.get("output_memory_type")
+
+        if l1_fusion_type == -1:
+            if input_memory_type == 1:
+                args_dict = {
+                    "errCode": "E60109",
+                    "input_memory_type": str(input_memory_type)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+            if output_memory_type == 1:
+                args_dict = {
+                    "errCode": "E60110",
+                    "output_memory_type": str(output_memory_type)
+                }
+                raise RuntimeError(args_dict,
+                                   err_man.get_error_message(args_dict))
+
+        if valid_shape:
+            handle_valid_shape()
+
+    def modify_fusion_para(fusion_para, input_h,
+                           input_hw_mini, output_hw_mini):
+        h_match_rule = True
+        if fusion_para is None:
+            fusion_para = {"input_memory_type": 0,
+                           "output_memory_type": 0,
+                           "valid_shape": (),
+                           "slice_offset": (),
+                           "output_offset": (),
+                           "l1_fusion_type": -1,
+                           "fmap_l1_addr_flag": False,
+                           "fmap_l1_valid_size": 0}
+        if fusion_para.get("valid_shape"):
+            input_h = fusion_para.get("valid_shape")[2]
+            h_match_rule = False
+            input_hw_mini = 1
+            output_hw_mini = 1
+        return fusion_para, input_h, h_match_rule,\
+               input_hw_mini, output_hw_mini
 
     # First : Base check, Mainly required by interface appearance
     # util check
@@ -440,12 +595,13 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     util.check_shape_rule(shape_filter,
                           CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                           DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(shape_out_backprop,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(input_sizes,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
+    if dynamic_mode is None:
+        util.check_shape_rule(shape_out_backprop,
+                            CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
+                            DEFAULT_MAX_SHAPE_NUM)
+        util.check_shape_rule(input_sizes,
+                            CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
+                            DEFAULT_MAX_SHAPE_NUM)
     util.check_shape_rule(dilations,
                           CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                           DEFAULT_MAX_SHAPE_NUM)
@@ -499,37 +655,56 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     dedy_hw_min, fmap_hw_min = DEDY_HW_MIN, FMAP_HW_MIN
     dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
 
+    fusion_para, dedy_h, h_match_rule, dedy_hw_min, fmap_hw_min \
+        = modify_fusion_para(fusion_para, dedy_h, dedy_hw_min, fmap_hw_min)
+
+    # exchange h and w will not change date in memmory
+    if fmap_w_padding == 1 and filter_w == 1 and dedy_w == 1:
+        input_sizes = (fmap_batch, fmap_channel, fmap_w, fmap_h)
+        shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
+        shape_filter = (filter_batch, filter_channel, filter_w, filter_h)
+        strides = stride_w, stride_h
+        dilations = dilation_n, dilation_c, dilation_w, dilation_h
+        fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
+        dedy_h, dedy_w = dedy_w, dedy_h
+        fmap_h, fmap_w = fmap_w, fmap_h
+        filter_h, filter_w = filter_w, filter_h
+        filter_h_dilation, filter_w_dilation = filter_w_dilation,\
+                                               filter_h_dilation
+
     if _is_load3d_special():
         dedy_hw_min = 1
         fmap_hw_min = 1
 
-    # if conv1d situation, make sure w is in [1,16000]
+    # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
     if _is_conv1d_situation():
         dedy_hw_min = 1
         fmap_hw_min = 1
-        dedy_hw_max = 16000
-        fmap_hw_max = 16000
+        dedy_hw_max = CONV1D_W_MAX
+        fmap_hw_max = CONV1D_W_MAX
 
-    _check_shape_relation()
+    if dynamic_mode is None:
+        _check_shape_relation()
 
-    # Dedy value limit
-    _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
-                      dedy_hw_min, dedy_hw_max)
-    if filter_h == 1 and filter_w == 1:
-        _check_attr_range("Dedy's W after expands",
-                          dedy_w * stride_w * stride_h,
-                          dedy_hw_min, dedy_hw_max)
-    else:
-        _check_attr_range("Dedy's W after expands", dedy_w * stride_w,
-                          dedy_hw_min, dedy_hw_max)
+        # Dedy value limit
+        _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
+                        dedy_hw_min, dedy_hw_max)
+        if filter_h == 1 and filter_w == 1:
+            _check_attr_range("Dedy's W after expands",
+                            dedy_w * stride_w * stride_h,
+                            dedy_hw_min, dedy_hw_max)
+        else:
+            _check_attr_range("Dedy's W after expands", dedy_w * stride_w,
+                            dedy_hw_min, dedy_hw_max)
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
-    # Fmap value limit
-    _check_attr_range("Fmap's H", fmap_h, fmap_hw_min, fmap_hw_max)
-    _check_attr_range("Fmap's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    if dynamic_mode is None:
+        # Fmap value limit
+        _check_attr_range("Fmap's H", fmap_h, fmap_hw_min, fmap_hw_max)
+        _check_attr_range("Fmap's W", fmap_w, fmap_hw_min, fmap_hw_max)
 
     # stride value limit
     _check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -542,21 +717,23 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     _check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
 
     # Third : value check, Mainly required by the convolution rule
-    if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) \
-            != dedy_h:
-        args_dict = {
-            "errCode": "E60024",
-        }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-    if ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) \
-            != dedy_w:
-        args_dict = {
-            "errCode": "E60025",
-        }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if dynamic_mode != "dynamic_hw":
+        if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) \
+                != dedy_h and h_match_rule:
+            args_dict = {
+                "errCode": "E60024",
+            }
+            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        if ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) \
+                != dedy_w:
+            args_dict = {
+                "errCode": "E60025",
+            }
+            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
     # Forth : L1 limitation, Mainly required by chip
-    _check_l1_size_limit()
+    if dynamic_mode != "dynamic_hw":
+        _check_l1_size_limit()
 
     # Fifth : check shape size, 64 bits limitation
     c0_size = cce_params.C0_SIZE
@@ -564,11 +741,15 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     dedy_size = dedy_batch * align(dedy_channel, c0_size) * dedy_h * dedy_w
     filter_size = align(filter_batch, c0_size) \
                   * align(filter_channel, c0_size) * filter_h * filter_w
-    _check_64bits_limitation("fmap_size", fmap_size, dtype=res_dtype)
-    _check_64bits_limitation("dedy_size", dedy_size, dtype=out_backprop_dtype)
-    _check_64bits_limitation("filter_size", filter_size, dtype=filter_dtype)
+    if not dynamic_mode:
+        _check_64bits_limitation("fmap_size", fmap_size, dtype=res_dtype)
+        _check_64bits_limitation("dedy_size", dedy_size, dtype=out_backprop_dtype)
+        _check_64bits_limitation("filter_size", filter_size, dtype=filter_dtype)
 
     result = (
         shape_filter, shape_out_backprop, input_sizes, strides, pads,
         dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name)
+
+    fusion_para_check(fusion_para, shape_out_backprop)
+
     return result

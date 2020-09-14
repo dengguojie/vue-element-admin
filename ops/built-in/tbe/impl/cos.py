@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # 2pi, the cycle of cosin
 TWO_PI = 2*3.14159265358979
@@ -88,7 +89,7 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def cos(input_x, output_y, kernel_name="cos"):
     """
     algorithm: cos
@@ -110,11 +111,9 @@ def cos(input_x, output_y, kernel_name="cos"):
     shape_input = input_x.get("shape")
     dtype_input = input_x.get("dtype").lower()
 
-    util.check_shape_rule(shape_input)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_input, param_name="input_x")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype_input, check_list)
-    util.check_tensor_shape_size(shape_input)
+    check_dtype(dtype_input, check_list, param_name="input_x")
 
     reshape_input = (functools_reduce(lambda x, y: x * y, shape_input[:]),)
     data_input = tvm.placeholder(reshape_input,

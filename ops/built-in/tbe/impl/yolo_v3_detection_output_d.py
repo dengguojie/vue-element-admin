@@ -18,11 +18,11 @@ yolo_v3_detection_output
 """
 from te import tik
 from topi.cce import util
-from te.utils import op_utils
 from impl import common_util as common
 from impl import constant_util as constant
 from impl import yolo_v3_cls_prob as cls
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 PRE_NMS_TOPN = 1024
 
@@ -31,11 +31,15 @@ UB_NUM = 10240
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments
 # pylint: disable=unused-argument
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, dict,
-                       dict, dict, dict, dict, dict, dict, dict, dict, dict,
-                       (tuple, list), (tuple, list), (tuple, list), int, int,
-                       int, bool, (float, int), (float, int), (float, int),
-                       (float, int), (float, int), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_FLOAT,
+                 REQUIRED_ATTR_LIST_FLOAT, REQUIRED_ATTR_LIST_FLOAT,
+                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT,
+                 OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT, OPTION_ATTR_INT,
+                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_INT, KERNEL_NAME)
 def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
                                coord_data_high_dic, obj_prob_low_dic,
                                obj_prob_mid_dic,
@@ -955,8 +959,8 @@ class DetectionOutput(cls.ClsProbComputer):
                                             self.inter_classes[param["offset"]],
                                             constant.SID,
                                             constant.DEFAULT_NBURST,
-                                            nburst
-                                            , constant.STRIDE_ZERO,
+                                            nburst,
+                                            constant.STRIDE_ZERO,
                                             constant.STRIDE_ZERO)
                     param["offset"].set_as(param["offset"] + param["ub_num"])
                     param["classes_ub"] = classes_ub

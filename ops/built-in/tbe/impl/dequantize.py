@@ -18,15 +18,11 @@ limitations under the License.
 dequantize op, Dequantize the 'input' tensor into a float tensor.
 """
 import te.lang.cce
-from te import tvm
 from te import platform as tbe_platform
+from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import *
-
-SHAPE_SIZE_LIMIT = 2**30  # shape limit
 
 
 def _min_combined_mode_compute(input_tensor, broadcast_min_range,
@@ -57,12 +53,11 @@ def _min_combined_mode_compute(input_tensor, broadcast_min_range,
         size = 1
     elif dtype == "int32":
         size = 4
-    num_bits = size*8
+    num_bits = size * 8
 
     if dtype in ("int8", "int32"):
         # cast input_tensor from int to float32
-        input_tensor_float32_tmp = te.lang.cce.cast_to(input_tensor,
-                                                       "float32")
+        input_tensor_float32_tmp = te.lang.cce.cast_to(input_tensor, "float32")
         val_max_int = (1 << num_bits) / 2
         input_tensor_float32 = te.lang.cce.vadds(input_tensor_float32_tmp,
                                                  val_max_int)
@@ -101,20 +96,16 @@ def _min_first_8bits_offset(res, broadcast_min_range, sub_tensor):
     """
     sub_rec_tensor = te.lang.cce.vrec(sub_tensor)
     # muls the range of the 8bits data type
-    muls_tensor = te.lang.cce.vmuls(broadcast_min_range,
-                                    (1 << 8) - 1)
-    muls_mul_sub_rec_tensor = te.lang.cce.vmul(muls_tensor,
-                                               sub_rec_tensor)
+    muls_tensor = te.lang.cce.vmuls(broadcast_min_range, (1 << 8) - 1)
+    muls_mul_sub_rec_tensor = te.lang.cce.vmul(muls_tensor, sub_rec_tensor)
     least_quantize = te.lang.cce.round(muls_mul_sub_rec_tensor)
     neg_least_quantize = te.lang.cce.vmuls(least_quantize, -1)
-    least_quantize_fp32 = te.lang.cce.cast_to(neg_least_quantize,
-                                              "float32")
-    least_quantize_fp32_mul = te.lang.cce.vmul(least_quantize_fp32,
-                                               sub_tensor)
+    least_quantize_fp32 = te.lang.cce.cast_to(neg_least_quantize, "float32")
+    least_quantize_fp32_mul = te.lang.cce.vmul(least_quantize_fp32, sub_tensor)
     # the reciprocal of the range of the 8bits data type
     val_scalar = 1.0 / ((1 << 8) - 1)
-    least_quantize_fp32_mul_muls = te.lang.cce.vmuls(
-        least_quantize_fp32_mul, val_scalar)
+    least_quantize_fp32_mul_muls = te.lang.cce.vmuls(least_quantize_fp32_mul,
+                                                     val_scalar)
     offset = te.lang.cce.vadd(broadcast_min_range,
                               least_quantize_fp32_mul_muls)
     res = te.lang.cce.vsub(res, offset)
@@ -150,12 +141,11 @@ def _min_first_mode_compute(input_tensor, broadcast_min_range,
         size = 1
     elif dtype == "int32":
         size = 4
-    num_bits = size*8
+    num_bits = size * 8
 
     if dtype in ("int8", "int32"):
         # cast input_tensor from int to float32
-        input_tensor_float32_tmp = te.lang.cce.cast_to(input_tensor,
-                                                       "float32")
+        input_tensor_float32_tmp = te.lang.cce.cast_to(input_tensor, "float32")
         val_max_int = (1 << num_bits) / 2
         input_tensor_float32 = te.lang.cce.vadds(input_tensor_float32_tmp,
                                                  val_max_int)
@@ -197,13 +187,13 @@ def _scaled_mode_compute(input_tensor, broadcast_max_range):
         size = 1
     elif dtype == "int32":
         size = 4
-    num_bits = size*8
+    num_bits = size * 8
 
     val_scalar = 0
     if dtype in ("int8", "int32"):
         # min&max fixed is float32
-        [min_fixed, max_fixed] = [-((1 << (num_bits - 1)) - 1),
-                                  (1 << (num_bits - 1)) - 1]
+        [min_fixed, max_fixed
+         ] = [-((1 << (num_bits - 1)) - 1), (1 << (num_bits - 1)) - 1]
         val_scalar = 2.0 / (max_fixed - min_fixed)
     if dtype == "uint8":
         [min_fixed, max_fixed] = [0, (1 << num_bits) - 1]
@@ -219,9 +209,12 @@ def _scaled_mode_compute(input_tensor, broadcast_max_range):
 # pylint: disable=locally-disabled, too-many-arguments, unused-argument, unnecessary-lambda
 # pylint: disable=locally-disabled,invalid-name,too-many-locals
 @fusion_manager.register("dequantize")
-def dequantize_compute(x, min_range,
-                       max_range, y,
-                       mode="MIN_COMBINED", kernel_name="dequantize"):
+def dequantize_compute(x,
+                       min_range,
+                       max_range,
+                       y,
+                       mode="MIN_COMBINED",
+                       kernel_name="dequantize"):
     """
     Computation for dequantize the 'input' tensor into a float tensor.
 
@@ -253,8 +246,11 @@ def dequantize_compute(x, min_range,
     shape_x = te.lang.cce.util.shape_to_list(x.shape)
     shape_range = te.lang.cce.util.shape_to_list(max_range.shape)
 
-    shape_x, shape_range, shape_max = broadcast_shapes(
-        shape_x, shape_range, param_name_input1="x", param_name_input2="max_range")
+    shape_x, shape_range, shape_max = op_utils.broadcast_shapes(
+        shape_x,
+        shape_range,
+        param_name_input1="x",
+        param_name_input2="max_range")
 
     broadcast_min_range = te.lang.cce.broadcast(min_range, shape_max)
     broadcast_max_range = te.lang.cce.broadcast(max_range, shape_max)
@@ -273,9 +269,15 @@ def dequantize_compute(x, min_range,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME)
-def dequantize(x, min_range, max_range, y,
-               mode="MIN_COMBINED", kernel_name="dequantize"):
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.OPTION_ATTR_STR, op_utils.KERNEL_NAME)
+def dequantize(x,
+               min_range,
+               max_range,
+               y,
+               mode="MIN_COMBINED",
+               kernel_name="dequantize"):
     """
     Dequantize the 'input' tensor into a float tensor.
 
@@ -366,8 +368,8 @@ def dequantize(x, min_range, max_range, y,
     if shape_output_data != shape_x:
         raise RuntimeError("shape_output_data and shape_x must be equal.")
     shape_range = shape_input_min_range
-    check_shape(shape_x, param_name="x")
-    check_shape(shape_range, param_name="min_range")
+    op_utils.check_shape(shape_x, param_name="x")
+    op_utils.check_shape(shape_range, param_name="min_range")
 
     dtype_x = x.get("dtype")
     dtype_input_min_range = min_range.get("dtype")
@@ -386,23 +388,26 @@ def dequantize(x, min_range, max_range, y,
         "te.lang.cce.vmul", "float32")
     if not vmul_support:
         raise RuntimeError("not support on the platform")
-    check_dtype(dtype_x, check_list, param_name="x")
-    check_dtype(dtype_input_min_range, ("float32",), param_name="min_range")
-    check_dtype(dtype_input_max_range, ("float32",), param_name="max_range")
-    check_dtype(dtype_output_data, ("float32",), param_name="y")
+    op_utils.check_dtype(dtype_x, check_list, param_name="x")
+    op_utils.check_dtype(dtype_input_min_range, ("float32", ),
+                         param_name="min_range")
+    op_utils.check_dtype(dtype_input_max_range, ("float32", ),
+                         param_name="max_range")
+    op_utils.check_dtype(dtype_output_data, ("float32", ), param_name="y")
 
     if mode not in ("MIN_COMBINED", "MIN_FIRST", "SCALED"):
-        raise RuntimeError("mode only support MIN_COMBINED, MIN_FIRST, SCALED.")
+        raise RuntimeError(
+            "mode only support MIN_COMBINED, MIN_FIRST, SCALED.")
 
-
-    shape_x, shape_range, _ = broadcast_shapes(
+    shape_x, shape_range, _ = op_utils.broadcast_shapes(
         shape_x,
-        shape_range, param_name_input1="x", param_name_input2="min_range")
+        shape_range,
+        param_name_input1="x",
+        param_name_input2="min_range")
 
-    shape_x, shape_range = refine_shapes_for_broadcast(shape_x, shape_range)
-    input_tensor = tvm.placeholder(shape_x,
-                                   dtype=dtype_x,
-                                   name="x")
+    shape_x, shape_range = op_utils.refine_shapes_for_broadcast(
+        shape_x, shape_range)
+    input_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     min_range = tvm.placeholder(shape_range,
                                 dtype="float32",
                                 name="input_min_range")
@@ -410,14 +415,15 @@ def dequantize(x, min_range, max_range, y,
                                 dtype="float32",
                                 name="input_max_range")
 
-    res = dequantize_compute(input_tensor, min_range, max_range,
-                             y, mode, kernel_name)
+    res = dequantize_compute(input_tensor, min_range, max_range, y, mode,
+                             kernel_name)
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_tensor, min_range, max_range, res],
-              "dummy_placeholder": True}
+    config = {
+        "name": kernel_name,
+        "tensor_list": [input_tensor, min_range, max_range, res],
+        "dummy_placeholder": True
+    }
     te.lang.cce.cce_build_code(sch, config)
-

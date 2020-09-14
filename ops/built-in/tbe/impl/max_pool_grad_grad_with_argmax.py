@@ -23,14 +23,13 @@ import math
 from te import platform as tbe_platform
 from te import tvm
 from te.lang.cce.te_compute import common
-from te.platform.cce_build import build_config
-from te.platform.cce_build import build_config_update
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
 from te.platform import insn_cmd
+from te.platform.cce_build import build_config, build_config_update
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 
-SHAPE_SIZE_LIMIT = 2**30  # shape limit
-BLOCK_SIZE = tbe_platform.cce_params.BLOCK_REDUCE  # 16, 32B = 16 * sizeof(float16)
+# 16, 32B = 16 * sizeof(float16)
+BLOCK_SIZE = tbe_platform.cce_params.BLOCK_REDUCE
 
 
 def _ceil_to(value, ceil_value):
@@ -77,7 +76,8 @@ def get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size,
         is_l0_ub_double_buffer:
             True or False or None
     """
-    data_size = tbe_platform.cce_intrin.get_bit_len(dtype.lower()) // 8  # 8bits = 1bytes
+    data_size = tbe_platform.cce_intrin.get_bit_len(
+        dtype.lower()) // 8  # 8bits = 1bytes
     max_l1_valid_num = max_l1_valid_size // data_size
     max_next_valid_num = max_next_valid_size // data_size
 
@@ -121,7 +121,6 @@ def get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size,
         l1_double_buffer = True
         if max_ho_l1 >= min_com_multi // output_w * MULTI_CORE:
             max_ho_l1 = max_ho_l1 // MULTI_CORE
-
 
     # l1 memory is enough to put the whole feature map.
     if max_ho_l1 >= output_h:
@@ -201,27 +200,21 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
     if padding not in ("SAME", "VALID"):
         raise RuntimeError("Padding must be SAME or VALID.")
 
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_argmax)
-    util.check_shape_rule(shape_grad)
-    util.check_shape_rule(shape_y)
-
-    util.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_argmax, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_grad, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_y, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(shape_x, param_name="x")
+    op_utils.check_shape(shape_argmax, param_name="argmax")
+    op_utils.check_shape(shape_grad, param_name="grad")
+    op_utils.check_shape(shape_y, param_name="y")
 
     dtype_x = x.get("dtype").lower()
     dtype_argmax = argmax.get("dtype").lower()
     dtype_grad = grad.get("dtype").lower()
     dtype_y = y.get("dtype").lower()
 
-    util.check_dtype_rule(dtype_x, ("float16", ))
-    util.check_dtype_rule(dtype_argmax, ("uint16", ))
-    util.check_dtype_rule(dtype_grad, ("float16", ))
-    util.check_dtype_rule(dtype_y, ("float16", ))
+    op_utils.check_dtype(dtype_x, ("float16", ), param_name="x")
+    op_utils.check_dtype(dtype_argmax, ("uint16", ), param_name="argmax")
+    op_utils.check_dtype(dtype_grad, ("float16", ), param_name="grad")
+    op_utils.check_dtype(dtype_y, ("float16", ), param_name="y")
 
-    util.check_kernel_name(kernel_name)
     fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_x
     _, _, grad_h, grad_w, _ = shape_grad
 
@@ -246,7 +239,7 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
                 raise RuntimeError("Not supported shape.")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if util.get_product_version() == util.VERSION_CLOUD and \
+    if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.SOC_VERSION) == "Ascend910" and \
             (shape_max_pool_h != 1 or shape_max_pool_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
             raise RuntimeError("Invalid params in the platform of cloud, "
@@ -305,8 +298,7 @@ def _max_pool_grad_grad_with_argmax_compute(
         strides,
         padding="VALID",
         ori_format_x="NCHW",
-        kernel_name="cce_max_pool_grad_grad"
-                    " with_argmax"):
+        kernel_name="cce_max_pool_grad_grad_with_argmax"):
     """
     Computes second-order gradients of the maxpooling function.
 
@@ -432,9 +424,9 @@ def _max_pool_grad_grad_with_argmax_compute(
                            howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
     grad_grad_col = tvm.compute(
         shape_grad_grad_col,
-        lambda i, j, k, l, m: tvm.select(argmax_ub[i, j, k, l, m],
-                                         grad_fractal_transp[i, j, k, l, m],
-                                         tensor_zero_ub[m]),
+        lambda i, j, k, l, m: tvm.select(argmax_ub[
+            i, j, k, l, m], grad_fractal_transp[i, j, k, l, m], tensor_zero_ub[
+                m]),
         name='grad_grad_col')
 
     # reduce_sum
@@ -563,8 +555,10 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
                                   (1, 1), (1, 1), (1, BLOCK_SIZE))
 
     # get tiling shape value
-    max_l1_valid_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
-    max_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    max_l1_valid_size = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.L1_SIZE)
+    max_ub_size = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.UB_SIZE)
     max_next_valid_size = max_ub_size * 16 * kernel_h * kernel_w // \
                           (49 * kernel_h * kernel_w + 16)
 
@@ -633,10 +627,10 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[res].reorder(res_n_outer, res_c1_outer, res_howo_outer, res_mwo_outer,
                      res_n_inner, res_c1_inner, res_mwo_inner, res.op.axis[3])
 
-    res_fused_n_c1_howo_outer = sch[res].fuse(res_n_outer,
-                                              res_c1_outer,
+    res_fused_n_c1_howo_outer = sch[res].fuse(res_n_outer, res_c1_outer,
                                               res_howo_outer)
-    core_number = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    core_number = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.CORE_NUM)
 
     sch[grad_in_l1].compute_at(sch[res], res_fused_n_c1_howo_outer)
     sch[grad_im2col].compute_at(sch[res], res_fused_n_c1_howo_outer)
@@ -646,15 +640,13 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[grad_grad_col].compute_at(sch[grad_grad], grad_grad_k_outer)
     sch[grad_grad].compute_at(sch[res], res_mwo_outer)
 
-
     sch[grad_in_l1].emit_insn(grad_in_l1.op.axis[0], insn_cmd.DMA_COPY)
     sch[grad_im2col].emit_insn(grad_im2col.op.axis[0], 'set_fmatrix',
                                setfmatrix_dict)
     sch[grad_fractal].emit_insn(grad_fractal.op.axis[0], insn_cmd.IM2COL)
     sch[argmax_ub].emit_insn(argmax_ub.op.axis[0], insn_cmd.DMA_COPY)
     sch[tensor_zero_ub].emit_insn(tensor_zero_ub.op.axis[0], insn_cmd.DUP)
-    sch[grad_grad_col].emit_insn(grad_grad_col.op.axis[0],
-                                 insn_cmd.SELECT)
+    sch[grad_grad_col].emit_insn(grad_grad_col.op.axis[0], insn_cmd.SELECT)
     sch[grad_grad].emit_insn(grad_grad_n_inner, insn_cmd.REDUCE_SUM)
     sch[res].emit_insn(res_n_inner, insn_cmd.DMA_COPY)
 
@@ -672,10 +664,14 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     block = tvm.thread_axis("blockIdx.x")
     sch[res].bind(res_fused_n_c1_howo_outer, block)
 
+
 # pylint: disable=locally-disabled, too-many-arguments
 # pylint: disable=locally-disabled, too-many-locals, too-many-statements
-@util.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple),
-                       str, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_STR, op_utils.KERNEL_NAME)
 def max_pool_grad_grad_with_argmax(x,
                                    grad,
                                    argmax,
@@ -684,7 +680,7 @@ def max_pool_grad_grad_with_argmax(x,
                                    strides,
                                    padding="VALID",
                                    kernel_name="cce_max_pool_grad_grad"
-                                               "_with_argmax"):
+                                   "_with_argmax"):
     """
     Computes second-order gradients of the maxpooling function.
 

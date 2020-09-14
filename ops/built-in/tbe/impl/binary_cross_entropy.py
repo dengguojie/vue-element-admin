@@ -21,6 +21,7 @@ from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 
 # eps value
@@ -199,7 +200,8 @@ def binary_cross_entropy_compute(x, y, weight, output,
     return result
 
 
-@util.check_input_type(dict, dict, (dict, NoneType), dict, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_STR, KERNEL_NAME)
 def binary_cross_entropy(x, y, weight, output,
                          reduction="mean",
                          kernel_name="binary_cross_entropy"):
@@ -249,26 +251,24 @@ def binary_cross_entropy(x, y, weight, output,
 
     # check dtype
     dtype_list = ("float16", "float32")
-    util.check_dtype_rule(predict_dtype, dtype_list)
-    util.check_dtype_rule(target_dtype, dtype_list)
+    check_dtype(predict_dtype, dtype_list, param_name="x")
+    check_dtype(target_dtype, dtype_list, param_name="y")
     util.compare_tensor_dict_key(x, y, "dtype")
 
     # check shape
-    util.check_shape_rule(predict_shape)
-    util.check_shape_rule(target_shape)
+    check_shape(predict_shape, param_name="x")
+    check_shape(target_shape, param_name="y")
     util.compare_tensor_dict_key(x, y, "shape")
 
-    # check kernel_name
-    util.check_kernel_name(kernel_name)
 
     data_weight = None
     if weight is not None:
         weight_shape = weight.get("shape")
         weight_dtype = weight.get("dtype")
         weight_dtype_lower = weight_dtype.lower()
-        util.check_dtype_rule(weight_dtype, dtype_list)
+        check_dtype(weight_dtype, dtype_list, param_name="weight")
         util.compare_tensor_dict_key(x, weight, "dtype")
-        util.check_shape_rule(weight_shape)
+        check_shape(weight_shape, param_name="weight")
         shape_size = util.check_tensor_shape_size(weight_shape)
         util.compare_tensor_dict_key(x, weight, "shape")
         data_weight = tvm.placeholder([shape_size], name="data_weight",

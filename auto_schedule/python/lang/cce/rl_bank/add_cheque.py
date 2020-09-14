@@ -24,6 +24,8 @@ from te.lang.cce.rl_bank.cheque import gen_cheque
 from te.lang.cce.rl_bank.rl_bank import get_default_rl_path
 from te.lang.cce.rl_bank.rl_bank import get_custom_rl_path
 from te.lang.cce.rl_bank.withdraw import withdraw
+from te.platform import log
+from te.lang.cce.rl_bank.rl_bank import satisfy_bank
 
 
 def get_output_tensors(output_tensors, output_names, load_obj):
@@ -56,7 +58,7 @@ def diff_code(output_tensors, cheque_list, real_schedule_code):
     """
     #  gen_sch_by_cheque
     _, draw_code_lines = withdraw(output_tensors, cheque_list)
-    print("="*80)
+    print("=" * 80)
     print("\n".join(draw_code_lines))
     print("=" * 80)
     import difflib
@@ -107,17 +109,20 @@ def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
     :param kernel_name:
     :return:
     """
-
     if not os.path.exists(sch_py_path):
         raise RuntimeError("%s not exists" % sch_py_path)
 
     if bank_type not in ["custom", "built-in"]:
         raise RuntimeError("bank_type must be custom or built-in,while is %s" % bank_type)
-
+    log.info("add cheque sch_py_path:%s", sch_py_path)
     with open(sch_py_path, 'r') as file_handler:
         shcedule_code_str = file_handler.read()
     # maybe start with best_
-    tick = int(os.path.basename(sch_py_path).strip('best_').split('_')[0])
+    best_tick = int(os.path.basename(sch_py_path).strip('best_').split('_')[0])
+    base_tick = int(os.path.basename(sch_py_path).strip('best_').split('_')[1])
+    if not satisfy_bank(base_tick, best_tick, 'in'):
+        raise RuntimeError("base_tick:%s best_tick:%s, satisfy_bank check fail!" %
+                           (base_tick, best_tick))
 
     # get output_tensors
     output_tensors, real_schedule_code = get_outputs(shcedule_code_str)
@@ -125,13 +130,19 @@ def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
         raise RuntimeError("get output_tensors from schedule py file fail!!!")
     # gen cheque
     cheque_list = gen_cheque(sch_py_path, kernel_name=kernel_name)
-    bank_dir = get_default_rl_path()
+
     if bank_type == 'custom':
-        bank_dir = get_custom_rl_path(bank_dir)
+        spec_valid, bank_dir = get_custom_rl_path()
+        # if assign TUNE_BANK_PATH, custom bank path is TUNE_BANK_PATH/soc_version/rl
+        if spec_valid:
+            bank_type = "rl"
+    else:
+        bank_dir = get_default_rl_path()
 
     soc_version = cceconf.get_soc_spec("SOC_VERSION")
+
     bank_json_path = os.path.join(bank_dir, soc_version, bank_type, "%s.json" % bank_file)
-    ret = add_case(output_tensors, cheque_list, tick, bank_json_path)
+    ret = add_case(output_tensors, cheque_list, best_tick, bank_json_path)
     # show code diff if enable DIFF_CODE
     if os.getenv("DIFF_CODE", "False").lower() == "true":
         diff_code(output_tensors, cheque_list, real_schedule_code)
@@ -150,8 +161,7 @@ def try_add_cheque(sch_py_path, bank_type, bank_file, kernel_name=""):
     :return:
     """
     try:
-        ret = add_cheque_to_bank(sch_py_path, bank_type,
-                                 bank_file, kernel_name=kernel_name)
+        ret = add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=kernel_name)
         return ret, ""
     except Exception:  # pylint: disable=broad-except
         return False, "sch_py_path:%s add cheque to %s bank fail:%s" % (sch_py_path, bank_type,

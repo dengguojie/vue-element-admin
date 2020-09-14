@@ -27,6 +27,7 @@ from te.platform.cce_build import build_config
 ASCEND_ANTI_QUANT_TAG = "anti_quant"
 BLOCK_VALUE = 16
 
+
 # pylint: disable=too-many-arguments,invalid-name,unused-argument
 # pylint: disable=unnecessary-lambda
 def _check_params(x, y, scale, offset, sqrt_mode, kernel_name):

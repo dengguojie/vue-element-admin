@@ -16,6 +16,7 @@ cumsum
 """
 from topi.cce import util
 from impl.cum_computer import get_computer_by_ctype
+from te.utils.op_utils import *
 
 # the computer type
 SUM_TYPE = "sum"
@@ -23,7 +24,8 @@ SUM_TYPE = "sum"
 
 # pylint: disable=locally-disabled, unused-argument,invalid-name
 # pylint: disable=locally-disabled, too-many-arguments, not-callable
-@util.check_input_type(dict, dict, int, bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def cumsum_d(x, y, axis=0, exclusive=False, reverse=False,
              kernel_name="cumsum_d"):
     """
@@ -72,11 +74,9 @@ def check_param(input_x, axis, kernel_name):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_dtype_rule(input_dtype,
-                          ("float16", "float32", "int32", "int8", "uint8"))
+    check_shape(input_shape, param_name="input_x")
+    check_dtype(input_dtype,
+                          ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
         raise RuntimeError("axis must be in the range [%d, %d). but is %d " % (

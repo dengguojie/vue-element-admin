@@ -74,6 +74,7 @@ def range_d_compute(x, y, start, limit, delta, kernel_name="range_d"):
 
     return res
 
+
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     """

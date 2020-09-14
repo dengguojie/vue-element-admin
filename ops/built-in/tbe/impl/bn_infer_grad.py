@@ -25,6 +25,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 MAX_SHAPE_NUM = 10000000
 SCALAR_ONE = 1
@@ -104,11 +105,9 @@ def _check_shape(shape_grads, shape_batch_variance):
     -------
     None
     """
-    util.check_shape_rule(shape_grads, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_grads)
+    check_shape(shape_grads, param_name="grads")
 
-    util.check_shape_rule(shape_batch_variance, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_batch_variance)
+    check_shape(shape_batch_variance, param_name="batch_variance")
 
     dim_c1 = shape_grads[1]
     dim_c0 = shape_grads[4]
@@ -131,7 +130,8 @@ def _check_shape(shape_grads, shape_batch_variance):
             "Dimension C must be equal")
 
 
-@util.check_input_type(dict, dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_FLOAT, KERNEL_NAME)
 def bn_infer_grad(grads, scale, batch_variance,
                   x_backprop, epsilon=0.0001,
                   kernel_name="bn_infer_grad"):
@@ -167,9 +167,9 @@ def bn_infer_grad(grads, scale, batch_variance,
     input_scale_dtype = scale.get("dtype").lower()
     batch_variance_dtype = batch_variance.get("dtype").lower()
 
-    util.check_dtype_rule(input_grads_dtype, ("float32", "float16"))
-    util.check_dtype_rule(input_scale_dtype, ("float32",))
-    util.check_dtype_rule(batch_variance_dtype, ("float32",))
+    check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
+    check_dtype(input_scale_dtype, ("float32",), param_name="scale")
+    check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
     _check_shape(shape_grads, shape_batch_variance)
     util.compare_tensor_dict_key(scale, batch_variance, "shape")

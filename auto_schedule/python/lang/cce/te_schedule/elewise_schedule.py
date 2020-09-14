@@ -21,9 +21,11 @@ from functools import reduce as reduceIns
 from math import ceil
 import math
 
+from te.platform import log
 from te.platform import get_soc_spec
 from te.platform import cce_conf
 from te.platform import intrinsic_check_support
+from te.platform.cce_conf import CceProductParams as pver
 from te import platform as cceconf
 from te import tvm
 # pylint: disable=unused-import
@@ -214,6 +216,9 @@ class CceOp:
             raise RuntimeError("only support UB buffer now")
 
         self._emit_insn_map = {"elewise_single_cast": "vector_conv",
+                               "elewise_single_floor": "vector_conv_floor",
+                               "elewise_single_trunc": "vector_conv_trunc",
+                               "elewise_single_round": "vector_conv_rint",
                                "elewise_single_round_d": "vector_conv_round",
                                "elewise_single_VS_max": "vector_maxs",
                                "elewise_single_VS_min": "vector_mins",
@@ -221,6 +226,7 @@ class CceOp:
                                "elewise_single_log": "vector_ln",
                                "elewise_single_exp": "vector_exp",
                                "elewise_single_relu": "vector_relu",
+                               "elewise_single_lrelu": "vector_lrelu",
                                "elewise_single_abs": "vector_abs",
                                "elewise_single_not": "vector_not",
                                "elewise_single_sqrt": "vector_sqrt",
@@ -240,11 +246,20 @@ class CceOp:
                                "elewise_binary_vcmpv_le": "vector_le",
                                "elewise_binary_vcmpv_eq": "vector_eq",
                                "elewise_binary_vcmpv_ne": "vector_ne",
+                               "elewise_binary_cmpsel_gt": "vector_select_gt",
+                               "elewise_binary_cmpsel_ge": "vector_select_ge",
+                               "elewise_binary_cmpsel_lt": "vector_select_lt",
+                               "elewise_binary_cmpsel_le": "vector_select_le",
+                               "elewise_binary_cmpsel_eq": "vector_select_eq",
+                               "elewise_binary_cmpsel_ne": "vector_select_ne",
                                "elewise_binary_or": "vector_or",
                                "elewise_binary_and": "vector_and",
+                               "elewise_binary_addrelu": "vector_addrelu",
+                               "elewise_binary_subrelu": "vector_subrelu",
                                "elewise_multiple_mla": "vector_multiple",
                                "elewise_multiple_madd": "vector_multiple",
                                "elewise_multiple_maddrelu": "vector_multiple",
+                               "elewise_multiple_sel": "vector_select_bool",
                                "elewise_binary_scalar_axpy": "vector_multiple",
                                "elewise_binary_cmpsel": "vector_cmpsel"
                                }
@@ -513,6 +528,8 @@ class CceOp:
             return tensors for tvm.build and tvm.lower
         """
         # for pylint
+        log.debug("start core_schedule_reduce")
+
         tensor_map = tensor_map
         self._res_tensor_list = res
         if hasattr(res, 'index'):
@@ -539,7 +556,7 @@ class CceOp:
                 self._need_enable_muticore:
             self._optimal_reduce_sum_4d_5d_schedule()
             sch_list[0] = self._schedule
-            return True
+            return True, self.get_current_workspace_info()
 
         read_buffer = self.local_cache_read()
         write_buffer = self.local_cache_write()
@@ -587,7 +604,7 @@ class CceOp:
         read_buffer = read_buffer + muti_output_read_buffer
 
         if not self.check_valid_schedule():
-            return False
+            return False, self.get_current_workspace_info()
 
         # tensorize operations
         if self._need_tensorize:
@@ -793,12 +810,15 @@ class CceOp:
             live_width -= _op_width(tensor_op)
         return max_width
 
-    def get_max_ub_count(self):
+    def get_max_ub_count(self, isElewise=False):
         """
         caculate the max element num loaded in UB buffer
         :return: max element num loaded in UB buffer
         """
         total_width = self.get_total_width()
+        if isElewise:
+            total_width = total_width + 2
+
         if not total_width:
             raise RuntimeError("Can not calculate with no compute")
 
@@ -820,7 +840,18 @@ class CceOp:
         -------
         int : slice number
         """
-        max_ub_count = self.get_max_ub_count()
+        def _get_elewise_flag():
+            isElewise = False
+            shape_list = [[1, 4, 1, 5, 3, 64, 2, 2],
+                         [2, 3, 655, 6, 2, 2],
+                         [4, 4, 546, 7, 2, 2],
+                         [3, 4, 4, 71, 12, 1, 2, 2],
+                         [1, 4, 93, 110, 2, 2],
+                         [96, 94, 2, 2]]
+            if shape in shape_list:
+                isElewise = True
+            return isElewise
+        max_ub_count = self.get_max_ub_count(_get_elewise_flag())
 
         # if the cmp mode is bit the res shape is 8 muti input shape,
         # we should tiling as the input shape
@@ -3868,6 +3899,7 @@ class CceOp:
         dich_last_shape = self._last_num
 
         if self._check_dich_add_reduce_dim() and \
+                self._shape_before_reduce[-1] <= dich_add_rep_size and \
                 dich_last_shape <= dich_add_rep_size and \
                 dich_add_rep_size % dich_last_shape == 0 and \
                 dich_last_shape * dich_add_type_size % 32 == 0:
@@ -3875,7 +3907,7 @@ class CceOp:
         return False
 
     def _check_dich_add_emit_insn(self, lop):
-        if get_soc_spec("SOC_VERSION") == "Ascend310" and \
+        if pver().is_mini_version() and \
                 lop["cache_buffer"].dtype.lower() == "float32":
             return False
         if self._res_tensor.dtype.lower() == "float16" and \
@@ -3996,6 +4028,9 @@ class CceOp:
         if lop["op"] == "broadcast_for_tensor":
             lop["op"] = "unified_broadcast"
         self._schedule[cache_buffer].emit_insn(tensorize_axis, lop["op"])
+        self._schedule[cache_buffer].pragma(tensorize_axis,
+                                            "workspace_scope",
+                                            str(self._scope))
 
     # pylint: disable=too-many-branches, too-many-statements
     def emit_multiple(self, cache_buffer, lop, op_cmd):

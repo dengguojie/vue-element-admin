@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -70,7 +71,8 @@ def lin_space_d_compute(input_assist, input_start, input_stop, input_num,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, KERNEL_NAME)
 def lin_space_d(input_assist, input_start, input_stop,
                 input_num, output_op, kernel_name="lin_space_d"):
     """
@@ -109,14 +111,12 @@ def lin_space_d(input_assist, input_start, input_stop,
     dtype_input_stop = input_stop.get("dtype")
     dtype_input_assist = input_assist.get("dtype")
     dtype_num = input_num.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_assist)
-    util.check_tensor_shape_size(shape_assist)
+    check_shape(shape_assist, param_name="input_assist")
 
-    util.check_dtype_rule(dtype_input_assist.lower(), ("float32",))
-    util.check_dtype_rule(dtype_input.lower(), ("float32",))
-    util.check_dtype_rule(dtype_input_stop.lower(), ("float32",))
-    util.check_dtype_rule(dtype_num.lower(), ("int32",))
+    check_dtype(dtype_input_assist.lower(), ("float32",), param_name="input_assist")
+    check_dtype(dtype_input.lower(), ("float32",), param_name="input_start")
+    check_dtype(dtype_input_stop.lower(), ("float32",), param_name="input_stop")
+    check_dtype(dtype_num.lower(), ("int32",), param_name="input_num")
 
     # check shape of start, stop and num, must be (1,)
     shape_start = tuple(shape_start)

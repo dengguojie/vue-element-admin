@@ -20,11 +20,12 @@ import te.lang.cce
 from te import tvm
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 # pylint: disable=invalid-name
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def l2_loss(x, y, kernel_name="l2_loss"):
     """
     Reduce a tensor on a certain axis, and scale output with coeff
@@ -45,9 +46,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    check_shape(shape, param_name="x")
 
     check_list = ["float16", "float32"]
     if not dtype.lower() in check_list:

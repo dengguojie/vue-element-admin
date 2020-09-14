@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -47,8 +48,9 @@ def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
     dtype = input_x.dtype
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_max)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                   param_name_input1="input_x",
+                                                   param_name_input2="input_y")
 
     int_list = ("int32", "int8", "uint8")
     if dtype in int_list:
@@ -59,10 +61,12 @@ def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
         help_min = tvm.const(2**(-24), "float16")
         help_rec_one = tvm.const(2**12, "float16")
         help_rec_sec = tvm.const(2**12, "float16")
+        neg_one = tvm.const(-1, "float16")
     else:
         help_min = tvm.const(2**(-126), "float32")
         help_rec_one = tvm.const(2**38, "float32")
         help_rec_sec = tvm.const(2**44, "float32")
+        neg_one = tvm.const(-1, "float32")
 
     cmp_help = te.lang.cce.broadcast(help_min, shape_y)
     y_cmp = te.lang.cce.vmul(input_y, input_y)
@@ -75,6 +79,8 @@ def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
     data_x_broadcast = te.lang.cce.broadcast(input_x, shape_max)
     data_y_broadcast = te.lang.cce.broadcast(input_y, shape_max)
     index_y_broadcast = te.lang.cce.broadcast(y_index, shape_max)
+    neg_index = te.lang.cce.vadds(index_y_broadcast, neg_one)
+    data_y_broadcast = te.lang.cce.vadd(data_y_broadcast, neg_index)
     res_vdiv = te.lang.cce.vdiv(data_x_broadcast, data_y_broadcast)
     res = te.lang.cce.vmul(res_vdiv, index_y_broadcast)
 
@@ -85,7 +91,7 @@ def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
     """
     algorithm: div_no_nan_cce
@@ -112,13 +118,13 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
     dtype = input_x.get("dtype")
 
     for shape in (shape_x, shape_y):
-        util.check_shape_rule(shape)
-        util.check_tensor_shape_size(shape)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_max)
+        check_shape(shape, param_name="input_x")
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                   param_name_input1="input_x",
+                                                   param_name_input2="input_y")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, ("float16", "float32",
-                                        "int32", "int8", "uint8"))
+    check_dtype(input_dtype, ("float16", "float32",
+                                        "int32", "int8", "uint8"), param_name="input_x")
     reshape_x, reshape_y = refine_shapes_for_broadcast(shape_x, shape_y)
     data_x = tvm.placeholder(reshape_x, name="data_x", dtype=input_dtype)
     data_y = tvm.placeholder(reshape_y, name="data_y", dtype=input_dtype)

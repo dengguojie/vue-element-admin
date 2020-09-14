@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -62,7 +63,9 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     # broadcast in case the input shapes are not same
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape = \
-            util.produce_shapes(shape_input_gradients, shape_input_features)
+            broadcast_shapes(shape_input_gradients, shape_input_features,
+                             param_name_input1="input_gradients",
+                             param_name_input2="input_features")
         input_gradients = te.lang.cce.broadcast(input_gradients, shape,
                                                 trans_type)
         input_features = te.lang.cce.broadcast(input_features, shape,
@@ -80,7 +83,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     return result
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops,
               kernel_name="relu_grad"):
     """
@@ -107,23 +110,21 @@ def relu_grad(input_gradients, input_features, output_backprops,
     shape_input_features = input_features.get("shape")
 
     util.compare_tensor_dict_key(input_gradients, input_features, "dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_gradients)
-    util.check_shape_rule(shape_input_features)
-    util.check_tensor_shape_size(shape_input_gradients)
-    util.check_tensor_shape_size(shape_input_features)
+    check_shape(shape_input_gradients, param_name="input_gradients")
+    check_shape(shape_input_features, param_name="input_features")
 
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape_max = \
-            util.produce_shapes(shape_input_gradients, shape_input_features)
-        util.check_tensor_shape_size(shape_max)
+            broadcast_shapes(shape_input_gradients, shape_input_features,
+                             param_name_input1="input_gradients",
+                             param_name_input2="input_features")
 
     dtype_input_gradients = input_gradients.get("dtype").lower()
     dtype_input_features = input_features.get("dtype").lower()
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    util.check_dtype_rule(dtype_input_gradients, check_list)
-    util.check_dtype_rule(dtype_input_features, check_list)
+    check_dtype(dtype_input_gradients, check_list, param_name="input_gradients")
+    check_dtype(dtype_input_features, check_list, param_name="input_features")
 
     shape_input_gradients, shape_input_features = \
         refine_shapes_for_broadcast(shape_input_gradients,

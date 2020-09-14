@@ -19,22 +19,31 @@ this file achieved the apply_rms_prop which is a optimizer operator to update
 weight, this file contains compute and schedule.
 """
 
-from functools import reduce as functools_reduce
 import operator
-from te import tvm
+from functools import reduce as functools_reduce
+
 import te.lang.cce
+from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
+from te.utils import op_utils
 from topi import generic
 
-# shape limit for apply_rms_prop
-SHAPE_SIZE_LIMIT = 2**30
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
 # pylint: disable=unused-argument
 @fusion_manager.register('apply_rms_prop_d')
-def apply_rms_prop_d_compute(var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, momentum,
-                             epsilon, kernel_name="apply_rms_prop_d"):
+def apply_rms_prop_d_compute(var,
+                             ms,
+                             mom,
+                             lr,
+                             grad,
+                             out_var,
+                             out_ms,
+                             out_mom,
+                             rho,
+                             momentum,
+                             epsilon,
+                             kernel_name="apply_rms_prop_d"):
     """
     the operator's compute
     :param var: weight, placeholder, float32
@@ -52,7 +61,8 @@ def apply_rms_prop_d_compute(var, ms, mom, lr, grad, out_var, out_ms, out_mom, r
     """
     grad_square = te.lang.cce.vmul(grad, grad)
     grad_square_ms = te.lang.cce.vsub(grad_square, ms)
-    rho_gs = te.lang.cce.vmuls(grad_square_ms, tvm.const(1.0 - rho, grad.dtype))
+    rho_gs = te.lang.cce.vmuls(grad_square_ms,
+                               tvm.const(1.0 - rho, grad.dtype))
     ms_t = te.lang.cce.vadd(ms, rho_gs)
 
     m_mom = te.lang.cce.vmuls(mom, tvm.const(momentum, mom.dtype))
@@ -79,23 +89,38 @@ def _get_placeholder(dict_list, name_list):
         if name == 'var':
             var_shape = list(shape)
         if name != 'lr' and var_shape != list(shape):
-            raise RuntimeError("The shape of var, ms, mom, grad must be equal.")
+            raise RuntimeError(
+                "The shape of var, ms, mom, grad must be equal.")
         if name == 'lr' and shape[0] != 1:
             raise RuntimeError("The shape of lr must be scalar.")
 
-        util.check_dtype_rule(dtype, ['float32'])
-        util.check_shape_rule(shape, max_shape_num=SHAPE_SIZE_LIMIT)
-        util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-        shape_refine = (functools_reduce(operator.mul, shape),)
-        list_placeholder.append(tvm.placeholder(shape=shape_refine, name=name,
-                                                dtype=dtype))
+        op_utils.check_dtype(dtype, ('float32', ), param_name="var")
+        op_utils.check_shape(shape)
+        shape_refine = (functools_reduce(operator.mul, shape), )
+        list_placeholder.append(
+            tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, float, float, float,
-                       str)
 # pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
-def apply_rms_prop_d(var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, momentum, epsilon,
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_FLOAT,
+                          op_utils.REQUIRED_ATTR_FLOAT,
+                          op_utils.REQUIRED_ATTR_FLOAT, op_utils.KERNEL_NAME)
+def apply_rms_prop_d(var,
+                     ms,
+                     mom,
+                     lr,
+                     grad,
+                     out_var,
+                     out_ms,
+                     out_mom,
+                     rho,
+                     momentum,
+                     epsilon,
                      kernel_name="apply_rms_prop_d"):
     """
     Update '*var' according to the RMSProp algorithm.
@@ -143,13 +168,13 @@ def apply_rms_prop_d(var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, mome
     """
 
     input_name_list = ['var', 'ms', 'mom', 'lr', 'grad']
-    util.check_kernel_name(kernel_name)
     var, ms, mom, lr, grad = _get_placeholder([var, ms, mom, lr, grad],
                                               input_name_list)
 
     # compute
-    out_var, out_ms, out_mom = apply_rms_prop_d_compute(var, ms, mom, lr, grad, out_var, out_ms,
-                                                        out_mom, rho, momentum, epsilon)
+    out_var, out_ms, out_mom = apply_rms_prop_d_compute(
+        var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, momentum,
+        epsilon)
 
     outs = [out_var, out_ms, out_mom]
     build_list = [var, ms, mom, lr, grad, out_var, out_ms, out_mom]

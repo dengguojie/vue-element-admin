@@ -23,6 +23,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -135,7 +136,7 @@ def bias_add_grad_compute(x, y, data_format,
     return result
 
 
-@util.check_input_type(dict, dict, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, KERNEL_NAME)
 def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.
@@ -155,13 +156,11 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     None
     """
     shape = x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    check_shape(shape, param_name="x")
     dtype = x.get("dtype").lower()
     data_format = data_format.upper()
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="x")
     data_format_list = ("NCHW", "NHWC")
     input_data_format = x.get("format").upper()
 

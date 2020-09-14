@@ -20,7 +20,7 @@ import te
 
 from te import tvm
 
-from te.platform.cce_emitinsn_params import cceEmitParamsIns
+from te.platform import log
 from te.platform.cce_util import get_buffer, get_align_factor
 from te.platform.cce_intrin_md import reset_mask_insn
 
@@ -36,8 +36,6 @@ INTRIN_MAPPING_NORMAL = {
     "min": "vmin",
     "sum": "vadd"
 }
-
-DEBUG_SWITCH = True
 
 
 @tvm.register_func("tvm.intrin.cce.5hdc_reduce_min")
@@ -61,10 +59,10 @@ def reduce_5hdc_reduce_sum(stmt):
 def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
     """5HDC reduce"""
     ir_builder = tvm.ir_builder.create()
-    c_var = cceEmitParamsIns.get_param("CAxisVar")
-    c_inv_size = cceEmitParamsIns.get_param("CAxisInvalidSize")
-    if DEBUG_SWITCH:
-        print("[Reduce5HDCIntrin]", "Var:", c_var, "InvSize:", c_inv_size)
+    c_var = str(stmt.value).replace("\"", "")
+    c_inv_size = int(stmt.body.value)
+    log.debug("[Reduce5HDCIntrin]" + " Var: " + str(c_var) +
+              " InvSize:" + str(c_inv_size))
     # Get original shape and target shape
     original_shape = []
     original_layout = []
@@ -127,9 +125,10 @@ def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
 
     tvm.ir_pass.IRTransform(stmt, None, interpret_statement, ["For"])
     tvm.ir_pass.IRTransform(stmt, None, interpret_statement, ["Load", "Store"])
-    if DEBUG_SWITCH:
-        print("[Reduce5HDCIntrin]", "Input:", original_shape, "InputVar:", original_layout)
-        print("[Reduce5HDCIntrin]", "Input:", target_shape, "InputVar:", target_layout)
+    log.debug("[Reduce5HDCIntrin]" + " Input: " + str(original_shape) +
+              " InputVar: " + str(original_layout))
+    log.debug("[Reduce5HDCIntrin]" + " Input: " + str(target_shape) +
+              " InputVar: " + str(target_layout))
     reduce_schedule = []
     reduce_src = 1
     offset = 0
@@ -155,9 +154,10 @@ def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
     ins, outs = get_buffer(stmt, need_origin_adress=True)
     input_buffer = ins[1]
     output_buffer = outs[0]
-    if DEBUG_SWITCH:
-        print("[Reduce5HDCIntrin]", "InputBuffers:", ins, "OutputBuffers:", outs)
-        print("[Reduce5HDCIntrin]", "ReduceSchedule", reduce_schedule)
+    log.debug("[Reduce5HDCIntrin]" + " InputBuffers: " + str(ins) +
+              " OutputBuffers: " + str(outs))
+    log.debug("[Reduce5HDCIntrin]" + " ReduceSchedule: " +
+              str(reduce_schedule))
     for reduce_sch in reduce_schedule[:-1]:
         do_reduce(ir_builder, intrin_cmd, reduce_sch, input_buffer)
     do_reduce(ir_builder, intrin_cmd, reduce_schedule[-1],
@@ -186,8 +186,7 @@ def last_axis_reduce(ir_builder, intrin_cmd, reduce_src, reduce_factor,  # pylin
     """last axis reduce"""
     if reduce_factor != 16:
         raise RuntimeError("Last axis reduce currently doesn't support unaligned reduce")
-    if DEBUG_SWITCH:
-        print("[LastAxisReduce] Need clean:", need_clean)
+    log.debug("[LastAxisReduce] Need clean: " + str(need_clean))
     element_size = get_align_factor(input_buffer.dtype)[1]
     element_per_block = 32 // element_size
     vector_insn_rep_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
@@ -252,7 +251,7 @@ def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disabl
             dst_buffer.access_ptr("rw", offset=outer_repeat_times * 255 * dst_stride + dst_offset),
             src_buffer.access_ptr("r", offset=outer_repeat_times * 255 * src_stride + src_offset),
             remain_repeat_times, 1, 1, 8))
-    else:
+    elif repeat > 0:
         ir_b.emit(tvm.call_extern(
             dst_buffer.dtype,
             cmd,
@@ -261,6 +260,7 @@ def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disabl
             repeat, 1, 1, 8))
     # Remain part
     if rem > 0:
+        reset_mask_insn(ir_b, dst_buffer.dtype, rem)
         ir_b.emit(tvm.call_extern(
             dst_buffer.dtype,
             cmd,
@@ -292,7 +292,7 @@ def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: dis
             dst_buffer.access_ptr("rw", offset=outer_repeat_times * 255 * dst_stride + dst_offset),
             src_buffer.access_ptr("r", offset=outer_repeat_times * 255 * src_stride + src_offset),
             remain_repeat_times, 1, 1, 1, 8, 8, 8))
-    else:
+    elif repeat > 0:
         ir_b.emit(tvm.call_extern(
             dst_buffer.dtype,
             cmd,
@@ -302,6 +302,7 @@ def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: dis
             repeat, 1, 1, 1, 8, 8, 8))
     # Remain part
     if rem > 0:
+        reset_mask_insn(ir_b, dst_buffer.dtype, rem)
         ir_b.emit(tvm.call_extern(
             dst_buffer.dtype,
             cmd,
@@ -366,7 +367,7 @@ def vector_insn_factor_clean(ir_builder, cmd, src_buffer,  # pylint: disable=R09
                                   * vector_insn_rep_size + src_offset),
             num_fill,
             remain_repeat_times, 1, 1, 8, 8))
-    else:
+    elif repeat_times > 0:
         ir_builder.emit(tvm.call_extern(
             src_buffer.dtype,
             "vector_dup",

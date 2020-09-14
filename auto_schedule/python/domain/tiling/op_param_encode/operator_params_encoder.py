@@ -5,6 +5,7 @@ Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
 TBE operator param encoder
 """
+import json
 
 class BaseClassParamsEncoder():
     """
@@ -21,7 +22,8 @@ class BaseClassParamsEncoder():
             'int8': 1,
             'float16': 2,
             'int32': 3,
-            'float32': 4
+            'float32': 4,
+            'int16': 5
             }
 
         # Encode the type of op
@@ -125,3 +127,23 @@ class BaseClassParamsEncoder():
         """
         encode_list.extend(input_list)
         return encode_list
+
+    def encode(self, params):
+        """encode the information of shape to the list of uint32 digit
+
+        Parameters
+        ----------
+        params: dict of params
+            include all information of shape
+
+        Returns
+        -------
+        params_encode : list of encoded params
+            The encoded params, include uint32 numbers
+        """
+        # encode the dict to list
+        if isinstance(params, dict):
+            return json.dumps(params)
+        else:
+            raise TypeError("the type of params only support dict, \
+                but the type is %s" % type(params))

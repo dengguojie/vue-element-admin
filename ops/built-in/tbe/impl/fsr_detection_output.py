@@ -16,7 +16,16 @@ fsr_detection_output
 
 from te import tik
 from te import platform as cce
-from te.utils.op_utils import *
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import OPTION_INPUT
+from te.utils.op_utils import KERNEL_NAME
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_INT
+from te.utils.op_utils import REQUIRED_ATTR_FLOAT
+from te.utils.op_utils import OPTION_ATTR_INT
+from te.utils.op_utils import OP_ERROR_CODE_002
 from te import platform as tbe_platform
 from topi.cce import util
 from impl import nms
@@ -45,6 +54,7 @@ BLOCK_SIZE = 32
 VECTOR_BLOCK_SIZE = 256
 DATA_EIGHT = 8
 DATA_ONE = 1
+
 
 def get_params(dtype):
     """
@@ -128,7 +138,7 @@ def vec_muls(inputs, dst, const, cur_process_num):
                            DATA_ONE, DATA_ONE,
                            DATA_EIGHT,
                            DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vmuls(tail_tail,
                            dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -218,7 +228,7 @@ def vec_adds(inputs, dst, const, cur_process_num):
                            DATA_ONE, DATA_ONE,
                            DATA_EIGHT,
                            DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vadds(tail_tail,
                            dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -263,7 +273,7 @@ def vec_add(inputs, dst, cur_process_num):
                           DATA_EIGHT,
                           DATA_EIGHT,
                           DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vadd(tail_tail,
                           dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -397,7 +407,7 @@ def vec_mul(inputs, dst, cur_process_num):
                           DATA_EIGHT,
                           DATA_EIGHT,
                           DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vmul(tail_tail,
                           dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -444,7 +454,7 @@ def vec_min(inputs, dst, cur_process_num):
                           DATA_EIGHT,
                           DATA_EIGHT,
                           DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vmin(tail_tail,
                           dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -487,7 +497,7 @@ def vec_relu(inputs, dst, cur_process_num):
                            DATA_ONE, DATA_ONE,
                            DATA_EIGHT,
                            DATA_EIGHT)
-    tail_tail = tail%mask
+    tail_tail = tail % mask
     if tail_tail > 0:
         tik_instance.vrelu(tail_tail,
                            dst[MAX_REPEAT_TIME*mask*repeat+mask*tail_n],
@@ -1048,7 +1058,7 @@ class DecodeRois:
                        self.output_region_proposal_ub, cur_process_num, 3)
             vec_concat((self.tik_instance, self.ubaddr0, self.input_dtype),
                        self.output_region_proposal_ub, cur_process_num, 4)
-            # print("score_offset:",score_offset)
+
             self.tik_instance.data_move(
                 output_region_proposal[score_offset*constant.DATA_SIZE_EIGHT],
                 self.output_region_proposal_ub, 0,
@@ -1085,7 +1095,7 @@ class OneCoreProcess:
         self.total_size = cal_var_num*self.max_rois_num*self.size*self.num_classes+tmp_size
         self.one_batch_one_class_size = cal_var_num*self.max_rois_num*self.size
         # one time need space
-        # self.reserved_ub_size = cal_var_num*16*self.size*self.num_classes
+
         self.reserved_ub_size = cal_var_num*FP16_ALIGN_NUM*self.size
 
     def get_offset(self, batch_index):
@@ -1417,19 +1427,19 @@ class PreProcess:
         with self.tik_instance.for_range(0, self.num_classes // FP16_ALIGN_NUM) as loop:
             with self.tik_instance.for_range(0, FP16_ALIGN_NUM) as inner_loop:
                 self.tik_instance.data_move(
-                    score_ub[loop*self.max_rois_num*FP16_ALIGN_NUM+
+                    score_ub[loop*self.max_rois_num*FP16_ALIGN_NUM +
                              inner_loop*self.max_rois_num],
-                    new_score_ub[inner_loop*FP16_ALIGN_NUM+
+                    new_score_ub[inner_loop*FP16_ALIGN_NUM +
                                  loop*self.max_rois_num*FP16_ALIGN_NUM], 0,
                     self.max_rois_num//FP16_ALIGN_NUM, self.ratio,
                     15*self.ratio, 0)
 
-        loop_times = self.num_classes%FP16_ALIGN_NUM
+        loop_times = self.num_classes % FP16_ALIGN_NUM
         with self.tik_instance.for_range(0, loop_times) as inner_loop:
             self.tik_instance.data_move(
-                score_ub[(self.num_classes//FP16_ALIGN_NUM)*self.max_rois_num*FP16_ALIGN_NUM+
+                score_ub[(self.num_classes//FP16_ALIGN_NUM)*self.max_rois_num*FP16_ALIGN_NUM +
                          inner_loop*self.max_rois_num],
-                new_score_ub[inner_loop*FP16_ALIGN_NUM+
+                new_score_ub[inner_loop*FP16_ALIGN_NUM +
                              (self.num_classes//FP16_ALIGN_NUM)*self.max_rois_num*FP16_ALIGN_NUM],
                 0, self.max_rois_num//FP16_ALIGN_NUM, self.ratio,
                    15*self.ratio, 0)
@@ -1536,7 +1546,7 @@ class PreProcess:
                           (one_tiling_process//FP16_ALIGN_NUM),
                           class_loop, 0, 0, 0],
                     0, one_tiling_process//FP16_ALIGN_NUM, self.ratio,
-                       ((self.num_classes+TO_ALIGN_NUM)//FP16_ALIGN_NUM-DATA_ONE)*
+                       ((self.num_classes+TO_ALIGN_NUM)//FP16_ALIGN_NUM-DATA_ONE) *
                        self.ratio, 0)
                 self.trans(score_ub, new_score_ub, shape[0])
                 vec_dup((self.tik_instance, shape[0]*shape[1],
@@ -1811,7 +1821,6 @@ class PreProcess:
                 self.prior_ub_move(loop, shape[0], prior_ub,
                                    new_prior_ub)
         with self.tik_instance.for_range(0, 4) as loop:
-            # if class_loop*16+loop < self.num_classes:
             with self.tik_instance.if_scope(
                     class_loop*4+loop < self.num_classes):
                 prior_gm_offset = \
@@ -1843,9 +1852,8 @@ class PreProcess:
         new_prior_ub = self.tik_instance.Tensor(self.input_dtype, shape,
                                                 name="prior_ub",
                                                 scope=tik.scope_ubuf)
-        with self.tik_instance.for_range \
-                    (0, cur_batch_num//(one_tiling_process //
-                                        FP16_ALIGN_NUM)) as \
+        with self.tik_instance.for_range(
+                0, cur_batch_num//(one_tiling_process // FP16_ALIGN_NUM)) as \
                 inner_batch_loop:
             with self.tik_instance.if_scope(
                     cur_batch_num >=
@@ -1889,7 +1897,7 @@ class PreProcess:
                 cur_batch_num -
                 (cur_batch_num//(one_tiling_process//FP16_ALIGN_NUM)) *
                 (one_tiling_process//FP16_ALIGN_NUM) > 0):
-            # shape = [((tail+15)//16)*16, 16]
+
             self.tik_instance.data_move(
                 prior_ub[0],
                 prior[sum_addr+cur_batch_num//(one_tiling_process //
@@ -2029,7 +2037,6 @@ class FsrProcess:
 
         self.tik_instance = tik_instance
 
-        # self.size = get_dtype_size(self.input_dtype)
         self.size, _, _ = get_params(self.input_dtype)
         self.rois = self.tik_instance.Tensor(
             self.input_dtype, rois_dic.get('shape'),
@@ -2057,7 +2064,6 @@ class FsrProcess:
             scope=tik.scope_gm, is_workspace=True, name="prior_box_gm")
 
         if self.actual_rois_num_effect:
-            # print("aaa")
             self.actual_rois_num = self.tik_instance.Tensor(
                 "int32", actual_rois_num_dic.get("shape"),
                 name="actual_rois_num", scope=tik.scope_gm)
@@ -2270,13 +2276,9 @@ def check_datatype(tik_name, dtype):
     :param dtype:
     :return:
     """
-    if tik_name in ("Ascend310",):
+    if not tbe_platform.cce_conf.api_check_support("te.lang.cce.vrelu", "float32"):
         check_dtype(dtype.lower(), ["float16"], param_name="roidic")
-    elif tik_name in ("Ascend910",):
-        check_dtype(dtype.lower(), ["float16"], param_name="roidic")
-    elif tik_name in ("Hi3796CV300ES",):
-        check_dtype(dtype.lower(), ["float16"], param_name="roidic")
-    elif tik_name in ("Ascend610","Ascend620"):
+    else:
         check_dtype(dtype.lower(), ["float16", "float32"], param_name="roidic")
 
 
@@ -2308,6 +2310,19 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     input_dtype = rois_dic.get('dtype')
     check_datatype(tik_name, input_dtype)
     batch_rois = rois_dic.get("shape")[0]
+
+    if im_info_dic.get("shape")[0] != batch_rois:
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['op_name'] = 'fsr_dection_output'
+        error_info['param_name'] = 'im_info_dic'
+        error_info['excepted_value'] = str(batch_rois)
+        error_info['real_value'] = str(im_info_dic.get("shape")[0])
+        raise RuntimeError(error_info,
+                           "In op[%s], the parameter[%s] should be"
+                           " [%s], but actually is [%s]." %
+                           (error_info['op_name'], error_info['param_name'],
+                            error_info['excepted_value'], error_info['real_value']))
     if num_classes > score_dic.get("shape")[1] * score_dic.get("shape")[4]:
         error_info = {}
         error_info['errCode'] = OP_ERROR_CODE_002

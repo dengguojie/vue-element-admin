@@ -27,6 +27,7 @@ from te import platform as tbe_platform
 UB_NUM = 10240
 PRE_NMS_TOPN = 1024
 
+
 def yolo_v2_detection_output_d(coord_data, obj_prob, classes_prob,
                                img_info, windex, hindex,
                                box_out, box_out_num,
@@ -112,9 +113,8 @@ class NmsComputer(ClsProbComputer):
         self.bbox_num = self.instance.Tensor("int32", (self.batch, 8), \
                                              name="box_out_num",
                                              scope=tik.scope_gm)
-                                             
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES") \
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS") \
                 and self.obj_prob_v200.size // (8 * self.dsize) > self.max_ub_num:
             each_loop = (8 * self.dsize)
             shape = (self.obj_prob_v200.size +
@@ -415,7 +415,7 @@ class NmsComputer(ClsProbComputer):
         repeats = common.get_vector_repeat_times(self.instance,
                                                  param["obj_total"])
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             loop_start = self.instance.Scalar("int32")
             loop_start.set_as(param["count_offset"])
             with self.instance.for_range(loop_start, param["count"]) as index:
@@ -725,7 +725,7 @@ class NmsComputer(ClsProbComputer):
                               PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
         with self.instance.new_stmt_scope():
             if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 self.class_filter(selected_tmp, proposals_ub, selected_class, param)
             else:
                 self.class_filter_v200(selected_tmp, selected_class, param)
@@ -755,7 +755,8 @@ class NmsComputer(ClsProbComputer):
           None
           """
         iou_num = PRE_NMS_TOPN
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") or \
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+                "Hi3796CV300ES", "Hi3796CV300CS") or \
                 self.dtype == constant.DATA_TYPE_FP32:
             iou_num = iou_num // 2
             with self.instance.if_scope(selected_class > iou_num):
@@ -976,8 +977,8 @@ class NmsComputer(ClsProbComputer):
                                             self.inter_classes[param["offset"]],
                                             constant.SID,
                                             constant.DEFAULT_NBURST,
-                                            nburst
-                                            , constant.STRIDE_ZERO,
+                                            nburst,
+                                            constant.STRIDE_ZERO,
                                             constant.STRIDE_ZERO)
                     param["offset"].set_as(param["offset"] + param["ub_num"])
                     param["classes_ub"] = classes_ub
@@ -989,7 +990,7 @@ class NmsComputer(ClsProbComputer):
                                             param["class_cycle"] * self.obj_num
                     self.set_class_nms(param)
             if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 # Filter the score value based on obj store in classes_ub_nms
                 self.instance.vconcat(param["proposals_ub"],
                                       param["classes_ub_nms"],
@@ -1196,7 +1197,7 @@ class NmsComputer(ClsProbComputer):
                                constant.REPEAT_STRIDE_EIGHT)
 
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-            "Ascend310","Ascend910"):
+            "Ascend310", "Ascend910"):
             threshold = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
                                              scope=tik.scope_ubuf,
                                              name="threshold")
@@ -1293,7 +1294,7 @@ class NmsComputer(ClsProbComputer):
                                             scope=tik.scope_ubuf)
         mask = None
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             dtype = "uint16"
             if self.dtype == constant.DATA_TYPE_FP32:
                 dtype = "uint32"
@@ -1317,7 +1318,7 @@ class NmsComputer(ClsProbComputer):
                                            name="xyhw_ub",
                                            scope=tik.scope_ubuf)
             if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 self.filter_obj(mask, xyhw_ub, param)
 
             # index_offset indicates the number of selected items=total obj len
@@ -1327,7 +1328,7 @@ class NmsComputer(ClsProbComputer):
             param["ub_num"] = ub_num
             param["last_ub_num"] = last_ub_num
             if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 self.get_xyhw_by_index(xyhw_ub, param)
             x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
                                                name="x1y1x2y2_ub",
@@ -1337,7 +1338,7 @@ class NmsComputer(ClsProbComputer):
                 self.get_x1y1x2y2(xyhw_ub, x1y1x2y2_ub, param)
 
                 if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-                    "Ascend310","Ascend910", "Hi3796CV300ES"):
+                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                     self.concatx1y1x2y2(x1y1x2y2_ub, proposals_ub, param)
                 param["image_ub"] = image_ub
             self.process_each_class(proposals_ub, mask, param)

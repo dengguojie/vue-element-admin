@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 
 # shape limit for aicore equals 2**31
@@ -105,8 +106,8 @@ def l2_normalize_grad_compute(input_data_x,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, (int, tuple, list),
-                       float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT), REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def l2_normalize_grad(input_x,
                       input_y,
                       input_dy,
@@ -148,26 +149,22 @@ def l2_normalize_grad(input_x,
     """
     input_shape_x = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape_x)
-    util.check_shape_size(input_shape_x, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(input_dtype, ("float16", "float32"))
+    check_shape(input_shape_x, param_name="input_x")
+    check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
     input_data_x = tvm.placeholder(
         input_shape_x, name="input_data_x", dtype=input_dtype)
 
     input_shape_y = input_y.get("shape")
     input_dtype_y = input_y.get("dtype").lower()
-    util.check_shape_rule(input_shape_y)
-    util.check_shape_size(input_shape_y, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(input_dtype_y, input_dtype)
+    check_shape(input_shape_y, param_name="input_y")
+    check_dtype(input_dtype_y, input_dtype, param_name="input_y")
     input_data_y = tvm.placeholder(
         input_shape_y, name="input_data_y", dtype=input_dtype)
 
     input_shape_dy = input_dy.get("shape")
     input_dtype_dy = input_dy.get("dtype").lower()
-    util.check_shape_rule(input_shape_dy)
-    util.check_shape_size(input_shape_dy, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(input_dtype_dy, input_dtype)
+    check_shape(input_shape_dy, param_name="input_dy")
+    check_dtype(input_dtype_dy, input_dtype, param_name="input_dy")
     input_data_dy = tvm.placeholder(
         input_shape_dy, name="input_data_dy", dtype=input_dtype)
 

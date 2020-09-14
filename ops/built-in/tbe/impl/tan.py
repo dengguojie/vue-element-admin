@@ -22,6 +22,7 @@ from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # define a string name of "float16"
 FLOAT_16 = "float16"
@@ -130,7 +131,7 @@ def tan_compute(x, y, kernel_name="tan"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def tan(x, y, kernel_name="tan"):
     """
     algorithm: tan
@@ -153,11 +154,9 @@ def tan(x, y, kernel_name="tan"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype").lower()
 
-    util.check_shape_rule(shape_input)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_input, param_name="x")
     check_list = (FLOAT_16, FLOAT_32, INT_32)
-    util.check_dtype_rule(dtype_input, check_list)
-    util.check_tensor_shape_size(shape_input)
+    check_dtype(dtype_input, check_list, param_name="x")
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape_input)

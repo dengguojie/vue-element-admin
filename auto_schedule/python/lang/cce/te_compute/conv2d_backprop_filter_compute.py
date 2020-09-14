@@ -10,15 +10,16 @@ from __future__ import print_function
 import functools
 from te import tvm
 from te.lang.cce.te_compute import util
-from te.platform import get_soc_spec
 from te.platform import intrinsic_check_support
+from te.platform.cce_conf import CceProductParams as pver
 from te.utils.error_manager import error_manager_util as err_man
 
 # fractal size, only support 16 for now
 BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
 DATA_SIZE_LIMIT_INT64 = 9223372036854775807
-
+# maximum of w in conv1d is (2**31 - 1)
+CONV1D_MAX_W = 2147483647
 
 def check_shape_rule(shape, dim, formats, name, allow_zero=False):
     """
@@ -225,7 +226,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if self.fmap_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name,"] = "fmap_dtype"
+            dict_args["param_name"] = "fmap_dtype"
             dict_args["expected_dtype_list"] = "float16"
             dict_args["dtype"] = self.fmap_dtype
             raise RuntimeError(dict_args,
@@ -233,7 +234,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if self.grads_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name,"] = "grads_dtype"
+            dict_args["param_name"] = "grads_dtype"
             dict_args["expected_dtype_list"] = "float16"
             dict_args["dtype"] = self.grads_dtype
             raise RuntimeError(dict_args,
@@ -242,7 +243,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.res_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name,"] = "res_dtype"
+            dict_args["param_name"] = "res_dtype"
             dict_args["expected_dtype_list"] = "float16 for lhisi"
             dict_args["dtype"] = self.res_dtype
             raise RuntimeError(dict_args,
@@ -251,7 +252,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.res_dtype != "float32":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name,"] = "res_dtype"
+            dict_args["param_name"] = "res_dtype"
             dict_args["expected_dtype_list"] = "float32"
             dict_args["dtype"] = self.res_dtype
             raise RuntimeError(dict_args,
@@ -325,7 +326,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             # limitation by chip:
             # Ascend910 load3d not support
             # when only fmap w after padding equals to filter w
-            if get_soc_spec("SOC_VERSION") == 'Ascend910' \
+            if pver().is_cloud_version() \
                 and fmap_height_after_pad != kernel_height \
                 and fmap_width_after_pad == kernel_width:
                 self.flag_load3d_special_case = False
@@ -354,8 +355,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             grads_hw_min = 1
         if self.conv1d_situation:
             grads_hw_min = 1
-            grads_hw_max = 16000
-            fmap_hw_max = 16000
+            grads_hw_max = CONV1D_MAX_W
+            fmap_hw_max = CONV1D_MAX_W
 
         check_variable_range(grads_height, grads_hw_min, grads_hw_max,
                              "height of out_backprop")

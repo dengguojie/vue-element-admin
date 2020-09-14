@@ -15,9 +15,11 @@ arg_max_with_kd
 """
 
 # pylint: disable=too-many-lines,import-error
-from te import tik, platform as tbe_platform
+from te import tik
+from te import platform as tbe_platform
 from topi.cce import util
-from impl.util.util_select_op_base import gen_param, get_dynamic_param_in_json
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # define a scalar for fp16 minimal
 SCALAR_MIN_FP16 = -65500
@@ -41,7 +43,7 @@ AXIS_SIZE_MAX = 2 ** 31
 LARGE_TASK_NUM_PER_CORE = 32
 
 
-# return ceil(int1 / int2)
+
 def _get_div_ceil_int(int1, int2):
     """Get Ceil Int
 
@@ -460,11 +462,11 @@ class ArgMax():
         """
         self.profile = tik.Dprofile()
         self.tik_instance = tik.Tik(self.profile, True)
-        #self.version = self.profile.get_product_name()
+
         self.version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        #self.product_core_num = self.profile.get_aicore_num()
+
         self.product_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        #self.product_ub_size = self.profile.get_unified_buffer_size()
+
         self.product_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
         if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS") and \
@@ -2952,7 +2954,7 @@ class ArgMax():
                             src_list.append(ub_result_value[src_pos])
 
                         self.tik_instance.vec_trans_scatter(
-                            False, False, dst_list, src_list, 2 *col_loop_count,
+                            False, False, dst_list, src_list, 2 * col_loop_count,
                             DATA_EACH_VNCHWCONV // 2 * CORE_SEGMENT_LEN_DB // self.data_each_block,
                             DATA_EACH_VNCHWCONV // 2 // self.data_each_block)
 
@@ -3151,7 +3153,7 @@ class ArgMax():
                         last_max_index = self.tik_instance.Scalar("uint16")
                         last_max_index.set_as(ub_result[second_max_index + 1])
                         max_index = self.tik_instance.Scalar("uint16")
-                        # aka (second_max_index / 2 * 128 + last_max_index)
+
                         max_index.set_as(second_max_index * 64 + last_max_index)
                 else:
                     if need_merge:
@@ -3246,7 +3248,7 @@ class ArgMax():
                         last_max_index = self.tik_instance.Scalar("uint32")
                         last_max_index.set_as(ub_result[second_max_index + 1])
                         max_index = self.tik_instance.Scalar("uint32")
-                        # aka (second_max_index / 2 * 64 + last_max_index)
+
                         max_index.set_as(second_max_index * 32 + last_max_index)
                 else:
                     if need_merge:

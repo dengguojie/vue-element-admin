@@ -32,10 +32,10 @@ BLOCK_DATA = 32
 SIXTY_FOUR = 64
 MASK = 128
 MAXTRIX = 256
-# DOWN_FACTOR = (65404/(720*1024*2)) ** 0.5
+
 DOWN_FACTOR = 0.05
 REC_FACTOR = 1/DOWN_FACTOR
-IF_USE_V200 = ("Ascend610", "Ascend620", "Hi3796CV300ES")
+IF_USE_V200 = ("Ascend610", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS")
 
 
 def ceil_div(divisor_a, divisor_b):
@@ -717,7 +717,7 @@ def topk(tik_ins, proposal_list_num, middle_tensor, start):
                       proposal_list_num, ONE, ONE, EIGHT, EIGHT)
     elif proposal_list_num > ONE:
         if proposal_list_num > 7:
-            # for topk_index in range((proposal_list_num - TWO) // SIX):
+
             with tik_ins.for_range(0, (proposal_list_num - TWO) // SIX) as topk_index:
                 src_list = ((ONE + SIX * topk_index) * MASK,
                             (TWO + SIX * topk_index) * MASK,
@@ -821,7 +821,7 @@ def combine_proposals(tik_instance, gm_tensor, shape, scalar, middle_tensor):
         tik_instance.vector_dup(SIXTEEN,
                                 middle_tensor.data_ub_class[shape.n_x * i],
                                 i + ONE, shape.n_maxtrix, ONE, ONE)
-    #if tik.Dprofile().get_product_name() not in IF_USE_V200:
+
     if True:
         first_tensor = InitFirstTensorV100(tik_instance, shape)
 
@@ -964,7 +964,7 @@ def cal_score_filter_num(tik_instance, shape, class_tensor, middle_tensor, other
                          middle_tensor.data_y_ub_trs1[class_i, 0, 0],
                          shape.n_maxtrix, FOUR)
 
-    # with tik_instance.for_range(0, shape.classes) as class_i:
+
     with tik_instance.for_range(0, FOUR) as j:
         tik_instance.vconcat(middle_tensor.data_ub_proposal[class_i, 0, 0, 0],
                              middle_tensor.data_x_ub_trs3[class_i, j, 0, 0],
@@ -1056,7 +1056,6 @@ def nms(tik_instance, shape, scalar, middle_tensor, other_parm):
         tik_instance.rpn_cor_diag(nms_tensor.sup_vec_ub[j * SIXTEEN],
                                   nms_tensor.sup_matrix_ub[j * SIXTEEN], rpn_cor_ir)
 
-    #if tik.Dprofile().get_product_name() not in IF_USE_V200:
     if True:
         middle_tensor.cal_topk_k.set_as(middle_tensor.cal_topk_k + class_tensor.num)
         # if rpn_cor_ir == ONE ; make scores 0
@@ -1200,7 +1199,6 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
     # copy ub to gm
     tik_instance.data_move(gm_tensor.gm_sorted_rois,
                            final_tensor.sorted_rois_ub_str1,
-                           # data_ub_proposal[shape.n_x * FOUR],
                            0,
                            ONE, topk_k * FOUR // SIXTEEN,
                            0, 0)

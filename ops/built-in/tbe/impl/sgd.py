@@ -19,17 +19,25 @@ sgd
 import te.lang.cce
 from impl.util.util_apply_op_schedule import (ApplyOpConfig,
                                               common_apply_op_process)
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi.cce import util
+from te.utils import op_utils
 
-NUM_ZERO = 0.0
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @fusion_manager.register("sgd")
-def sgd_compute(parameters, gradient, learning_rate, accum, momentum, stat,
-                update, dampening, weight_decay, nesterov, kernel_name="sgd"):
+def sgd_compute(parameters,
+                gradient,
+                learning_rate,
+                accum,
+                momentum,
+                stat,
+                update,
+                dampening,
+                weight_decay,
+                nesterov,
+                kernel_name="sgd"):
     """
     Update '*parameters' according to the SGD algorithm.
 
@@ -69,8 +77,8 @@ def sgd_compute(parameters, gradient, learning_rate, accum, momentum, stat,
     outs
     """
     dtype = parameters.dtype
-    support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vmuls", "float32")
+    support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
+                                                      "float32")
     if not support:
         raise RuntimeError(
             "only support float16 while need to cast to float32")
@@ -105,30 +113,30 @@ def sgd_compute(parameters, gradient, learning_rate, accum, momentum, stat,
 
     # update parameters
     if nesterov:
-        parameters_delta = tvm.compute(gradient.shape,
-                                       lambda *indice: gradient(*indice) *
-                                       learning_rate[0],
-                                       tag='elewise_single_VS_mul')
+        parameters_delta = tvm.compute(
+            gradient.shape,
+            lambda *indice: gradient(*indice) * learning_rate[0],
+            tag='elewise_single_VS_mul')
         parameters_delta_2 = tvm.compute(
             accum_t.shape,
             lambda *indice: accum_t(*indice) * momentum[0],
             tag='elewise_single_VS_mul')
-        parameters_delta_2 = tvm.compute(parameters_delta_2.shape,
-                                         lambda *indice: parameters_delta_2(
-                                             *indice) * learning_rate[0],
-                                         tag='elewise_single_VS_mul')
+        parameters_delta_2 = tvm.compute(
+            parameters_delta_2.shape,
+            lambda *indice: parameters_delta_2(*indice) * learning_rate[0],
+            tag='elewise_single_VS_mul')
         parameters_delta = te.lang.cce.vadd(parameters_delta,
                                             parameters_delta_2)
         parameters_t = te.lang.cce.vsub(parameters, parameters_delta)
     else:
-        parameters_delta = tvm.compute(accum_t.shape,
-                                       lambda *indice: accum_t(*indice) *
-                                       learning_rate[0],
-                                       tag='elewise_single_VS_mul')
+        parameters_delta = tvm.compute(
+            accum_t.shape,
+            lambda *indice: accum_t(*indice) * learning_rate[0],
+            tag='elewise_single_VS_mul')
         parameters_t = te.lang.cce.vsub(parameters, parameters_delta)
 
     # update stat
-    stat_t = te.lang.cce.vmuls(stat_act, tvm.const(NUM_ZERO, 'float32'))
+    stat_t = te.lang.cce.vmuls(stat_act, tvm.const(0.0, 'float32'))
 
     if dtype == "float16":
         parameters_t = te.lang.cce.cast_to(parameters_t, "float16")
@@ -142,10 +150,23 @@ def sgd_compute(parameters, gradient, learning_rate, accum, momentum, stat,
     return tvm.compute(parameters.shape, _compute, name="outputs")
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, float, float,
-                       bool, str)
-def sgd(parameters, gradient, learning_rate, accum, momentum, stat, update,
-        dampening, weight_decay, nesterov, kernel_name="sgd"):
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+def sgd(parameters,
+        gradient,
+        learning_rate,
+        accum,
+        momentum,
+        stat,
+        update,
+        dampening,
+        weight_decay,
+        nesterov,
+        kernel_name="sgd"):
     """
     Update '*parameters' according to the SGD algorithm.
 
@@ -194,10 +215,12 @@ def sgd(parameters, gradient, learning_rate, accum, momentum, stat, update,
         input_dict,
         sgd_compute,
         update,
-        17 if nesterov else 9, )
+        17 if nesterov else 9,
+    )
 
-    name = ApplyOpConfig.TensorName(all=(
-        'parameters', 'gradient', 'learning_rate', 'accum', 'momentum', 'stat'),
+    name = ApplyOpConfig.TensorName(all=('parameters', 'gradient',
+                                         'learning_rate', 'accum', 'momentum',
+                                         'stat'),
                                     scalar=('learning_rate', 'momentum'),
                                     reuse=('accum', 'parameters', 'stat'))
     options = ApplyOpConfig.TensorOptions(

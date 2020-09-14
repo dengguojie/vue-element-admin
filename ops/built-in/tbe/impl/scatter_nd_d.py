@@ -20,11 +20,12 @@ from topi.cce import util
 from impl import scatter_nd_d_help
 from impl import constant_util as constant
 from impl import common_util
+from te.utils.op_utils import *
 
 
 
 # pylint: disable=invalid-name, too-many-locals
-@util.check_input_type(dict, dict, dict, (tuple, list), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
 def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
     """
     the main function of scatter_nd_d
@@ -161,24 +162,21 @@ def check_param(indices, updates, output_y, shape, kernel_name):
     y_shape = output_y.get("shape")
     y_dtype = output_y.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(indices_shape)
-    util.check_tensor_shape_size(indices_shape)
-    util.check_dtype_rule(indices_dtype, (constant.DATA_TYPE_INT32))
 
-    util.check_shape_rule(updates_shape)
-    util.check_tensor_shape_size(updates_shape)
-    util.check_dtype_rule(updates_dtype, (
+    check_shape(indices_shape, param_name="indices")
+    check_dtype(indices_dtype, (constant.DATA_TYPE_INT32), param_name="indices")
+
+    check_shape(updates_shape, param_name="updates")
+    check_dtype(updates_dtype, (
         constant.DATA_TYPE_FP16, constant.DATA_TYPE_FP32,
         constant.DATA_TYPE_INT32,
-        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8))
+        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8), param_name="updates")
 
-    util.check_shape_rule(y_shape)
-    util.check_tensor_shape_size(y_shape)
-    util.check_dtype_rule(y_dtype, (
+    check_shape(y_shape, param_name="output_y")
+    check_dtype(y_dtype, (
         constant.DATA_TYPE_FP16, constant.DATA_TYPE_FP32,
         constant.DATA_TYPE_INT32,
-        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8))
+        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8), param_name="output_y")
 
     if updates_dtype != y_dtype:
         raise RuntimeError("updates's datatype must be the same as output_y's datatype")

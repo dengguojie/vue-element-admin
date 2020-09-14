@@ -97,34 +97,27 @@ class Singleton():
         if not isinstance(inputs, dict) or not inputs:
             raise RuntimeError("illegal inputs: %s" % str(inputs))
 
-        pre = copy.copy(self._singleton__input_params)
-        if not isinstance(inputs, dict) or not pre:
+        if not isinstance(inputs, dict) or not self._singleton__input_params:
             raise RuntimeError("set params when tuning tiling, like: %s"
                                % str(inputs))
-        cur = copy.deepcopy(inputs)
+
         ignore_list = ["reserved_ub", "kernel_name", "op_name", "test_case"]
-        for item in ignore_list:
-            if item in pre:
-                pre.pop(item)
-            if item in cur:
-                cur.pop(item)
-        if str(cur) != str(pre):
+        pre_params = dict()
+        cur_params = dict()
+        for key in self._singleton__input_params:
+            if key not in ignore_list:
+                pre_params[key] = self._singleton__input_params[key]
+
+        for key in inputs:
+            if key not in ignore_list:
+                cur_params[key] = inputs[key]
+
+        if str(cur_params) != str(pre_params):
             raise RuntimeError("tiling params is changed, previous is: %s, "
                                "input is %s"
-                               % (str(pre), str(cur)))
+                               % (str(pre_params), str(cur_params)))
 
         return copy.deepcopy(self._singleton__tiling.get(_kernel_name, None))
-
-    def tiling_clear(self):
-        """Clear private member variable of Singleton object
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        """
-        self._singleton__tiling.clear()
 
     def set_tiling(self, tiling, kernel_name="kernel_name"):
         """Set the tiling to private member variable of Singleton object
@@ -173,5 +166,21 @@ class Singleton():
             self._singleton__tiling_type = copy.deepcopy(tiling_type)
         else:
             raise TypeError('tiling is not a str.')
+
+    def instance_refresh(self, tiling_type=None, \
+                         input_params=None, tiling_dict=None):
+        """refresh private member variable of Singleton object
+        Parameters
+        ----------
+        tiling_type: string
+            The setting tiling type
+        input_params:dict
+        tiling_dict: tiling dict
+        Returns
+        -------
+        """
+        self._singleton__tiling = copy.deepcopy(tiling_dict)
+        self._singleton__tiling_type = copy.deepcopy(tiling_type)
+        self._singleton__input_params = copy.deepcopy(input_params)
 
 TILING_INSTANCE = Singleton()

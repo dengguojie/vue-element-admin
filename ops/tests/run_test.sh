@@ -16,6 +16,9 @@
 CURR_PATH=$(cd $(dirname $0); pwd)
 CANN_ROOT=$(cd ${CURR_PATH}/../..; pwd)
 
+STATUS_SUCCESS=0
+STATUS_FAILED=1
+
 
 set_env() {
   local atc_path="$1"
@@ -36,6 +39,9 @@ main() {
     local supported_soc="Ascend310 Ascend910"
     for version in $(echo ${supported_soc}); do
       python3.7 run_ut.py --soc_version="${version}"
+      if [[ $? -ne 0 ]]; then
+        exit $STATUS_FAILED
+      fi
     done
   fi;
   if [[ "$task" == "st" || "$task" == "all" ]]; then
@@ -45,3 +51,5 @@ main() {
 
 
 main $@
+
+exit $STATUS_SUCCESS

@@ -24,6 +24,7 @@ from te.utils.op_utils import refine_shapes_for_broadcast
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 # define a scalar , value = 1
 SCALAR_ONE = 1
 # minimun num of float32 2**(-126)
@@ -63,8 +64,9 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     """
     input_data1 = te.lang.cce.util.shape_to_list(input_x.shape)
     input_data2 = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_list = util.produce_shapes(input_data1, input_data2)
-    util.check_tensor_shape_size(shape_list[2])
+    shape_list = broadcast_shapes(input_data1, input_data2,
+                                  param_name_input1="input_x",
+                                  param_name_input2="input_y")
     dtype = input_x.dtype
 
     broadcast_x = te.lang.cce.broadcast(input_x, shape_list[2])
@@ -120,7 +122,7 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
     """
     algorithm: xdivy
@@ -147,18 +149,15 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
     dtype_y = input_y.get("dtype")
 
     util.compare_tensor_dict_key(input_x, input_y, "dtype")
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_kernel_name(kernel_name)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
-    shape_list = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_list[2])
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
+    shape_list = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                  param_name_input2="input_y")
     input_dtype = dtype.lower()
     input_dtype_y = dtype_y.lower()
     check_list = ("float16", "float32")
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_dtype_rule(input_dtype_y, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
+    check_dtype(input_dtype_y, check_list, param_name="input_y")
 
     reshape_x, reshape_y = refine_shapes_for_broadcast(shape_list[0],
                                                        shape_list[1])

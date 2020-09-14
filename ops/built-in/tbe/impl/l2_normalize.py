@@ -23,6 +23,7 @@ from te.lang.cce.te_compute.util import shape_to_list
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 
 # pylint: disable=unused-argument
@@ -71,7 +72,8 @@ def l2_normalize_compute(input_x,
     return result
 
 
-@util.check_input_type(dict, dict, (list, tuple), float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_FLOAT,
+                 KERNEL_NAME)
 def l2_normalize(input_x, output_y, axis, epsilon, kernel_name="l2_normalize"):
     """
     calculating data
@@ -97,10 +99,8 @@ def l2_normalize(input_x, output_y, axis, epsilon, kernel_name="l2_normalize"):
     dtype = input_x.get("dtype")
     input_dtype = dtype.lower()
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_kernel_name(kernel_name)
-    util.check_dtype_rule(input_dtype, ("float16", "float32"))
+    check_shape(shape, param_name="input_x")
+    check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
 
     for i in axis:
         if not isinstance(i, int):

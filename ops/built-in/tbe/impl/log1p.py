@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -287,7 +288,7 @@ def _newton_taylor_log1p(input_x, output_y):
     return output_y
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def log1p(input_x, output_y, kernel_name="log1p"):
     """
     algorithm: log1p
@@ -309,13 +310,11 @@ def log1p(input_x, output_y, kernel_name="log1p"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="input_x")
 
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
 
     shape = (functools_reduce(lambda x, y: x*y, shape[:]),)
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)

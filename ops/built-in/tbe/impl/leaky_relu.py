@@ -17,13 +17,13 @@ cce extended operator builder wrapper
 """
 
 from functools import reduce as reduceIns
+from te.utils.op_utils import *
 
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 @fusion_manager.register("leaky_relu")
@@ -31,42 +31,12 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce
     """
-    inp_dtype = x.dtype.lower()
-    shape = x.shape
-
-    # The original relu logic remains unchanged.
-    if negative_slope == 0:
-        if inp_dtype in ("float32", "int32"):
-            tensor_zero = te.lang.cce.broadcast(tvm.const(0, inp_dtype), shape)
-            data_res = te.lang.cce.vmax(x, tensor_zero)
-        else:
-            data_res = te.lang.cce.vrelu(x)
-
-        data_res = te.lang.cce.cast_to(data_res, inp_dtype)
-
-        return data_res
-
-    # negative_slope != 0
-    if inp_dtype in ("float16", "float32"):
-        slope_tmp = tvm.const(negative_slope, dtype=inp_dtype)
-        tmp = te.lang.cce.vmuls(x, slope_tmp)
-        if negative_slope <= 1:
-            res = te.lang.cce.vmax(x, tmp)
-        else:
-            res = te.lang.cce.vmin(x, tmp)
-    else:
-        # inp_dtype in ("int32", "int8")
-        slope_tmp = tvm.const(negative_slope, dtype=inp_dtype)
-        tmp = te.lang.cce.vmuls(x, slope_tmp)
-        tmp_oritype = te.lang.cce.cast_to(tmp, inp_dtype)
-        if negative_slope <= 1:
-            res = te.lang.cce.vmax(x, tmp_oritype)
-        else:
-            res = te.lang.cce.vmin(x, tmp_oritype)
-
-        res = te.lang.cce.cast_to(res, inp_dtype)
-
+    res = te.lang.cce.vlrelu(x, negative_slope)
+    if x.op.attrs:
+        if 'format' in x.op.attrs:
+            res.op.attrs['format'] = x.op.attrs['format']
     return res
+
 
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_FLOAT, KERNEL_NAME)
@@ -101,11 +71,12 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
 
     # check input tensor data_type
     check_list = ["float16", "float32", "int32", "int8"]
-    check_dtype(dtype.lower(),check_list, param_name="x")
+    check_dtype(dtype.lower(), check_list, param_name="x")
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
     inp_dtype = dtype.lower()
-    input_data_x = tvm.placeholder(fuseshape, name="input_data_x", dtype=inp_dtype)
+    input_data_x = tvm.placeholder(fuseshape, name="input_data_x",
+                                   dtype=inp_dtype)
 
     with tvm.target.cce():
 

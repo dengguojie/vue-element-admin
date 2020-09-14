@@ -22,6 +22,7 @@ from impl import common_util
 import impl.constant_util as constant
 from te import tik
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # Considering the efficiency of data parallel processing,
 # set the number of multicores to 32
@@ -57,13 +58,11 @@ def _check_param(input_x, kernel_name):
     """
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_dtype_rule(input_dtype, ("int16", "uint16"))
+    check_shape(input_shape, param_name="x")
+    check_dtype(input_dtype, ("int16", "uint16"), param_name="x")
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def population_count(x, y, kernel_name="population_count"):
     """
     the main function of population_count

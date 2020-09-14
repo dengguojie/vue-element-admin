@@ -17,9 +17,18 @@ Schedule of depthwise conv2d.
 """
 # pylint: disable=too-many-lines
 import te.platform.cce_params as cce_params
+import te.lang.cce
+from te.lang.cce import DepthwiseConv2dParam
+from te.lang.cce import ConvParam
 from te import platform as tbe_platform
 from te import tvm
 from te.domain.tiling.tiling_query import tiling_query
+from topi.cce.util import is_v200_version_new
+from topi.cce.util import is_lhisi_version
+from topi.cce.util import is_mini_version
+from topi.cce.util import is_mini_or_lhisi_version
+from te.domain.tiling.get_tiling import get_tiling
+from . import util
 
 TILING_HO_TIMES = 16
 
@@ -75,6 +84,23 @@ def _ceil(x):
     """
     return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
+def set_pragma_for_cache_read_mode(is_overload, stage, first_axis):
+    """
+    set pragma on the first axis for cache read mode
+
+    Parameters
+    ----------
+    is_overload: True means overload
+
+    stage: a Stage represents schedule for one operation
+
+    first_axis: axis to set flag
+
+    Returns
+    -------
+    """
+    cache_read_mode = 0 if is_overload else 1
+    stage.pragma(first_axis, "json_info_cache_read_mode", cache_read_mode)
 
 # pylint: disable=too-many-branches
 def _common_tiling_check(tiling):
@@ -355,9 +381,43 @@ def get_tiling_dict_second(tiling, shape_input, padding, stride, dtype):
     return tiling
 
 
-def tiling_fetch(fmap_shape, shape_w, group_num, padding, stride, mad_dtype, \
-                 fused_double_operand_num=0, bias_flag=False, \
-                 kernel_name="depthwise_tiling_fetch"):
+def _get_fused_double_operand_num(tensor_dict):
+    fused_double_operand_num = tensor_dict["fused_double_operand_num"]
+    not_fused_flag = False
+    if tensor_dict["flag_is_dequant2"] or (
+            tensor_dict["flag_is_dequant_quant"]
+            and tensor_dict["flag_is_dequant_sqrt"]):
+        fused_double_operand_num = 3
+    elif tensor_dict["flag_is_dequant"] or (
+            tensor_dict["flag_is_dequant_quant"]
+            and not tensor_dict["flag_is_dequant_sqrt"]):
+        fused_double_operand_num = 2
+    elif tensor_dict["flag_is_requant"]:
+        fused_double_operand_num = 2
+    elif tensor_dict["flag_is_dequant_sigmoid_mul"] or tensor_dict[
+        "flag_is_dequant2_sigmoid_mul"]:
+        fused_double_operand_num = 4 if tensor_dict[
+            "flag_is_dequant2_sigmoid_mul"] else 3
+    else:
+        not_fused_flag = True
+
+
+    return fused_double_operand_num, not_fused_flag
+
+
+def _tiling_fetch_all(fmap_shape, shape_w, group_num,
+                      padding,
+                      stride,
+                      mad_dtype,
+                      fused_num,
+                      input_memory_type,
+                      output_memory_type,
+                      l1_fusion_type,
+                      fusion_type_new,
+                      bias=False,
+                      c_dtype="int8",
+                      not_fused_flag=False,
+                      kernel_name="depthwise_fused_tiling_fetch"):
     if len(fmap_shape.shape) == 6:
         fmap_shape_NC1HWCO = fmap_shape.shape[0], fmap_shape.shape[1], \
                              fmap_shape.shape[3], fmap_shape.shape[4], \
@@ -369,88 +429,103 @@ def tiling_fetch(fmap_shape, shape_w, group_num, padding, stride, mad_dtype, \
 
     shape_w_NC1HWCO = shape_w.shape[3], shape_w.shape[0], shape_w.shape[1], \
                       shape_w.shape[2], shape_w.shape[4]
-
     if mad_dtype == "int32":
         dtype = "int8"
         res_dtype = "int32"
     else:
         dtype = "float16"
         res_dtype = "float16"
+        fmap_shape_NC1HWCO = list(map(int, fmap_shape_NC1HWCO))
+    if not_fused_flag:
+        c_dtype = res_dtype
 
     fmap_shape_NC1HWCO = list(map(int, fmap_shape_NC1HWCO))
     shape_w_NC1HWCO = list(map(int, shape_w_NC1HWCO))
-    tiling_new = tiling_query(
-        a_shape=fmap_shape_NC1HWCO,
-        b_shape=shape_w_NC1HWCO,
-        a_dtype=dtype,
-        b_dtype=dtype,
-        c_dtype=res_dtype,
-        mad_dtype=mad_dtype,
-        group=group_num,
-        padl=padding[2],
-        padr=padding[3],
-        padu=padding[0],
-        padd=padding[1],
-        strideh=stride[0],
-        stridew=stride[1],
-        fused_double_operand_num=fused_double_operand_num,
-        bias_flag=bias_flag,
-        op_tag="depthwise_conv2d_forward",
-        kernel_name=kernel_name)
+    if input_memory_type == 0 and output_memory_type == 0:
+        temp_k = 0
+    elif input_memory_type == 0 and output_memory_type == 1:
+        temp_k = 1
+    elif input_memory_type == 1 and output_memory_type == 0:
+        temp_k = 2
+    elif input_memory_type == 1 and output_memory_type == 1:
+        temp_k = 3
+    else:
+        temp_k = 4
+    fusion_type_new = fusion_type_new*10 + temp_k
+    info_dict = {"op_type": 'depthwise_conv2d_forward',
+                 "A_shape": fmap_shape_NC1HWCO,
+                 "B_shape": shape_w_NC1HWCO,
+                 "A_dtype": dtype,
+                 "B_dtype": dtype,
+                 "C_dtype": c_dtype,
+                 "mad_dtype": mad_dtype,
+                 "padu": padding[0],
+                 "padd": padding[1],
+                 "padl": padding[2],
+                 "padr": padding[3],
+                 "strideH": stride[0],
+                 "strideW": stride[1],
+                 "dilationH": 1,
+                 "dilationW": 1,
+                 "group": group_num,
+                 "bias_flag": bias,
+                 "fused_double_operand_num": fused_num,
+                 "in_fm_memory_type": [input_memory_type],
+                 "out_fm_memory_type": [output_memory_type],
+                 "l1_fusion_type": l1_fusion_type,
+                 "fusion_type": fusion_type_new,
+                 "kernel_name": kernel_name.value}
 
-    tiling = get_tiling_dict_first(tiling_new)
-    tiling = get_tiling_dict_second(tiling, [fmap_shape_NC1HWCO, shape_w],
-                                    padding, stride, dtype)
+    tiling = get_tiling(info_dict)
+    return tiling
 
+def _get_tiling_fetch(mad_dtype, tensor_dict):
+    if len(tensor_dict["fmap"].op.shape) == 6:
+        _, _, _, fmap_h, fmap_w, fmap_c0 = (int(
+            i.value) for i in tensor_dict["fmap"].op.shape)
+    else:
+        _, _, fmap_h, fmap_w, fmap_c0 = (int(i.value)
+                                         for i in tensor_dict["fmap"].op.shape)
+    pad_top = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][0])
+    pad_right = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][3])
+    pad_left = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][2])
+    pad_bottom = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][1])
+    kw = tensor_dict["mad_ubuf"].op.attrs['kernel_w']
+    kh = tensor_dict["mad_ubuf"].op.attrs['kernel_h']
+    stride_w = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][1])
+    stride_h = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][0])
+    kernel_name = tensor_dict["kernel_name"]
+
+    bias_flag = tensor_dict["flag_is_dequant_bias"] or tensor_dict[
+        "flag_is_requant_bias"] or tensor_dict["bias_flag"]
+    fused_double_operand_num, not_fused_flag = _get_fused_double_operand_num(
+        tensor_dict)
+    tiling = _tiling_fetch_all(tensor_dict["fmap"], \
+                               tensor_dict["filter_buf"], \
+                               tensor_dict["group_num"], \
+                               [pad_left, pad_right, pad_top, pad_bottom], \
+                               [stride_h, \
+                                stride_w], mad_dtype,
+                               fused_double_operand_num,
+                               tensor_dict["input_memory_type"],
+                               tensor_dict["output_memory_type"],
+                               tensor_dict["l1_fusion_type"],
+                               tensor_dict["fusion_type_new"],
+                               bias_flag,
+                               tensor_dict["fused_c_dtype"],
+                               not_fused_flag,
+                               kernel_name)
     return tiling
 
 
-def fused_tiling_fetch(fmap_shape,
-                       shape_w,
-                       group_num,
-                       padding,
-                       stride,
-                       mad_dtype,
-                       fused_num,
-                       bias=False,
-                       c_dtype="int8",
-                       kernel_name="depthwise_fused_tiling_fetch"):
-    """tiling_fetch"""
-    fmap_shape_NC1HWCO = fmap_shape.shape[0], fmap_shape.shape[1], \
-                         fmap_shape.shape[3], fmap_shape.shape[4], \
-                         fmap_shape.shape[5]
-
-    shape_w_NC1HWCO = shape_w.shape[3], shape_w.shape[0], shape_w.shape[1], \
-                      shape_w.shape[2], shape_w.shape[4]
-
-    dtype = "int8"
-    mad_dtype = "int32"
-
-    fmap_shape_NC1HWCO = list(map(int, fmap_shape_NC1HWCO))
-    shape_w_NC1HWCO = list(map(int, shape_w_NC1HWCO))
-    tiling_new = tiling_query(a_shape=fmap_shape_NC1HWCO,
-                              b_shape=shape_w_NC1HWCO,
-                              a_dtype=dtype,
-                              b_dtype=dtype,
-                              c_dtype=c_dtype,
-                              mad_dtype=mad_dtype,
-                              group=group_num,
-                              padl=padding[2],
-                              padr=padding[3],
-                              padu=padding[0],
-                              padd=padding[1],
-                              strideh=stride[0],
-                              stridew=stride[1],
-                              bias_flag=bias,
-                              fused_double_operand_num=fused_num,
-                              op_tag="depthwise_conv2d_forward",
-                              kernel_name=kernel_name)
-
-    tiling = get_tiling_dict_first(tiling_new)
-    tiling = get_tiling_dict_second(tiling, [fmap_shape_NC1HWCO, shape_w],
-                                    padding, stride, dtype)
-
-    return tiling
+def _set_a_cbuf_row_major(mad_dtype, a_cbuf_row_major, wo, sch):
+    if mad_dtype == "int32":
+        sch[a_cbuf_row_major].buffer_align((1, 1), (1, 1), (wo, wo), (1, 1),
+                                           (1, 1), (1, 1), (1, 32))
+    else:
+        sch[a_cbuf_row_major].buffer_align((1, 1), (1, 1), (wo, wo), (1, 1),
+                                           (1, 1), (1, 1), (1, BLOCK_SIZE))
+    return sch
 
 
 def _set_common_flag():
@@ -458,16 +533,90 @@ def _set_common_flag():
     tensor_dict["bias_flag"] = False
     tensor_dict["flag_is_dequant"] = False
     tensor_dict["flag_is_dequant_bias"] = False
+    tensor_dict["flag_is_requant_bias"] = False
     tensor_dict["flag_is_dequant_sqrt"] = False
     tensor_dict["flag_is_dequant2"] = False
     tensor_dict["flag_is_dequant_quant"] = False
     tensor_dict["flag_is_quant_sqrt"] = False
     tensor_dict["flag_is_quant_relu6_dequant"] = False
+    tensor_dict["flag_is_quant_mul_dequant"] = False
+    tensor_dict["flag_is_dequant_mul"] = False
+    tensor_dict["flag_is_dequant2_mul"] = False
+    tensor_dict["flag_is_dequant_sigmoid_mul"] = False
+    tensor_dict["flag_is_dequant2_sigmoid_mul"] = False
+    tensor_dict["flag_is_requant"] = False
+    tensor_dict["flag_is_sigmoid_mul"] = False
+    tensor_dict["flag_is_write_select"] = False
+    tensor_dict["fusion_type_new"] = 0
+
     tensor_dict["fused_double_operand_num"] = 0
     tensor_dict["fused_c_dtype"] = "int8"
     # group_num is used to distin pre_relu
     tensor_dict["group_num"] = 1
 
+    return tensor_dict
+
+
+def _deq_scalar_mode(tensor_dict):
+    if "deq_reg" in tensor_dict:
+        if int(tensor_dict["deq_reg"].shape[1]) == 1:
+            tensor_dict["sca_vec_flag"] = 0
+        else:
+            tensor_dict["sca_vec_flag"] = 1
+    if "req_reg" in tensor_dict:
+        if int(tensor_dict["req_reg"].shape[1]) == 1:
+            tensor_dict["sca_vec_flag"] = 0
+        else:
+            tensor_dict["sca_vec_flag"] = 1
+    return tensor_dict
+
+
+def _set_tensor_by_op_tag(out):
+    tensor_dict = _set_common_flag()
+    if out.op.tag == "dequant2_remove_pad":
+        tensor_dict = _dequant2_remove_pad(out, tensor_dict)
+    elif out.op.tag == "dequant_remove_pad":
+        tensor_dict = _dequant_remove_pad(out, tensor_dict)
+    elif out.op.tag == "quant":
+        tensor_dict = _quant(out, tensor_dict)
+    elif out.op.tag == "elewise_single_relu":
+        tensor_dict = _elewise_single_relu(out, tensor_dict)
+    elif out.op.tag == "elewise_binary_mul":
+        tensor_dict = _elewise_binary_mul(out, tensor_dict)
+    elif out.op.tag == "elewise_single_VS_min":
+        tensor_dict = _elewise_single_VS_min(out, tensor_dict)
+    elif out.op.tag == "depthwise_conv2d":
+        tensor_dict = _depthwise_conv2d(out, tensor_dict)
+    elif out.op.tag == "requant_remove_pad":
+        tensor_dict = _requant_remove_pad(out, tensor_dict)
+    elif out.op.tag == "write_select":
+        tensor_dict = _write_select(out, tensor_dict)
+    else:
+        raise RuntimeError("schedule model no surport op.tag %s" %
+                           (out.op.tag))
+    if out.op.tag == "depthwise_conv2d":
+        tensor_dict["kernel_name"] = out.op.attrs["kernel_name"]
+    else:
+        tensor_dict["kernel_name"] = \
+            tensor_dict["depthwise_res"].op.attrs['kernel_name']
+    tensor_dict = _deq_scalar_mode(tensor_dict)
+
+    return tensor_dict
+
+
+def _l1_fusion_check(tensor_dict):
+    OFFSET = DepthwiseConv2dParam.fusion_para.get("slice_offset")
+    VALID_SHAPE = DepthwiseConv2dParam.fusion_para.get("valid_shape")
+    INPUT_MEM_TYPE = int(
+        DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
+    if OFFSET and VALID_SHAPE:
+        if INPUT_MEM_TYPE == 1:
+            tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+        else:
+            tensor_dict["fusion_fmap_select"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+            tensor_dict["fmap"] = tensor_dict["fusion_fmap_select"].op.input_tensors[0]
+    else:
+        tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
     return tensor_dict
 
 
@@ -497,8 +646,9 @@ def _dequant2_remove_pad(out, tensor_dict):
         0]
     tensor_dict["im2col_row_major"] = tensor_dict[
         "im2col_fractal"].op.input_tensors[0]
-    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    tensor_dict = _l1_fusion_check(tensor_dict)
     tensor_dict["flag_is_dequant2"] = True
+    tensor_dict["fusion_type_new"] = 6
 
     return tensor_dict
 
@@ -529,7 +679,43 @@ def _dequant_remove_pad(out, tensor_dict):
     tensor_dict["im2col_row_major"] = tensor_dict[
         "im2col_fractal"].op.input_tensors[0]
     tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    tensor_dict = _l1_fusion_check(tensor_dict)
     tensor_dict["flag_is_dequant"] = True
+    tensor_dict["fusion_type_new"] = 5
+
+    return tensor_dict
+
+
+def _requant_remove_pad(out, tensor_dict):
+    tensor_dict["data_transfer"] = out.op.input_tensors[0]
+    tensor_dict["requant"] = tensor_dict["data_transfer"].op.input_tensors[0]
+    tensor_dict["depthwise_res"] = tensor_dict["requant"].op.input_tensors[0]
+    tensor_dict["vreq_reg"] = tensor_dict["requant"].op.input_tensors[1]
+    tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[0]
+
+    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+        tensor_dict["flag_is_requant_bias"] = True
+        tensor_dict["mad_after_bias"] = tensor_dict[
+            "mad_ubuf"].op.input_tensors[0]
+        tensor_dict["mad_bias"] = tensor_dict[
+            "mad_after_bias"].op.input_tensors[0]
+        tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[1]
+        tensor_dict["mad_bias_ub_brc"] = tensor_dict[
+            "mad_bias"].op.input_tensors[0]
+        tensor_dict["bias_gm"] = tensor_dict[
+            "mad_bias_ub_brc"].op.input_tensors[0]
+
+    else:
+        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
+
+    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+    tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
+    tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[
+        0]
+    tensor_dict["im2col_row_major"] = tensor_dict[
+        "im2col_fractal"].op.input_tensors[0]
+    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    tensor_dict["flag_is_requant"] = True
 
     return tensor_dict
 
@@ -539,19 +725,23 @@ def _quant_dequant2(out, tensor_dict):
     if ("max" in tensor_dict and tensor_dict["max"].op.input_tensors[
         0].name == "dequant2_remove_pad"):
         tensor_dict["quant_remove_pad"] = \
-        tensor_dict["max"].op.input_tensors[0]
+            tensor_dict["max"].op.input_tensors[0]
+    elif "mul_res" in tensor_dict and tensor_dict["mul_res"].op.input_tensors[
+        0].name == "dequant2_remove_pad":
+        tensor_dict["quant_remove_pad"] = \
+            tensor_dict["mul_res"].op.input_tensors[0]
     else:
         tensor_dict["quant_remove_pad"] = \
-        tensor_dict["input_ub"].op.input_tensors[0]
+            tensor_dict["input_ub"].op.input_tensors[0]
 
     tensor_dict["dequant2"] = tensor_dict[
-    "quant_remove_pad"].op.input_tensors[0]
+        "quant_remove_pad"].op.input_tensors[0]
 
     tensor_dict["dequant1"] = tensor_dict["dequant2"].op.input_tensors[
-    0]
+        0]
 
     tensor_dict["depthwise_res"] = \
-    tensor_dict["dequant1"].op.input_tensors[0]
+        tensor_dict["dequant1"].op.input_tensors[0]
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
         tensor_dict["bias_flag"] = True
         if tensor_dict["depthwise_res"].op.attrs[
@@ -579,8 +769,7 @@ def _quant_dequant2(out, tensor_dict):
                 "filter_reshape"].op.input_tensors[0]
             tensor_dict["im2col_row_major"] = tensor_dict[
                 "im2col_fractal"].op.input_tensors[0]
-            tensor_dict["fmap"] = tensor_dict[
-                "im2col_row_major"].op.input_tensors[0]
+            tensor_dict = _l1_fusion_check(tensor_dict)
             tensor_dict["bias_flag"] = False
     else:
         tensor_dict["flag_is_dequant_bias"] = False
@@ -596,8 +785,7 @@ def _quant_dequant2(out, tensor_dict):
             "filter_reshape"].op.input_tensors[0]
         tensor_dict["im2col_row_major"] = tensor_dict[
             "im2col_fractal"].op.input_tensors[0]
-        tensor_dict["fmap"] = tensor_dict[
-            "im2col_row_major"].op.input_tensors[0]
+        tensor_dict = _l1_fusion_check(tensor_dict)
 
     return tensor_dict
 
@@ -607,14 +795,18 @@ def _quant_dequant1(out, tensor_dict):
     if "max" in tensor_dict and tensor_dict["max"].op.input_tensors[
         0].name == "dequant_remove_pad":
         tensor_dict["quant_remove_pad"] = \
-        tensor_dict["max"].op.input_tensors[0]
+            tensor_dict["max"].op.input_tensors[0]
+    elif "mul_res" in tensor_dict and tensor_dict["mul_res"].op.input_tensors[
+        0].name == "dequant_remove_pad":
+        tensor_dict["quant_remove_pad"] = \
+            tensor_dict["mul_res"].op.input_tensors[0]
     else:
         tensor_dict["quant_remove_pad"] = \
-        tensor_dict["input_ub"].op.input_tensors[0]
+            tensor_dict["input_ub"].op.input_tensors[0]
     tensor_dict["dequant1"] = \
-    tensor_dict["quant_remove_pad"].op.input_tensors[0]
+        tensor_dict["quant_remove_pad"].op.input_tensors[0]
     tensor_dict["depthwise_res"] = \
-    tensor_dict["dequant1"].op.input_tensors[0]
+        tensor_dict["dequant1"].op.input_tensors[0]
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
         tensor_dict["bias_flag"] = True
         if tensor_dict["depthwise_res"].op.attrs[
@@ -642,8 +834,7 @@ def _quant_dequant1(out, tensor_dict):
                 "filter_reshape"].op.input_tensors[0]
             tensor_dict["im2col_row_major"] = tensor_dict[
                 "im2col_fractal"].op.input_tensors[0]
-            tensor_dict["fmap"] = tensor_dict[
-                "im2col_row_major"].op.input_tensors[0]
+            tensor_dict = _l1_fusion_check(tensor_dict)
             tensor_dict["bias_flag"] = False
     else:
         tensor_dict["flag_is_dequant_bias"] = False
@@ -659,14 +850,14 @@ def _quant_dequant1(out, tensor_dict):
             "filter_reshape"].op.input_tensors[0]
         tensor_dict["im2col_row_major"] = tensor_dict[
             "im2col_fractal"].op.input_tensors[0]
-        tensor_dict["fmap"] = tensor_dict[
-            "im2col_row_major"].op.input_tensors[0]
+        tensor_dict = _l1_fusion_check(tensor_dict)
 
     return tensor_dict
 
 
 def _quant(out, tensor_dict):
     tensor_dict["flag_is_dequant_quant"] = True
+    tensor_dict["fusion_type_new"] = 7
     if out.op.attrs['scale'].value == 1 and out.op.attrs[
         'sqrt_mode'].value == 0:
         tensor_dict["flag_is_quant_sqrt"] = False
@@ -679,14 +870,21 @@ def _quant(out, tensor_dict):
 
         if "min" in tensor_dict["input_ub"].op.input_tensors[0].name:
             tensor_dict["flag_is_quant_relu6_dequant"] = True
+            tensor_dict["fusion_type_new"] = 8
             tensor_dict["min"] = tensor_dict["input_ub"].op.input_tensors[0]
             if "max" in tensor_dict["min"].op.input_tensors[0].name:
                 tensor_dict["max"] = tensor_dict["min"].op.input_tensors[0]
+        if "mul" in tensor_dict["input_ub"].op.input_tensors[0].name:
+            tensor_dict["flag_is_quant_mul_dequant"] = True
+            tensor_dict["fusion_type_new"] = 9
+            tensor_dict["mul_res"] = tensor_dict["input_ub"].op.input_tensors[0]
+            tensor_dict["float16_mul_input_tensor"] = \
+                tensor_dict["mul_res"].op.input_tensors[1]
         if tensor_dict["input_ub"].op.input_tensors[
             0].name == "dequant2_remove_pad" or \
                 ("max" in tensor_dict and tensor_dict["max"].op.input_tensors[
                     0].name == "dequant2_remove_pad"):
-                    tensor_dict = _quant_dequant2(out, tensor_dict)
+            tensor_dict = _quant_dequant2(out, tensor_dict)
         else:
             tensor_dict = _quant_dequant1(out, tensor_dict)
     else:
@@ -721,10 +919,47 @@ def _elewise_single_relu(out, tensor_dict):
     return tensor_dict
 
 
-def _elewise_binary_mul(out, tensor_dict):
-    tensor_dict["depthwise_res"] = out.op.input_tensors[0]
-    tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[0]
+def _elewise_deq_sigmiod_mul(out, tensor_dict):
+    tensor_dict["fused_c_dtype"] = "float16"
+    tensor_dict["rec_7"] = out.op.input_tensors[1]
+    tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[0]
+    tensor_dict["rec_6"] = tensor_dict["rec_7"].op.input_tensors[0]
+    tensor_dict["rec_5"] = tensor_dict["rec_6"].op.input_tensors[0]
+    tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
+    tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
+    tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
+    tensor_dict["exp"] = tensor_dict["add_2"].op.input_tensors[0]
+    tensor_dict["muls"] = tensor_dict["exp"].op.input_tensors[0]
+    if tensor_dict["muls"].op.input_tensors[
+        0].op.tag == "dequant_remove_pad":
+        tensor_dict["dequant_remove_pad"] = \
+            tensor_dict["muls"].op.input_tensors[0]
+        tensor_dict["dequant1"] = \
+            tensor_dict["dequant_remove_pad"].op.input_tensors[0]
+        tensor_dict["flag_is_dequant_sigmoid_mul"] = True
+        tensor_dict["fusion_type_new"] = 12
+    elif tensor_dict["muls"].op.input_tensors[
+        0].op.tag == "dequant2_remove_pad":
+        tensor_dict["dequant2_remove_pad"] = \
+            tensor_dict["muls"].op.input_tensors[0]
+        tensor_dict["dequant2"] = \
+            tensor_dict["dequant2_remove_pad"].op.input_tensors[0]
+        tensor_dict["dequant1"] = tensor_dict["dequant2"].op.input_tensors[
+            0]
+        tensor_dict["flag_is_dequant2_sigmoid_mul"] = True
+        tensor_dict["fusion_type_new"] = 13
+    if tensor_dict["muls"].op.input_tensors[
+        0].op.tag == "depthwise_conv2d":
+        tensor_dict["depthwise_res"] = tensor_dict["muls"].op.input_tensors[
+            0]
+        tensor_dict["flag_is_sigmoid_mul"] = True
+        tensor_dict["fusion_type_new"] = 3
+    else:
+        tensor_dict["depthwise_res"] = \
+            tensor_dict["dequant1"].op.input_tensors[0]
+        tensor_dict["deq_reg"] = tensor_dict["dequant1"].op.input_tensors[1]
+    tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[
+        0]
     if tensor_dict["depthwise_res"].op.input_tensors[0].name == \
             "bias_add_vector_cc":
         tensor_dict["bias_add"] = tensor_dict[
@@ -733,16 +968,139 @@ def _elewise_binary_mul(out, tensor_dict):
         tensor_dict["bias_tensor"] = tensor_dict["bias_add"].op.input_tensors[
             1]
         tensor_dict["bias_flag"] = True
-        tensor_dict["fused_double_operand_num"] = 1
-    tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+        tensor_dict["fused_double_operand_num"] = 2
+        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
+    elif tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+        tensor_dict["flag_is_dequant_bias"] = True
+        tensor_dict["mad_after_bias"] = tensor_dict[
+            "mad_ubuf"].op.input_tensors[0]
+        tensor_dict["mad_bias"] = tensor_dict[
+            "mad_after_bias"].op.input_tensors[0]
+        tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[
+            1]
+        tensor_dict["mad_bias_ub_brc"] = tensor_dict[
+            "mad_bias"].op.input_tensors[0]
+        tensor_dict["bias_gm"] = tensor_dict[
+            "mad_bias_ub_brc"].op.input_tensors[0]
+    else:
+        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
     tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
-    tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[
-        0]
+    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+    tensor_dict["filter_buf"] = \
+        tensor_dict["filter_reshape"].op.input_tensors[
+            0]
     tensor_dict["im2col_row_major"] = tensor_dict[
         "im2col_fractal"].op.input_tensors[0]
-    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[
+        0]
     return tensor_dict
+
+
+def _elewise_binary_mul(out, tensor_dict):
+    if out.op.input_tensors[1].op.name[:3] == "rec":
+        tensor_dict = _elewise_deq_sigmiod_mul(out, tensor_dict)
+    elif out.op.input_tensors[0].op.tag == 'dequant_remove_pad':
+        tensor_dict["fused_c_dtype"] = "float16"
+        tensor_dict["dequant_remove_pad"] = out.op.input_tensors[0]
+        tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
+        tensor_dict["dequant1"] = \
+            tensor_dict["dequant_remove_pad"].op.input_tensors[0]
+        tensor_dict["depthwise_res"] = tensor_dict["dequant1"].op.input_tensors[
+            0]
+        tensor_dict["deq_reg"] = tensor_dict["dequant1"].op.input_tensors[1]
+        tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[
+            0]
+        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+            tensor_dict["flag_is_dequant_bias"] = True
+            tensor_dict["mad_after_bias"] = tensor_dict[
+                "mad_ubuf"].op.input_tensors[0]
+            tensor_dict["mad_bias"] = tensor_dict[
+                "mad_after_bias"].op.input_tensors[0]
+            tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[
+                1]
+            tensor_dict["mad_bias_ub_brc"] = tensor_dict[
+                "mad_bias"].op.input_tensors[0]
+            tensor_dict["bias_gm"] = tensor_dict[
+                "mad_bias_ub_brc"].op.input_tensors[0]
+        else:
+            tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
+        tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
+        tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+        tensor_dict["filter_buf"] = \
+            tensor_dict["filter_reshape"].op.input_tensors[
+                0]
+        tensor_dict["im2col_row_major"] = tensor_dict[
+            "im2col_fractal"].op.input_tensors[0]
+        tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[
+            0]
+        tensor_dict["flag_is_dequant_mul"] = True
+        tensor_dict["fusion_type_new"] = 10
+    elif out.op.input_tensors[0].op.tag == 'dequant2_remove_pad':
+        tensor_dict["fused_c_dtype"] = "float16"
+        tensor_dict["dequant2_remove_pad"] = out.op.input_tensors[0]
+        tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
+        tensor_dict["dequant2"] = \
+            tensor_dict["dequant2_remove_pad"].op.input_tensors[0]
+        tensor_dict["dequant1"] = tensor_dict["dequant2"].op.input_tensors[0]
+        tensor_dict["depthwise_res"] = tensor_dict["dequant1"].op.input_tensors[
+            0]
+        tensor_dict["deq_reg"] = tensor_dict["dequant1"].op.input_tensors[1]
+        tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[
+            0]
+        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+            tensor_dict["flag_is_dequant_bias"] = True
+            tensor_dict["mad_after_bias"] = tensor_dict[
+                "mad_ubuf"].op.input_tensors[0]
+            tensor_dict["mad_bias"] = tensor_dict[
+                "mad_after_bias"].op.input_tensors[0]
+            tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[
+                1]
+            tensor_dict["mad_bias_ub_brc"] = tensor_dict[
+                "mad_bias"].op.input_tensors[0]
+            tensor_dict["bias_gm"] = tensor_dict[
+                "mad_bias_ub_brc"].op.input_tensors[0]
+        else:
+            tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
+        tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
+        tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+        tensor_dict["filter_buf"] = \
+            tensor_dict["filter_reshape"].op.input_tensors[
+                0]
+        tensor_dict["im2col_row_major"] = tensor_dict[
+            "im2col_fractal"].op.input_tensors[0]
+        tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[
+            0]
+        tensor_dict["flag_is_dequant2_mul"] = True
+        tensor_dict["fusion_type_new"] = 11
+    else:
+        tensor_dict["fusion_type_new"] = 2
+        tensor_dict["depthwise_res"] = out.op.input_tensors[0]
+        tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
+        tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[
+            0]
+        if tensor_dict["depthwise_res"].op.input_tensors[0].name == \
+                "bias_add_vector_cc":
+            tensor_dict["bias_add"] = tensor_dict[
+                "depthwise_res"].op.input_tensors[0]
+            tensor_dict["mad_ubuf"] = tensor_dict["bias_add"].op.input_tensors[
+                0]
+            tensor_dict["bias_tensor"] = \
+                tensor_dict["bias_add"].op.input_tensors[
+                    1]
+            tensor_dict["bias_flag"] = True
+            tensor_dict["fused_double_operand_num"] = 1
+        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
+        tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+        tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
+        tensor_dict["filter_buf"] = \
+            tensor_dict["filter_reshape"].op.input_tensors[
+                0]
+        tensor_dict["im2col_row_major"] = tensor_dict[
+            "im2col_fractal"].op.input_tensors[0]
+        tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[
+            0]
+    return tensor_dict
+
 
 def _depthwise_conv2d(out, tensor_dict):
     tensor_dict["mad_ubuf"] = out.op.input_tensors[0]
@@ -765,7 +1123,7 @@ def _depthwise_conv2d(out, tensor_dict):
     tensor_dict["im2col_row_major"] = tensor_dict[
         "im2col_fractal"].op.input_tensors[0]
     tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
-    if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] == "relu":
+    if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         tensor_dict["group_num"] = 2
         tensor_dict["relu_0"] = tensor_dict[
             "im2col_row_major"].op.input_tensors[0]
@@ -799,47 +1157,61 @@ def _elewise_single_VS_min(out, tensor_dict):
     return tensor_dict
 
 
-def _set_tensor_by_op_tag(out):
-    tensor_dict = {}
-    tensor_dict = _set_common_flag()
-    if out.op.tag == "dequant2_remove_pad":
-        tensor_dict = _dequant2_remove_pad(out, tensor_dict)
-    elif out.op.tag == "dequant_remove_pad":
-        tensor_dict = _dequant_remove_pad(out, tensor_dict)
-    elif out.op.tag == "quant":
-        tensor_dict = _quant(out, tensor_dict)
-    elif out.op.tag == "elewise_single_relu":
-        tensor_dict = _elewise_single_relu(out, tensor_dict)
-    elif out.op.tag == "elewise_binary_mul":
-        tensor_dict = _elewise_binary_mul(out, tensor_dict)
-    elif out.op.tag == "elewise_single_VS_min":
-        tensor_dict = _elewise_single_VS_min(out, tensor_dict)
-    elif out.op.tag == "depthwise_conv2d":
-        tensor_dict = _depthwise_conv2d(out, tensor_dict)
+def _write_select(out, tensor_dict):
+    tensor_dict["flag_is_write_select"] = True
+    tensor_dict["write_select"] = out.op.input_tensors[0]
+    if out.op.input_tensors[0].op.tag == "quant":
+        tensor_dict = _quant(out.op.input_tensors[0], tensor_dict)
+    elif out.op.input_tensors[0].op.tag == "dequant2_remove_pad":
+        tensor_dict = _dequant2_remove_pad(out.op.input_tensors[0], tensor_dict)
+    elif out.op.input_tensors[0].op.tag == "dequant_remove_pad":
+        tensor_dict = _dequant_remove_pad(out.op.input_tensors[0], tensor_dict)
     else:
         raise RuntimeError("schedule model no surport op.tag %s" %
                            (out.op.tag))
-    if out.op.tag == "depthwise_conv2d":
-        tensor_dict["kernel_name"] = out.op.attrs["kernel_name"]
-    else:
-        tensor_dict["kernel_name"] = \
-            tensor_dict["depthwise_res"].op.attrs['kernel_name']
     return tensor_dict
 
 
-def _set_sch_int32_phase1(tensor_dict, out, sch):
+# phase1, set scope
+def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
     dequant_ubuf = None
     deq_reg_ubuf = None
+    requant_ubuf = None
+    req_reg_ubuf = None
     bias_ub = None
-    if tensor_dict["flag_is_dequant2"]:
-        sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
-        deq_reg_ubuf = sch.cache_read(
-            tensor_dict["deq_reg"], tbe_platform.scope_ubuf,
-            (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
-        sch[tensor_dict["depthwise_res"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
-        sch[tensor_dict["dequant1"]].compute_inline()
+    buf = (dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub)
+    def _set_sch_int32_phase1_dequant(tensor_dict, attrs_dict, out, buf, sch):
+        dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub = buf
+        if tensor_dict["flag_is_write_select"] == True:
+            sch[tensor_dict["write_select"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["write_select"]].compute_inline()
+        if tensor_dict["flag_is_dequant"]:
+            deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          tensor_dict["dequant1"])
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            dequant_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+        elif tensor_dict["flag_is_dequant2"]:
+            sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
+            deq_reg_ubuf = sch.cache_read(
+                tensor_dict["deq_reg"], tbe_platform.scope_ubuf,
+                (tensor_dict["dequant1"], tensor_dict["dequant2"]))
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant1"]].compute_inline()
+        elif tensor_dict["flag_is_requant"]:
+            sch[tensor_dict["data_transfer"]].set_scope(tbe_platform.scope_ubuf)
+            req_reg_ubuf = sch.cache_read(tensor_dict["vreq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          tensor_dict["requant"])
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            sch[tensor_dict["requant"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["requant"]].compute_inline()
+
         if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
             bias_ub = sch.cache_read(tensor_dict["bias_gm"],
                                      tbe_platform.scope_ubuf,
@@ -848,23 +1220,13 @@ def _set_sch_int32_phase1(tensor_dict, out, sch):
                 tbe_platform.scope_ubuf)
             sch[tensor_dict["mad_bias"]].set_scope(tbe_platform.scope_cc)
             sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform.scope_cc)
-    elif tensor_dict["flag_is_dequant"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
-                                      tbe_platform.scope_ubuf,
-                                      tensor_dict["dequant1"])
-        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
-        sch[tensor_dict["depthwise_res"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
-        dequant_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
-        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-            bias_ub = sch.cache_read(tensor_dict["bias_gm"],
-                                     tbe_platform.scope_ubuf,
-                                     [tensor_dict["mad_bias_ub_brc"]])
-            sch[tensor_dict["mad_bias_ub_brc"]].set_scope(
-                tbe_platform.scope_ubuf)
-            sch[tensor_dict["mad_bias"]].set_scope(tbe_platform.scope_cc)
-            sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform.scope_cc)
-    elif tensor_dict["flag_is_dequant_quant"]:
+        if tensor_dict["flag_is_requant"]:
+            return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
+        else:
+            return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
+
+    def _set_sch_int32_phase1_dequant_quant(tensor_dict, attrs_dict, out, buf, sch):
+        dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub = buf
         if tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict[
             "flag_is_quant_sqrt"]:
             deq_reg_ubuf = sch.cache_read(
@@ -874,14 +1236,29 @@ def _set_sch_int32_phase1(tensor_dict, out, sch):
             sch[tensor_dict["reform_by_vadds"]].set_scope(
                 tbe_platform.scope_ubuf)
             sch[tensor_dict["input_ub"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["input_ub"]].compute_inline()
             sch[tensor_dict["quant_remove_pad"]].set_scope(
                 tbe_platform.scope_ubuf)
             sch[tensor_dict["quant_remove_pad"]].compute_inline()
+            if tensor_dict["flag_is_write_select"] == True:
+                sch[tensor_dict["write_select"]].set_scope(tbe_platform.scope_ubuf)
+                sch[tensor_dict["write_select"]].compute_inline()
             if tensor_dict["flag_is_quant_relu6_dequant"] == True:
                 sch[tensor_dict["min"]].set_scope(tbe_platform.scope_ubuf)
                 sch[tensor_dict["min"]].compute_inline()
                 sch[tensor_dict["max"]].set_scope(tbe_platform.scope_ubuf)
                 sch[tensor_dict["max"]].compute_inline()
+            elif tensor_dict["flag_is_quant_mul_dequant"] == True:
+                sch[tensor_dict["mul_res"]].set_scope(tbe_platform.scope_ubuf)
+                sch[tensor_dict["mul_res"]].compute_inline()
+                mul_ubuf = sch.cache_write(
+                    tensor_dict["mul_res"], tbe_platform.scope_ubuf)
+                attrs_dict["mul_ubuf"] = mul_ubuf
+                float16_mul_input_ubuf = sch.cache_read(
+                    tensor_dict["float16_mul_input_tensor"],
+                    tbe_platform.scope_ubuf,
+                    [attrs_dict["mul_ubuf"]])
+                tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
             sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
             sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
             sch[tensor_dict["dequant1"]].compute_inline()
@@ -911,11 +1288,25 @@ def _set_sch_int32_phase1(tensor_dict, out, sch):
             sch[tensor_dict["quant_remove_pad"]].set_scope(
                 tbe_platform.scope_ubuf)
             sch[tensor_dict["quant_remove_pad"]].compute_inline()
+            if tensor_dict["flag_is_write_select"] == True:
+                sch[tensor_dict["write_select"]].set_scope(tbe_platform.scope_ubuf)
+                sch[tensor_dict["write_select"]].compute_inline()
             if tensor_dict["flag_is_quant_relu6_dequant"] == True:
                 sch[tensor_dict["min"]].set_scope(tbe_platform.scope_ubuf)
                 sch[tensor_dict["min"]].compute_inline()
                 sch[tensor_dict["max"]].set_scope(tbe_platform.scope_ubuf)
                 sch[tensor_dict["max"]].compute_inline()
+            elif tensor_dict["flag_is_quant_mul_dequant"] == True:
+                sch[tensor_dict["mul_res"]].set_scope(tbe_platform.scope_ubuf)
+                sch[tensor_dict["mul_res"]].compute_inline()
+                mul_ubuf = sch.cache_write(
+                    tensor_dict["mul_res"], tbe_platform.scope_ubuf)
+                attrs_dict["mul_ubuf"] = mul_ubuf
+                float16_mul_input_ubuf = sch.cache_read(
+                    tensor_dict["float16_mul_input_tensor"],
+                    tbe_platform.scope_ubuf,
+                    [attrs_dict["mul_ubuf"]])
+                tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
             sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
             sch[tensor_dict["dequant1"]].compute_inline()
             sch[tensor_dict["depthwise_res"]].set_scope(
@@ -936,78 +1327,192 @@ def _set_sch_int32_phase1(tensor_dict, out, sch):
                 "quant model only surport scale ==1 and sqrt == 0,"
                 " but scale %d, sqrt %d" %
                 (out.op.attrs['scale'].value, out.op.attrs['sqrt_mode'].value))
+        return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
-    return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
+    def _set_sch_int32_phase1_dequant_mul(tensor_dict, attrs_dict, out, buf, sch):
+        dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub = buf
+        if tensor_dict["flag_is_dequant_mul"]:
+            deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          tensor_dict["dequant1"])
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[mul_ubuf].compute_inline()
+            attrs_dict["mul_ubuf"] = mul_ubuf
+            float16_mul_input_ubuf = sch.cache_read(
+                tensor_dict["float16_mul_input_tensor"],
+                tbe_platform.scope_ubuf,
+                [attrs_dict["mul_ubuf"]])
+            tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+            sch[tensor_dict["dequant_remove_pad"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant_remove_pad"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_ubuf"]].compute_inline()
+            dequant_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[dequant_ubuf].compute_inline()
+        elif tensor_dict["flag_is_dequant2_mul"]:
+            sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
+            deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          (tensor_dict["dequant1"],
+                                           tensor_dict["dequant2"]))
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[mul_ubuf].compute_inline()
+            attrs_dict["mul_ubuf"] = mul_ubuf
+            float16_mul_input_ubuf = sch.cache_read(
+                tensor_dict["float16_mul_input_tensor"],
+                tbe_platform.scope_ubuf,
+                [attrs_dict["mul_ubuf"]])
+            tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+            sch[tensor_dict["dequant2_remove_pad"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant2_remove_pad"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_ubuf"]].compute_inline()
+            sch[tensor_dict["dequant1"]].compute_inline()
+            sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant2"]].compute_inline()
+        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+            bias_ub = sch.cache_read(tensor_dict["bias_gm"],
+                                     tbe_platform.scope_ubuf,
+                                     [tensor_dict["mad_bias_ub_brc"]])
+            sch[tensor_dict["mad_bias_ub_brc"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_bias"]].set_scope(tbe_platform.scope_cc)
+            sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform.scope_cc)
+        return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
+
+    def _set_sch_int32_phase1_dequant_sigmoid_mul(tensor_dict, attrs_dict, out, buf,
+                                                  sch):
+        dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub = buf
+        if tensor_dict["flag_is_dequant_sigmoid_mul"]:
+            deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          tensor_dict["dequant1"])
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[mul_ubuf].compute_inline()
+            attrs_dict["mul_ubuf"] = mul_ubuf
+            float16_mul_input_ubuf = sch.cache_read(
+                tensor_dict["float16_mul_input_tensor"],
+                tbe_platform.scope_ubuf,
+                [attrs_dict["mul_ubuf"]])
+            tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+            sch[tensor_dict["rec_7"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_7"]].compute_inline()
+            sch[tensor_dict["rec_6"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_6"]].compute_inline()
+            sch[tensor_dict["rec_5"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_5"]].compute_inline()
+            sch[tensor_dict["rec_4"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_4"]].compute_inline()
+            sch[tensor_dict["rec_3"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_3"]].compute_inline()
+            sch[tensor_dict["muls"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["muls"]].compute_inline()
+            sch[tensor_dict["exp"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["exp"]].compute_inline()
+            sch[tensor_dict["add_2"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["add_2"]].compute_inline()
+            sch[tensor_dict["dequant_remove_pad"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant_remove_pad"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_ubuf"]].compute_inline()
+            dequant_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[dequant_ubuf].compute_inline()
+        elif tensor_dict["flag_is_dequant2_sigmoid_mul"]:
+            sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
+            deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"],
+                                          tbe_platform.scope_ubuf,
+                                          (tensor_dict["dequant1"],
+                                           tensor_dict["dequant2"]))
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            sch[mul_ubuf].compute_inline()
+            attrs_dict["mul_ubuf"] = mul_ubuf
+            float16_mul_input_ubuf = sch.cache_read(
+                tensor_dict["float16_mul_input_tensor"],
+                tbe_platform.scope_ubuf,
+                [attrs_dict["mul_ubuf"]])
+            tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+            sch[tensor_dict["rec_7"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_7"]].compute_inline()
+            sch[tensor_dict["rec_6"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_6"]].compute_inline()
+            sch[tensor_dict["rec_5"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_5"]].compute_inline()
+            sch[tensor_dict["rec_4"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_4"]].compute_inline()
+            sch[tensor_dict["rec_3"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_3"]].compute_inline()
+            sch[tensor_dict["muls"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["muls"]].compute_inline()
+            sch[tensor_dict["exp"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["exp"]].compute_inline()
+            sch[tensor_dict["add_2"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["add_2"]].compute_inline()
+            sch[tensor_dict["dequant2_remove_pad"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant2_remove_pad"]].compute_inline()
+            sch[tensor_dict["dequant1"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_ubuf"]].compute_inline()
+            sch[tensor_dict["dequant1"]].compute_inline()
+            sch[tensor_dict["dequant2"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["dequant2"]].compute_inline()
+        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+            bias_ub = sch.cache_read(tensor_dict["bias_gm"],
+                                     tbe_platform.scope_ubuf,
+                                     [tensor_dict["mad_bias_ub_brc"]])
+            sch[tensor_dict["mad_bias_ub_brc"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["mad_bias"]].set_scope(tbe_platform.scope_cc)
+            sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform.scope_cc)
+        return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
+
+    if tensor_dict["flag_is_dequant"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant(tensor_dict, attrs_dict, out, buf,
+                                          sch)
+    elif tensor_dict["flag_is_dequant2"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant(tensor_dict, attrs_dict, out, buf,
+                                          sch)
+    elif tensor_dict["flag_is_requant"]:
+        deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant(tensor_dict, attrs_dict, out, buf,
+                                          sch)
+
+    elif tensor_dict["flag_is_dequant_quant"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant_quant(tensor_dict, attrs_dict, out, buf,
+                                                sch)
+
+    elif tensor_dict["flag_is_dequant_mul"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant_mul(tensor_dict, attrs_dict, out, buf, sch)
+    elif tensor_dict["flag_is_dequant2_mul"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant_mul(tensor_dict, attrs_dict, out, buf, sch)
+
+    elif tensor_dict["flag_is_dequant_sigmoid_mul"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant_sigmoid_mul(
+                tensor_dict, attrs_dict, out, buf, sch)
+    elif tensor_dict["flag_is_dequant2_sigmoid_mul"]:
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = \
+            _set_sch_int32_phase1_dequant_sigmoid_mul(
+                tensor_dict, attrs_dict, out, buf, sch)
+    return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
 
 
-def _get_tiling_fetch(mad_dtype, tensor_dict):
-    if len(tensor_dict["fmap"].op.shape) == 6:
-        _, _, _, fmap_h, fmap_w, fmap_c0 = (int(
-            i.value) for i in tensor_dict["fmap"].op.shape)
-    else:
-        _, _, fmap_h, fmap_w, fmap_c0 = (int(i.value)
-                                         for i in tensor_dict["fmap"].op.shape)
-    pad_top = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][0])
-    pad_right = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][3])
-    pad_left = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][2])
-    pad_bottom = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][1])
-    kw = tensor_dict["mad_ubuf"].op.attrs['kernel_w']
-    kh = tensor_dict["mad_ubuf"].op.attrs['kernel_h']
-    stride_w = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][1])
-    stride_h = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][0])
-    kernel_name = tensor_dict["kernel_name"]
-
-    wo = (fmap_w + pad_left + pad_right - kw) // stride_w + 1
-    ho = (fmap_h + pad_top + pad_bottom - kh) // stride_h + 1
-    fused_double_operand_num = tensor_dict["fused_double_operand_num"]
-    if tensor_dict["flag_is_dequant2"] or (
-            tensor_dict["flag_is_dequant_quant"]
-            and tensor_dict["flag_is_dequant_sqrt"]):
-        fused_double_operand_num = 3
-        tiling = fused_tiling_fetch(tensor_dict["fmap"], \
-                                    tensor_dict["filter_buf"], \
-                                    tensor_dict["group_num"], \
-                                    [pad_left, pad_right, pad_top, pad_bottom],\
-                                    [stride_h, \
-                                     stride_w], mad_dtype,
-                                    fused_double_operand_num,
-                                    tensor_dict["flag_is_dequant_bias"],
-                                    tensor_dict["fused_c_dtype"],
-                                    kernel_name)
-    elif tensor_dict["flag_is_dequant"] or (
-            tensor_dict["flag_is_dequant_quant"]
-            and not tensor_dict["flag_is_dequant_sqrt"]):
-        fused_double_operand_num = 2
-        tiling = fused_tiling_fetch(tensor_dict["fmap"], \
-                                    tensor_dict["filter_buf"], \
-                                    tensor_dict["group_num"], \
-                                    [pad_left, pad_right, pad_top, pad_bottom],\
-                                    [stride_h, \
-                                     stride_w], mad_dtype,
-                                    fused_double_operand_num,
-                                    tensor_dict["flag_is_dequant_bias"],
-                                    tensor_dict["fused_c_dtype"],
-                                    kernel_name)
-    else:
-        tiling = tiling_fetch(tensor_dict["fmap"], tensor_dict["filter_buf"], \
-                              tensor_dict["group_num"], [pad_left, pad_right, \
-                                                         pad_top, pad_bottom],
-                              [stride_h, \
-                               stride_w], mad_dtype, fused_double_operand_num,
-                              tensor_dict["bias_flag"],
-                              kernel_name)
-    return tiling
-
-
-def _set_a_cbuf_row_major(mad_dtype, a_cbuf_row_major, wo, sch):
-    if mad_dtype == "int32":
-        sch[a_cbuf_row_major].buffer_align((1, 1), (1, 1), (wo, wo), (1, 1),
-                                           (1, 1), (1, 1), (1, 32))
-    else:
-        sch[a_cbuf_row_major].buffer_align((1, 1), (1, 1), (wo, wo), (1, 1),
-                                           (1, 1), (1, 1), (1, BLOCK_SIZE))
-    return sch
-
+#phase2, compute at
 def _sch_flag_is_dequant2(sch, tensor_dict, attrs_dict, res_cut_dict):
     a2_axis = None
     a3_axis = None
@@ -1033,11 +1538,46 @@ def _sch_flag_is_dequant2(sch, tensor_dict, attrs_dict, res_cut_dict):
             sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
         sch[attrs_dict["bias_ub"]].compute_at(
             sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-        sch[tensor_dict["dequant2"]].buffer_align(
-            (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
-            (1, BLOCK_SIZE))
+    if tensor_dict["flag_is_dequant2_mul"] == True:
+        sch[attrs_dict["mul_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[attrs_dict["mul_ubuf"]].buffer_align(
+            (1, 1), (1, 1), (1, 1), (1, 16), (1, BLOCK_SIZE))
+    if tensor_dict["flag_is_dequant2_sigmoid_mul"] == True:
+        sch[attrs_dict["mul_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_7"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_6"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_5"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_4"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_3"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["muls"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["add_2"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["exp"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[attrs_dict["mul_ubuf"]].buffer_align(
+            (1, 1), (1, 1), (1, 1), (1, 16), (1, BLOCK_SIZE))
+    if tensor_dict["flag_is_write_select"] == True:
+        sch[tensor_dict["write_select"]].compute_at(
+            sch[attrs_dict["out"]],
+            res_cut_dict["res_mcut_iio"])
+    sch[tensor_dict["dequant2"]].buffer_align(
+        (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
+        (1, BLOCK_SIZE))
 
     return a2_axis, a3_axis, sch
+
 
 def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
     a2_axis = None
@@ -1046,8 +1586,11 @@ def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
     sch[tensor_dict["dequant1"]].compute_at(
         sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-    sch[attrs_dict["dequant_ubuf"]].compute_at(
-        sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+    if not tensor_dict["flag_is_dequant_sigmoid_mul"] and not tensor_dict[
+        "flag_is_dequant2_sigmoid_mul"] and not tensor_dict[
+        "flag_is_dequant_mul"]:
+        sch[attrs_dict["dequant_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
         a2_axis, a3_axis = sch[tensor_dict["mad_bias"]].split(
             sch[tensor_dict["mad_bias"]].op.axis[3], 16)
@@ -1064,135 +1607,206 @@ def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
             sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
         sch[attrs_dict["bias_ub"]].compute_at(
             sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+        if tensor_dict["flag_is_dequant_mul"] == True:
+            sch[attrs_dict["mul_ubuf"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            sch[attrs_dict["mul_ubuf"]].buffer_align(
+                (1, 1), (1, 1), (1, 1), (1, 16), (1, BLOCK_SIZE))
+    if tensor_dict["flag_is_dequant_sigmoid_mul"] == True:
+        sch[attrs_dict["mul_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_7"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_6"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_5"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_4"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["rec_3"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["muls"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["add_2"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["exp"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[attrs_dict["mul_ubuf"]].buffer_align(
+            (1, 1), (1, 1), (1, 1), (1, 16), (1, BLOCK_SIZE))
+    if tensor_dict["flag_is_write_select"] == True:
+        sch[tensor_dict["write_select"]].compute_at(
+            sch[attrs_dict["out"]],
+            res_cut_dict["res_mcut_iio"])
     sch[tensor_dict["dequant1"]].buffer_align(
         (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M), (1, BLOCK_SIZE))
 
     return a2_axis, a3_axis, sch
 
+
 def _sch_flag_is_dequant_quant(sch, double_buffer_flag, tensor_dict,
                                attrs_dict, res_cut_dict):
     a2_axis = None
     a3_axis = None
+    def _sch_deqaunt_quant_compute_at():
+        if tensor_dict["flag_is_dequant_bias"]:
+            a2_axis, a3_axis = sch[tensor_dict["mad_bias"]].split(
+                sch[tensor_dict["mad_bias"]].op.axis[3], 16)
+            sch[tensor_dict["mad_bias"]].reorder(
+                sch[tensor_dict["mad_bias"]].op.axis[0],
+                sch[tensor_dict["mad_bias"]].op.axis[1],
+                sch[tensor_dict["mad_bias"]].op.axis[2], a2_axis,
+                a3_axis, sch[tensor_dict["mad_bias"]].op.axis[4])
+            sch[tensor_dict["mad_after_bias"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+
+            sch[tensor_dict["mad_bias"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+            sch[tensor_dict["mad_bias_ub_brc"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+
+            sch[attrs_dict["bias_ub"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
+            sch[attrs_dict["deq_reg_ubuf"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
+
+            sch[tensor_dict["mad_bias_ub_brc"]].double_buffer()
+            sch[tensor_dict["mad_bias_ub_brc"]].preload()
+            if double_buffer_flag["CL0_pbuffer"] == 2:
+                sch[tensor_dict["mad_bias"]].double_buffer()
+                sch[tensor_dict["mad_bias"]].preload()
+
+            sch[tensor_dict["cast_i8_ub"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            sch[tensor_dict["reform_by_vadds"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            sch[tensor_dict["input_ub"]].compute_at(
+                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            if tensor_dict["flag_is_write_select"] == True:
+                sch[tensor_dict["write_select"]].compute_at(
+                    sch[attrs_dict["out"]],
+                    res_cut_dict["res_mcut_iio"])
+            if tensor_dict["flag_is_quant_relu6_dequant"] == True:
+                sch[tensor_dict["min"]].compute_at(
+                    sch[attrs_dict["out"]],
+                    res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["max"]].compute_at(
+                    sch[attrs_dict["out"]],
+                    res_cut_dict["res_mcut_iio"])
+            if tensor_dict["flag_is_quant_mul_dequant"] == True:
+                sch[attrs_dict["mul_ubuf"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[attrs_dict["mul_ubuf"]].buffer_align(
+                    (1, 1), (1, 1), (1, 1), (1, 16), (1, BLOCK_SIZE))
+        else:
+            raise RuntimeError(
+                "unspport mode now, dequant fused mode must have bias")
+
+        return a2_axis, a3_axis, sch
     if tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict[
         "flag_is_quant_sqrt"]:
-        if tensor_dict["flag_is_dequant_bias"]:
-            a2_axis, a3_axis = sch[tensor_dict["mad_bias"]].split(
-                sch[tensor_dict["mad_bias"]].op.axis[3], 16)
-            sch[tensor_dict["mad_bias"]].reorder(
-                sch[tensor_dict["mad_bias"]].op.axis[0],
-                sch[tensor_dict["mad_bias"]].op.axis[1],
-                sch[tensor_dict["mad_bias"]].op.axis[2], a2_axis,
-                a3_axis, sch[tensor_dict["mad_bias"]].op.axis[4])
-            sch[tensor_dict["mad_after_bias"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-
-            sch[tensor_dict["mad_bias"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-            sch[tensor_dict["mad_bias_ub_brc"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-
-            sch[attrs_dict["bias_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
-            sch[attrs_dict["deq_reg_ubuf"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
-
-            sch[tensor_dict["mad_bias_ub_brc"]].double_buffer()
-            if double_buffer_flag["CL0_pbuffer"] == 2:
-                sch[tensor_dict["mad_bias"]].double_buffer()
-                sch[tensor_dict["mad_bias"]].preload()
-
-            sch[tensor_dict["cast_i8_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["reform_by_vadds"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["input_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            if tensor_dict["flag_is_quant_relu6_dequant"] == True:
-                sch[tensor_dict["min"]].compute_at(
-                    sch[attrs_dict["out"]],
-                    res_cut_dict["res_mcut_iio"])
-                sch[tensor_dict["max"]].compute_at(
-                    sch[attrs_dict["out"]],
-                    res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["dequant2"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["dequant1"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["dequant2"]].buffer_align(
-                (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
-                (1, BLOCK_SIZE))
-    elif not tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict["flag_is_quant_sqrt"]:
-        if tensor_dict["flag_is_dequant_bias"]:
-            a2_axis, a3_axis = sch[tensor_dict["mad_bias"]].split(
-                sch[tensor_dict["mad_bias"]].op.axis[3], 16)
-            sch[tensor_dict["mad_bias"]].reorder(
-                sch[tensor_dict["mad_bias"]].op.axis[0],
-                sch[tensor_dict["mad_bias"]].op.axis[1],
-                sch[tensor_dict["mad_bias"]].op.axis[2], a2_axis,
-                a3_axis, sch[tensor_dict["mad_bias"]].op.axis[4])
-            sch[tensor_dict["mad_after_bias"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-
-            sch[tensor_dict["mad_bias"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-            sch[tensor_dict["mad_bias_ub_brc"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
-
-            sch[attrs_dict["bias_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
-            sch[attrs_dict["deq_reg_ubuf"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_cccut_i"])
-
-            sch[tensor_dict["mad_bias_ub_brc"]].double_buffer()
-            if double_buffer_flag["CL0_pbuffer"] == 2:
-                sch[tensor_dict["mad_bias"]].double_buffer()
-                sch[tensor_dict["mad_bias"]].preload()
-            sch[tensor_dict["cast_i8_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["reform_by_vadds"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["input_ub"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            if tensor_dict["flag_is_quant_relu6_dequant"] == True:
-                sch[tensor_dict["min"]].compute_at(
-                    sch[attrs_dict["out"]],
-                    res_cut_dict["res_mcut_iio"])
-                sch[tensor_dict["max"]].compute_at(
-                    sch[attrs_dict["out"]],
-                    res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["dequant1"]].compute_at(
-                sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-            sch[tensor_dict["dequant1"]].buffer_align(
-                (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
-                (1, BLOCK_SIZE))
+        a2_axis, a3_axis, sch = _sch_deqaunt_quant_compute_at()
+        sch[tensor_dict["dequant2"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["dequant1"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["dequant2"]].buffer_align(
+            (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
+            (1, BLOCK_SIZE))
+    elif not tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict[
+        "flag_is_quant_sqrt"]:
+        a2_axis, a3_axis, sch = _sch_deqaunt_quant_compute_at()
+        sch[tensor_dict["dequant1"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+        sch[tensor_dict["dequant1"]].buffer_align(
+            (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M),
+            (1, BLOCK_SIZE))
     else:
         raise RuntimeError(
-                    "quant model only surport scale ==1 and sqrt == 0,"
-                    " but scale %d, sqrt %d" %
-                    (attrs_dict["out"].op.attrs['scale'].value,
-                     attrs_dict["out"].op.attrs['sqrt_mode'].value))
+            "quant model only surport scale ==1 and sqrt == 0,"
+            " but scale %d, sqrt %d" %
+            (attrs_dict["out"].op.attrs['scale'].value,
+             attrs_dict["out"].op.attrs['sqrt_mode'].value))
+
 
     return a2_axis, a3_axis, sch
 
-def _set_sch_int32_phase2(mad_dtype, double_buffer_flag, tensor_dict, attrs_dict,
-                          res_cut_dict, sch):
 
+def _sch_flag_is_requant(sch, tensor_dict, attrs_dict, res_cut_dict):
+    a2_axis = None
+    a3_axis = None
+    sch[attrs_dict["req_reg_ubuf"]].compute_at(
+        sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+    sch[tensor_dict["data_transfer"]].compute_at(
+        sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+
+    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+        a2_axis, a3_axis = sch[tensor_dict["mad_bias"]].split(
+            sch[tensor_dict["mad_bias"]].op.axis[3], 16)
+        sch[tensor_dict["mad_bias"]].reorder(
+            sch[tensor_dict["mad_bias"]].op.axis[0],
+            sch[tensor_dict["mad_bias"]].op.axis[1],
+            sch[tensor_dict["mad_bias"]].op.axis[2], a2_axis, a3_axis,
+            sch[tensor_dict["mad_bias"]].op.axis[4])
+        sch[tensor_dict["mad_after_bias"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+        sch[tensor_dict["mad_bias"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+        sch[tensor_dict["mad_bias_ub_brc"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+        sch[attrs_dict["bias_ub"]].compute_at(
+            sch[attrs_dict["out"]], res_cut_dict["res_mcut_io"])
+    sch[tensor_dict["data_transfer"]].buffer_align(
+        (1, 1), (1, 1), (1, 1), (1, TILING_INT8_M), (1, BLOCK_SIZE))
+    return a2_axis, a3_axis, sch
+
+
+def _set_sch_int32_phase2(mad_dtype, double_buffer_flag, tensor_dict,
+                          attrs_dict,
+                          res_cut_dict, sch):
     a2_axis = None
     a3_axis = None
     if mad_dtype == "int32":
         if tensor_dict["flag_is_dequant2"] == True:
-            a2_axis, a3_axis, sch = _sch_flag_is_dequant2(sch, tensor_dict,\
-             attrs_dict, res_cut_dict)
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant2(sch, tensor_dict, \
+                                                          attrs_dict,
+                                                          res_cut_dict)
         elif tensor_dict["flag_is_dequant"] == True:
-            a2_axis, a3_axis, sch = _sch_flag_is_dequant(sch, tensor_dict,\
-             attrs_dict, res_cut_dict)
-        elif tensor_dict["flag_is_dequant_quant"]:
-            a2_axis, a3_axis, sch = _sch_flag_is_dequant_quant(sch, double_buffer_flag, \
-             tensor_dict,\
-             attrs_dict, res_cut_dict)
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant(sch, tensor_dict, \
+                                                         attrs_dict,
+                                                         res_cut_dict)
+        elif tensor_dict["flag_is_dequant_quant"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant_quant(
+                sch, double_buffer_flag, tensor_dict, attrs_dict, res_cut_dict)
+        elif tensor_dict["flag_is_dequant_mul"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant(sch, tensor_dict, \
+                                                         attrs_dict,
+                                                         res_cut_dict)
+        elif tensor_dict["flag_is_dequant_sigmoid_mul"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant(sch, tensor_dict, \
+                                                         attrs_dict,
+                                                         res_cut_dict)
+        elif tensor_dict["flag_is_dequant2_mul"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant2(sch, tensor_dict, \
+                                                          attrs_dict,
+                                                          res_cut_dict)
+        elif tensor_dict["flag_is_requant"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_requant(sch, tensor_dict,
+                                                         attrs_dict,
+                                                         res_cut_dict)
+
+        elif tensor_dict["flag_is_dequant2_sigmoid_mul"] == True:
+            a2_axis, a3_axis, sch = _sch_flag_is_dequant2(sch, tensor_dict, \
+                                                          attrs_dict,
+                                                          res_cut_dict)
     return a2_axis, a3_axis, sch
 
-
+# phase 3, emit insn phase
 def _flag_is_dequant_quant(tensor_dict, sch, attrs_dict):
     if tensor_dict[
         "flag_is_dequant_sqrt"] and not tensor_dict["flag_is_quant_sqrt"]:
@@ -1203,18 +1817,26 @@ def _flag_is_dequant_quant(tensor_dict, sch, attrs_dict):
                                                    'dma_copy')
             sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
                 sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0], 'vector_auto')
-
             sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
                 sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
             sch[tensor_dict["dequant1"]].pragma(
                 sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
             sch[tensor_dict["dequant2"]].emit_insn(
                 sch[tensor_dict["dequant2"]].op.axis[0], 'vector_auto')
+            if tensor_dict["flag_is_write_select"] == True:
+                sch[tensor_dict["write_select"]].emit_insn(
+                    sch[tensor_dict["write_select"]].op.axis[0], 'dma_copy')
             if tensor_dict["flag_is_quant_relu6_dequant"] == True:
                 sch[tensor_dict["min"]].emit_insn(
                     sch[tensor_dict["min"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["max"]].emit_insn(
                     sch[tensor_dict["max"]].op.axis[0], 'vector_auto')
+            if tensor_dict["flag_is_quant_mul_dequant"] == True:
+                sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
+                    tensor_dict["float16_mul_input_ubuf"].op.axis[0],
+                    'dma_copy')
+                sch[attrs_dict["mul_ubuf"]].emit_insn(
+                    sch[attrs_dict["mul_ubuf"]].op.axis[0], 'vector_auto')
             sch[attrs_dict["bias_ub"]].emit_insn(
                 sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
             sch[tensor_dict["input_ub"]].emit_insn(
@@ -1243,11 +1865,20 @@ def _flag_is_dequant_quant(tensor_dict, sch, attrs_dict):
 
             sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
                 sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
+            if tensor_dict["flag_is_write_select"] == True:
+                sch[tensor_dict["write_select"]].emit_insn(
+                    sch[tensor_dict["write_select"]].op.axis[0], 'dma_copy')
             if tensor_dict["flag_is_quant_relu6_dequant"] == True:
                 sch[tensor_dict["min"]].emit_insn(
                     sch[tensor_dict["min"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["max"]].emit_insn(
                     sch[tensor_dict["max"]].op.axis[0], 'vector_auto')
+            if tensor_dict["flag_is_quant_mul_dequant"] == True:
+                sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
+                    tensor_dict["float16_mul_input_ubuf"].op.axis[0],
+                    'dma_copy')
+                sch[attrs_dict["mul_ubuf"]].emit_insn(
+                    sch[attrs_dict["mul_ubuf"]].op.axis[0], 'vector_auto')
             sch[tensor_dict["dequant1"]].pragma(
                 sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
             sch[attrs_dict["bias_ub"]].emit_insn(
@@ -1274,50 +1905,194 @@ def _flag_is_dequant_quant(tensor_dict, sch, attrs_dict):
     return sch
 
 
-def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict):
-    if attrs_dict["mad_dtype"] == "int32":
-        if tensor_dict["flag_is_dequant2"]:
-            if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-                sch[tensor_dict["mad_after_bias"]].emit_insn(
-                    tensor_dict["mad_after_bias"].op.axis[0], 'phony_insn')
-                sch[tensor_dict["mad_bias"]].emit_insn(attrs_dict["a2_axis"],
-                                                       'dma_copy')
-                sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
-                    sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0],
-                    'vector_auto')
-                sch[attrs_dict["bias_ub"]].emit_insn(
-                    sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
-            sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
-                sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
+def _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict):
+    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+        sch[tensor_dict["mad_after_bias"]].emit_insn(
+            tensor_dict["mad_after_bias"].op.axis[0], 'phony_insn')
+        sch[tensor_dict["mad_bias"]].emit_insn(attrs_dict["a2_axis"],
+                                               'dma_copy')
+        sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
+            sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0],
+            'vector_auto')
+        sch[attrs_dict["bias_ub"]].emit_insn(
+            sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
+    sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
+        sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
+    if tensor_dict['sca_vec_flag'] == 0:
+        sch[tensor_dict["dequant1"]].pragma(
+            sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'scalar')
+    else:
+        sch[tensor_dict["dequant1"]].pragma(
+            sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
+    if tensor_dict["flag_is_dequant2_sigmoid_mul"]:
+        sch[tensor_dict["dequant2"]].emit_insn(
+            sch[tensor_dict["dequant2"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["rec_7"]].emit_insn(
+        sch[tensor_dict["rec_7"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["rec_6"]].emit_insn(
+        sch[tensor_dict["rec_6"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["rec_5"]].emit_insn(
+        sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["rec_4"]].emit_insn(
+        sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["rec_3"]].emit_insn(
+        sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["muls"]].emit_insn(
+        sch[tensor_dict["muls"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["add_2"]].emit_insn(
+        sch[tensor_dict["add_2"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["exp"]].emit_insn(
+        sch[tensor_dict["exp"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
+        tensor_dict["float16_mul_input_ubuf"].op.axis[0], 'dma_copy')
+    sch[attrs_dict["mul_ubuf"]].emit_insn(
+        sch[attrs_dict["mul_ubuf"]].op.axis[0], 'vector_auto')
+    return sch
+
+
+def _flag_is_dequant_mul(tensor_dict, sch, attrs_dict):
+    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+        sch[tensor_dict["mad_after_bias"]].emit_insn(
+            tensor_dict["mad_after_bias"].op.axis[0], 'phony_insn')
+        sch[tensor_dict["mad_bias"]].emit_insn(attrs_dict["a2_axis"],
+                                               'dma_copy')
+        sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
+            sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0],
+            'vector_auto')
+        sch[attrs_dict["bias_ub"]].emit_insn(
+            sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
+    sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
+        sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
+    if is_v200_version_new():
+        sch[tensor_dict["dequant1"]].emit_insn(
+            sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
+    else:
+        if tensor_dict['sca_vec_flag'] == 0:
+            sch[tensor_dict["dequant1"]].pragma(
+                sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'scalar')
+        else:
             sch[tensor_dict["dequant1"]].pragma(
                 sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
-            sch[tensor_dict["dequant2"]].emit_insn(
-                sch[tensor_dict["dequant2"]].op.axis[0], 'vector_auto')
-        elif tensor_dict["flag_is_dequant"]:
-            if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-                sch[tensor_dict["mad_after_bias"]].emit_insn(
-                    tensor_dict["mad_after_bias"].op.axis[0], 'phony_insn')
-                sch[tensor_dict["mad_bias"]].emit_insn(attrs_dict["a2_axis"],
-                                                       'dma_copy')
-                sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
-                    sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0],
-                    'vector_auto')
-                sch[attrs_dict["bias_ub"]].emit_insn(
-                    sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
+    if tensor_dict["flag_is_dequant2_mul"]:
+        sch[tensor_dict["dequant2"]].emit_insn(
+            sch[tensor_dict["dequant2"]].op.axis[0], 'vector_auto')
+    sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
+        tensor_dict["float16_mul_input_ubuf"].op.axis[0], 'dma_copy')
+    sch[attrs_dict["mul_ubuf"]].emit_insn(
+        sch[attrs_dict["mul_ubuf"]].op.axis[0], 'vector_auto')
+    return sch
+
+
+def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
+    def _phase3_avoid_complexity(tensor_dict, sch, attrs_dict):
+        sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
+            sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
+        if is_v200_version_new():
+            sch[tensor_dict["dequant1"]].emit_insn(
+                sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
+        else:
+            if tensor_dict['sca_vec_flag'] == 0:
+                sch[tensor_dict["dequant1"]].pragma(
+                    sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale',
+                    'scalar')
+            else:
+                sch[tensor_dict["dequant1"]].pragma(
+                    sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale',
+                    'vector')
+        sch[tensor_dict["dequant2"]].emit_insn(
+            sch[tensor_dict["dequant2"]].op.axis[0], 'vector_auto')
+
+        return sch
+
+    def _emit_insn_phase3(tensor_dict, sch, attrs_dict):
+        if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
+            sch[tensor_dict["mad_after_bias"]].emit_insn(
+                tensor_dict["mad_after_bias"].op.axis[0], 'phony_insn')
+            sch[tensor_dict["mad_bias"]].emit_insn(attrs_dict["a2_axis"],
+                                                   'dma_copy')
+            sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(
+                sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0],
+                'vector_auto')
+            sch[attrs_dict["bias_ub"]].emit_insn(
+                sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
+
+        if tensor_dict["flag_is_dequant"]:
             sch[attrs_dict["dequant_ubuf"]].emit_insn(
                 sch[attrs_dict["dequant_ubuf"]].op.axis[0], 'dma_copy')
             sch[attrs_dict["deq_reg_ubuf"]].emit_insn(
                 sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
-            sch[tensor_dict["dequant1"]].pragma(
-                sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
-        elif tensor_dict["flag_is_dequant_quant"]:
-            sch = _flag_is_dequant_quant(tensor_dict, sch, attrs_dict)
+            if is_v200_version_new():
+                sch[tensor_dict["dequant1"]].emit_insn(
+                    sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
+            else:
+                if tensor_dict['sca_vec_flag'] == 0:
+                    sch[tensor_dict["dequant1"]].pragma(
+                        sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'scalar')
+                else:
+                    sch[tensor_dict["dequant1"]].pragma(
+                        sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
+
+        elif tensor_dict["flag_is_dequant2"]:
+            sch = _phase3_avoid_complexity(tensor_dict, sch, attrs_dict)
+
+        elif tensor_dict["flag_is_requant"]:
+            sch[attrs_dict["req_reg_ubuf"]].emit_insn(
+                sch[attrs_dict["req_reg_ubuf"]].op.axis[0], 'dma_copy')
+            if is_v200_version_new():
+                sch[tensor_dict["data_transfer"]].emit_insn(
+                    sch[tensor_dict["data_transfer"]].op.axis[3], 'dma_copy')
+            else:
+                if tensor_dict['sca_vec_flag'] == 0:
+                    sch[tensor_dict["requant"]].pragma(
+                        sch[tensor_dict["requant"]].op.axis[3], 'deq_scale', 'scalar')
+                else:
+                    sch[tensor_dict["requant"]].pragma(
+                        sch[tensor_dict["requant"]].op.axis[3], 'deq_scale', 'vector')
+
+        if tensor_dict["flag_is_write_select"] == True:
+            sch[tensor_dict["write_select"]].emit_insn(
+                sch[tensor_dict["write_select"]].op.axis[0], 'dma_copy')
+
+        return sch
+
+    if tensor_dict["flag_is_dequant2"]:
+        sch = _emit_insn_phase3(tensor_dict, sch, attrs_dict)
+    elif tensor_dict["flag_is_dequant"]:
+        sch = _emit_insn_phase3(tensor_dict, sch, attrs_dict)
+    elif tensor_dict["flag_is_requant"]:
+        sch = _emit_insn_phase3(tensor_dict, sch, attrs_dict)
+    elif tensor_dict["flag_is_dequant_quant"]:
+        sch = _flag_is_dequant_quant(tensor_dict, sch, attrs_dict)
+    elif tensor_dict["flag_is_dequant_mul"] or tensor_dict[
+        "flag_is_dequant2_mul"]:
+        sch = _flag_is_dequant_mul(tensor_dict, sch, attrs_dict)
+    elif tensor_dict["flag_is_dequant_sigmoid_mul"] or tensor_dict[
+        "flag_is_dequant2_sigmoid_mul"]:
+        sch = _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict)
     elif attrs_dict["out"].op.tag == "elewise_single_relu":
         sch[attrs_dict["relu_ubuf"]].emit_insn(
             sch[attrs_dict["relu_ubuf"]].op.axis[0], 'vector_auto')
     elif attrs_dict["out"].op.tag == "elewise_binary_mul":
-        sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
-            tensor_dict["float16_mul_input_ubuf"].op.axis[0], 'dma_copy')
+        if tensor_dict["flag_is_sigmoid_mul"]:
+            sch[tensor_dict["rec_7"]].emit_insn(
+                sch[tensor_dict["rec_7"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["rec_6"]].emit_insn(
+                sch[tensor_dict["rec_6"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["rec_5"]].emit_insn(
+                sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["rec_4"]].emit_insn(
+                sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["rec_3"]].emit_insn(
+                sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["muls"]].emit_insn(
+                sch[tensor_dict["muls"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["add_2"]].emit_insn(
+                sch[tensor_dict["add_2"]].op.axis[0], 'vector_auto')
+            sch[tensor_dict["exp"]].emit_insn(
+                sch[tensor_dict["exp"]].op.axis[0], 'vector_auto')
+        else:
+            sch[tensor_dict["float16_mul_input_ubuf"]].emit_insn(
+                tensor_dict["float16_mul_input_ubuf"].op.axis[0], 'dma_copy')
         sch[attrs_dict["mul_ubuf"]].emit_insn(
             sch[attrs_dict["mul_ubuf"]].op.axis[0], 'vector_auto')
     elif attrs_dict["out"].op.tag == "elewise_single_VS_min":
@@ -1325,17 +2100,192 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict):
             sch[tensor_dict["max_0"]].op.axis[0], 'vector_auto')
         sch[attrs_dict["relu_ubuf"]].emit_insn(
             sch[attrs_dict["relu_ubuf"]].op.axis[0], 'vector_auto')
+    # STRIDE WRITE
+    if out.op.tag == "write_select":
+        align_length = int(out.op.attrs["HWC0"])
+        sch[out].bind_buffer(out.op.axis[1], align_length, 0)
+    sch[out].emit_insn(res_cut_dict["res_mcut_iii"], 'dma_copy')
+
+    return sch
+
+
+def _dequant_out_cg(mad_dtype, attrs_dict, block_dim_tiling):
+    if mad_dtype == "int32":
+        if attrs_dict["deq_reg_ubuf"] is not None:
+            _, dequant_out_cg, _, _, _ = \
+                (int(i.value) for i in attrs_dict["deq_reg_ubuf"].shape)
+            if dequant_out_cg % 2 != 0:
+                block_dim_tiling[3] = 1
+        elif attrs_dict["req_reg_ubuf"] is not None:
+            _, requant_out_cg, _, _, _ = \
+                (int(i.value) for i in attrs_dict["req_reg_ubuf"].shape)
+            if requant_out_cg % 2 != 0:
+                block_dim_tiling[3] = 1
+
+    return block_dim_tiling
+
+
+def _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch):
+    if not tensor_dict["flag_is_dequant_sigmoid_mul"] and \
+            not tensor_dict["flag_is_dequant2_sigmoid_mul"] and \
+            not tensor_dict["flag_is_dequant_mul"] and not \
+            tensor_dict["flag_is_dequant2_mul"]:
+        if tensor_dict["flag_is_sigmoid_mul"]:
+            sch[tensor_dict["rec_7"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_7"]].compute_inline()
+            sch[tensor_dict["rec_6"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_6"]].compute_inline()
+            sch[tensor_dict["rec_5"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_5"]].compute_inline()
+            sch[tensor_dict["rec_4"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_4"]].compute_inline()
+            sch[tensor_dict["rec_3"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["rec_3"]].compute_inline()
+            sch[tensor_dict["muls"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["muls"]].compute_inline()
+            sch[tensor_dict["exp"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["exp"]].compute_inline()
+            sch[tensor_dict["add_2"]].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor_dict["add_2"]].compute_inline()
+            sch[tensor_dict["depthwise_res"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            attrs_dict["mul_ubuf"] = mul_ubuf
+        else:
+            sch[tensor_dict["depthwise_res"]].set_scope(
+                tbe_platform.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].compute_inline()
+            mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
+            attrs_dict["mul_ubuf"] = mul_ubuf
+            float16_mul_input_ubuf = sch.cache_read(
+                tensor_dict["float16_mul_input_tensor"],
+                tbe_platform.scope_ubuf,
+                [attrs_dict["mul_ubuf"]])
+            tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+    return tensor_dict, attrs_dict, sch
+
+
+def _l1_fusion_phase1(sch, tensor_dict):
+    INPUT_MEM_TYPE = int(DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
+    VALID_SHAPE = DepthwiseConv2dParam.fusion_para.get("valid_shape")
+    L1_FUSION_TYPE = int(DepthwiseConv2dParam.fusion_para.get("l1_fusion_type"))
+
+    pad_top = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][0])
+    pad_right = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][3])
+    pad_left = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][2])
+    pad_bottom = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][1])
+
+    if int(INPUT_MEM_TYPE) == 1:
+        sch[tensor_dict["fmap"]].set_scope(tbe_platform.scope_cbuf_fusion)
+        a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], \
+                                        tbe_platform.scope_cbuf_fusion, \
+                                        [tensor_dict["im2col_row_major"]])
+        if VALID_SHAPE:
+            if len(tensor_dict["fmap"].op.shape) == 6:
+                sch[a_cbuf_nc1hwc0].buffer_tile( \
+                    (None, None), \
+                    (None, None), \
+                    (None, None), \
+                    (-pad_top, tensor_dict["fmap"].op.shape[3] + pad_top + pad_bottom), \
+                    (-pad_left, tensor_dict["fmap"].op.shape[4] + pad_left + pad_right), \
+                    (None, None))
+            else:
+                sch[a_cbuf_nc1hwc0].buffer_tile( \
+                    (None, None), \
+                    (None, None), \
+                    (-pad_top, tensor_dict["fmap"].op.shape[2] + pad_top + pad_bottom), \
+                    (-pad_left, tensor_dict["fmap"].op.shape[3] + pad_left + pad_right), \
+                    (None, None))
+    else:
+        # need L1 fusion buffer to storage L1 data
+        if L1_FUSION_TYPE == 0 or L1_FUSION_TYPE == 1:
+            # DDR in and select
+            if VALID_SHAPE:
+                sch[tensor_dict["fusion_fmap_select"]].set_scope(tbe_platform.scope_cbuf_fusion)
+                a_cbuf_nc1hwc0 = tensor_dict["fusion_fmap_select"]
+            else:
+                a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], \
+                                                tbe_platform.scope_cbuf_fusion, \
+                                                [tensor_dict["im2col_row_major"]])
+        else:
+            # DDR in and not select, not fusion
+            a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], \
+                                            tbe_platform.scope_cbuf, \
+                                            [tensor_dict["im2col_row_major"]])
+    return sch, a_cbuf_nc1hwc0
+
+
+def _save_workspace(sch, tensor_dict, a_cbuf_nc1hwc0):
+    INPUT_MEM_TYPE = int(
+        DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
+    L1_FUSION_TYPE = int(DepthwiseConv2dParam.fusion_para.get("l1_fusion_type"))
+    fmap_l1_valid_size = DepthwiseConv2dParam.fusion_para.get(
+        "fmap_l1_valid_size")
+    fmap_l1_addr_flag = DepthwiseConv2dParam.fusion_para.get(
+        "fmap_l1_addr_flag")
+    l1_tensor_map = {}
+    if fmap_l1_addr_flag == -1:
+        l1_tensor_map = None
+    else:
+        if int(INPUT_MEM_TYPE) in (0, 2) \
+                and int(L1_FUSION_TYPE) in (0, 1):
+            sch[a_cbuf_nc1hwc0].set_storage_bound(fmap_l1_valid_size)
+            l1_tensor_map[tensor_dict["fmap"]] = a_cbuf_nc1hwc0
+        else:
+            l1_tensor_map = None
+
+    return l1_tensor_map
+
+
+def _fmp_emit_insn(sch, a_cbuf_nc1hwc0):
+    input_mem_type = int(
+        DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
+    l1_fusion_type = int(
+        DepthwiseConv2dParam.fusion_para.get("l1_fusion_type"))
+    valid_shape = DepthwiseConv2dParam.fusion_para.get("valid_shape")
+    # no l1fusion
+    if l1_fusion_type == -1:
+        sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0],
+                                      'dma_copy')
+    # L1 in, do nothing
+    if input_mem_type == 1:
+        sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0],
+                                      'phony_insn')
+    else:
+        if valid_shape:
+            sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0],
+                                          'dma_copy',
+                                          {"mem_align": 1})
+            sch[a_cbuf_nc1hwc0].pragma(a_cbuf_nc1hwc0.op.axis[0],
+                                       'jump_data', 1)
+        else:
+            sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0],
+                                          'dma_copy')
+            sch[a_cbuf_nc1hwc0].pragma(a_cbuf_nc1hwc0.op.axis[0],
+                                       'jump_data', 1)
     return sch
 
 
 def depthwise_conv2d_schedule(out):
+    is_overload = False
+    OFFSET = DepthwiseConv2dParam.fusion_para.get("slice_offset")
+    VALID_SHAPE = DepthwiseConv2dParam.fusion_para.get("valid_shape")
+    INPUT_MEM_TYPE = int(DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
+    OUTPUT_MEM_TYPE = int(DepthwiseConv2dParam.fusion_para.get("output_memory_type"))
+    L1_FUSION_TYPE = int(DepthwiseConv2dParam.fusion_para.get("l1_fusion_type"))
+
     sch = tvm.create_schedule(out.op)
     # Prepare tensors.
     tensor_dict = _set_tensor_by_op_tag(out)
     attrs_dict = {}
     attrs_dict["out"] = out
+    tensor_dict["input_memory_type"] = INPUT_MEM_TYPE
+    tensor_dict["output_memory_type"] = OUTPUT_MEM_TYPE
+    tensor_dict["l1_fusion_type"] = L1_FUSION_TYPE
+
     # set data flow
-    if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] == "relu":
+    if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         pre_relu_ubuf = sch.cache_read(tensor_dict["fmap"], \
                                        tbe_platform.scope_ubuf, \
                                        [tensor_dict["relu_0"]])
@@ -1343,10 +2293,13 @@ def depthwise_conv2d_schedule(out):
                                        tbe_platform.scope_cbuf, \
                                        [tensor_dict["im2col_row_major"]])
         sch[tensor_dict["relu_0"]].set_scope(tbe_platform.scope_ubuf)
+        fmp_shape = tensor_dict["fmap"].op.shape
     else:
-        a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], \
-                                        tbe_platform.scope_cbuf, \
-                                        [tensor_dict["im2col_row_major"]])
+        sch, a_cbuf_nc1hwc0 = _l1_fusion_phase1(sch, tensor_dict)
+        util.L1CommonParam.l1_fusion_tensors_map = _save_workspace(
+            sch, tensor_dict, a_cbuf_nc1hwc0)
+        fmp_shape = a_cbuf_nc1hwc0.shape
+
     a_cbuf_row_major = sch.cache_write(tensor_dict["im2col_row_major"],
                                        tbe_platform.scope_cbuf)
     sch[tensor_dict["im2col_row_major"]].compute_inline()
@@ -1365,8 +2318,16 @@ def depthwise_conv2d_schedule(out):
 
     mad_dtype = mad_cc.dtype
     sch[tensor_dict["mad_ubuf"]].set_scope(tbe_platform.scope_ubuf)
+
+    # out to L1
+    if "addr_type" in out.op.attrs:
+        out_addr_type = int(out.op.attrs["addr_type"])
+        if out_addr_type == 1:
+            sch[out].set_scope(tbe_platform.scope_cbuf_fusion)
+
     if (tensor_dict["flag_is_dequant"] == True) or (
-            tensor_dict["flag_is_dequant2"] == True):
+            tensor_dict["flag_is_dequant2"] == True) or (
+            tensor_dict["flag_is_requant"] == True):
         sch[tensor_dict["mad_ubuf"]].compute_inline()
     if tensor_dict["bias_flag"]:
         bias_ubuf = sch.cache_read(tensor_dict["bias_tensor"],
@@ -1380,15 +2341,8 @@ def depthwise_conv2d_schedule(out):
         relu_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
         attrs_dict["relu_ubuf"] = relu_ubuf
     if out.op.tag == "elewise_binary_mul":
-        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
-        sch[tensor_dict["depthwise_res"]].compute_inline()
-        mul_ubuf = sch.cache_write(out, tbe_platform.scope_ubuf)
-        attrs_dict["mul_ubuf"] = mul_ubuf
-        float16_mul_input_ubuf = sch.cache_read(
-            tensor_dict["float16_mul_input_tensor"],
-            tbe_platform.scope_ubuf,
-            [attrs_dict["mul_ubuf"]])
-        tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
+        tensor_dict, attrs_dict, sch = \
+            _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch)
     if out.op.tag == "elewise_single_VS_min":
         sch[tensor_dict["max_0"]].set_scope(tbe_platform.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform.scope_ubuf)
@@ -1398,25 +2352,28 @@ def depthwise_conv2d_schedule(out):
         attrs_dict["relu_ubuf"] = relu_ubuf
     c_0 = C0_16
     if mad_dtype == "int32":
-        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1(
-            tensor_dict, out, sch)
+        deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch \
+            = _set_sch_int32_phase1(
+            tensor_dict, attrs_dict, out, sch)
         attrs_dict["bias_ub"] = bias_ub
         attrs_dict["deq_reg_ubuf"] = deq_reg_ubuf
         attrs_dict["dequant_ubuf"] = dequant_ubuf
+        attrs_dict["req_reg_ubuf"] = req_reg_ubuf
+        attrs_dict["requant_ubuf"] = requant_ubuf
         c_0 = C0_32
     attrs_dict["c_0"] = c_0
-    if len(tensor_dict["fmap"].op.shape) == 6:
+    if len(fmp_shape) == 6:
         _, _, _, fmap_h, fmap_w, fmap_c0 = (int(
-            i.value) for i in tensor_dict["fmap"].op.shape)
+            i.value) for i in fmp_shape)
     else:
         _, _, fmap_h, fmap_w, fmap_c0 = (int(i.value)
-                                         for i in tensor_dict["fmap"].op.shape)
+                                         for i in fmp_shape)
     pad_top = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][0])
     pad_right = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][3])
     pad_left = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][2])
     pad_bottom = (int)(tensor_dict["mad_ubuf"].op.attrs['padding'][1])
-    kw = tensor_dict["mad_ubuf"].op.attrs['kernel_w']
-    kh = tensor_dict["mad_ubuf"].op.attrs['kernel_h']
+    kw = (int)(tensor_dict["mad_ubuf"].op.attrs['kernel_w'])
+    kh = (int)(tensor_dict["mad_ubuf"].op.attrs['kernel_h'])
     stride_w = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][1])
     stride_h = (int)(tensor_dict["mad_ubuf"].op.attrs['stride'][0])
 
@@ -1431,12 +2388,11 @@ def depthwise_conv2d_schedule(out):
     c_l0_tiling = tiling['CL0_matrix']
     c_ub_tiling = tiling['CUB_matrix']
     block_dim_tiling = tiling['block_dim']
-    if mad_dtype == "int32":
-        if attrs_dict["deq_reg_ubuf"] is not None:
-            _, dequant_out_cg, _, _, _ = \
-                (int(i.value) for i in attrs_dict["deq_reg_ubuf"].shape)
-            if dequant_out_cg // 2 != 0:
-                block_dim_tiling[3] = 1
+    block_dim_tiling = _dequant_out_cg(mad_dtype, attrs_dict, block_dim_tiling)
+
+    if block_dim_tiling[1] > 1 or \
+            (block_dim_tiling[2] > 1 and (stride_h < kh or stride_w < kw)):
+        is_overload = True
 
     if a_l1_tiling == []:
         a_l1_tiling = [
@@ -1504,6 +2460,16 @@ def depthwise_conv2d_schedule(out):
     res_cut_dict["res_bcut_ii"] = res_bcut_ii
     res_cut_dict["res_bcut_iio"] = res_bcut_iio
     res_cut_dict["res_bcut_iii"] = res_bcut_iii
+
+    if tensor_dict["flag_is_requant"]:
+        requant_o, requant_i = sch[tensor_dict["data_transfer"]].split(
+            tensor_dict["data_transfer"].op.axis[-1], \
+            factor=16)
+        sch[tensor_dict["data_transfer"]].reorder(
+            tensor_dict["data_transfer"].op.axis[0],
+            tensor_dict["data_transfer"].op.axis[1],
+            tensor_dict["data_transfer"].op.axis[2],
+            requant_o, tensor_dict["data_transfer"].op.axis[-2], requant_i)
 
     # m
     res_mcut_o, res_mcut_i = sch[out].split(out.op.axis[3], \
@@ -1580,7 +2546,7 @@ def depthwise_conv2d_schedule(out):
     if tensor_dict["bias_flag"]:
         sch[bias_ubuf].compute_at(sch[out], res_cccut_i)
         sch[tensor_dict["bias_add"]].compute_at(sch[out], res_mcut_iio)
-    if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] == "relu":
+    if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         sch[pre_relu_ubuf].compute_at(sch[out], res_mmcut_i)
         sch[tensor_dict["relu_0"]].compute_at(sch[out], res_mmcut_i)
         sch[pre_relu_cbuf].compute_at(sch[out], res_mmcut_i)
@@ -1597,14 +2563,25 @@ def depthwise_conv2d_schedule(out):
                 sch[b_cbuf].preload()
             if double_buffer_flag["AL0_pbuffer"] == 2:
                 sch[a_cbuf_row_major].preload()
-            if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] \
-                    != "relu":
+            if "relu" not in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
                 if double_buffer_flag["AL1_pbuffer"] == 2:
                     sch[a_cbuf_nc1hwc0].preload()
+        if tensor_dict["flag_is_quant_relu6_dequant"] or tensor_dict[
+            "flag_is_dequant_sigmoid_mul"] or tensor_dict[
+            "flag_is_dequant2_sigmoid_mul"]:
+            sch[attrs_dict["deq_reg_ubuf"]].double_buffer()
+            sch[attrs_dict["deq_reg_ubuf"]].preload()
+            sch[attrs_dict["bias_ub"]].double_buffer()
+            sch[attrs_dict["bias_ub"]].preload()
 
     if tensor_dict["flag_is_dequant"] == False and tensor_dict[
         "flag_is_dequant2"] == False and tensor_dict[
-        "flag_is_dequant_quant"] == False:
+        "flag_is_dequant_quant"] == False and \
+            tensor_dict["flag_is_requant"] == False and tensor_dict[
+        "flag_is_dequant_mul"] == False and tensor_dict[
+        "flag_is_dequant2_mul"] == False and tensor_dict[
+        "flag_is_dequant_sigmoid_mul"] == False and tensor_dict[
+        "flag_is_dequant2_sigmoid_mul"] == False:
         sch[tensor_dict["mad_ubuf"]].compute_at(sch[out], res_mcut_iio)
         sch[tensor_dict["mad_ubuf"]].buffer_align((1, 1), (1, 1), (1, 1), \
                                                   (1, c_0), (1, BLOCK_SIZE))
@@ -1618,10 +2595,42 @@ def depthwise_conv2d_schedule(out):
         sch[relu_ubuf].buffer_align((1, 1), (1, 1), (1, 1), (1, c_0), \
                                     (1, BLOCK_SIZE))
     if out.op.tag == "elewise_binary_mul":
-        sch[mul_ubuf].compute_at(sch[out], res_mcut_iio)
-        sch[float16_mul_input_ubuf].compute_at(sch[out], res_mcut_iio)
-        sch[mul_ubuf].buffer_align((1, 1), (1, 1), (1, 1), (1, c_0), \
-                                    (1, BLOCK_SIZE))
+        if not tensor_dict["flag_is_dequant_sigmoid_mul"] and not tensor_dict[
+            "flag_is_dequant2_sigmoid_mul"]:
+            if tensor_dict["flag_is_sigmoid_mul"]:
+                sch[tensor_dict["rec_7"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["rec_6"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["rec_5"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["rec_4"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["rec_3"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["muls"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["add_2"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                sch[tensor_dict["exp"]].compute_at(
+                    sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+            else:
+                sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(sch[out],
+                                                                      res_mcut_iio)
+            sch[attrs_dict["mul_ubuf"]].compute_at(sch[out], res_mcut_iio)
+
+            sch[attrs_dict["mul_ubuf"]].buffer_align((1, 1), (1, 1), (1, 1),
+                                                     (1, c_0), \
+                                                     (1, BLOCK_SIZE))
+
+        elif not tensor_dict["flag_is_dequant_mul"] and not tensor_dict[
+            "flag_is_dequant2_mul"]:
+            sch[attrs_dict["mul_ubuf"]].compute_at(sch[out], res_mcut_iio)
+            sch[tensor_dict["float16_mul_input_ubuf"]].compute_at(sch[out],
+                                                                  res_mcut_iio)
+            sch[attrs_dict["mul_ubuf"]].buffer_align((1, 1), (1, 1), (1, 1),
+                                                     (1, c_0), \
+                                                     (1, BLOCK_SIZE))
     if out.op.tag == "elewise_single_VS_min":
         sch[tensor_dict["max_0"]].compute_at(sch[out], res_mcut_iio)
         sch[relu_ubuf].compute_at(sch[out], res_mcut_iio)
@@ -1633,7 +2642,7 @@ def depthwise_conv2d_schedule(out):
             sch_to_deal.double_buffer()
 
     # al1
-    if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] != "relu":
+    if "relu" not in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         _set_double_buffer(double_buffer_flag["AL1_pbuffer"], \
                            sch[a_cbuf_nc1hwc0])
     _set_double_buffer(double_buffer_flag["BL1_pbuffer"], sch[b_cbuf])
@@ -1641,7 +2650,12 @@ def depthwise_conv2d_schedule(out):
     _set_double_buffer(double_buffer_flag["BL0_pbuffer"], sch[b_cb])
     if tensor_dict["flag_is_dequant"] == False and tensor_dict[
         "flag_is_dequant2"] == False and tensor_dict[
-        "flag_is_dequant_quant"] == False:
+        "flag_is_dequant_quant"] == False and \
+            tensor_dict["flag_is_requant"] == False and tensor_dict[
+        "flag_is_dequant_mul"] == False and tensor_dict[
+        "flag_is_dequant2_mul"] == False and tensor_dict[
+        "flag_is_dequant_sigmoid_mul"] == False and tensor_dict[
+        "flag_is_dequant2_sigmoid_mul"] == False:
         _set_double_buffer(double_buffer_flag["CUB_pbuffer"],
                            sch[tensor_dict["mad_ubuf"]])
     setfmatrix_dict = {
@@ -1657,19 +2671,24 @@ def depthwise_conv2d_schedule(out):
         "conv_fm_h": fmap_h,
         "conv_fm_w": fmap_w
     }
+    if VALID_SHAPE:
+        setfmatrix_dict["conv_fm_h"] = VALID_SHAPE[2]
+        if INPUT_MEM_TYPE == 1:
+            setfmatrix_dict["conv_fm_offset_h"] = OFFSET[2]
     # emit insn
     if tensor_dict["bias_flag"]:
         sch[bias_ubuf].emit_insn(sch[bias_ubuf].op.axis[0], 'dma_copy')
         sch[tensor_dict["bias_add"]].emit_insn(
             sch[tensor_dict["bias_add"]].op.axis[0], 'vector_auto')
 
-    if tensor_dict["im2col_row_major"].op.input_tensors[0].name[:4] == "relu":
+    if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         sch[tensor_dict["relu_0"]].emit_insn(tensor_dict["relu_0"].op.axis[0],
                                              'vector_auto')
         sch[pre_relu_ubuf].emit_insn(pre_relu_ubuf.op.axis[0], 'dma_copy')
         sch[pre_relu_cbuf].emit_insn(pre_relu_cbuf.op.axis[0], 'dma_copy')
     else:
-        sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0], 'dma_copy')
+        sch = _fmp_emit_insn(sch, a_cbuf_nc1hwc0)
+
     sch[a_cbuf_row_major].emit_insn(a_cbuf_row_major.op.axis[1], 'set_fmatrix',
                                     setfmatrix_dict)
     sch[a_ca].emit_insn(a_ca.op.axis[1], 'im2col')
@@ -1679,7 +2698,12 @@ def depthwise_conv2d_schedule(out):
         "mad_pattern": tbe_platform.cce_params.CONV_MODE,
         "k_outer": [mad_cc_kcut_o]
     }
-    if ((tensor_dict["flag_is_dequant2"] or tensor_dict["flag_is_dequant"]) and \
+    if ((tensor_dict["flag_is_dequant2"] or tensor_dict["flag_is_dequant"] or
+         tensor_dict["flag_is_requant"] or
+         tensor_dict["flag_is_dequant_mul"] or tensor_dict[
+             "flag_is_dequant_sigmoid_mul"] or tensor_dict[
+             "flag_is_dequant2_mul"] or tensor_dict[
+             "flag_is_dequant2_sigmoid_mul"]) and \
         (tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1)) \
             or tensor_dict["flag_is_dequant_bias"]:
         mad_dict["init_bias"] = 1
@@ -1692,15 +2716,30 @@ def depthwise_conv2d_schedule(out):
     sch[mad_cc].emit_insn(mad_cc_bcut_ii, 'mad', mad_dict)
     if (tensor_dict["flag_is_dequant"] == False) and (
             tensor_dict["flag_is_dequant2"] == False) and (
-            tensor_dict["flag_is_dequant_quant"] == False):
+            tensor_dict["flag_is_dequant_quant"] == False) and (
+            tensor_dict["flag_is_requant"] == False) and (
+            tensor_dict["flag_is_dequant_mul"] == False) and (
+            tensor_dict["flag_is_dequant2_mul"] == False) and (
+            tensor_dict["flag_is_dequant_sigmoid_mul"] == False) and (
+            tensor_dict["flag_is_dequant2_sigmoid_mul"] == False):
         sch[tensor_dict["mad_ubuf"]].emit_insn(
             sch[tensor_dict["mad_ubuf"]].op.axis[0], 'dma_copy')
     attrs_dict["out"] = out
     attrs_dict["mad_dtype"] = mad_dtype
-    sch = _set_sch_int32_phase3(tensor_dict, sch, attrs_dict)
-    sch[out].emit_insn(res_mcut_iii, 'dma_copy')
+    sch = _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out)
+
+    set_pragma_for_cache_read_mode(is_overload, sch[out], res_mmcut_i)
+
     return sch
 
+
+def pragma_overload_filter(condition0, condition1, stage, first_axis):
+    is_overload = False
+
+    if condition0 > 1 or condition1 > 1:
+        is_overload = True
+
+    set_pragma_for_cache_read_mode(is_overload, stage, first_axis)
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
 # pylint: disable=too-many-branches
@@ -1902,11 +2941,16 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
         dw_axis_n1, nparts=block_n_nparts)
     block_m_o, block_m_i = s[depthwise_dfilter_res].split(
         dw_axis_m, nparts=block_m_nparts)
+
     # N
     dw_n1_l0o, dw_n1_l0i = s[depthwise_dfilter_res].split(
         block_n_i, n1_l0_factor)
     dw_n1_ubo, dw_n1_ubi = s[depthwise_dfilter_res].split(
         dw_n1_l0i, n1_ub_factor)
+
+    pragma_overload_filter(block_n_nparts, block_m_nparts, \
+                           s[depthwise_dfilter_res], dw_n1_ubi)
+
     # M
     dw_m1, dw_m0 = s[depthwise_dfilter_res].split(block_m_i, m0_l0_factor)
     dw_m1_l0o, dw_m1_l0i = s[depthwise_dfilter_res].split(dw_m1, m1_l0_factor)
@@ -1972,7 +3016,7 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     # mad_pattern value: 0 for gemm, 1 for gemv, 2 for convolution
     mad_dict = {
         "mad_pattern":
-        tbe_platform.cce_params.CONV_MODE,
+            tbe_platform.cce_params.CONV_MODE,
         'k_outer': [
             block_batch_o, block_batch_i, block_h_o, mad_cc_ak1_l1o,
             mad_cc_bk1_l1o, mad_cc_k1_l0o
@@ -2058,8 +3102,8 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         # after expand, full model sliding window, value must be 1
         strideH = int(dx_res.op.attrs['dilated_strides'][0])
         strideW = int(dx_res.op.attrs['dilated_strides'][1])
-        kernel_h = dx_res.op.attrs['weight_height']
-        kernel_w = dx_res.op.attrs['weight_width']
+        kernel_h = int(dx_res.op.attrs['weight_height'])
+        kernel_w = int(dx_res.op.attrs['weight_width'])
         kernel_name = dx_res.op.attrs['kernel_name']
         # expand stride equal ops interface parameter
         strideH_expand = stride
@@ -2256,6 +3300,15 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             "conv_fm_h": dout_dilated.shape[3],
             "conv_fm_w": dout_dilated.shape[4]
         }
+        is_overload = False
+        strideH = int(dx_res.op.attrs['dilated_strides'][0])
+        strideW = int(dx_res.op.attrs['dilated_strides'][1])
+        kernel_h = int(dx_res.op.attrs['weight_height'])
+        kernel_w = int(dx_res.op.attrs['weight_width'])
+        if block_dim_tiling[1] > 1 or (block_dim_tiling[2] > 1 and \
+                                       (strideH < kernel_h or strideW < kernel_w)):
+            is_overload = True
+        set_pragma_for_cache_read_mode(is_overload, s[dx_res], conv_Ncut_i)
 
         s[dout_cbuf_row_major].emit_insn(dout_cbuf_row_major.op.axis[1],
                                          'set_fmatrix', setfmatrix_dict)
@@ -2292,6 +3345,7 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         s[dx_res].reorder(conv_Ncut_o, dx_res.op.axis[1], conv_hcut_o,
                           conv_mcut_o, conv_Ncut_i, dx_res.op.axis[2],
                           conv_mcut_i, dx_res.op.axis[4])
+
         # bind muti core
         if blocks != 1:
             res_NNCut_o, res_NNCut_i = s[dx_res].split(
@@ -2468,6 +3522,15 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             "mad_pattern": tbe_platform.cce_params.CONV_MODE,
             "k_outer": mad_cc_kcut_o
         }
+        is_overload = False
+        strideH = int(dx_res.op.attrs['dilated_strides'][0])
+        strideW = int(dx_res.op.attrs['dilated_strides'][1])
+        kernel_h = int(dx_res.op.attrs['weight_height'])
+        kernel_w = int(dx_res.op.attrs['weight_width'])
+        if block_dim_tiling[1] > 1 or (block_dim_tiling[2] > 1 and \
+                                       (strideH < kernel_h or strideW < kernel_w)):
+            is_overload = True
+        set_pragma_for_cache_read_mode(is_overload, s[dx_res], conv_Ncut_i)
         s[mad_cc].emit_insn(mad_cc_Ncut_i, 'mad', mad_dict)
         s[dx_res].emit_insn(conv_Ncut_i, 'dma_copy')
 

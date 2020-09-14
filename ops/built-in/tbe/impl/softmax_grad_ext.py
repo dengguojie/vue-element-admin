@@ -21,6 +21,7 @@ from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 
 SIZE_SIXTEEN = 16
@@ -179,8 +180,9 @@ def shape_broadcast(data_1, data_2):
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-        util.check_tensor_shape_size(shape_max)
+        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                       param_name_input1="data_1",
+                                                       param_name_input2="data_2")
         data_1 = _broadcast_nz(data_1, shape_max)
         data_2 = _broadcast_nz(data_2, shape_max)
 
@@ -259,7 +261,8 @@ def softmax_grad_ext_compute(data_grad, data_x1, data_x2,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, (int, list, tuple), bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT), REQUIRED_ATTR_BOOL, KERNEL_NAME)
 def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
                      kernel_name="softmax_grad_ext"):
     """
@@ -297,12 +300,13 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
     if grad.get("format") == "FRACTAL_NZ":
         axis = _check_nz_rule(grad, x1, x2, axis)
 
-    util.check_kernel_name(kernel_name)
 
     shape_grad, shape_x1, shape_max_mul = \
-        util.produce_shapes(shape_grad, shape_grad)
+        broadcast_shapes(shape_grad, shape_grad, param_name_input1="grad",
+                         param_name_input2="grad")
     shape_x1, shape_x2, shape_max_mul1 = \
-        util.produce_shapes(shape_x1, shape_x2)
+        broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1",
+                         param_name_input2="x2")
 
     data_grad = tvm.placeholder(shape_grad,
                                 name="data_grad",

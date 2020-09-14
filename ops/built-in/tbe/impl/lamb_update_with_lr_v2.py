@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # min float32 value
 MIN_FP32 = 2**(-126)
@@ -51,8 +52,9 @@ def true_div_compute(x1, x2, kernel_name="true_div"):
     shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
     shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = util.produce_shapes(shape_x1, shape_x2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
+                                                        param_name_input1="x1",
+                                                        param_name_input2="x2")
     data_x1 = te.lang.cce.broadcast(x1, shape_max)
     data_x2 = te.lang.cce.broadcast(x2, shape_max)
     res = te.lang.cce.vdiv(data_x1, data_x2)
@@ -80,8 +82,9 @@ def mul_compute(x1, x2, kernel_name="mul"):
     shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
     shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = util.produce_shapes(shape_x1, shape_x2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
+                                                     param_name_input1="x1",
+                                                     param_name_input2="x2")
     data_x1 = te.lang.cce.broadcast(x1, shape_max)
     data_x2 = te.lang.cce.broadcast(x2, shape_max)
     res = te.lang.cce.vmul(data_x1, data_x2)
@@ -109,8 +112,9 @@ def sub_compute(x1, x2, kernel_name="sub"):
     shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
     shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = util.produce_shapes(shape_x1, shape_x2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
+                                                     param_name_input1="x1",
+                                                     param_name_input2="x2")
     data_x1 = te.lang.cce.broadcast(x1, shape_max)
     data_x2 = te.lang.cce.broadcast(x2, shape_max)
     res = te.lang.cce.vsub(data_x1, data_x2)
@@ -192,7 +196,9 @@ def greater_compute(x, y, kernel_name="greater"):
     shape_x = te.lang.cce.util.shape_to_list(x.shape)
     shape_y = te.lang.cce.util.shape_to_list(y.shape)
     dtype = x.dtype.lower()
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                      param_name_input1="x",
+                                                      param_name_input2="y")
 
     if dtype in ("int8", "uint8"):
         x = te.lang.cce.cast_to(x, "float16")
@@ -293,79 +299,76 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4, greater_y,
     the list of inputs shape after broadcast
     """
     shape0 = input0.get("shape")
-    util.check_shape_rule(shape0)
-    util.check_shape_size(shape0, SHAPE_SIZE_LIMIT)
+    check_shape(shape0, param_name="input0")
 
     shape1 = input1.get("shape")
-    util.check_shape_rule(shape1)
-    util.check_shape_size(shape1, SHAPE_SIZE_LIMIT)
+    check_shape(shape1, param_name="input1")
 
     shape2 = input2.get("shape")
-    util.check_shape_rule(shape2)
-    util.check_shape_size(shape2, SHAPE_SIZE_LIMIT)
+    check_shape(shape2, param_name="input2")
 
     shape3 = input3.get("shape")
-    util.check_shape_rule(shape3)
-    util.check_shape_size(shape3, SHAPE_SIZE_LIMIT)
+    check_shape(shape3, param_name="input3")
 
     shape4 = input4.get("shape")
-    util.check_shape_rule(shape4)
-    util.check_shape_size(shape4, SHAPE_SIZE_LIMIT)
+    check_shape(shape4, param_name="input4")
 
     shape_greatery = greater_y.get("shape")
-    util.check_shape_rule(shape_greatery)
-    util.check_shape_size(shape_greatery, SHAPE_SIZE_LIMIT)
+    check_shape(shape_greatery, param_name="greater_y")
 
     shape_selecte = select_e.get("shape")
-    util.check_shape_rule(shape_selecte)
-    util.check_shape_size(shape_selecte, SHAPE_SIZE_LIMIT)
+    check_shape(shape_selecte, param_name="select_e")
 
     # broadcast input0,1,2 greater_y, select_e according to input3
-    shape2, shape3, shape_max_23 = util.produce_shapes(shape2, shape3)
-    shape0, shape3, shape_max_03 = util.produce_shapes(shape0, shape3)
-    shape1, shape3, shape_max_13 = util.produce_shapes(shape1, shape3)
-    shape_greatery, shape3, shape_max_3y = util.produce_shapes(
-        shape_greatery, shape3)
-    shape_selecte, shape3, shape_max_select3 = util.produce_shapes(
-        shape_selecte, shape3)
+    shape2, shape3, shape_max_23 = broadcast_shapes(shape2, shape3,
+                                                    param_name_input1="input2",
+                                                    param_name_input2="input3")
+    shape0, shape3, shape_max_03 = broadcast_shapes(shape0, shape3,
+                                                    param_name_input1="input0",
+                                                    param_name_input2="input3")
+    shape1, shape3, shape_max_13 = broadcast_shapes(shape1, shape3,
+                                                    param_name_input1="input1",
+                                                    param_name_input2="input3")
+    shape_greatery, shape3, shape_max_3y = broadcast_shapes(shape_greatery, shape3,
+                                                            param_name_input1="greater_y",
+                                                            param_name_input2="input3")
+    shape_selecte, shape3, shape_max_select3 = broadcast_shapes(shape_selecte, shape3,
+                                                                param_name_input1="select_e",
+                                                                param_name_input2="input3")
 
-    util.check_shape_size(shape_max_23, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_max_03, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_max_13, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_max_3y, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_max_select3, SHAPE_SIZE_LIMIT)
 
     # broadcast input0 greater_y
-    shape0, shape_greatery, shape_max_0y = util.produce_shapes(
-        shape0, shape_greatery)
-    util.check_shape_size(shape_max_0y, SHAPE_SIZE_LIMIT)
+    shape0, shape_greatery, shape_max_0y = broadcast_shapes(shape0, shape_greatery,
+                                                            param_name_input1="input0",
+                                                            param_name_input2="greater_y")
 
-    shape0, shape1, shape_max_01 = util.produce_shapes(shape0, shape1)
-    util.check_shape_size(shape_max_01, SHAPE_SIZE_LIMIT)
+    shape0, shape1, shape_max_01 = broadcast_shapes(shape0, shape1,
+                                                    param_name_input1="input0",
+                                                    param_name_input2="input1")
 
-    shape1, shape_greatery, shape_max_1y = util.produce_shapes(
-        shape1, shape_greatery)
-    util.check_shape_size(shape_max_1y, SHAPE_SIZE_LIMIT)
+    shape1, shape_greatery, shape_max_1y = broadcast_shapes(shape1, shape_greatery,
+                                                            param_name_input1="input1",
+                                                            param_name_input2="greater_y")
 
-    shape_selecte, shape_max_1y, shape_max_select0 = util.produce_shapes(
-        shape_selecte, shape_max_1y)
-    util.check_shape_size(shape_max_select0, SHAPE_SIZE_LIMIT)
+    shape_selecte, shape_max_1y, shape_max_select0 = broadcast_shapes(shape_selecte, shape_max_1y,
+                                                                      param_name_input1="select_e",
+                                                                      param_name_input2="shape_max_1y")
 
-    shape_selecte, shape_max_0y, shape_max_select1 = util.produce_shapes(
-        shape_selecte, shape_max_0y)
-    util.check_shape_size(shape_max_select1, SHAPE_SIZE_LIMIT)
+    shape_selecte, shape_max_0y, shape_max_select1 = broadcast_shapes(shape_selecte, shape_max_0y,
+                                                                      param_name_input1="select_e",
+                                                                      param_name_input2="shape_max_0y")
 
-    shape2, shape_max_select1, shape_max_mul0 = util.produce_shapes(
-        shape2, shape_max_select1)
-    util.check_shape_size(shape_max_mul0, SHAPE_SIZE_LIMIT)
+    shape2, shape_max_select1, shape_max_mul0 = broadcast_shapes(shape2, shape_max_select1,
+                                                                 param_name_input1="input2",
+                                                                 param_name_input2="shape_max_select1")
 
-    shape3, shape_max_mul0, shape_max_mul1 = util.produce_shapes(
-        shape3, shape_max_mul0)
-    util.check_shape_size(shape_max_mul1, SHAPE_SIZE_LIMIT)
+    shape3, shape_max_mul0, shape_max_mul1 = broadcast_shapes(shape3, shape_max_mul0,
+                                                              param_name_input1="input3",
+                                                              param_name_input2="shape_max_mul0")
 
-    shape4, shape_max_mul1, shape_max_sub0 = util.produce_shapes(
-        shape4, shape_max_mul1)
-    util.check_shape_size(shape_max_sub0, SHAPE_SIZE_LIMIT)
+    shape4, shape_max_mul1, shape_max_sub0 = broadcast_shapes(shape4, shape_max_mul1,
+                                                              param_name_input1="input4",
+                                                              param_name_input2="shape_max_mul1")
 
     return shape0, shape1, shape2, shape3, shape4,\
            shape_greatery, shape_selecte
@@ -427,7 +430,9 @@ def lamb_update_with_lr_v2_compute(input0,
     return sub_0
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 KERNEL_NAME)
 def lamb_update_with_lr_v2(input0,
                            input1,
                            input2,
@@ -478,7 +483,6 @@ def lamb_update_with_lr_v2(input0,
         _check_broadcast_shape(input0, input1, input2, input3, input4,
                                greater_y, select_e)
 
-    util.check_kernel_name(kernel_name)
 
     input_place0 = tvm.placeholder(shape0, name="input0", dtype=dtype0)
     input_place1 = tvm.placeholder(shape1, name="input1", dtype=dtype1)

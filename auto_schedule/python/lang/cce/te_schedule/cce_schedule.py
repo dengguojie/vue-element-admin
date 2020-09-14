@@ -25,6 +25,7 @@ import os
 import re
 import traceback
 import stat
+import itertools
 
 from functools import reduce as functools_reduce
 
@@ -32,6 +33,7 @@ import te.lang.cce
 
 from te import tvm
 from te import platform as cceconf
+from te.platform import log
 
 from te.platform import get_soc_spec
 from te.platform import conv_buffer_ex
@@ -104,6 +106,9 @@ from .strided_write_schedule import strided_write_schedule
 from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
 from .ascend_requant_schedule import ascend_requant_schedule
 from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
+from . import util as te_util # pylint: disable=E0401
+from .cosine_embedding_loss_schedule import \
+    cosine_embedding_loss_schedule
 
 
 def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
@@ -211,7 +216,8 @@ def verify_compute_tensor(tensors):
         if 'not_auto_cast' in tensor.op.tag or \
                 'convolution' in tensor.op.tag or \
                 'conv2d_backprop' in tensor.op.tag or \
-                'conv3d_backprop' in tensor.op.tag:
+                'conv3d_backprop' in tensor.op.tag or \
+                'matmul' in tensor.op.tag:
             return False
 
     # rule 2
@@ -229,16 +235,16 @@ def rl_search_proc(outs, option):
     # only support single output
     real_outs = outs
     if "rl_schedule_dict" in option:
-        print("start to call offline rl_search.")
+        log.info("start to call offline rl_search.")
         from schedule_search.offline_schedule import offline_schedule # pylint: disable=E0401
         schedule = offline_schedule(outs, option["rl_schedule_dict"])
     else:
-        print("start to call online rl_search.")
+        log.info("start to call online rl_search.")
         from schedule_search.online_infer import online_infer # pylint: disable=E0401
         schedule = online_infer(outs, option)
     return schedule, tensor_list, real_outs
 
-@generic.auto_schedule.register("cce")
+
 def schedule_cce(outs, option=None): # pylint: disable=R0912, R0914, R0915
     """
     schedule cce
@@ -390,6 +396,20 @@ def check_is_need_cast(out):
     -------
     Bool : true or false
     """
+    def crawl_anti_quant_tensor(out):
+        queue = [out]
+        visited = []
+        while queue:
+            head = queue.pop(0)
+            for tensor in head.op.input_tensors:
+                if tensor in visited:
+                    continue
+                if tensor.op.tag.startswith('anti_quant'):
+                    return True
+                visited.append(tensor)
+                queue.append(tensor)
+        return False
+
     str_list = out.op.tag.split("|")
     if 'emit_insn_elewise_binary_cmp' in str_list:
         return False
@@ -407,7 +427,10 @@ def check_is_need_cast(out):
         return False
     if out.op.tag.startswith("pooling3d_"):
         return False
-    if out.op.name.find("write_select") >= 0:
+    if out.op.name.find("write_select") >= 0 or \
+            out.op.name.find("strided_write") >= 0:
+        if crawl_anti_quant_tensor(out):
+            return False
         pre_op_str_list = out.op.input_tensors[0].op.tag.split("|")
         if 'quant' in pre_op_str_list:
             return False
@@ -515,6 +538,10 @@ PATTERN_SCHEDULE_FUNC_MAP = {
     OpPatterns.STRIDED_WRITE_PATTERN: strided_write_schedule,
     OpPatterns.BN_REDUCE_PATTERN: bn_reduce_schedule,
     OpPatterns.BN_UPDATE_PATTERN: bn_update_schedule,
+    OpPatterns.SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_PATTERN: logits_schedule,
+    OpPatterns.LAYER_NORM_GRAD_PATTERN: layer_norm_grad_schedule,
+    OpPatterns.L2LOSS_MUL_ADDN_PATTERN: l2loss_mul_addn_schedule,
+    OpPatterns.COSINE_EMBEDDING_LOSS_PATTERN: cosine_embedding_loss_schedule,
 }
 
 
@@ -536,7 +563,7 @@ def comm_pattern_schedule(pattern, op_info, outs):
         schedule = sch_func(outs[0], input_tensors)
         return schedule, spec_mid_list, outs
 
-    if pattern in [OpPatterns.BN_REDUCE_PATTERN, OpPatterns.BN_UPDATE_PATTERN]:
+    if pattern == OpPatterns.BN_UPDATE_PATTERN:
         spec_mid_list = []
         input_tensors = op_info["input_tensors"]
         sch_func = PATTERN_SCHEDULE_FUNC_MAP[pattern]
@@ -813,10 +840,9 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             OpPatterns.ASCEND_REQUANT_S16_PATTERN,
             OpPatterns.STRIDED_READ_PATTERN,
             OpPatterns.STRIDED_WRITE_PATTERN,
-            OpPatterns.BN_REDUCE_PATTERN,
             OpPatterns.BN_UPDATE_PATTERN,
             OpPatterns.READ_SELECT_PATTERN,
-            OpPatterns.WRITE_SELECT_PATTERN
+            OpPatterns.WRITE_SELECT_PATTERN,
     ]:
         outs_bak = list(outs)
         schedule, spec_mid_list, outs = comm_pattern_schedule(pattern, op_info, outs)
@@ -827,19 +853,34 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         pattern = OpPatterns.ELEMWISE_PATTERN
         outs = outs_bak
 
-
-    if pattern == OpPatterns.SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_PATTERN:
+    elif pattern in [OpPatterns.BN_REDUCE_PATTERN,
+                     OpPatterns.LAYER_NORM_GRAD_PATTERN,
+                     OpPatterns.L2LOSS_MUL_ADDN_PATTERN]:
+        spec_mid_list = []
         input_tensors = op_info["input_tensors"]
-        outs_bak = list(outs)
-        sch, spec_mid_list = logits_schedule(outs, input_tensors)
+        sch_func = PATTERN_SCHEDULE_FUNC_MAP[pattern]
+        sch = sch_func(outs, input_tensors)
         if sch is not None:
             return sch, spec_mid_list, outs
 
-        # if can't find valid sch, use old way process
+        # if can't find valid sch, use common sch
+        op_info = get_op_info(outs)
+        tensor_map = op_info["tensor_map"]
+
+    elif pattern in [OpPatterns.COSINE_EMBEDDING_LOSS_PATTERN,
+                     OpPatterns.SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_PATTERN]:
+        input_tensors = op_info["input_tensors"]
+        outs_bak = list(outs)
+        sch_func = PATTERN_SCHEDULE_FUNC_MAP[pattern]
+        sch, spec_mid_list = sch_func(outs, input_tensors)
+        if sch is not None:
+            return sch, spec_mid_list, outs
+
+        # if can't find valid sch, use common sch
         pattern = OpPatterns.OPAQUE_PATTERN
         outs = outs_bak
 
-    if pattern == OpPatterns.SOFTMAX_PATTERN:
+    elif pattern == OpPatterns.SOFTMAX_PATTERN:
         spec_mid_list = []
         outs_bak = list(outs)
         schedule, spec_mid_list = SoftmaxSchedule().do_schedule(outs)
@@ -852,7 +893,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         pattern = OpPatterns.OPAQUE_PATTERN
         outs = outs_bak
 
-    if pattern == OpPatterns.L2_LOSS_PATTERN:
+    elif pattern == OpPatterns.L2_LOSS_PATTERN:
         spec_mid_list = []
         input_tensors = op_info["input_tensors"]
         outs_bak = list(outs)
@@ -862,7 +903,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         pattern = OpPatterns.OPAQUE_PATTERN
         outs = outs_bak
 
-    if pattern == OpPatterns.BN_UPDATE_GRAD_PATTERN:
+    elif pattern == OpPatterns.BN_UPDATE_GRAD_PATTERN:
         spec_mid_list = []
         input_tensors = op_info["input_tensors"]
         shape_x = te.lang.cce.util.shape_to_list(input_tensors[-1].shape)
@@ -878,24 +919,6 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         op_info = get_op_info(outs)
         tensor_map = op_info["tensor_map"]
         pattern = op_info["pattern"]
-
-    if pattern == OpPatterns.LAYER_NORM_GRAD_PATTERN:
-        spec_mid_list = []
-        input_tensors = op_info["input_tensors"]
-        schedule = layer_norm_grad_schedule(outs, input_tensors)
-        if schedule is not None:
-            return schedule, spec_mid_list, outs
-        op_info = get_op_info(outs)
-        tensor_map = op_info["tensor_map"]
-
-    if pattern == OpPatterns.L2LOSS_MUL_ADDN_PATTERN:
-        spec_mid_list = []
-        input_tensors = op_info["input_tensors"]
-        schedule = l2loss_mul_addn_schedule(outs, input_tensors)
-        if schedule is not None:
-            return schedule, spec_mid_list, outs
-        op_info = get_op_info(outs)
-        tensor_map = op_info["tensor_map"]
 
     # solve reduce atomic compile performance
     tuple_reduce_flag = False
@@ -1077,8 +1100,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         sch_list = [pure_broadcast_schedule.do_schedule(outs[0], sch_list[0])]
         outs = pure_broadcast_schedule.get_real_outs()
     elif pattern == OpPatterns.CONV_PATTERN:
-        cce_conv_op = CceConvOp(cceconf.scope_ubuf, need_tensorize=True,
-                                need_pragma=True)
+        cce_conv_op = CceConvOp()
         if ConvParam.convbn1_flag:
             cce_conv_op.schedule(outs[-1], outs, sch_list,
                                  ConvParam.convbn1_flag)
@@ -1194,7 +1216,7 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
     None
     """
     if fusion_manager.get_build_cfg() == "disable":
-        ConvParam.l1_fusion_workspace_tensor_list = None
+        te_util.L1CommonParam.l1_fusion_tensors_map = None
         return
 
     def _write_workspace_info(workspace_list, kernel_name):
@@ -1264,14 +1286,32 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
         """
         update build config
         """
-        config = config_map.get("fusion_build_config",
-                                cceconf.cce_build.build_config)
+        config = cceconf.cce_build.build_config
+        fusion_config_map = config_map.get("fusion_build_config", {})
         build_map = {}
-        for attr in config_map:
+        for attr, value in itertools.chain(config_map.items(),
+                                           fusion_config_map.items()):
             if tvm.build_module.BuildConfig.is_build_config(attr):
-                build_map[attr] = config_map[attr]
+                build_map[attr] = value
+        if te_util.L1CommonParam.l1_fusion_tensors_map is not None:
+            build_map["dummy_placeholder"] = True
         config = cceconf.cce_build.build_config_update_list(config, build_map)
         return config
+
+    def get_l1_tensors(input_tensors, l1_tensors_map):
+        """
+        get L1 tensors order
+        """
+        if l1_tensors_map is None:
+            return []
+
+        l1_tensors_list = []
+        for ten_i in input_tensors:
+            l1_tensors_list.append(\
+                l1_tensors_map.get(ten_i, tvm.var("dummy")))
+
+        return l1_tensors_list
+
 
     def _build(sch, tensor_list, name="cce_op", ):
         """
@@ -1297,6 +1337,10 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
         config_map = {}
     elif "name" in config_map:
         util.check_kernel_name(config_map["name"])
+
+    # for RL tune getting tensor_list
+    fusion_manager.set_tensor_list(config_map.get("tensor_list", []))
+
     config_map.setdefault("l1_fusion_option",
                           cceconf.get_L1_info("L1_fusion_enabled"))
     config_map.setdefault("l2_fusion_option",
@@ -1339,20 +1383,18 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
         if tensor not in config_tensor_list_tmp:
             special_tensor_list.append(tensor)
 
-    l1_fusion_special_tensor_list = ConvParam.l1_fusion_workspace_tensor_list
-    ConvParam.l1_fusion_workspace_tensor_list = None
-    if l1_fusion_special_tensor_list is None:
-        l1_fusion_special_tensor_list = []
-
     tensor_list = config_tensor_list_tmp + special_tensor_list
 
     tensor_list = check_quantfuse_doubleout(tensor_list, sch)
     ConvParam.conv_deq_req_double_out = False
 
-    tensor_list = tensor_list + l1_fusion_special_tensor_list
+    l1_fusion_tensors = get_l1_tensors(tensor_list, te_util.L1CommonParam.l1_fusion_tensors_map)
+    te_util.L1CommonParam.l1_fusion_tensors_map = None
+
+    tensor_list = tensor_list + l1_fusion_tensors
     _build(sch, tensor_list, local_config_map["name"])
-    _write_workspace_info(special_tensor_list + l1_fusion_special_tensor_list,
-                          local_config_map["name"])
+    _write_workspace_info(special_tensor_list, local_config_map["name"])
+
     cceconf.cce_emitinsn_params.cceEmitParamsIns.clear_param()
 
 
@@ -1389,8 +1431,8 @@ class ScheduleDispatch:
 
     @handle_case.register('convolution')
     def _(self, case, tensor, scope, spec_node_list, sch_list):
-        op = CceConvOp(scope, need_tensorize=True, need_pragma=True)
-        return op.schedule(tensor, spec_node_list, sch_list)
+        conv2d_op = CceConvOp()
+        return conv2d_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('conv2d_backprop_input')
     def _(self, case, tensor, spec_node_list, sch_list):

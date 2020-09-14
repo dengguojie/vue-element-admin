@@ -14,10 +14,14 @@ http://www.apache.org/licenses/LICENSE-2.0
 ascend_quant
 """
 from functools import reduce as function_reduce
+import copy
 import te.lang.cce
 from te import tvm
 from te import platform as cceconf
-from topi.cce.util import is_mini_version
+from te.platform.cce_conf import CceProductParams as pver
+from te.platform import cce_emitinsn_params
+from .elewise_schedule_new import ElewiseSchedule
+from .util import dfs_tensor_graph
 
 # define the tensor name
 CAST_F16_NAME = "cast_f16_ub"
@@ -36,7 +40,7 @@ DTYPE_SIZE_MAP = {"float16": 2,
                   "float32": 4}
 
 
-def _tilling_axis(shape, dtype_size, tensor_num):
+def _tilling_axis(shape, dtype_size, tensor_num, res):
     """
     get the split axis and factor by ub size
 
@@ -51,13 +55,12 @@ def _tilling_axis(shape, dtype_size, tensor_num):
     split_axis and split_factor
     """
     shape_new = list(shape).copy()
-    total_size = (cceconf.CceProductParams().getParams(
-        "Unified_Buffer") - 1024) // dtype_size
+    total_size = (cceconf.get_soc_spec("UB_SIZE") - 1024) // dtype_size
     max_ub_count = total_size // tensor_num
     total_ele = max_ub_count // 2
     split_axis = 0
     split_factor = 1
-    block_num = cceconf.CceProductParams().getParams("Device_core_num")
+    block_num = _get_block_num(res)
     val_cnt = 1
     index_cnt = 0
 
@@ -100,20 +103,12 @@ def _round_emit_insn(round_mode):
     -------
     instruction
     """
-    if is_mini_version():
+    emit_insn_str = 'vector_conv_%s' % round_mode.value.lower()
+    if pver().is_mini_version():
         # mini
-        emit_insn_str = "vector_conv"
-    else:
-        if round_mode == "Round":
-            emit_insn_str = "vector_conv_round"
-        elif round_mode == "Ceil":
-            emit_insn_str = "vector_conv_ceil"
-        elif round_mode == "Floor":
-            emit_insn_str = "vector_conv_floor"
-        elif round_mode == "Trunc":
-            emit_insn_str = "vector_conv_trunc"
-        else:
-            emit_insn_str = "vector_conv"
+        emit_insn_str = 'vector_conv'
+    if round_mode == "Round":
+        emit_insn_str = 'vector_conv'
     return emit_insn_str
 
 
@@ -129,13 +124,23 @@ def _reorder_by_split_c0(tensor):
     -------
     None
     """
+    num = len(tensor.op.axis)
     factor = 16
-    c0o, c0i = tensor.split(tensor.op.axis[3], factor)
-    tensor.reorder(tensor.op.axis[0],
-                   tensor.op.axis[1],
-                   tensor.op.axis[2],
-                   c0o,
-                   c0i)
+    if num == 4:
+        c0o, c0i = tensor.split(tensor.op.axis[3], factor)
+        tensor.reorder(tensor.op.axis[0],
+                       tensor.op.axis[1],
+                       tensor.op.axis[2],
+                       c0o,
+                       c0i)
+    else:
+        c0o, c0i = tensor.split(tensor.op.axis[4], factor)
+        tensor.reorder(tensor.op.axis[0],
+                       tensor.op.axis[1],
+                       tensor.op.axis[2],
+                       tensor.op.axis[3],
+                       c0o,
+                       c0i)
 
 
 def _reorder_by_split_c1(tensor):
@@ -259,6 +264,10 @@ def _set_buffer_emit_insn(sch, tensor_list, axis_inner, attr_dic):
         sch[tensor_map.get(CAST_I8_NAME)].op.axis[0], round_emit_insn)
     sch[tensor_map.get(INPUT_NAME)].emit_insn(
         sch[tensor_map.get(INPUT_NAME)].op.axis[0], in_dma)
+    align_length = attr_dic.get("HWC0")
+    l1_fusion_flag = attr_dic.get("l1_fusion_flag")
+    if l1_fusion_flag != -1 and align_length > 0:
+        sch[res].bind_buffer(res.op.axis[1], align_length, 0)
     sch[res].emit_insn(axis_inner, 'dma_copy')
 
 
@@ -296,7 +305,7 @@ def _bind_fuse(fused_value, fused_list, axis_outer_num, sch, res,
     """
     bind the fused axis.
     """
-    core_num = cceconf.CceProductParams().getParams("Device_core_num")
+    core_num = cceconf.get_soc_spec("CORE_NUM")
     bind_axis = axis_outer
     if fused_list:
         if fused_value * axis_outer_num <= core_num:
@@ -346,11 +355,11 @@ def _bind_core(out_shape, sch, res, tensor_map):
                        out_shape[2],
                        2,
                        out_shape[3] // 2)
-    core_num = cceconf.CceProductParams().getParams("Device_core_num")
+    core_num = _get_block_num(res)
     split_axis, split_factor = _tilling_axis(
         res_split_shape,
         DTYPE_SIZE_MAP.get(tensor_map.get(INPUT_NAME).dtype.lower()),
-        4)
+        4, res)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
                                             factor=split_factor)
     bind_axis = 0
@@ -389,10 +398,11 @@ def _get_tensor_map(res, tensor_map):
 
     Returns
     -------
-    None
+    is_fuse_flag
     """
+    is_fuse_flag = False
     if res is None:
-        return
+        return False
     stack = [res]
     visited_list = []
     while stack:
@@ -402,8 +412,22 @@ def _get_tensor_map(res, tensor_map):
             if in_tensor not in visited_list:
                 stack.append(in_tensor)
                 tensor_map[in_tensor.name] = in_tensor
-    if "input_x" in tensor_map:
-        tensor_map.pop("input_x")
+                tag = in_tensor.op.tag
+                if tag and tag.find("elewise") != -1:
+                    is_fuse_flag = True
+                    break
+    return is_fuse_flag
+
+
+def _get_block_num(res):
+    """
+    get the core number
+    """
+    core_num = cceconf.get_soc_spec("CORE_NUM")
+    l1_fusion_flag = res.op.attrs['l1_fusion_flag'].value
+    if l1_fusion_flag != -1:
+        return 1
+    return core_num
 
 
 def ascend_quant_schedule(res, input_tensors):
@@ -419,21 +443,251 @@ def ascend_quant_schedule(res, input_tensors):
     -------
     the result of schedule
     """
-    input_shape = te.lang.cce.util.shape_to_list(input_tensors[0].shape)
     out_shape = te.lang.cce.util.shape_to_list(res.shape)
     sch = tvm.create_schedule(res.op)
     tensor_map = {}
-    _get_tensor_map(res, tensor_map)
-    attr_dic = {
-        "scale": res.op.attrs['scale'],
-        "sqrt_mode": res.op.attrs['sqrt_mode'],
-        "offset": res.op.attrs['offset'],
-        "round_mode": res.op.attrs['round_mode'],
-        "input_c1": input_shape[1]
-    }
-    _set_buffer_scope(sch, tensor_map)
-    _reorder_buffer(sch, res, tensor_map)
-    axis_outer, axis_inner = _bind_core(out_shape, sch, res, tensor_map)
-    _set_buffer_compute_at(sch, res, tensor_map, axis_outer)
-    _set_buffer_emit_insn(sch, (res, tensor_map), axis_inner, attr_dic)
+    is_fuse_flag = _get_tensor_map(res, tensor_map)
+    if is_fuse_flag:
+        schedule = QuantSchedule()
+        schedule.do_schedule([res], [sch], [])
+    else:
+        attr_dic = {
+            "scale": res.op.attrs['scale'],
+            "sqrt_mode": res.op.attrs['sqrt_mode'],
+            "offset": res.op.attrs['offset'],
+            "round_mode": res.op.attrs['round_mode'],
+            "input_c1": res.op.attrs['c1_dim'].value,
+            "l1_fusion_flag": res.op.attrs['l1_fusion_flag'].value,
+            'input_format': res.op.attrs['input_format'],
+            'addr_type': res.op.attrs['addr_type'].value,
+            'HWC0': res.op.attrs['HWC0'].value
+        }
+        l1_fusion_flag = attr_dic.get("l1_fusion_flag")
+        if "input_x" in tensor_map:
+            tensor = tensor_map.pop("input_x")
+            attr_type = 0
+            if tensor.op.attrs:
+                if 'addr_type' in tensor.op.attrs:
+                    attr_type = tensor.op.attrs["addr_type"].value
+            if l1_fusion_flag != -1 and attr_type == 1:
+                sch[tensor].set_scope(cceconf.scope_cbuf_fusion)
+        out_addr_type = attr_dic.get("addr_type")
+        if l1_fusion_flag != -1 and out_addr_type == 1:
+            sch[res].set_scope(cceconf.scope_cbuf_fusion)
+        _set_buffer_scope(sch, tensor_map)
+        _reorder_buffer(sch, res, tensor_map)
+        axis_outer, axis_inner = _bind_core(out_shape, sch, res, tensor_map)
+        _set_buffer_compute_at(sch, res, tensor_map, axis_outer)
+        _set_buffer_emit_insn(sch, (res, tensor_map), axis_inner, attr_dic)
     return sch
+
+
+class QuantSchedule(ElewiseSchedule):
+    """
+    class of cce quant schedule
+
+    Parameters
+    ----------
+    ElewiseSchedule: base class of elewise schedule
+
+    Returns
+    -------
+    QuantSchedule_instance : instance of QuantSchedule
+    """
+
+    def __init__(self):
+        ElewiseSchedule.__init__(self, True)
+        self.attrs = {}
+
+    def _get_res_attrs(self):
+        """
+        get the attrs carried by the tensor
+        """
+        self.attrs["scale"] = self._last_output_tensor.op.attrs['scale']
+        self.attrs["sqrt_mode"] = self._last_output_tensor.op.attrs[
+            'sqrt_mode']
+        self.attrs["offset"] = self._last_output_tensor.op.attrs['offset']
+        self.attrs["round_mode"] = self._last_output_tensor.op.attrs[
+            'round_mode']
+        self.attrs["input_format"] = self._last_output_tensor.op.attrs[
+            'input_format']
+        self.attrs["c1_dim"] = self._last_output_tensor.op.attrs[
+            'c1_dim'].value
+        self.attrs["addr_type"] = self._last_output_tensor.op.attrs[
+            'addr_type']
+        self.attrs["HWC0"] = self._last_output_tensor.op.attrs['HWC0']
+
+    def _calculate_emit_insn_map(self, tensor):
+        """
+        Get the instruction map of tensor
+
+        Parameters:
+        ----------
+        tensor: the tensor
+
+        Returns
+        -------
+        Instruction map string
+        """
+        round_emit_insn = _round_emit_insn(self.attrs.get("round_mode"))
+        if tensor.op.tag.find("|") != -1:
+            str_list = tensor.op.tag.split("|")
+            insn = self._insn_map.get(str_list[0])
+            if insn and self._check_cast_support(tensor):
+                return insn
+            insn = self._reg_insn_map.get(str_list[0])
+        else:
+            insn = self._insn_map.get(tensor.op.tag)
+            if insn and self._check_cast_support(tensor):
+                return insn
+            insn = self._reg_insn_map.get(tensor.op.tag)
+            if insn is None:
+                if tensor.op.tag == "quant":
+                    insn = "dma_copy"
+                elif tensor.op.name == "cast_i8_ub":
+                    insn = round_emit_insn
+                elif tensor.op.name == "input_ub" and \
+                        self.attrs["c1_dim"] % 2 != 0:
+                    insn = "dma_padding"
+                else:
+                    insn = "vector_auto"
+        return insn
+
+    def _calculate_cache_write(self):
+        """
+        cache read operations
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        list : read buffers
+        """
+        for i in self._mid_tensors:
+            if i.op.name == "input_ub" and self.attrs["c1_dim"] % 2 == 0:
+                self._cache_write_exclude_tensors.append(i)
+            if i not in self._cache_write_exclude_tensors:
+                self._cache_write_tensors.append(i)
+
+        if self._last_output_tensor not in self._cache_write_exclude_tensors:
+            # in order to avoid last axis broadcast tensor as output tensor
+            # do cache_write
+            if self._last_output_tensor.op.tag == "elewise_binary_phony":
+                self._elewise_binary_phony_as_output = True
+                return
+
+    def _do_cache_write(self):
+        """
+        cache write operations
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        for i in self._cache_write_tensors:
+            self._cache_write_tensors_and_buffer_map[i] = i
+            self._schedule[i].set_scope(cceconf.scope_ubuf)
+        if self._out_tensors:
+            visited, input_tensors, mid_tensors, tensor_map = dfs_tensor_graph(
+                self._out_tensors[0])
+            for tensor in self._out_tensors[1:]:
+                dfs_tensor_graph(tensor, True, visited, input_tensors,
+                                 mid_tensors, tensor_map)
+            kernel_name = input_tensors[0].name.split("__")[-1]
+            reuse_dict = cce_emitinsn_params.cceEmitParamsIns.get_param(
+                "InputReuseDict_" + kernel_name)
+            if reuse_dict is not None:
+                for i, j in reuse_dict.items():
+                    out_tensor = j
+                    if j in self._temp_out_tensors:
+                        out_tensor = self._temp_out_tensors[j]
+                    self._schedule[i].reused_by(out_tensor)
+
+    def do_schedule(self, out_tensors, sch_list, spec_node_list):
+        """
+        auto_schedule for cce AI-CORE
+
+        Parameters
+        ----------
+        out_tensors : the out tvm.tensor
+
+        sch : schedule, the computation schedule for the op
+
+        spec_node_list : special node list
+
+        Returns
+        -------
+        Bool, now is true
+
+        """
+        self._spec_node_list = spec_node_list
+        self._out_tensors = copy.copy(out_tensors)
+
+        if sch_list[0] is not None:
+            self._schedule = sch_list[0]
+
+        is_success = self._construct_compute_graph(out_tensors, [])
+        if not is_success:
+            return False
+
+        self._get_res_attrs()
+
+        self._calculate_cache_read()
+        self._do_cache_read()
+
+        self._calculate_cache_write()
+        self._do_cache_write()
+
+        self.reorder_buffer()
+
+        self._calculate_tiling()
+        self._do_tiling()
+
+        self._do_buffer_tile()
+
+        self._calculate_compute_inline()
+        self._do_compute_inline()
+
+        self._calculate_multi_core()
+        self._do_multi_core()
+
+        self._calculate_compute_at()
+        self._do_compute_at()
+
+        self._calculate_emit_insn()
+        self._do_emit_insn()
+
+        self._calculate_double_buffer()
+        self._do_double_buffer()
+
+        return self._schedule_valid
+
+    def reorder_buffer(self):
+        """
+        reorder reform tensors
+        """
+        split_c0_list = ["reform_by_vmuls", "reform_by_vadds"]
+        for i in self._cache_write_tensors:
+            name = i.op.name
+            if name is not None and name in split_c0_list:
+                _reorder_by_split_c0(self._schedule[i])
+
+    def _calculate_compute_inline(self):
+        """
+        Calculate the tensor that needs compute inline
+
+        Parameters:
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self._compute_inline_tensors.extend(self._cache_write_exclude_tensors)

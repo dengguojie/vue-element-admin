@@ -22,6 +22,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = 2
 SCALAR_TWO = 2
@@ -52,6 +53,8 @@ def matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
     input_help_shape = te.lang.cce.util.shape_to_list(input_help.shape)
     input_diagonal_dtype = input_diagonal.dtype
 
+    if input_diagonal_dtype in ("int8", "uint8"):
+        input_diagonal = te.lang.cce.cast_to(input_diagonal, "float16")
     res_broadcast = te.lang.cce.broadcast(input_diagonal, input_help_shape)
     res = te.lang.cce.vmul(res_broadcast, input_help)
     if input_diagonal_dtype in ("int8", "uint8"):
@@ -61,7 +64,7 @@ def matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def matrix_diag_d(input_diagonal, input_help, output_diagonal,
                   kernel_name="matrix_diag_d"):
     """
@@ -88,18 +91,14 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
     input_help_shape = input_help.get("shape")
     input_help_dtype = input_help.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_diagonal_shape)
-    util.check_shape_rule(input_help_shape)
-    util.check_tensor_shape_size(input_diagonal_shape)
-    util.check_tensor_shape_size(input_help_shape)
+    check_shape(input_diagonal_shape, param_name="input_diagonal")
+    check_shape(input_help_shape, param_name="input_help")
 
     input_diagonal_shape_chgshape = list(input_diagonal_shape)
     # The penultimate dimension of the input_diagonal_shape is
     # extended for broadcast
     input_diagonal_shape_chgshape.insert(-1, 1)
-    util.check_shape_rule(input_diagonal_shape_chgshape)
-    util.check_tensor_shape_size(input_diagonal_shape_chgshape)
+    check_shape(input_diagonal_shape_chgshape, param_name="input_diagonal")
 
     if len(input_help_shape) < SCALAR_TWO:
         raise RuntimeError("Only the rank of input tensors >= 2 are supported!")
@@ -109,9 +108,9 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     input_diagonal_dtype = input_diagonal_dtype.lower()
-    util.check_dtype_rule(input_diagonal_dtype, check_list)
+    check_dtype(input_diagonal_dtype, check_list, param_name="input_diagonal")
     input_help_dtype = input_help_dtype.lower()
-    util.check_dtype_rule(input_help_dtype, check_list)
+    check_dtype(input_help_dtype, check_list, param_name="input_help")
 
     input_diagonal = tvm.placeholder(input_diagonal_shape_chgshape,
                                      name="input_diagonal",

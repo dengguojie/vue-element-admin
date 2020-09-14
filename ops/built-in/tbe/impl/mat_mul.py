@@ -219,17 +219,17 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     src_dtype = input_x1.get("dtype")
+    cube_type = ["float16", "int8"]
     if (format_a == "FRACTAL_NZ" or format_b == "FRACTAL_NZ") and \
-            src_dtype == "float16":
+            src_dtype in cube_type:
         return True
-    shape_a = input_x1.get("shape")
-    shape_b = input_x2.get("shape")
+    shape_a = input_x1.get("ori_shape")
+    shape_b = input_x2.get("ori_shape")
     src_dtype = input_x1.get("dtype")
     check_shape(shape_a, param_name="input_x1")
     check_shape(shape_b, param_name="input_x2")
     trans_a_f = bool(1 - trans_a)
     target_type = ["float32", "int32"]
-    cube_type = ["float16", "int8"]
     res = True
     if src_dtype in target_type:
         if len(shape_a) != 2 and len(shape_b) != 2:
@@ -328,20 +328,12 @@ def mat_mul_compute(input_x1, input_x2, bias, offset_w={}, output_y={},
     dst_dtype = output_y.get("dtype").lower()
     src_dtype = input_x1.dtype.lower()
 
-    if src_dtype == 'int8':
-        result = te.lang.cce.matmul(tensor_a=input_x1, tensor_b=input_x2,
-                                    trans_a=trans_a_local,
-                                    trans_b=trans_b_local,
-                                    format_a=format_a, format_b=format_b,
-                                    alpha_num=1.0, beta_num=0.0,
-                                    dst_dtype="float16", tensor_bias=bias)
-    else:
-        result = te.lang.cce.matmul(tensor_a=input_x1, tensor_b=input_x2,
-                                    trans_a=trans_a_local,
-                                    trans_b=trans_b_local,
-                                    format_a=format_a, format_b=format_b,
-                                    alpha_num=1.0, beta_num=0.0,
-                                    dst_dtype=dst_dtype, tensor_bias=bias)
+    result = te.lang.cce.matmul(tensor_a=input_x1, tensor_b=input_x2,
+                                trans_a=trans_a_local,
+                                trans_b=trans_b_local,
+                                format_a=format_a, format_b=format_b,
+                                alpha_num=1.0, beta_num=0.0,
+                                dst_dtype=dst_dtype, tensor_bias=bias)
 
     return result
 

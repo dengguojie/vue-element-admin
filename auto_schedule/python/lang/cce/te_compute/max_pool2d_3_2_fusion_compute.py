@@ -19,7 +19,7 @@ max_pool_v200
 from __future__ import division
 import math
 from te import tvm
-
+from te.platform import cce_conf
 
 class MaxPoolParam:
     """
@@ -54,6 +54,23 @@ def shape_to_list(shape):
     for i in shape:
         tmp.append(i.value)
     return tmp
+
+
+def is_support_v200():
+    """
+    check if Ascend610/Ascend710/Hi3796CV300CS version
+    ----------
+
+    Returns
+    -------
+    True:  Ascend610/Ascend710/Hi3796CV300CS version
+    False: Other version
+    """
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    if soc_version in ("Ascend710", "Ascend610", "Hi3796CV300CS"):
+        return True
+    return False
+
 
 NAME = "pooling2d_max_"
 OP_TAG = "pooling2d_max_"
@@ -291,63 +308,110 @@ def max_pooling_padding(input_data, padding, dtype):
                  data_shape[4]]
     h_last = data_shape[2] + padding[0]
     w_last = data_shape[3] + padding[2]
-    zero_value = tvm.const(0, dtype)
     pad_align = pad_shape
     pad_align[3] = (pad_shape[3] + C0_SIZE - 1) // C0_SIZE * C0_SIZE
 
-    pad_data = \
-        tvm.compute(
-            pad_align,
-            lambda n, c1, h, w, c0:
-            tvm.select(
-                w > padding[2] - 1,
-                tvm.select(w < w_last,
-                           tvm.select(h > padding[0] - 1,
-                                      tvm.select(h < h_last,
-                                                 input_data(n,
-                                                            c1,
-                                                            h -
-                                                            padding[0],
-                                                            w -
-                                                            padding[2],
-                                                            c0),
-                                                 ),
-                                      ),
-                           ),
-                ),
-            name=NAME + "max_pooling_pad_data",
-            tag=OP_TAG + "max_pooling_pad_data")
+    def padding_v100():
+        zero_padding = tvm.compute(pad_shape,
+                                   lambda *indice:
+                                   tvm.convert(0).astype(input_data.dtype),
+                                   name="max_pooling_pad_init_zero",
+                                   tag="max_pooling_pad_init_zero")
+        pad_data = \
+            tvm.compute(
+                pad_align,
+                lambda n, c1, h, w, c0:
+                tvm.select(
+                    w > padding[2] - 1,
+                    tvm.select(w < w_last,
+                               tvm.select(h > padding[0] - 1,
+                                          tvm.select(h < h_last,
+                                                     input_data(n,
+                                                                c1,
+                                                                h -
+                                                                padding[0],
+                                                                w -
+                                                                padding[2],
+                                                                c0),
+                                                     zero_padding(n, c1,
+                                                                  h, w, c0)
+                                                     ),
+                                          zero_padding(n, c1, h, w, c0)
+                                          ),
+                               zero_padding(n, c1, h, w, c0)
+                               ),
+                    zero_padding(n, c1, h, w, c0)
+                    ),
+                name=NAME + "max_pooling_pad_data",
+                tag=OP_TAG + "max_pooling_pad_data")
 
-    pad_top = tvm.compute(pad_align,
-                          lambda *i:
-                          tvm.select(i[2] < padding[0], zero_value),
-                          name="max_pooling_pad_top")
-    pad_bottom = tvm.compute(pad_align,
+        MaxPoolParam.update_tensormap("max_pooling_pad_data", pad_data)
+
+        return pad_data
+
+    def padding_v200():
+        zero_value = tvm.const(0, dtype)
+        pad_data = \
+            tvm.compute(
+                pad_align,
+                lambda n, c1, h, w, c0:
+                tvm.select(
+                    w > padding[2] - 1,
+                    tvm.select(w < w_last,
+                               tvm.select(h > padding[0] - 1,
+                                          tvm.select(h < h_last,
+                                                     input_data(n,
+                                                                c1,
+                                                                h -
+                                                                padding[0],
+                                                                w -
+                                                                padding[2],
+                                                                c0),
+                                                     ),
+                                          ),
+                               ),
+                    ),
+                name=NAME + "max_pooling_pad_data",
+                tag=OP_TAG + "max_pooling_pad_data")
+
+        pad_top = tvm.compute(pad_align,
+                              lambda *i:
+                              tvm.select(i[2] < padding[0], zero_value),
+                              name="max_pooling_pad_top")
+        pad_bottom = tvm.compute(pad_align,
+                                 lambda *i:
+                                 tvm.select(i[2] >= h_last, zero_value),
+                                 name="max_pooling_pad_bottom")
+        pad_left = tvm.compute(pad_align,
+                               lambda *i:
+                               tvm.select(i[3] < padding[2], zero_value),
+                               name="max_pooling_pad_left")
+        pad_right = tvm.compute(pad_align,
+                                lambda *i:
+                                tvm.select(i[3] >= w_last, zero_value),
+                                name="max_pooling_pad_right")
+        pad_vn = tvm.compute(pad_align,
                              lambda *i:
-                             tvm.select(i[2] >= h_last, zero_value),
-                             name="max_pooling_pad_bottom")
-    pad_left = tvm.compute(pad_align,
-                           lambda *i:
-                           tvm.select(i[3] < padding[2], zero_value),
-                           name="max_pooling_pad_left")
-    pad_right = tvm.compute(pad_align,
-                            lambda *i:
-                            tvm.select(i[3] >= w_last, zero_value),
-                            name="max_pooling_pad_right")
-    pad_vn = tvm.compute(pad_align,
-                         lambda *i:
-                         pad_data[i] + pad_top[i] + pad_bottom[i] +
-                         pad_left[i] + pad_right[i],
-                         name="max_pooling_pad_vn")
+                             pad_data[i] + pad_top[i] + pad_bottom[i] +
+                             pad_left[i] + pad_right[i],
+                             name="max_pooling_pad_vn")
 
-    MaxPoolParam.update_tensormap("max_pooling_pad_data", pad_data)
-    MaxPoolParam.update_tensormap("max_pooling_pad_top", pad_top)
-    MaxPoolParam.update_tensormap("max_pooling_pad_bottom", pad_bottom)
-    MaxPoolParam.update_tensormap("max_pooling_pad_left", pad_left)
-    MaxPoolParam.update_tensormap("max_pooling_pad_right", pad_right)
-    MaxPoolParam.update_tensormap("max_pooling_pad_vn", pad_vn)
+        MaxPoolParam.update_tensormap("max_pooling_pad_data", pad_data)
+        MaxPoolParam.update_tensormap("max_pooling_pad_top", pad_top)
+        MaxPoolParam.update_tensormap("max_pooling_pad_bottom", pad_bottom)
+        MaxPoolParam.update_tensormap("max_pooling_pad_left", pad_left)
+        MaxPoolParam.update_tensormap("max_pooling_pad_right", pad_right)
+        MaxPoolParam.update_tensormap("max_pooling_pad_vn", pad_vn)
 
-    return pad_vn, pad_shape
+        return pad_vn
+
+    if is_support_v200():
+        pad_res = padding_v200()
+    else:
+        pad_res = padding_v100()
+
+
+    return pad_res, pad_shape
 
 
 def get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
@@ -388,6 +452,10 @@ def get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
         pad_cols = (out_size_w - 1)*strides[1] \
                    + ((ksize[1] - 1)*dilation[1] + 1) - input_5d_shape[3]
         pad_right = pad_cols - padding[2]
+    else:
+        pad_bottom = padding[1]
+        pad_right = padding[3]
+
     if pad_bottom < 0:
         pad_bottom = 0
     if pad_right < 0:

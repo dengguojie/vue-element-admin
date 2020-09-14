@@ -89,9 +89,9 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "dtype",
-                "param1_name": "tensor_alpha_type",
+                "param1_name": "alpha",
                 "param1_value": "{}".format(tensor_alpha.dtype),
-                "param2_name": "tensor_beta_type",
+                "param2_name": "beta",
                 "param2_value": "{}".format(tensor_beta.dtype)
             }
             raise RuntimeError(args_dict,
@@ -101,9 +101,9 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "dtype",
-                "param1_name": "dst_dtype",
+                "param1_name": "y",
                 "param1_value": "{}".format(dst_dtype),
-                "param2_name": "tensor_alpha_type",
+                "param2_name": "alpha",
                 "param2_value": "{}".format(tensor_alpha.dtype)
             }
             raise RuntimeError(args_dict,
@@ -125,7 +125,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         if dst_dtype not in ("float16", "float32", "int32"):
             args_dict = {
                 "errCode": "E60005",
-                "param_name": "dst_type",
+                "param_name": "y",
                 "expected_dtype_list": "[float16, float32,int32]",
                 "dtype": "{}".format(dst_dtype)
             }
@@ -136,7 +136,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         if format_a not in ("ND", "fractal"):
             args_dict = {
                 "errCode": "E60004",
-                "param_name": "format_a",
+                "param_name": "a",
                 "expected_format_list": "[ND, fractal]",
                 "format": "{}".format(format_a)
             }
@@ -146,7 +146,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         if format_b not in ("ND", "fractal"):
             args_dict = {
                 "errCode": "E60004",
-                "param_name": "format_b",
+                "param_name": "b",
                 "expected_format_list": "[ND, fractal]",
                 "format": "{}".format(format_b)
             }
@@ -157,7 +157,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         if is_fractal_a and not is_fractal_b:
             args_dict = {
                 "errCode": "E60114",
-                "reason": "Not support A is fractal and B is ND!",
+                "reason": "Not support a is fractal and b is ND!",
                 "value": "is_fractal_a = {} and is_fractal_b"
                          " = {}".format(is_fractal_a, is_fractal_b)
             }
@@ -167,10 +167,10 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         if (is_fractal_a == is_fractal_b) and (shape_len_a != shape_len_b):
             args_dict = {
                 "errCode": "E60002",
-                "attr_name": "shape_len",
-                "param1_name": "shape_len_a",
+                "attr_name": "dim",
+                "param1_name": "a",
                 "param1_value": "{}".format(shape_len_a),
-                "param2_name": "shape_len_b",
+                "param2_name": "b",
                 "param2_value": "{}".format(shape_len_b)
             }
             raise RuntimeError(args_dict,
@@ -184,7 +184,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if shape_len_a not in (4, 5):
                 args_dict = {
                     "errCode": "E60006",
-                    "param_name": "shape_len_a",
+                    "param_name": "tensor a",
                     "expected_length": "[4,5]",
                     "length": "{}".format(shape_len_a)
                 }
@@ -194,7 +194,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if shape_len_a not in (2, 3):
                 args_dict = {
                     "errCode": "E60006",
-                    "param_name": "shape_len_a",
+                    "param_name": "tensor a",
                     "expected_length": "[2,3]",
                     "length": "{}".format(shape_len_a)
                 }
@@ -205,7 +205,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if shape_len_b not in (4, 5):
                 args_dict = {
                     "errCode": "E60006",
-                    "param_name": "shape_len_b",
+                    "param_name": "tensor b",
                     "expected_length": "[4,5]",
                     "length": "{}".format(shape_len_b)
                 }
@@ -215,7 +215,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if shape_len_b not in (2, 3):
                 args_dict = {
                     "errCode": "E60006",
-                    "param_name": "shape_len_b",
+                    "param_name": "tensor b",
                     "expected_length": "[2,3]",
                     "length": "{}".format(shape_len_b)
                 }
@@ -226,11 +226,11 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if tensor_a.shape[0].value != tensor_b.shape[0].value:
                 args_dict = {
                     "errCode": "E60002",
-                    "attr_name": "shape_batch_size",
-                    "param1_name": "tensor_a_shape_value",
+                    "attr_name": "shape",
+                    "param1_name": "tensor a",
                     "param1_value": "{}".format(tensor_a.shape[0].value),
-                    "param2_name": "tensor_b_shape_value",
-                    "param2_value": "tensor_b.shape[0].value"
+                    "param2_name": "tensor b",
+                    "param2_value": "{}".format(tensor_b.shape[0].value)
                 }
                 raise RuntimeError(args_dict,
                                    err_man.get_error_message(args_dict))
@@ -264,7 +264,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if a_block_reduce != k_block_size:
                 args_dict = {
                     "errCode": "E60101",
-                    "param_name": "a_block_reduce",
+                    "param_name": "tensor a",
                     "expected_two_dims": "({},{})".format(cce.BLOCK_IN,
                                                           cce.BLOCK_VECTOR),
                     "actual_two_dim": "{}".format(a_block_reduce)
@@ -275,7 +275,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if a_block_in not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
                 args_dict = {
                     "errCode": "E60101",
-                    "param_name": "a_block_in",
+                    "param_name": "tensor a",
                     "expected_two_dims": "({},{})".format(cce.BLOCK_IN,
                                                           cce.BLOCK_VECTOR),
                     "actual_two_dim": "{}".format(a_block_in)
@@ -287,7 +287,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 if m_shape != cce.BLOCK_VECTOR:
                     args_dict = {
                         "errCode": "E60101",
-                        "param_name": "m_shape",
+                        "param_name": "tensor a",
                         "expected_two_dims": "({},{})".format(
                             cce.BLOCK_IN, cce.BLOCK_VECTOR),
                         "actual_two_dim": "{}".format(m_shape)
@@ -296,11 +296,10 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                                        err_man.get_error_message(args_dict))
                 if km_shape % (cce.BLOCK_IN) != 0:
                     args_dict = {
-                        "errCode": "E60000",
-                        "param_name": "km_shape",
-                        "expected_value": "{}".format(
+                        "errCode": "E60114",
+                        "reason": "k should be multiple of {}".format(
                             cce.BLOCK_IN * k_block_size),
-                        "input_value": "{}".format(km_shape)
+                        "value": "k = {}".format(km_shape)
                     }
                     raise RuntimeError(args_dict,
                                        err_man.get_error_message(args_dict))
@@ -341,7 +340,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if b_block_reduce != k_block_size:
                 args_dict = {
                     "errCode": "E60101",
-                    "param_name": "b_block_reduce",
+                    "param_name": "tensor b",
                     "expected_two_dims": "{}".format(k_block_size),
                     "actual_two_dim": "{}".format(b_block_reduce)
                 }
@@ -351,7 +350,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if b_block_out not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
                 args_dict = {
                     "errCode": "E60101",
-                    "param_name": "b_block_out",
+                    "param_name": "tensor b",
                     "expected_two_dims": "({},{})".format(cce.BLOCK_IN,
                                                           cce.BLOCK_VECTOR),
                     "actual_two_dim": "{}".format(b_block_out)
@@ -371,7 +370,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 if n_shape != 1:
                     args_dict = {
                         "errCode": "E60101",
-                        "param_name": "shape_b",
+                        "param_name": "tensor b",
                         "expected_two_dims": "({},{})".format(
                             cce.BLOCK_IN, cce.BLOCK_VECTOR),
                         "actual_two_dim": "{}".format(n_shape)
@@ -380,11 +379,10 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                                        err_man.get_error_message(args_dict))
                 if kn_shape % (cce.BLOCK_IN) != 0:
                     args_dict = {
-                        "errCode": "E60000",
-                        "param_name": "kn_shape",
-                        "expected_value": "{}".format(
+                        "errCode": "E60114",
+                        "reason": "k should be multiple of {}".format(
                             cce.BLOCK_IN * k_block_size),
-                        "input_value": "{}".format(kn_shape)
+                        "value": "k = {}".format(kn_shape)
                     }
                     raise RuntimeError(args_dict,
                                        err_man.get_error_message(args_dict))
@@ -430,7 +428,7 @@ def shape_check(tensor_a,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             if len(shape_bias) != 2 and len(shape_bias) != 4:
                 args_dict = {
                     "errCode": "E60006",
-                    "param_name": "length of shape c",
+                    "param_name": "c",
                     "expected_length": "2 or 4",
                     "length": "{}".format(len(shape_bias))
                 }
@@ -588,10 +586,10 @@ def gemm(tensor_a,  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             if in_a_dtype == "float16" and in_b_dtype == "float16":
                 if dst_dtype not in ("float16", "float32"):
                     args_dict = {
-                        "errCode": "E60005",
-                        "param_name": "dst_dtype",
+                        "errCode": "E60003",
+                        "a_dtype": in_a_dtype,
                         "expected_dtype_list": "float16, float32",
-                        "dtype": "{}".format(dst_dtype)
+                        "out_dtype": "{}".format(dst_dtype)
                     }
                     raise RuntimeError(args_dict,
                                        err_man.get_error_message(args_dict))
@@ -626,8 +624,8 @@ def gemm(tensor_a,  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             ):
                 args_dict = {
                     "errCode": "E60114",
-                    "reason":  "dst_type should be float16 for a_type ="
-                               " {} and b_type = {}".format(in_a_dtype,
+                    "reason":  "y_dtype should be float16 for a_dtype ="
+                               " {} and b_dtype = {}".format(in_a_dtype,
                                                             in_b_dtype),
                     "value": dst_dtype
                 }
@@ -669,7 +667,7 @@ def gemm(tensor_a,  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         if tensor_bias.dtype != dst_dtype:
             args_dict = {
                 "errCode": "E60005",
-                "param_name": "tensor_bisa_dtype",
+                "param_name": "c",
                 "expected_dtype_list": "[{}]".format(dst_dtype),
                 "dtype": "{}".format(tensor_bias.dtype)
             }
@@ -849,7 +847,7 @@ def gemm(tensor_a,  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         if km_shape != kn_shape:
             args_dict = {
                 "errCode": "E60002",
-                "attr_name": "k_shape",
+                "attr_name": "shape",
                 "param1_name": "km_shape",
                 "param1_value": "{}".format(km_shape),
                 "param2_name": "kn_shape",

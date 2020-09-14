@@ -17,9 +17,11 @@ scatter_update
 # pylint: disable=import-error
 from topi.scatter import Scatter
 from topi.cce import util
+from te.utils.op_utils import *
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@util.check_input_type(dict, dict, dict, dict, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def scatter_update(var,
                    indices,
                    updates,

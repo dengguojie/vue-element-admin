@@ -119,6 +119,7 @@ OP_INTRIN_INFO_LIST = [
     OpIntrinInfo(73, "concat", "dma_copy"),
     OpIntrinInfo(74, "strided_slice_d", "dma_copy"),
     OpIntrinInfo(75, "split_com", "dma_copy"),
+    OpIntrinInfo(76, "write_select", "dma_copy"),
 ]
 
 

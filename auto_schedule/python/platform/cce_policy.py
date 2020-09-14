@@ -21,6 +21,7 @@ from te import tvm
 # pylint: disable=import-error
 from tvm._ffi.function import _init_api
 
+BANK_CACHE = ""
 
 class L1BufferManager():
     """Manage L1 buffer

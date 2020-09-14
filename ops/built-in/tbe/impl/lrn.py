@@ -39,46 +39,48 @@ def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
     check_shape(shape_input, min_rank=4, max_rank=4, param_name="x")
 
     if depth_radius > DEPTH_RADIUS_SIZE_LIMIT:
-        error_Info = {}
-        error_Info['errCode'] = 'E81000'
-        error_Info['param_name'] = 'depth_radius'
-        error_Info['op_name'] = 'lrn'
-        error_Info['expect_value'] = "less than "+str(DEPTH_RADIUS_SIZE_LIMIT)
-        error_Info['real_value'] = "too large to calculate"
-        raise ValueError(error_Info,"In op[%s], the parameter [%s] is not right, it should be [%s],"
-                                    "but actually is [%s]."
-                        %(error_Info['op_name'],error_Info['param_name'], \
-                        error_Info['expect_value'],error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E81000'
+        error_info['param_name'] = 'depth_radius'
+        error_info['op_name'] = 'lrn'
+        error_info['expect_value'] = "less than "+str(DEPTH_RADIUS_SIZE_LIMIT)
+        error_info['real_value'] = "too large to calculate"
+        raise ValueError(error_info, "In op[%s], the parameter [%s] is not right, it should be [%s],"
+                                     "but actually is [%s]."
+                         % (error_info['op_name'], error_info['param_name'],
+                            error_info['expect_value'], error_info['real_value']))
 
     if norm_region != "ACROSS_CHANNELS":
-        error_Info = {}
-        error_Info['errCode'] = 'E81001'
-        error_Info['param_name'] = 'norm_region'
-        error_Info['op_name'] = 'lrn'
-        error_Info['expect_value'] = "ACROSS_CHANNELS"
-        error_Info['real_value'] = norm_region
-        raise ValueError(error_Info,"In op[%s], the parameter [%s] only support [%s] mode, "
-                                "but actually is [%s]." %(error_Info['op_name'],error_Info['param_name'], \
-                                error_Info['expect_value'],error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E81001'
+        error_info['param_name'] = 'norm_region'
+        error_info['op_name'] = 'lrn'
+        error_info['expect_value'] = "ACROSS_CHANNELS"
+        error_info['real_value'] = norm_region
+        raise ValueError(error_info, "In op[%s], the parameter [%s] only support [%s] mode, "
+                                     "but actually is [%s]."
+                         % (error_info['op_name'], error_info['param_name'],
+                            error_info['expect_value'], error_info['real_value']))
 
     if depth_radius < 0:
-        error_Info = {}
-        error_Info['errCode'] = 'E81000'
-        error_Info['param_name'] = 'depth_radius'
-        error_Info['op_name'] = 'lrn'
-        error_Info['expect_value'] = "greater equal than 0"
-        error_Info['real_value'] = depth_radius
-        raise ValueError(error_Info,"In op[%s], the parameter [%s] is not right, it should be [%s],"
-                                    "but actually is [%s]."
-                         %(error_Info['op_name'],error_Info['param_name'], \
-                           error_Info['expect_value'],error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E81000'
+        error_info['param_name'] = 'depth_radius'
+        error_info['op_name'] = 'lrn'
+        error_info['expect_value'] = "greater equal than 0"
+        error_info['real_value'] = depth_radius
+        raise ValueError(error_info, "In op[%s], the parameter [%s] is not right, it should be [%s],"
+                                     "but actually is [%s]."
+                         % (error_info['op_name'], error_info['param_name'],
+                            error_info['expect_value'], error_info['real_value']))
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments,unused-argument, invalid-name
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR, KERNEL_NAME)
+                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR, KERNEL_NAME,
+                 OPTION_ATTR_STR)
 def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
-        norm_region="ACROSS_CHANNELS", kernel_name="lrn"):
+        norm_region="ACROSS_CHANNELS", kernel_name="lrn", impl_mode="high_performance"):
     """ Local Response Normalization.
 
     The 4-D `x` tensor is treated as a 3-D array of 1-D vectors (along the last
@@ -107,13 +109,16 @@ def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
         an exponent, defaults to 0.5.
     kernel_name: str.
         cce kernel name, default value is "lrn".
+    impl_mode: str.
+        high_precision or high_performance for inference, default value is "high_performance".
+        no need to add into ops_info file.
 
     Returns
     -------
     None.
     """
     _lrn_parameter_check(x, depth_radius, norm_region, kernel_name)
-    lrn_d_obj = LRNBase(x, depth_radius, bias, alpha, beta, kernel_name)
+    lrn_d_obj = LRNBase(x, depth_radius, bias, alpha, beta, kernel_name, impl_mode)
     if lrn_d_obj.dtype_real_in_out == lrn_d_obj.input_dtype:
         # cast is not needed
         lrn_d_obj.alignment_standards = lrn_d_obj.one_block_ele_num_input
@@ -130,9 +135,10 @@ class LRNBase(object):
     """
     Function: use to store LRN compute parameters
     """
-    def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name):
+    def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name, impl_mode):
         self.input_shape = x.get("shape")
         self.dtype_real_in_out = x.get("dtype").lower()
+        self.impl_mode = impl_mode
         self.input_dtype = self._get_compute_dtype()
         self.depth_radius = depth_radius
         self.bias = bias
@@ -189,8 +195,16 @@ class LRNBase(object):
                                      name="output_gm", scope=tik.scope_gm)
 
     def _get_compute_dtype(self):
-        vln_support_fp32_flag =\
-            tbe_platform.cce_conf.api_check_support("tik.vln", "float32")
+        # check whether the platform is mini or not
+        is_mini_flag = (not tbe_platform.cce_conf.api_check_support("tik.vln", "float32") or
+                        tbe_platform.cce_conf.api_check_support("tik.vbi", "float16"))
+        # only when mini platform and input dtype is float16 support impl_mode parameter
+        if is_mini_flag and self.dtype_real_in_out == constant.DATA_TYPE_FP16:
+            vln_support_fp32_flag = (tbe_platform.cce_conf.api_check_support("tik.vln", "float32")
+                                     and self.impl_mode == "high_precision")
+        else:
+            vln_support_fp32_flag = tbe_platform.cce_conf.api_check_support("tik.vln", "float32")
+
         compute_dtype = self.dtype_real_in_out
         if vln_support_fp32_flag and\
                 (self.dtype_real_in_out == constant.DATA_TYPE_FP16):
@@ -783,7 +797,6 @@ class LRNBase(object):
             c_cut_flag = True
 
         return n_cut_flag, c_cut_flag
-
 
     def _data_move_default(self, dest, src, data_type, copy_shape):
         mte2_num = self._get_shape_size(copy_shape)

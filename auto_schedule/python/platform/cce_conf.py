@@ -18,7 +18,7 @@ parser the config params
 from __future__ import absolute_import as _abs
 
 from te import tvm
-import te.lang.cce
+from te import platform as cce
 # pylint: disable=import-error
 from .cce_policy import OpImplPolicy
 from tvm._ffi.function import _init_api
@@ -26,141 +26,58 @@ from .cce_params import TRANS_TIK_API_TO_INSTR_MAP
 from .cce_params import ONLY_TIK_API_MAP
 from .cce_policy import set_L1_info
 from .insn_cmd import get_insn_cmd
+from .cce_params import ASCEND_910
+from .cce_params import ASCEND_910H
+from .cce_params import ASCEND_910M
+from .cce_params import ASCEND_910P
 
-DDK_SOC_VERSION_MAP = {
-    "1.1": {
-        "SOC_VERSION": "Ascend310",
-        "CORE_TYPE": "AiCore"
-    },
-    "1.3": {
-        "SOC_VERSION": "Ascend310",
-        "CORE_TYPE": "AiCore"
-    },
-    "1.60": {
-        "SOC_VERSION": "Ascend910",
-        "CORE_TYPE": "AiCore"
-    },
-    "2.10": {
-        "SOC_VERSION": "Ascend610",
-        "CORE_TYPE": "AiCore"
-    },
-    "2.11": {
-        "SOC_VERSION": "Ascend620",
-        "CORE_TYPE": "AiCore"
-    },
-    "3.20": {
-        "SOC_VERSION": "Ascend620", # "Ascend610"
-        "CORE_TYPE": "VectorCore"
-    },
-    "5.10": {
-        "SOC_VERSION": "Hi3796CV300ES",
-        "CORE_TYPE": "AiCore"
-    },
-}
 
+# product version
+# This is used for DSL/AutoSchedule ONLY!
+# For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+VERSION_CLOUD = "1980"
+VERSION_MINI = "1910"
+VERSION_MINI_1951 = "1951dc"
+VERSION_MINI_1951M = "1951mdc"
+VERSION_MINI_1951PG2 = "1951pg2"
+VERSION_SHISI = "smallhisi"
+AIC = "AiCore"
+AIV = "VectorCore"
 SOC_VERSION_MAP = {
     "Ascend310": {
-        "AiCore": {"AICoreNum": 2, "DdkVersion": "1.33.xx.xxx"},
+        AIC: {"AICoreNum": 2, "ProductVersion": VERSION_MINI},
     },
     "Ascend910": {
-        "AiCore": {"AICoreNum": 32, "DdkVersion": "1.60.xx.xxx"},
+        AIC: {"AICoreNum": 32, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910Pro": {
+        AIC: {"AICoreNum": 32, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910Lite": {
+        AIC: {"AICoreNum": 30, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend710": {
+        AIC: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951},
+        AIV: {"AICoreNum": 7, "ProductVersion": VERSION_MINI_1951},
     },
     "Ascend610": {
-        "AiCore": {"AICoreNum": 9, "DdkVersion": "2.10.xx.xxx"},
-        "VectorCore": {"AICoreNum": 8, "DdkVersion": "3.20.xx.xxx"},
+        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_1951M},
+        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951M},
     },
-    "Ascend620": {
-        "AiCore": {"AICoreNum": 10, "DdkVersion": "2.11.xx.xxx"},
-        "VectorCore": {"AICoreNum": 8, "DdkVersion": "3.20.xx.xxx"},
+    "Ascend615": {
+        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_1951PG2},
+        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951PG2 + AIV},
     },
     "Hi3796CV300ES": {
-        "AiCore": {"AICoreNum": 1, "DdkVersion": "5.10.xx.xxx"},
+        AIC: {"AICoreNum": 1, "ProductVersion": VERSION_SHISI},
     },
     "Hi3796CV300CS": {
-        "AiCore": {"AICoreNum": 1, "DdkVersion": "5.10.xx.xxx"},
+        AIC: {"AICoreNum": 1, "ProductVersion": VERSION_SHISI},
     },
     "Hi3519AV200": {
-        "AiCore": {"AICoreNum": 1, "DdkVersion": None},
+        AIC: {"AICoreNum": 1, "ProductVersion": None},
     },
 }
-
-
-# pylint: disable=too-many-branches
-def get_product_version(product):
-    """
-    deal with raw product. return valid product
-
-    Parameters
-    ----------
-    product : str
-        product name\
-
-    Returns
-    -------
-    product : str
-        1.1,1.3,etc
-    """
-    if isinstance(product, str):
-        product = product.lower()
-        versions = product.split(".")
-        if len(versions) != 4 and len(versions) != 5:
-            raise RuntimeError("Not support specify the product %s" % product)
-        if product.startswith("3.5."):
-            product = "3.5"
-        elif product.startswith("3.3."):
-            product = "3.3"
-        elif product.startswith("1.1."):
-            product = "1.1"
-        elif product.startswith("1.2."):
-            product = "1.2"
-        elif product.startswith("1.3."):
-            product = "1.3"
-        elif product.startswith("1.31."):
-            product = "1.3"
-        elif product.startswith("1.33."):
-            product = "1.3"
-        elif product.startswith("1.60."):
-            product = "1.60"
-        elif product.startswith("2.10."):
-            product = "2.10"
-        elif product.startswith("2.11."):
-            product = "2.11"
-        elif product.startswith("2.3."):
-            product = "2.3"
-        elif product.startswith("5.10."):
-            product = "5.10"
-        elif product.startswith("3.20."):
-            product = "3.20"
-        elif product.startswith("2.11."):
-            product = "2.11"
-        else:
-            raise RuntimeError("Not support specify the product %s" % product)
-    else:
-        raise RuntimeError("The Supported product type error")
-
-    return product
-
-
-# pylint: disable=invalid-name
-def cceProduct(product):
-    """
-    dynamic load the product params
-
-    Parameters
-    ----------
-    product : str
-        product name
-    """
-    product = get_product_version(product)
-    cur_cce_product_params = CceProductParams()
-    cur_cce_product_params.cce_product = product
-
-    soc_version = DDK_SOC_VERSION_MAP[product]["SOC_VERSION"]
-    core_type = DDK_SOC_VERSION_MAP[product]["CORE_TYPE"]
-    func = tvm.get_global_func("cce.product_init")
-    func(soc_version, core_type, "", "")
-
-    return cur_cce_product_params
 
 
 # pylint: disable=invalid-name
@@ -244,10 +161,86 @@ class CceProductParams(object):
             # string to bool
             value = (value == "true")
 
-        if key == "is_cloud":
-            value = (self.cce_product == "1.60")
-
         return value
+
+    # This is used for DSL/AutoSchedule ONLY!
+    # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+    def get_product_version(self):
+        """
+        get product version
+        ----------
+
+        Returns
+        -------
+        cloud: cloud product
+        mini: mini product
+        """
+        return self.cce_product
+
+    # This is used for DSL/AutoSchedule ONLY!
+    # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+    def is_mini_version(self):
+        """
+        check if mini version
+        -------
+
+        Returns
+        -------
+        True: mini version
+        False: Other version
+        """
+        if self.cce_product == VERSION_MINI:
+            return True
+        return False
+
+    # This is used for DSL/AutoSchedule ONLY!
+    # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+    def is_cloud_version(self):
+        """
+        check if cloud-1980 version
+        ----------
+
+        Returns
+        -------
+        True: cloud version
+        False: Other version
+        """
+        if self.cce_product == VERSION_CLOUD:
+            return True
+        return False
+
+    # This is used for DSL/AutoSchedule ONLY!
+    # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+    def is_lhisi_version(self):
+        """
+        check if 3796ES version
+        -------
+
+        Returns
+        -------
+        True: 3796ES version
+        False: Other version
+        """
+        if self.cce_product == VERSION_SHISI:
+            return True
+        return False
+
+    # This is used for DSL/AutoSchedule ONLY!
+    # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
+    def is_1951_version(self):
+        """
+        check if 1951/1951m version
+        ----------
+
+        Returns
+        -------
+        True: 1951 version
+        False: Other version
+        """
+        if self.cce_product in (VERSION_MINI_1951, VERSION_MINI_1951M, VERSION_MINI_1951PG2):
+            return True
+        return False
+
 
 def set_status_check(bool_status):
     """
@@ -267,31 +260,6 @@ def set_status_check(bool_status):
 
     func(bool_status)
 
-_VERSION_LIST = ["1.1", "1.60", "3.3", "3.5", "1.3", "1.31", "1.33",
-                 "2.10", "5.10", "3.20", "2.11"]
-
-
-def _check_ddk_version(product_name):
-    if not isinstance(product_name, str):
-        return False
-    if product_name == "":
-        return False
-
-    versions = product_name.split(".")
-    if len(versions) not in (4, 5):
-        return False
-
-    # noinspection PyBroadException
-    try:
-        major = int(versions[0])
-        minor = int(versions[1])
-    except Exception:
-        return False
-
-    if major > 9 or major < 1 or minor > 99 or minor < 0:
-        return False
-
-    return True
 
 
 def _check_soc_version(soc_version, core_type):
@@ -357,7 +325,7 @@ def te_set_version(soc_version, core_type="AiCore",
     Parameters
     ----------
     soc_version : str
-        "Ascend310"/"Ascend910"/"Ascend610"/"Ascend620" ...
+        "Ascend310"/"Ascend910"/"Ascend710"/"Ascend610" ...
     core_type : str
         "AiCore" or "VectorCore"
     aicore_num: int
@@ -381,30 +349,26 @@ def te_set_version(soc_version, core_type="AiCore",
     else:
         set_L1_info("L2_fusion_enabled", False)
 
-    if _check_ddk_version(soc_version):
-        cceProduct(soc_version)
-        te_set_l2_mode(l2_mode)
-        te_set_op_impl_mode(kwargs)
-        return
-
     if core_type in (None, ""):
         core_type = "AiCore"
-
     _check_soc_version(soc_version, core_type)
-    aicore_num = _check_and_get_aicore_num(soc_version, core_type,
+    aicore_num = _check_and_get_aicore_num(soc_version,
+                                           core_type,
                                            aicore_num)
+
     func = tvm.get_global_func("cce.product_init")
     value = func(soc_version, core_type, aicore_num, l1_fusion)
-
     if value != "success":
         raise RuntimeError("te_set_version() return error.")
 
-    ddk_ver = SOC_VERSION_MAP[soc_version][core_type]["DdkVersion"]
-    product = get_product_version(ddk_ver)
-    cur_cce_product_params = CceProductParams()
-    cur_cce_product_params.cce_product = product
     te_set_l2_mode(l2_mode)
     te_set_op_impl_mode(kwargs)
+    te_set_tbe_debug_level(kwargs)
+
+    cur_cce_product_params = CceProductParams()
+    cur_cce_product_params.cce_product = \
+        SOC_VERSION_MAP[soc_version][core_type]["ProductVersion"]
+    return cur_cce_product_params
 
 
 def te_set_op_impl_mode(kwargs):
@@ -415,6 +379,36 @@ def te_set_op_impl_mode(kwargs):
         return
     OpImplPolicy.op_impl_mode = kwargs.get('op_impl_mode', None)
     OpImplPolicy.op_impl_mode_list = kwargs.get('op_impl_mode_list', [])
+
+
+def te_set_tbe_debug_level(kwargs):
+    """
+    set tbe_debug_level:
+    0 disable
+    1 enable tbe debug : pipe_all, python(tik)-cce mapping file)
+    2 enable tbe debug : pipe_all, python(tik)-cce mapping file,
+                         ccec compiler with "O0 - g"
+    """
+    if not isinstance(kwargs, dict):
+        return
+    op_debug_level_str = kwargs.get('op_debug_level', '0')
+    if op_debug_level_str is (None or ""):
+        return
+    debug_level_strs = ('0', '1', '2')
+    if op_debug_level_str not in debug_level_strs:
+        raise RuntimeError("Unsupported op_debug_level: %s, it must be "
+                           "one of ('0', '1', '2') and the data type"
+                           " must be string " % op_debug_level_str)
+    tbe_debug_level = int(op_debug_level_str)
+    if tbe_debug_level == 0:
+        return
+    else:
+        build_config_items = {"tbe_debug_level": tbe_debug_level,
+                              "sync_mode": 0}
+        cce.cce_build.build_config = cce.cce_build.build_config_update_list(
+            cce.cce_build.build_config,
+            build_config_items)
+        return
 
 
 def te_set_l2_mode(l2_mode):
@@ -444,6 +438,7 @@ L0A_SIZE = "L0A_SIZE"
 L0B_SIZE = "L0B_SIZE"
 L0C_SIZE = "L0C_SIZE"
 SMASK_SIZE = "SMASK_SIZE"
+UNZIP = "UNZIP"
 
 
 def get_soc_spec(key):
@@ -456,7 +451,7 @@ def get_soc_spec(key):
             key
     """
     support_key = (SOC_VERSION, AICORE_TYPE, CORE_NUM, UB_SIZE,
-                   L2_SIZE, L1_SIZE, CUBE_SIZE,
+                   L2_SIZE, L1_SIZE, CUBE_SIZE, UNZIP,
                    L0A_SIZE, L0B_SIZE, L0C_SIZE, SMASK_SIZE)
     if key not in support_key:
         raise RuntimeError("Unsupported Key Value of get_soc_spec(): %s" % key)
@@ -473,7 +468,7 @@ def get_soc_spec(key):
             value = int(value)
         except Exception:
             raise RuntimeError("return value %s is not 'int' type" % value)
-    elif key in (CUBE_SIZE,):
+    elif key in (CUBE_SIZE, UNZIP):
         value_str_list = value.split(",")
         value_int_list = []
         for i in value_str_list:
@@ -516,6 +511,8 @@ def api_check_support(intrinsic, dtype=""):
     value: bool, True if chip contains such api, else return False
 
     """
+    import te.lang.cce
+    import te.lang.dynamic
     if not isinstance(intrinsic, str):
         raise RuntimeError("intrinsic type should be 'str', it is [%s]"
                            % type(intrinsic))
@@ -528,14 +525,8 @@ def api_check_support(intrinsic, dtype=""):
     if intrinsic.startswith("te.lang.cce."):
         return te.lang.cce.dsl_check_support(intrinsic, dtype)
 
-    support_insn_cmd = get_insn_cmd()
-    if intrinsic in support_insn_cmd:
-        func = tvm.get_global_func("cce.api_check_support")
-        value = func(intrinsic)
-        if value == "True":
-            return True
-        else:
-            return False
+    if intrinsic.startswith("te.lang.dynamic."):
+        return te.lang.dynamic.dsl_check_support(intrinsic, dtype)
 
     return False
 
@@ -585,7 +576,7 @@ def _deal_tik_api(intrinsic, dtype):
 
     """
     tik_api_instr = intrinsic[4:]
-    soc_total_version = get_soc_spec("SOC_VERSION") + \
+    soc_total_version = _get_soc_name() + \
                         get_soc_spec("AICORE_TYPE")
     if tik_api_instr in ONLY_TIK_API_MAP:
         if soc_total_version in ONLY_TIK_API_MAP[tik_api_instr]:
@@ -596,6 +587,18 @@ def _deal_tik_api(intrinsic, dtype):
             return False
     if tik_api_instr in TRANS_TIK_API_TO_INSTR_MAP:
         tik_api_instr = TRANS_TIK_API_TO_INSTR_MAP[tik_api_instr]
+    if tik_api_instr.startswith("vec_"):
+        tik_api_instr = "v" + tik_api_instr[4:]
     return intrinsic_check_support("Intrinsic_" + tik_api_instr, dtype)
+
+def _get_soc_name():
+    """
+    get current soc's name for tik api
+    :return: SOC_VERSION
+    """
+    temp_version = get_soc_spec("SOC_VERSION")
+    if temp_version in (ASCEND_910H, ASCEND_910M, ASCEND_910P):
+        return ASCEND_910
+    return temp_version
 
 _init_api("te.platform.cce_conf")

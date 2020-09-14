@@ -24,6 +24,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
@@ -229,11 +230,9 @@ def _check_shape(shape_grads, shape_diff_scale):
     -------
     None
     """
-    util.check_shape_rule(shape_grads, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_grads)
+    check_shape(shape_grads, param_name="grads")
 
-    util.check_shape_rule(shape_diff_scale, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_diff_scale)
+    check_shape(shape_diff_scale, param_name="diff_scale")
 
     dim_c1 = shape_grads[1]
     dim_c0 = shape_grads[4]
@@ -254,8 +253,9 @@ def _check_shape(shape_grads, shape_diff_scale):
             "Dimension C must be equal")
 
 
-@util.check_input_type(dict, dict, dict, dict, dict,
-                       dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_FLOAT, KERNEL_NAME)
 def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
                             batch_mean, batch_variance, y, epsilon=0.0001,
                             kernel_name="bn_training_reduce_grad"):
@@ -325,13 +325,13 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
     batch_mean_dtype = dtype_batch_mean.lower()
     batch_variance_dtype = dtype_batch_variance.lower()
 
-    util.check_dtype_rule(input_grads_dtype, ("float32", "float16"))
-    util.check_dtype_rule(x_dtype, ("float32", "float16"))
-    util.check_dtype_rule(diff_scale_dtype, ("float32",))
-    util.check_dtype_rule(diff_offset_dtype, ("float32",))
-    util.check_dtype_rule(scale_dtype, ("float32",))
-    util.check_dtype_rule(batch_mean_dtype, ("float32",))
-    util.check_dtype_rule(batch_variance_dtype, ("float32",))
+    check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
+    check_dtype(x_dtype, ("float32", "float16"), param_name="x")
+    check_dtype(diff_scale_dtype, ("float32",), param_name="diff_scale")
+    check_dtype(diff_offset_dtype, ("float32",), param_name="diff_offset")
+    check_dtype(scale_dtype, ("float32",), param_name="scale")
+    check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
+    check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
     util.compare_tensor_dict_key(diff_scale, diff_offset, "shape")
     util.compare_tensor_dict_key(diff_scale, scale, "shape")

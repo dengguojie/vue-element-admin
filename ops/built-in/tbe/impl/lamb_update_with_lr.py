@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 MIN_FP32 = 2 ** (-126)
 # min float16 value
@@ -55,8 +56,9 @@ def real_div_compute(data_1, data_2, output_z, kernel_name="real_div"):
     """
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                   param_name_input1="input_greater_realdiv",
+                                                   param_name_input2="input_realdiv")
     data_x = te.lang.cce.broadcast(data_1, shape_max)
     data_y = te.lang.cce.broadcast(data_2, shape_max)
     res = te.lang.cce.vdiv(data_x, data_y)
@@ -200,7 +202,9 @@ def greater_compute(x, y, z, kernel_name="greater"):
     shape_x = te.lang.cce.util.shape_to_list(x.shape)
     shape_y = te.lang.cce.util.shape_to_list(y.shape)
     dtype = x.dtype.lower()
-    shape_x, shape_y, shape = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape = broadcast_shapes(shape_x, shape_y,
+                                               param_name_input1="x",
+                                               param_name_input2="y")
 
     if dtype in ("int8", "uint8"):
         x = te.lang.cce.cast_to(x, "float16")
@@ -273,8 +277,8 @@ def maximum(input_x, input_y, output_z, kernel_name="maximum"):
 
     shape2 = util.scalar2tensor_one(shape2)
 
-    shape1, shape2, shape_max = util.produce_shapes(shape1, shape2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape1, shape2, shape_max = broadcast_shapes(shape1, shape2, param_name_input1="input_x",
+                                                 param_name_input2="input_y")
 
     data1_tmp1 = te.lang.cce.broadcast(input_x, shape_max)
     data2_tmp1 = te.lang.cce.broadcast(input_y, shape_max)
@@ -291,18 +295,15 @@ def minimum(input_x, input_y, output_z, kernel_name="minimum"):
     shape1 = util.scalar2tensor_one(shape1)
     shape2 = util.scalar2tensor_one(shape2)
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape1)
-    util.check_shape_rule(shape2)
-    util.check_shape_size(shape1, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape2, SHAPE_SIZE_LIMIT)
+    check_shape(shape1, param_name="input_x")
+    check_shape(shape2, param_name="input_y")
 
     check_list = ["float16", "float32", "int32"]
     dtype = input_x.dtype
-    util.check_dtype_rule(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="input_x")
 
-    shape1, shape2, shape_max = util.produce_shapes(shape1, shape2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape1, shape2, shape_max = broadcast_shapes(shape1, shape2, param_name_input1="input_x",
+                                                 param_name_input2="input_y")
 
     data1_tmp1 = te.lang.cce.broadcast(input_x, shape_max)
     data2_tmp1 = te.lang.cce.broadcast(input_y, shape_max)
@@ -331,8 +332,8 @@ def sub(input_x, input_y, output_z, kernel_name="sub"):
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
 
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                                   param_name_input2="input_y")
     data1_tmp1 = te.lang.cce.broadcast(input_x, shape_max)
     data2_tmp1 = te.lang.cce.broadcast(input_y, shape_max)
     res = te.lang.cce.vsub(data1_tmp1, data2_tmp1)
@@ -360,11 +361,11 @@ def vmul(input_x, input_y, output_z, kernel_name="vmul"):
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
 
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                                   param_name_input2="input_y")
 
     data1_tmp1 = te.lang.cce.broadcast(input_x, shape_max)
     data2_tmp1 = te.lang.cce.broadcast(input_y, shape_max)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
     res = te.lang.cce.vmul(data1_tmp1, data2_tmp1)
     return res
 
@@ -412,6 +413,9 @@ def lamb_update_with_lr_compute(data_input_greater1,
     return res
 
 
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def lamb_update_with_lr(input_greater1, input_greater_realdiv, input_realdiv,
                         input_mul0, input_mul1, input_sub,
                         greater_y, select_e, minimum_y, y,
@@ -431,14 +435,13 @@ def lamb_update_with_lr(input_greater1, input_greater_realdiv, input_realdiv,
     shape_input_sub = input_sub.get("shape")
     input_dtype = input_sub.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_greater1)
-    util.check_shape_rule(shape_input_sub)
-    util.check_shape_size(shape_input_greater1, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_input_sub, SHAPE_SIZE_LIMIT)
+    check_shape(shape_input_greater1, param_name="input_greater1")
+    check_shape(shape_input_sub, param_name="input_sub")
 
     shape_input_greater1, shape_input_sub, shape_max = \
-        util.produce_shapes(shape_input_greater1, shape_input_sub)
+        broadcast_shapes(shape_input_greater1, shape_input_sub,
+                            param_name_input1="input_greater1",
+                            param_name_input2="input_sub")
 
     data_input_greater1 = \
         tvm.placeholder(shape_input_greater1,

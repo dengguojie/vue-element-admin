@@ -21,6 +21,7 @@ import te.lang.cce
 from te import tvm
 from te.platform import CUBE_MKN
 from te.platform.fusion_manager import fusion_manager
+from te.platform.cce_policy import get_L1_info
 from topi import generic
 from topi.cce import util
 import impl.util.util_deconv_comm as comm
@@ -74,13 +75,27 @@ PADDING_VAILD = [0, 0, 0, 0]
 NoneType = type(None)
 
 
+def shape_to_list(shape):
+    """
+    translate tvm.shape to list type in python
+    """
+    if isinstance(shape, (list, tuple)):
+        return shape
+    tmp = []
+    if shape == "":
+        return ()
+    for i in shape:
+        tmp.append(i.value)
+    return tmp
+
+
 # pylint: disable=locally-disabled,invalid-name, R0913, R0914, W0613
 @util.check_input_type(dict, dict, (dict, NoneType), (dict, NoneType), dict,
                        (tuple, list), (str, tuple, list), (tuple, list),
                        int, str, int, str)
 def deconvolution(x, weight, bias, offset_w, y, strides,
                   pads, dilations=(1, 1, 1, 1),
-                  groups=None, data_format="NHWC", offset_x=0,
+                  groups=None, data_format="NCHW", offset_x=0,
                   kernel_name="deconvolution"):
     """
     algorithm: deconvolution
@@ -101,7 +116,7 @@ def deconvolution(x, weight, bias, offset_w, y, strides,
     y: dict with keys(shape and dtype)
        deconvolution output tensor, dtype must be assigned
 
-    strides: tuple/list of 4 integers
+    strides: tuple/list of 2 integers
              filter move stride
 
     pads: tuple/list of 4 integers
@@ -113,7 +128,7 @@ def deconvolution(x, weight, bias, offset_w, y, strides,
             param for group deconvolution
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+            An optional string from: "NCHW". Defaults to "NCHW".
             Specify the data format of the input and output data.
 
     kernel_name: str
@@ -164,6 +179,14 @@ def deconvolution(x, weight, bias, offset_w, y, strides,
 
     shape_res = comm.get_shape_res(ori_format_res, ori_shape_res)
 
+    # get fusion para in L1 fusion
+    fusion_para = deconvolution_fusion_para(x, y)
+    valid_shape = fusion_para.get("valid_shape")
+    if valid_shape and valid_shape[2] == shape_x[2]:
+        fusion_para["valid_shape"] = ()
+        fusion_para["slice_offset"] = ()
+        fusion_para["output_offset"] = ()
+
     dilations = comm.get_shape_dilation(ori_format_x, dilations)
 
     bias_flag = bias is not None
@@ -171,13 +194,168 @@ def deconvolution(x, weight, bias, offset_w, y, strides,
     deconvolution_cce(shape_filters, shape_x, shape_res, strides,
                       pads, dilations=dilations, filter_dtype=filters_dtype,
                       x_dtype=x_dtype, res_dtype=res_dtype, bias=bias_flag,
-                      offset_x=offset_x, kernel_name=kernel_name)
+                      offset_x=offset_x, fusion_para=fusion_para,
+                      kernel_name=kernel_name)
+
+
+def deconvolution_fusion_para(x, y):
+    """
+    get fusion para for L1 fusion
+    """
+    input_memory_type = x.get("addr_type") \
+        if "addr_type" in x else 0
+    output_memory_type = y.get("addr_type") \
+        if "addr_type" in y else 0
+    valid_shape = x.get("valid_shape") \
+        if "valid_shape" in x else ()
+    slice_offset = x.get("slice_offset") \
+        if "slice_offset" in x else ()
+    output_offset = y.get("slice_offset") \
+        if "slice_offset" in y else ()
+    l1_fusion_type = x.get("L1_fusion_type") \
+        if "L1_fusion_type" in x else -1
+    fmap_l1_addr_flag = x.get("L1_addr_flag", False)
+    fmap_l1_valid_size = x.get("L1_valid_size", 0)
+
+
+
+    l1_fusion_enable_flag = get_L1_info("L1_fusion_enabled")
+
+    if input_memory_type not in (0, 1):
+        args_dict = {
+            "errCode": "E65008",
+            "input_memory_type_range": "(0, 1)",
+            "input_memory_type": str(input_memory_type)
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+    if output_memory_type not in (0, 1):
+        args_dict = {
+            "errCode": "E65009",
+            "output_memory_type_range": "(0, 1)",
+            "output_memory_type": str(output_memory_type)
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+    if valid_shape and not slice_offset:
+        reason = "valid shape exists, slice shape cannot be []"
+        args_dict = {
+            "errCode": "E60108",
+            "reason": reason
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+    if valid_shape and not output_offset:
+        reason = "valid shape exists, output offset cannot be []"
+        args_dict = {
+            "errCode": "E60108",
+            "reason": reason
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+
+    valid_shape = shape_to_list(valid_shape)
+    slice_offset = shape_to_list(slice_offset)
+    output_offset = shape_to_list(output_offset)
+
+    if not l1_fusion_enable_flag:
+        input_memory_type = 0
+        output_memory_type = 0
+        valid_shape = []
+        slice_offset = []
+        output_offset = []
+        l1_fusion_type = -1
+        fmap_l1_addr_flag = False
+        fmap_l1_valid_size = 0
+
+    fusion_para = {"input_memory_type": input_memory_type,
+                   "output_memory_type": output_memory_type,
+                   "valid_shape": valid_shape,
+                   "slice_offset": slice_offset,
+                   "output_offset": output_offset,
+                   "l1_fusion_type": l1_fusion_type,
+                   "fmap_l1_addr_flag": fmap_l1_addr_flag,
+                   "fmap_l1_valid_size": fmap_l1_valid_size}
+
+    return fusion_para
+
+
+def deconv_compute_fusion_para(x, y):
+    """
+    get fusion para for L1 fusion
+    """
+    input_memory_type = x.op.attrs["addr_type"].value \
+        if "addr_type" in x.op.attrs else 0
+    valid_shape = x.op.attrs["valid_shape"] \
+        if "valid_shape" in x.op.attrs else ()
+    slice_offset = x.op.attrs["slice_offset"] \
+        if "slice_offset" in x.op.attrs else ()
+    output_offset = y.get("slice_offset") \
+        if "slice_offset" in y else ()
+    l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
+        if "L1_fusion_type" in x.op.attrs else -1
+    fmap_l1_addr_flag = x.op.attrs["L1_addr_flag"].value \
+        if "L1_addr_flag" in x.op.attrs else False
+    fmap_l1_valid_size = x.op.attrs["L1_valid_size"].value\
+        if "L1_valid_size" in x.op.attrs else 0
+
+    l1_fusion_enable_flag = get_L1_info("L1_fusion_enabled")
+
+    if input_memory_type not in (0, 1):
+        args_dict = {
+            "errCode": "E65008",
+            "input_memory_type_range": "(0, 1)",
+            "input_memory_type": str(input_memory_type)
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+
+    if valid_shape and not slice_offset:
+        reason = "valid shape exists, slice shape cannot be []"
+        args_dict = {
+            "errCode": "E60108",
+            "reason": reason
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+    if valid_shape and not output_offset:
+        reason = "valid shape exists, output offset cannot be []"
+        args_dict = {
+            "errCode": "E60108",
+            "reason": reason
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+
+    valid_shape = shape_to_list(valid_shape)
+    slice_offset = shape_to_list(slice_offset)
+    output_offset = shape_to_list(output_offset)
+
+    if not l1_fusion_enable_flag:
+        input_memory_type = 0
+        valid_shape = []
+        slice_offset = []
+        output_offset = []
+        l1_fusion_type = -1
+        fmap_l1_addr_flag = False
+        fmap_l1_valid_size = 0
+
+    fusion_para = {"input_memory_type": input_memory_type,
+                   "output_memory_type": "fuse_flag",
+                   "valid_shape": valid_shape,
+                   "slice_offset": slice_offset,
+                   "output_offset": output_offset,
+                   "l1_fusion_type": l1_fusion_type,
+                   "fmap_l1_addr_flag": fmap_l1_addr_flag,
+                   "fmap_l1_valid_size": fmap_l1_valid_size}
+
+    return fusion_para
 
 
 @fusion_manager.register("deconvolution")
 def deconvolution_compute(x, weight, bias, offset_w, y, strides,
                           pads, dilations=(1, 1, 1, 1),
-                          groups=None, data_format="NHWC", offset_x=0,
+                          groups=None, data_format="NCHW", offset_x=0,
                           kernel_name="deconvolution"):
     """
     used for fusion
@@ -197,7 +375,7 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
     y: dict with keys(shape and dtype)
        deconvolution output tensor, dtype must be assigned
 
-    strides: tuple/list of 4 integers
+    strides: tuple/list of 2 integers
              filter move stride
 
     pads: tuple/list of 4 integers
@@ -209,7 +387,7 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
             param for group deconvolution
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+            An optional string from: "NCHW". Defaults to "NCHW".
             Specify the data format of the input and output data.
 
     kernel_name: str
@@ -235,6 +413,7 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
     ori_format_x = x.op.attrs["ori_format"]
     ori_format_res = y["ori_format"]
 
+    fusion_para = deconv_compute_fusion_para(x, y)
     if len(strides) == 4:
         h_index = data_format.find('H')
         w_index = data_format.find('W')
@@ -250,10 +429,16 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
     shape_res = comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = comm.get_shape_dilation(ori_format_x, dilations)
 
+    valid_shape = fusion_para.get("valid_shape")
+    if valid_shape and valid_shape[2] == shape_x[2]:
+        fusion_para["valid_shape"] = ()
+        fusion_para["slice_offset"] = ()
+        fusion_para["output_offset"] = ()
+
     comm.check_conv2dbp_input_params(shape_weight, shape_x,
                                      shape_res, strides, pads, dilations,
                                      weight_dtype, x_dtype,
-                                     res_dtype, kernel_name)
+                                     res_dtype, kernel_name, fusion_para)
 
     pads = comm.get_padlist(pads, shape_res, strides, shape_weight, dilations)
 
@@ -266,7 +451,9 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
                                                     dilations,
                                                     res_dtype=res_dtype,
                                                     tensor_bias=bias,
-                                                    offset_x=offset_x)
+                                                    offset_x=offset_x,
+                                                    fusion_para=fusion_para,
+                                                    kernel_name=kernel_name)
 
     return res
 
@@ -278,11 +465,13 @@ def deconvolution_compute(x, weight, bias, offset_w, y, strides,
                        str,
                        bool,
                        int,
+                       (dict, NoneType),
                        str)
 def deconvolution_cce(shape_filter, shape_x, input_sizes,
                       strides, pads, dilations=(1, 1, 1, 1),
                       filter_dtype='float16', x_dtype='float16',
                       res_dtype='float16', bias=False, offset_x=0,
+                      fusion_para=None,
                       kernel_name="deconvolution_cce"):
     """
     Topi interface of deconvolution
@@ -313,6 +502,8 @@ def deconvolution_cce(shape_filter, shape_x, input_sizes,
 
     bias: False: no bias, True: have bias
 
+    fusion_para: the L1 fusion para
+
     kernel_name : Cce kernel name. Default value is "deconvolution_cce"
 
     Returns : None
@@ -323,6 +514,15 @@ def deconvolution_cce(shape_filter, shape_x, input_sizes,
         if x_2 == 0:
             raise RuntimeError("Division by zero")
         return (x_1 + x_2 - 1) // x_2
+    if fusion_para is None:
+        fusion_para = {"input_memory_type": 0,
+                       "output_memory_type": 0,
+                       "valid_shape": (),
+                       "slice_offset": (),
+                       "output_offset": (),
+                       "l1_fusion_type": -1,
+                       "fmap_l1_addr_flag": False,
+                       "fmap_l1_valid_size": 0}
 
     if filter_dtype == "int8" and x_dtype == "int8":
         shape_filter = [shape_filter[1], shape_filter[0],
@@ -330,7 +530,7 @@ def deconvolution_cce(shape_filter, shape_x, input_sizes,
     res = comm.check_conv2dbp_input_params(shape_filter, shape_x, input_sizes,
                                            strides, pads, dilations,
                                            filter_dtype, x_dtype,
-                                           res_dtype, kernel_name)
+                                           res_dtype, kernel_name, fusion_para)
 
     shape_filter, shape_x, input_sizes, strides, pads, dilations, \
     filter_dtype, x_dtype, res_dtype, kernel_name = res
@@ -373,7 +573,9 @@ def deconvolution_cce(shape_filter, shape_x, input_sizes,
         dilations=dilations,
         res_dtype=res_dtype,
         tensor_bias=tensor_bias,
-        offset_x=offset_x
+        offset_x=offset_x,
+        fusion_para=fusion_para,
+        kernel_name=kernel_name
     )
     if bias:
         tensor_list = [tensor_dedy, tensor_filter_frac, tensor_bias, dedx]

@@ -27,7 +27,6 @@ from te import tik
 from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 import te.platform.cce_params as cce_params
-from topi.cce import util
 from te.utils.op_utils import *
 
 BLOCK_SIZE = 32
@@ -476,8 +475,8 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
 
     """
     check_dtype(dtype, ("int8", "int16", "int32", "int64", "uint8",
-                                  "uint16", "uint32", "uint64",
-                                  "float16", "float32"), param_name="x")
+                        "uint16", "uint32", "uint64",
+                        "float16", "float32"), param_name="x")
     check_shape(shape, param_name="x")
 
     if not (len(shape) == len(begin) and len(shape) == len(size)):
@@ -5759,6 +5758,608 @@ def _small_last_32_300_3_2(dst, data, n_begin):
     return tvm_ib.get()
 
 
+def _func_move_n_512_3(args):
+    """
+    function of moving data for n_512_3 float16 scene
+
+    """
+    tvm_ib, data, dst, data_ub, cp_align_len, device_core_num,\
+    block_index, n_begin, num_g = args
+
+    _, col_in, row_len = data.shape
+    col_out = dst.shape[1]
+
+    n_index = num_g * device_core_num + block_index
+
+    data_offset = n_index * col_in * row_len + n_begin * row_len
+    burst_len_data = col_out * row_len // cp_align_len
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=0),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, 1, burst_len_data, 0, 0))
+
+    dst_offset = n_index * col_out * row_len
+    burst_len_dst = col_out * row_len // cp_align_len
+    tvm_ib.emit(
+        tvm.call_extern(
+            dst.dtype, "copy_ubuf_to_gm",
+            dst.access_ptr(
+                'w', offset=dst_offset),
+            data_ub.access_ptr("r", offset=0),
+            0, 1, burst_len_dst, 0, 0))
+
+
+def _move_n_512_3(dst, data, n_begin):
+    """
+    function of making ir node builder for n_512_3 float16 scene
+
+    """
+    tvm_ib = tvm.ir_builder.create()
+
+    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    device_core_num = AICORE_NUM
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+
+    data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                         "data_ub", scope=cce.scope_ubuf)
+
+    n_i = data.shape[0]
+    group_index = n_i // device_core_num
+    group_mod = n_i % device_core_num
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
+
+    with tvm_ib.for_range(0, group_index, name="num_g") as num_g:
+        args = tvm_ib, data, dst, data_ub, cp_align_len, device_core_num,\
+               block_index, n_begin, num_g
+        _func_move_n_512_3(args)
+    with tvm_ib.if_scope(group_mod > 0):
+        with tvm_ib.if_scope(block_index < group_mod):
+            args = tvm_ib, data, dst, data_ub, cp_align_len, device_core_num,\
+                   block_index, n_begin, group_index
+            _func_move_n_512_3(args)
+
+    return tvm_ib.get()
+
+
+def _vconv_two_not_align(args):
+    """
+    function of vnchwconv for two _func_vconv_fp16
+
+    """
+    tvm_ib, addr_array, addr_array_buf, one_begin, two_begin, \
+    repeat_vconv, src_stride_vconv, dst_stride_vconv = args
+
+    src0_offset = 8 * 0
+    src1_offset = 8 * 1
+    dst0_offset = 8 * 2
+    dst1_offset = 8 * 3
+    src_gap = 32
+    src_eight_gap = src_gap * 8
+    dst_gap = 32
+    dst_eight_gap = dst_gap * 8
+
+    with tvm_ib.for_range(0, 8, name="i") as i:
+        tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
+                                    tvm.call_extern(addr_array.dtype, "reg",
+                                                    addr_array[
+                                                        src0_offset + i]),
+                                    one_begin + i * src_gap))
+        tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
+                                    tvm.call_extern(addr_array.dtype, "reg",
+                                                    addr_array[
+                                                        src1_offset + i]),
+                                    one_begin + src_eight_gap
+                                    + i * src_gap))
+        tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
+                                    tvm.call_extern(addr_array.dtype, "reg",
+                                                    addr_array[
+                                                        dst0_offset + i]),
+                                    two_begin + i * dst_gap))
+        tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
+                                    tvm.call_extern(addr_array.dtype, "reg",
+                                                    addr_array[
+                                                        dst1_offset + i]),
+                                    two_begin + dst_eight_gap
+                                    + i * dst_gap))
+
+    tvm_ib.emit(tvm.call_extern("int32",
+                                "set_va_reg_sb",
+                                "VA0",
+                                addr_array_buf.access_ptr("rw",
+                                                          offset=src0_offset)))
+    tvm_ib.emit(tvm.call_extern("int32",
+                                "set_va_reg_sb",
+                                "VA1",
+                                addr_array_buf.access_ptr("rw",
+                                                          offset=src1_offset)))
+    tvm_ib.emit(tvm.call_extern("int32",
+                                "set_va_reg_sb",
+                                "VA2",
+                                addr_array_buf.access_ptr("rw",
+                                                          offset=dst0_offset)))
+    tvm_ib.emit(tvm.call_extern("int32",
+                                "set_va_reg_sb",
+                                "VA3",
+                                addr_array_buf.access_ptr("rw",
+                                                          offset=dst1_offset)))
+    with tvm_ib.if_scope(repeat_vconv == 1):
+        tvm_ib.emit(tvm.call_extern("int32",
+                                    "scatter_vnchwconv_b16",
+                                    "VA2",
+                                    "VA0",
+                                    1,
+                                    0,
+                                    0))
+    with tvm_ib.else_scope():
+        tvm_ib.emit(tvm.call_extern("int32",
+                                    "scatter_vnchwconv_b16",
+                                    "VA2",
+                                    "VA0",
+                                    repeat_vconv,
+                                    dst_stride_vconv,
+                                    src_stride_vconv))
+
+
+def _func_move_n_512_1_2(args):
+    """
+    function of moving data for n_512_1_2 float16 scene
+
+    """
+    tvm_ib, data, dst, data_ub, data_res, addr_array, addr_array_buf,\
+    ub_ele, float_size, cp_align_len, device_core_num, block_index,\
+    n_begin, num_g = args
+
+    _, col_len, _, row_in = data.shape
+    row_out = dst.shape[3]
+    n_index = num_g * device_core_num + block_index
+
+    data_offset = n_index * col_len * row_in
+    burst_len_data = col_len * row_in // cp_align_len
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=0),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, 1, burst_len_data, 0, 0))
+
+    dim_ele_in = col_len * row_in
+    dim_in_div = _ceil_div(dim_ele_in, cp_align_len)
+
+    one_begin = 0
+    two_begin = ub_ele * float_size
+    repeat_vconv = dim_in_div
+    src_stride_vconv = 1
+    dst_stride_vconv = 16
+    args = tvm_ib, addr_array, addr_array_buf, one_begin, two_begin, \
+           repeat_vconv, src_stride_vconv, dst_stride_vconv
+    _vconv_two_not_align(args)
+
+    res_offset = n_begin * cp_align_len
+    ub_offset = 0
+    n_burst = col_len
+    burst_len = 1
+    src_stride = 1
+    tvm_ib.emit(
+        tvm.call_extern(data_ub.dtype, "copy_ubuf_to_ubuf",
+                        data_ub.access_ptr(
+                            "w", offset=ub_offset),
+                        data_res.access_ptr(
+                            "r", offset=res_offset),
+                        0, n_burst, burst_len,
+                        src_stride, 0))
+
+    dim_ele_out = col_len * row_out
+    dim_out_div = _ceil_div(dim_ele_out, cp_align_len)
+
+    one_begin = 0
+    two_begin = ub_ele * float_size
+    repeat_vconv = dim_out_div
+    src_stride_vconv = 16
+    dst_stride_vconv = 1
+    args = tvm_ib, addr_array, addr_array_buf, one_begin, two_begin, \
+           repeat_vconv, src_stride_vconv, dst_stride_vconv
+    _vconv_two_not_align(args)
+
+    dst_offset = n_index * col_len * row_out
+    burst_len_dst = col_len * row_out // cp_align_len
+    tvm_ib.emit(
+        tvm.call_extern(
+            dst.dtype, "copy_ubuf_to_gm",
+            dst.access_ptr(
+                'w', offset=dst_offset),
+            data_res.access_ptr("r", offset=0),
+            0, 1, burst_len_dst, 0, 0))
+
+
+def _move_n_512_1_2(dst, data, n_begin):
+    """
+    function of making ir node builder for n_512_1_2 float16 scene
+
+    """
+    tvm_ib = tvm.ir_builder.create()
+
+    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    device_core_num = AICORE_NUM
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
+
+    data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                         "data_ub", scope=cce.scope_ubuf)
+    data_res = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                          "data_res", scope=cce.scope_ubuf)
+    addr_array = tvm_ib.allocate("uint64", (32,), name="addr_array",
+                                 scope=cce.scope_reg)
+    addr_array_buf = tvm.decl_buffer((32,), "uint64_t", "addr_array_buf",
+                                     scope=cce.scope_reg,
+                                     data=addr_array)
+
+    n_i = data.shape[0]
+    group_index = n_i // device_core_num
+    group_mod = n_i % device_core_num
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
+
+    with tvm_ib.for_range(0, group_index, name="num_g") as num_g:
+        args = tvm_ib, data, dst, data_ub, data_res, addr_array,\
+               addr_array_buf, ub_ele, float_size, cp_align_len,\
+               device_core_num, block_index, n_begin, num_g
+        _func_move_n_512_1_2(args)
+    with tvm_ib.if_scope(group_mod > 0):
+        with tvm_ib.if_scope(block_index < group_mod):
+            args = tvm_ib, data, dst, data_ub, data_res, addr_array,\
+               addr_array_buf, ub_ele, float_size, cp_align_len,\
+               device_core_num, block_index, n_begin, group_index
+            _func_move_n_512_1_2(args)
+
+    return tvm_ib.get()
+
+
+def _func_32_16_fp16(args):
+    """
+    function of moving data for n_32_16 float16 scene
+
+    """
+    tvm_ib, data, dst, data_ub, data_res, cp_align_len, row_in, row_out,\
+    r_begin, n_before, n_len = args
+
+    data_offset = n_before * row_in + r_begin
+    in_ele = n_len * row_in - r_begin
+    burst_len_data = _ceil_div(in_ele, cp_align_len)
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=0),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, 1, burst_len_data, 0, 0))
+
+    n_burst = n_len
+    burst_len = 1
+    src_stride = 1
+    dst_stride = 0
+    tvm_ib.emit(
+        tvm.call_extern(data_res.dtype, "copy_ubuf_to_ubuf",
+                        data_res.access_ptr(
+                            "w", offset=0),
+                        data_ub.access_ptr(
+                            "r", offset=0),
+                        0, n_burst, burst_len,
+                        src_stride, dst_stride))
+
+    dst_offset = n_before * row_out
+    burst_len_dst = n_len * row_out // cp_align_len
+    tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                               offset=dst_offset),
+                                data_res.access_ptr(
+                                    "r", offset=0),
+                                0, 1, burst_len_dst, 0, 0))
+
+
+def _move_32_16_fp16(dst, data, r_begin):
+    """
+    function of making ir node builder for n_32_16 float16 scene
+
+    """
+    tvm_ib = tvm.ir_builder.create()
+
+    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    device_core_num = AICORE_NUM
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // 3 // float_size // cp_align_len) * cp_align_len
+
+    data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele * 2,
+                         "data_ub", scope=cce.scope_ubuf)
+    data_res = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                          "data_res", scope=cce.scope_ubuf)
+
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
+    n_i, row_in = data.shape
+    row_out = dst.shape[1]
+
+    n_core = n_i // device_core_num
+    n_ub = ub_ele // 16
+    ub_loop = n_core // n_ub
+    ub_mod = n_core % n_ub
+
+    with tvm_ib.for_range(0, ub_loop, name="num_u") as num_u:
+        n_before = block_index * n_core + num_u * n_ub
+        n_len = n_ub
+        args = tvm_ib, data, dst, data_ub, data_res, cp_align_len,\
+               row_in, row_out, r_begin, n_before, n_len
+        _func_32_16_fp16(args)
+    with tvm_ib.if_scope(ub_mod > 0):
+        n_before = block_index * n_core + ub_loop * n_ub
+        n_len = ub_mod
+        args = tvm_ib, data, dst, data_ub, data_res, cp_align_len, \
+               row_in, row_out, r_begin, n_before, n_len
+        _func_32_16_fp16(args)
+
+    return tvm_ib.get()
+
+
+def _move_for_n_64_392_392(args):
+    """
+    function of moving data for n_64_392_392 float16 scene
+
+    """
+    tvm_ib, data, dst, data_ub, t_begin, col_len, row_len, cp_align_len,\
+    one_index, two_index, col_before, col_now = args
+
+    two_in = data.shape[1]
+    two_out = dst.shape[1]
+
+    move_ele = col_now * row_len
+    data_offset = one_index * two_in * col_len * row_len\
+                  + (two_index + t_begin) * col_len * row_len\
+                  + col_before * row_len
+    burst_len_data = move_ele // cp_align_len
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=0),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, 1, burst_len_data, 0, 0))
+
+    dst_offset = one_index * two_out * col_len * row_len\
+                 + two_index * col_len * row_len + col_before * row_len
+    burst_len_dst = move_ele // cp_align_len
+    tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                               offset=dst_offset),
+                                data_ub.access_ptr(
+                                    "r", offset=0),
+                                0, 1, burst_len_dst, 0, 0))
+
+
+def _func_move_n_64_392_392(args):
+    """
+    function of n_64_392_392 float16 scene
+
+    """
+    tvm_ib, data, dst, data_ub, ub_ele, t_begin, device_core_num, block_index,\
+    cp_align_len, num_g = args
+
+    _, _, three_d, four_d = data.shape
+    two_out = dst.shape[1]
+
+    core_index = num_g * device_core_num + block_index
+    one_index = core_index // two_out
+    two_index = core_index % two_out
+    row_len = four_d * 2
+    col_len = three_d // 2
+    col_ub = ub_ele // row_len
+    ub_loop = col_len // col_ub
+    ub_mod = col_len % col_ub
+
+    with tvm_ib.if_scope(ub_loop > 0):
+        with tvm_ib.for_range(0, ub_loop, name="num_u") as num_u:
+            col_before = num_u * col_ub
+            col_now = col_ub
+            args = tvm_ib, data, dst, data_ub, t_begin, col_len, row_len,\
+                   cp_align_len, one_index, two_index, col_before, col_now
+            _move_for_n_64_392_392(args)
+    with tvm_ib.if_scope(ub_mod > 0):
+        col_before = ub_loop * col_ub
+        col_now = ub_mod
+        args = tvm_ib, data, dst, data_ub, t_begin, col_len, row_len, \
+               cp_align_len, one_index, two_index, col_before, col_now
+        _move_for_n_64_392_392(args)
+
+
+def _move_n_64_392_392(dst, data, t_begin):
+    """
+    function of making ir node builder for n_64_392_392 float16 scene
+
+    """
+    tvm_ib = tvm.ir_builder.create()
+
+    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    device_core_num = AICORE_NUM
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+
+    data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                         "data_ub", scope=cce.scope_ubuf)
+
+    one_d = data.shape[0]
+    two_out = dst.shape[1]
+    all_core = one_d * two_out
+
+    group_index = all_core // device_core_num
+    group_mod = all_core % device_core_num
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
+
+    with tvm_ib.for_range(0, group_index, name="num_g") as num_g:
+        args = tvm_ib, data, dst, data_ub, ub_ele, t_begin, device_core_num,\
+               block_index, cp_align_len, num_g
+        _func_move_n_64_392_392(args)
+    with tvm_ib.if_scope(group_mod > 0):
+        with tvm_ib.if_scope(block_index < group_mod):
+            args = tvm_ib, data, dst, data_ub, ub_ele, t_begin,\
+                   device_core_num, block_index, cp_align_len, group_index
+            _func_move_n_64_392_392(args)
+
+    return tvm_ib.get()
+
+
+def _move_for_last_two_diff_fp16(args):
+
+    tvm_ib, data, dst, data_ub, data_tail, reg, c_begin, r_begin,\
+    cp_align_len, core_index, col_new_before, col_new_now = args
+
+    _, _, col_in, row_in = data.shape
+    _, _, col_out, row_out = dst.shape
+    row_new = row_out * 2
+
+    row_out_align = _ceil_fill(row_out, cp_align_len)
+    data_offset = core_index * col_in * row_in\
+                  + (col_new_before * 2 + c_begin) * row_in + r_begin
+    n_burst = col_new_now
+    burst_len_data = _ceil_div(row_out, cp_align_len)
+    src_stride = (2 * row_in - row_out_align) // cp_align_len
+    dst_stride = (2 * row_out - row_out_align) // cp_align_len
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=0),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, n_burst, burst_len_data,
+                                src_stride, dst_stride))
+
+    row_out_small = row_out // cp_align_len * cp_align_len
+    data_offset = core_index * col_in * row_in\
+                  + (col_new_before * 2 + c_begin + 1) * row_in + r_begin + 8
+    ub_offset = row_out_align
+    n_burst = col_new_now
+    burst_len_data = row_out // cp_align_len
+    src_stride = (2 * row_in - row_out_small) // cp_align_len
+    dst_stride = (2 * row_out - row_out_small) // cp_align_len
+    tvm_ib.emit(tvm.call_extern(data_ub.dtype, "copy_gm_to_ubuf",
+                                data_ub.access_ptr(
+                                    "w", offset=ub_offset),
+                                data.access_ptr(
+                                    "r", offset=data_offset),
+                                0, n_burst, burst_len_data,
+                                src_stride, dst_stride))
+
+    with tvm_ib.for_range(0, col_new_now, name="num_co") as num_co:
+        data_offset = core_index * col_in * row_in\
+                      + (col_new_before * 2 + c_begin) * row_in + row_in\
+                      + num_co * row_in * 2 + r_begin
+
+        tvm_ib.emit(tvm.call_extern(data_tail.dtype, "copy_gm_to_ubuf",
+                                    data_tail.access_ptr(
+                                        "w", offset=0),
+                                    data.access_ptr(
+                                        "r", offset=data_offset),
+                                    0, 1, 1, 0, 0))
+
+        for k in range(8):
+            ub_offset = num_co * row_new + row_out
+
+            tvm_ib.emit(tvm.call_extern(
+                data_tail.dtype, "reg_mov",
+                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                data_tail.access_ptr('r', offset=k)
+            ))
+            tvm_ib.emit(tvm.call_extern(
+                data_ub.dtype, "reg_mov",
+                data_ub.access_ptr('w', offset=ub_offset + k),
+                tvm.call_extern(reg.dtype, "reg", reg[0])
+            ))
+
+    dst_offset = core_index * col_out * row_out + col_new_before * row_new
+    burst_len_dst = col_new_now * row_new // cp_align_len
+    tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                               offset=dst_offset),
+                                data_ub.access_ptr(
+                                    "r", offset=0),
+                                0, 1, burst_len_dst, 0, 0))
+
+
+def _func_last_two_diff_fp16(args):
+    tvm_ib, data, dst, data_ub, data_tail, reg, ub_ele, c_begin, r_begin,\
+    device_core_num, block_index, cp_align_len, num_g = args
+
+    core_index = num_g * device_core_num + block_index
+    _, _, col_out, row_out = dst.shape
+
+    row_new = row_out * 2
+    col_new = col_out // 2
+    col_new_ub = ub_ele // row_new
+    ub_loop = col_new // col_new_ub
+    col_new_mod = col_new % col_new_ub
+
+    with tvm_ib.if_scope(ub_loop > 0):
+        with tvm_ib.for_range(0, ub_loop, name="num_u") as num_u:
+            col_new_before = num_u * col_new_ub
+            col_new_now = col_new_ub
+            args = tvm_ib, data, dst, data_ub, data_tail, reg,\
+                   c_begin, r_begin, cp_align_len, core_index,\
+                   col_new_before, col_new_now
+            _move_for_last_two_diff_fp16(args)
+    with tvm_ib.if_scope(col_new_mod > 0):
+        col_new_before = ub_loop * col_new_ub
+        col_new_now = col_new_mod
+        args = tvm_ib, data, dst, data_ub, data_tail, reg, \
+               c_begin, r_begin, cp_align_len, core_index, \
+               col_new_before, col_new_now
+        _move_for_last_two_diff_fp16(args)
+
+
+def _last_two_diff_fp16(dst, data, c_begin, r_begin):
+    """
+    function of making ir node builder for n_64_392_392 float16 scene
+
+    """
+    tvm_ib = tvm.ir_builder.create()
+
+    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    device_core_num = AICORE_NUM
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+
+    data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
+                         "data_ub", scope=cce.scope_ubuf)
+    data_tail = _new_alloc(tvm_ib, dst.dtype, cp_align_len,
+                           "data_tail", scope=cce.scope_ubuf)
+    reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
+
+    one_d, two_d, _, _ = data.shape
+    all_core = one_d * two_d
+
+    group_index = all_core // device_core_num
+    group_mod = all_core % device_core_num
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
+
+    with tvm_ib.for_range(0, group_index, name="num_g") as num_g:
+        args = tvm_ib, data, dst, data_ub, data_tail, reg, ub_ele,\
+               c_begin, r_begin, device_core_num, block_index,\
+               cp_align_len, num_g
+        _func_last_two_diff_fp16(args)
+    with tvm_ib.if_scope(group_mod > 0):
+        with tvm_ib.if_scope(block_index < group_mod):
+            args = tvm_ib, data, dst, data_ub, data_tail, reg, ub_ele, \
+                   c_begin, r_begin, device_core_num, block_index, \
+                   cp_align_len, group_index
+            _func_last_two_diff_fp16(args)
+
+    return tvm_ib.get()
+
+
 def _clean_ubuf(ib_, src, src_offset, dup_len):
     """
     :param ib_:
@@ -6445,11 +7046,185 @@ def _check_32_300_3_2(shape, size, dtype):
 
 
 def _check_not_one_block(shape_new):
+    """
+    function of checking not one block branch
+
+    """
     len_s = len(shape_new)
     if len_s >= 2:
         value = functools_reduce(lambda x, y: x * y, shape_new[0:len_s - 1])
         if value > 30000000:
             return False
+
+    return True
+
+
+def _check_n_512_3(shape, size, dtype):
+    """
+    function of checking n_512_3 branch
+
+    """
+    if dtype != "float16":
+        return False
+
+    if len(shape) != 3 and len(shape) != 4:
+        return False
+
+    if shape[0] != size[0]:
+        return False
+
+    device_core_num = AICORE_NUM
+    if shape[0] < device_core_num:
+        return False
+
+    sub_shape = shape[1:]
+    sub_size = size[1:]
+
+    if (sub_shape == [1, 514, 3] and sub_size == [1, 512, 3])\
+            or (sub_shape == [514, 3] and sub_size == [512, 3]):
+        float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+        cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+        ub_bytes = UB_SIZE_B - 64
+        ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+
+        sub_ele = functools_reduce(lambda x, y: x*y, sub_size[:])
+        if sub_ele <= ub_ele:
+            return True
+
+    return False
+
+
+def _check_n_512_1_2(shape, size, dtype):
+    """
+    function of checking n_512_1_2 branch
+
+    """
+    if dtype != "float16":
+        return False
+
+    if len(shape) != 4:
+        return False
+
+    if shape[0] != size[0]:
+        return False
+
+    device_core_num = AICORE_NUM
+    if shape[0] < device_core_num:
+        return False
+
+    sub_shape = shape[1:]
+    sub_size = size[1:]
+
+    if sub_shape == [512, 1, 2] and sub_size == [512, 1, 1]:
+        float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+        cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+        ub_bytes = UB_SIZE_B - 64
+        ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
+
+        col_len = shape[1]
+        row_in = shape[3]
+        in_ele = col_len * row_in * cp_align_len
+        if in_ele <= ub_ele:
+            return True
+
+    return False
+
+
+def _check_32_16_fp16(shape, size, dtype):
+    """
+    function of checking special n_32_16 branch
+
+    """
+    if shape != [1048576, 32] or size != [1048576, 16] or dtype != "float16":
+        return False
+
+    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    one_dim, row_in = shape
+    row_out = size[1]
+    if row_in != 2 * cp_align_len or row_out != cp_align_len:
+        return False
+
+    device_core_num = AICORE_NUM
+    if one_dim % device_core_num != 0:
+        return False
+
+    n_core = one_dim // device_core_num
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // 3 // float_size // cp_align_len) * cp_align_len
+    n_ub = ub_ele // cp_align_len
+    if n_core <= n_ub:
+        return False
+
+    return True
+
+
+def _check_n_64_392_392(shape, size, dtype):
+    """
+    function of checking special n_64_392_392 branch
+
+    """
+    if shape != [16, 128, 392, 392] or size != [16, 64, 392, 392]\
+            or dtype != "float16":
+        return False
+
+    one_d, two_out, three_d, four_d = size
+    all_core = one_d * two_out
+    device_core_num = AICORE_NUM
+    if all_core < device_core_num:
+        return False
+
+    if three_d % 2 > 0:
+        return False
+
+    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    row_len = four_d * 2
+    if row_len % cp_align_len > 0:
+        return False
+
+    col_len = three_d // 2
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+    if ub_ele < row_len:
+        return False
+
+    col_ub = ub_ele // row_len
+    if col_ub > col_len:
+        return False
+
+    return True
+
+
+def _check_last_two_diff_fp16(shape, size, dtype):
+    """
+    function of checking special n_64_392_392 branch
+
+    """
+    if dtype != "float16":
+        return False
+
+    if (shape, size) not in (([16, 64, 568, 568], [16, 64, 392, 392]),
+                             ([16, 128, 280, 280], [16, 128, 200, 200]),
+                             ([16, 256, 136, 136], [16, 256, 104, 104]),
+                             ([16, 512, 64, 64], [16, 512, 56, 56])):
+        return False
+
+    _, _, col_in, row_in = shape
+    _, _, col_out, row_out = size
+    if col_in != row_in or col_out != row_out:
+        return False
+
+    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    if row_in * 2 % cp_align_len > 0 or row_out * 2 % cp_align_len > 0:
+        return False
+
+    ub_bytes = UB_SIZE_B - 64
+    ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
+    row_new = row_out * 2
+    if ub_ele < row_new:
+        return False
 
     return True
 
@@ -6588,6 +7363,34 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
         sch = tvm.create_schedule(res.op)
         with build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
+    elif _check_n_512_1_2(shape_new, size_new, dtype):
+        n_begin = begin_new[-1]
+        data = tvm.placeholder(shape_new, dtype=dtype, name='data')
+        res = tvm.extern(size_new, [data],
+                         lambda ins, outs: _move_n_512_1_2(outs[0],
+                                                           ins[0],
+                                                           n_begin),
+                         name="res", dtype=dtype)
+
+        tensor_list = [data, res]
+        sch = tvm.create_schedule(res.op)
+        with build_config:
+            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+
+    elif _check_32_16_fp16(shape_new, size_new, dtype):
+        n_begin = begin_new[1]
+        data = tvm.placeholder(shape_new, dtype=dtype, name='data')
+        res = tvm.extern(size_new, [data],
+                         lambda ins, outs: _move_32_16_fp16(outs[0],
+                                                            ins[0],
+                                                            n_begin),
+                         name="res", dtype=dtype)
+
+        tensor_list = [data, res]
+        sch = tvm.create_schedule(res.op)
+        with build_config:
+            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+
     else:
         last_dim_compute = SliceLastDimCompute(shape_new, begin_new, size_new,
                                                dtype, kernel_name)
@@ -6599,6 +7402,21 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             last_dim_compute.slice()
         elif diff_first_last_dim.check() and _check_not_one_block(shape_new):
             diff_first_last_dim.slice()
+        elif _check_last_two_diff_fp16(shape_new, size_new, dtype):
+            c_begin = begin_new[2]
+            r_begin = begin_new[3]
+            data = tvm.placeholder(shape_new, dtype=dtype, name='data')
+            res = tvm.extern(size_new, [data],
+                             lambda ins, outs: _last_two_diff_fp16(outs[0],
+                                                                   ins[0],
+                                                                   c_begin,
+                                                                   r_begin),
+                             name="res", dtype=dtype)
+
+            tensor_list = [data, res]
+            sch = tvm.create_schedule(res.op)
+            with build_config:
+                tvm.build(sch, tensor_list, "cce", name=kernel_name)
         elif _check_scalar_one(shape_new, size_new, dtype):
             a_i = shape_new[0]
             device_core_num = AICORE_NUM
@@ -6817,6 +7635,40 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
                              lambda ins, outs: _move_sp_vadds_32_32_4(outs[0],
                                                                       ins[0],
                                                                       n_begin),
+                             name="res", dtype=dtype)
+
+            tensor_list = [data, res]
+            sch = tvm.create_schedule(res.op)
+            with build_config:
+                tvm.build(sch, tensor_list, "cce", name=kernel_name)
+        elif _check_n_512_3(shape_new, size_new, dtype):
+            if len(shape_new) == 4:
+                shape_use = [shape_new[0], shape_new[2], shape_new[3]]
+                size_use = [size_new[0], size_new[2], size_new[3]]
+            else:
+                shape_use = shape_new
+                size_use = size_new
+
+            n_begin = begin_new[-2]
+            data = tvm.placeholder(shape_use, dtype=dtype, name='data')
+            res = tvm.extern(size_use, [data],
+                             lambda ins, outs: _move_n_512_3(outs[0],
+                                                             ins[0],
+                                                             n_begin),
+                             name="res", dtype=dtype)
+
+            tensor_list = [data, res]
+            sch = tvm.create_schedule(res.op)
+            with build_config:
+                tvm.build(sch, tensor_list, "cce", name=kernel_name)
+
+        elif _check_n_64_392_392(shape_new, size_new, dtype):
+            t_begin = begin_new[1]
+            data = tvm.placeholder(shape_new, dtype=dtype, name='data')
+            res = tvm.extern(size_new, [data],
+                             lambda ins, outs: _move_n_64_392_392(outs[0],
+                                                                  ins[0],
+                                                                  t_begin),
                              name="res", dtype=dtype)
 
             tensor_list = [data, res]

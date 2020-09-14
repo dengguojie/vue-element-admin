@@ -17,13 +17,12 @@ scatter_non_aliasing_add
 """
 import math
 from functools import reduce as functools_reduce
-from te import tik
+
 import te.platform.cce_params as cce_params
 from te import platform as tbe_platform
-from topi.cce import util
+from te import tik
+from te.utils import op_utils
 
-#General limitation of the size for input shape
-SHAPE_SIZE_LIMIT = 2**30
 #block length in number
 BLOCK_LENGTH = 32
 # since we have inputs, indices, updates,
@@ -71,9 +70,9 @@ class ScatterNonAliasingAdd(object):
         self.indices_dtype = indices.get("dtype").lower()
         self.updates_shape = updates.get("shape")
         self.updates_dtype = updates.get("dtype").lower()
-        self.inputs_ele_num = functools_reduce(lambda x, y: x*y,
+        self.inputs_ele_num = functools_reduce(lambda x, y: x * y,
                                                self.inputs_shape)
-        self.indices_num = functools_reduce(lambda x, y: x*y,
+        self.indices_num = functools_reduce(lambda x, y: x * y,
                                             self.indices_shape)
         self.kernel_name = kernel_name
         self.check_param(outputs)
@@ -81,12 +80,13 @@ class ScatterNonAliasingAdd(object):
             self.update_data_num = 1
         else:
             self.update_data_num = functools_reduce(
-                lambda x, y: x*y, self.inputs_shape[self.indices_shape[-1]:])
+                lambda x, y: x * y, self.inputs_shape[self.indices_shape[-1]:])
         self.max_indice = functools_reduce(
-            lambda x, y: x*y, self.inputs_shape[0:self.indices_shape[-1]])
+            lambda x, y: x * y, self.inputs_shape[0:self.indices_shape[-1]])
         self.block_number = cce_params.VECTOR_INST_BLOCK_NUM
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE) - self.unused_ub_sizes)
+        self.ub_size_bytes = (
+            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) -
+            self.unused_ub_sizes)
         self.inputs_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
             self.inputs_dtype) // 8
         self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
@@ -162,7 +162,7 @@ class ScatterNonAliasingAdd(object):
         input_to_ub_number = ub_size_bytes // self.inputs_dtype_bytes_size
         input_to_ub_number = math.ceil(
             input_to_ub_number /
-            self.inputs_data_each_block)*self.inputs_data_each_block
+            self.inputs_data_each_block) * self.inputs_data_each_block
         with self.tik_instance.new_stmt_scope():
             inputs_ub = self.tik_instance.Tensor(self.inputs_dtype,
                                                  (input_to_ub_number, ),
@@ -188,11 +188,11 @@ class ScatterNonAliasingAdd(object):
                 align_offset = 0
                 if tile_ele_num != 0:
                     align_ele_num = (indice_num //
-                                     self.inputs_data_each_block*
+                                     self.inputs_data_each_block *
                                      self.inputs_data_each_block)
                     align_offset = (
-                            indices_in_index + align_ele_num -
-                            (self.inputs_data_each_block - tile_ele_num))
+                        indices_in_index + align_ele_num -
+                        (self.inputs_data_each_block - tile_ele_num))
                     self.tik_instance.data_move(inputs_ub,
                                                 self.inputs_gm[align_offset],
                                                 0, 1, 1, 0, 0)
@@ -206,8 +206,8 @@ class ScatterNonAliasingAdd(object):
                 with self.tik_instance.for_range(
                         0, input_loop_num) as input_loop_index:
                     _do_copy_input_to_output(
-                        inputs_ub, indices_loop_index*self.inputs_ele_num //
-                                   self.block_num + input_loop_index*input_to_ub_number,
+                        inputs_ub, indices_loop_index * self.inputs_ele_num //
+                        self.block_num + input_loop_index * input_to_ub_number,
                         input_to_ub_number)
 
             input_last_num = self.inputs_ele_num // self.block_num \
@@ -215,8 +215,8 @@ class ScatterNonAliasingAdd(object):
             if input_last_num > 0:
                 _do_copy_input_to_output(
                     inputs_ub,
-                    indices_loop_index*self.inputs_ele_num // self.block_num
-                    + input_loop_num*input_to_ub_number, input_last_num)
+                    indices_loop_index * self.inputs_ele_num // self.block_num
+                    + input_loop_num * input_to_ub_number, input_last_num)
 
     def init_ub_tensor(self):
         """
@@ -245,33 +245,33 @@ class ScatterNonAliasingAdd(object):
         self.indices_tmp = self.tik_instance.Scalar("int32",
                                                     name="indices_tmp")
         self.indices_tmp.set_as(0)
-        updates_size_bytes = self.inputs_dtype_bytes_size*self.update_data_num
-        indices_size_bytes = self.indices_dtype_bytes_size*self.indices_num
-        if updates_size_bytes*2 < self.ub_size_bytes*UB_SIZE_RATIO:
+        updates_size_bytes = self.inputs_dtype_bytes_size * self.update_data_num
+        indices_size_bytes = self.indices_dtype_bytes_size * self.indices_num
+        if updates_size_bytes * 2 < self.ub_size_bytes * UB_SIZE_RATIO:
             self.updates_ub_number = math.ceil(
                 self.update_data_num /
-                self.inputs_data_each_block)*self.inputs_data_each_block
+                self.inputs_data_each_block) * self.inputs_data_each_block
 
-            self.indices_ub_number = (self.ub_size_bytes - updates_size_bytes*
+            self.indices_ub_number = (self.ub_size_bytes - updates_size_bytes *
                                       2) // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
-                self.indices_data_each_block)*self.indices_data_each_block
-        elif indices_size_bytes < self.ub_size_bytes*UB_SIZE_RATIO:
+                self.indices_data_each_block) * self.indices_data_each_block
+        elif indices_size_bytes < self.ub_size_bytes * UB_SIZE_RATIO:
             self.indices_ub_number = math.ceil(
                 self.indices_num /
-                self.indices_data_each_block)*self.indices_data_each_block
+                self.indices_data_each_block) * self.indices_data_each_block
 
             self.updates_ub_number = (self.ub_size_bytes - indices_size_bytes
                                       ) // 2 // self.inputs_dtype_bytes_size
 
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
-                self.inputs_data_each_block)*self.inputs_data_each_block
+                self.inputs_data_each_block) * self.inputs_data_each_block
         else:
             self.indices_ub_number = (self.ub_size_bytes //
                                       self.indices_dtype_bytes_size // 2 //
-                                      BLOCK_LENGTH*BLOCK_LENGTH)
+                                      BLOCK_LENGTH * BLOCK_LENGTH)
             self.updates_ub_number = self.indices_ub_number // 2
         self.inputs_ub = self.tik_instance.Tensor(self.inputs_dtype,
                                                   (self.updates_ub_number, ),
@@ -308,13 +308,13 @@ class ScatterNonAliasingAdd(object):
         -------
         None
         """
-        indices_ub_index = indices_ub_index*self.indices_shape[-1]
+        indices_ub_index = indices_ub_index * self.indices_shape[-1]
         self.inputs_read_index.set_as(0)
         for i in range(0, self.indices_shape[-1] - 1):
             self.indices_tmp.set_as(self.indices_ub[indices_ub_index + i])
             self.inputs_read_index.set_as(
-                self.inputs_read_index + self.indices_tmp*
-                functools_reduce(lambda x, y: x*y, self.inputs_shape[i + 1:])
+                self.inputs_read_index + self.indices_tmp *
+                functools_reduce(lambda x, y: x * y, self.inputs_shape[i + 1:])
             )
         self.indices_tmp.set_as(self.indices_ub[indices_ub_index +
                                                 self.indices_shape[-1] - 1])
@@ -323,10 +323,9 @@ class ScatterNonAliasingAdd(object):
                                           self.indices_tmp)
         else:
             self.inputs_read_index.set_as(
-                self.inputs_read_index + self.indices_tmp*
-                functools_reduce(lambda x, y: x*y,
-                                 self.inputs_shape[self.indices_shape[-1]:])
-            )
+                self.inputs_read_index + self.indices_tmp *
+                functools_reduce(lambda x, y: x * y,
+                                 self.inputs_shape[self.indices_shape[-1]:]))
 
     def get_updates_read_index(self, indices_ub_index):
         """
@@ -341,7 +340,7 @@ class ScatterNonAliasingAdd(object):
         -------
         None
         """
-        self.updates_read_index.set_as(indices_ub_index*self.update_data_num)
+        self.updates_read_index.set_as(indices_ub_index * self.update_data_num)
 
     def updates_the_inputs(self, indices_in_index, indice_num):
         """
@@ -370,10 +369,10 @@ class ScatterNonAliasingAdd(object):
                 ele_every_block = math.ceil(self.inputs_ele_num /
                                             self.block_num)
                 with self.tik_instance.if_scope(
-                        self.indices_loop_index*
+                        self.indices_loop_index *
                         ele_every_block <= self.inputs_read_index):
                     with self.tik_instance.if_scope(
-                            (self.indices_loop_index + 1)*
+                            (self.indices_loop_index + 1) *
                             ele_every_block > self.inputs_read_index):
                         self.get_updates_read_index(indices_ub_index +
                                                     indices_in_index)
@@ -399,12 +398,12 @@ class ScatterNonAliasingAdd(object):
         updates_loop = self.update_data_num // self.updates_ub_number
         if updates_loop > 0:
             with self.tik_instance.for_range(0, updates_loop) as loop_index:
-                self.calc_updates_small(loop_index*self.updates_ub_number,
+                self.calc_updates_small(loop_index * self.updates_ub_number,
                                         self.updates_ub_number)
 
         last_num = self.update_data_num % self.updates_ub_number
         if last_num > 0:
-            self.calc_updates_small(updates_loop*self.updates_ub_number,
+            self.calc_updates_small(updates_loop * self.updates_ub_number,
                                     last_num)
 
     def calc_updates_small(self, read_index_offset, element_num):
@@ -441,7 +440,7 @@ class ScatterNonAliasingAdd(object):
             tile_ele_num = element_num % self.inputs_data_each_block
         align_offset = 0
         if tile_ele_num != 0:
-            align_ele_num = (element_num // self.inputs_data_each_block*
+            align_ele_num = (element_num // self.inputs_data_each_block *
                              self.inputs_data_each_block)
             align_offset = (read_index_offset + align_ele_num -
                             (self.inputs_data_each_block - tile_ele_num))
@@ -460,21 +459,21 @@ class ScatterNonAliasingAdd(object):
 
         if compute_loop > 0:
             with self.tik_instance.for_range(0, compute_loop) as index:
-                index_offset = index*self.max_num_one_repeat*max_repeat_times
+                index_offset = index * self.max_num_one_repeat * max_repeat_times
                 self.calc_process(self.max_num_one_repeat, index_offset,
                                   index_offset, index_offset, max_repeat_times,
                                   False)
-        last_loop = element_num % (self.max_num_one_repeat*
+        last_loop = element_num % (self.max_num_one_repeat *
                                    max_repeat_times) // self.max_num_one_repeat
 
         if last_loop > 0:
-            index_offset = compute_loop*self.max_num_one_repeat*max_repeat_times
+            index_offset = compute_loop * self.max_num_one_repeat * max_repeat_times
             self.calc_process(self.max_num_one_repeat, index_offset,
                               index_offset, index_offset, last_loop, False)
 
         compute_mask = element_num % self.max_num_one_repeat
         if compute_mask > 0:
-            index_offset = (element_num // self.max_num_one_repeat*
+            index_offset = (element_num // self.max_num_one_repeat *
                             self.max_num_one_repeat)
             if (tile_ele_num == 0
                     or self.update_data_num < self.inputs_data_each_block):
@@ -492,8 +491,8 @@ class ScatterNonAliasingAdd(object):
                                   True)
                 self.tik_instance.data_move(
                     self.outputs_gm[self.inputs_read_index +
-                                    read_index_offset], self.inputs_ub, 0,
-                    1, updates_burst_len, 0, 0)
+                                    read_index_offset], self.inputs_ub, 0, 1,
+                    updates_burst_len, 0, 0)
                 self.tik_instance.data_move(
                     self.outputs_gm[self.inputs_read_index + align_offset],
                     self.inputs_tile_ub, 0, 1, 1, 0, 0)
@@ -564,12 +563,12 @@ class ScatterNonAliasingAdd(object):
             with self.tik_instance.for_range(
                     0, indices_loop_num) as indices_loop_index:
                 self.updates_the_inputs(
-                    indices_loop_index*self.indices_ub_number,
+                    indices_loop_index * self.indices_ub_number,
                     self.indices_ub_number)
 
         indices_last_num = self.indices_num % self.indices_ub_number
         if indices_last_num > 0:
-            self.updates_the_inputs(indices_loop_num*self.indices_ub_number,
+            self.updates_the_inputs(indices_loop_num * self.indices_ub_number,
                                     indices_last_num)
 
     def check_param(self, outputs):
@@ -589,28 +588,32 @@ class ScatterNonAliasingAdd(object):
         outputs_shape = outputs.get("shape")
         outputs_dtype = outputs.get("dtype").lower()
 
-        util.check_kernel_name(self.kernel_name)
-        util.check_shape_rule(self.inputs_shape)
-        util.check_shape_rule(self.indices_shape)
-        util.check_shape_rule(self.updates_shape)
-        util.check_shape_rule(outputs_shape)
-
-        util.check_shape_size(self.inputs_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.indices_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.updates_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(outputs_shape, SHAPE_SIZE_LIMIT)
+        op_utils.check_shape(self.inputs_shape, param_name="inputs")
+        op_utils.check_shape(self.indices_shape, param_name="indices")
+        op_utils.check_shape(self.updates_shape, param_name="updates")
+        op_utils.check_shape(outputs_shape, param_name="outputs")
 
         check_list_inputs = ("float16", "float32", "int32")
         check_list_indices = ("int32", "int64")
-        util.check_dtype_rule(self.inputs_dtype, check_list_inputs)
-        util.check_dtype_rule(self.indices_dtype, check_list_indices)
-        util.check_dtype_rule(self.updates_dtype, check_list_inputs)
-        util.check_dtype_rule(outputs_dtype, check_list_inputs)
+        op_utils.check_dtype(self.inputs_dtype,
+                             check_list_inputs,
+                             param_name="inputs")
+        op_utils.check_dtype(self.indices_dtype,
+                             check_list_indices,
+                             param_name="indices")
+        op_utils.check_dtype(self.updates_dtype,
+                             check_list_inputs,
+                             param_name="updates")
+        op_utils.check_dtype(outputs_dtype,
+                             check_list_inputs,
+                             param_name="outputs")
+
         add_support = tbe_platform.cce_conf.api_check_support(
             "tik.vadd", "float32")
         if self.inputs_dtype == "float32" and not add_support:
             raise RuntimeError(
-                "inputs_dtype only support float16 while inputs_dtype is float32")
+                "inputs_dtype only support float16 while inputs_dtype is float32"
+            )
 
         if (self.updates_dtype != self.inputs_dtype
                 or outputs_dtype != self.inputs_dtype):

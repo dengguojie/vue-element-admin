@@ -19,7 +19,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
-from te import tvm, platform as cceconf
+from te import platform as cceconf
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
@@ -36,7 +36,26 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
         _, _, tgt_shape = util.produce_shapes(x_shape_reduce, shape_tgt)
     except RuntimeError:
         raise RuntimeError("x and target can't be broadcast")
-
+    min_dim = min(len(shape_x1), len(shape_x2), len(shape_tgt))
+    if min_dim >= 3:
+        reduce_dim = -1
+        for i in range(-1, -min_dim, -1):
+            if(shape_x1[i] == shape_x2) or (
+                    shape_x1[i] == shape_tgt[i]):
+                reduce_dim = i
+            else:
+                break
+        if reduce_dim != -1:
+            shape_x1 = list(shape_x1[:reduce_dim]) + [
+                reduce(lambda x, y:x*y, shape_x1[reduce_dim:])]
+            shape_x2 = list(shape_x2[:reduce_dim]) + [
+                reduce(lambda x, y:x*y, shape_x2[reduce_dim:])]
+            shape_tgt = list(shape_tgt[:reduce_dim]) + [
+                reduce(lambda x, y:x*y, shape_tgt[reduce_dim:])]
+            x_shape = list(x_shape[:reduce_dim]) + [
+                reduce(lambda x, y:x*y, x_shape[reduce_dim:])]
+            tgt_shape = list(tgt_shape[:reduce_dim]) + [
+                reduce(lambda x, y:x*y, tgt_shape[reduce_dim:])]
     util.check_shape_rule(shape_x1)
     util.check_shape_rule(shape_x2)
     util.check_shape_rule(shape_tgt)
@@ -44,7 +63,7 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
     util.check_tensor_shape_size(shape_x2)
     util.check_tensor_shape_size(shape_tgt)
 
-    return x_shape, tgt_shape
+    return x_shape, tgt_shape, shape_x1, shape_x2, shape_tgt
 
 
 def _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction):
@@ -99,12 +118,13 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
     -------
     res: TVM tensor
     """
-    cce_product = cceconf.CceProductParams().cce_product
+    cce_plat = cceconf.get_soc_spec('SOC_VERSION')
     cast_dtype = 'float32'
+    epsilon = tvm.const(1e-12, dtype="float32")
 
-    # 1.1 1.3 is mini
-    if cce_product in ("1.1", "1.3"):
+    if cce_plat == 'Ascend310':
         cast_dtype = 'float16'
+        epsilon = tvm.const(5e-8, dtype="float16")
 
     if x1.dtype.lower() != cast_dtype and x1.dtype.lower() != 'float32':
         x1 = te.lang.cce.cast_to(x1, cast_dtype)
@@ -119,17 +139,20 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
     target_broadcast = te.lang.cce.broadcast(target, tgt_shape_broadcast)
 
     # DSL description for cosine similarity compute
-    prod_num = te.lang.cce.sum(te.lang.cce.vmul(x1_broadcast, x2_broadcast),
-                               axis=1)
-    mag_square1 = te.lang.cce.sum(te.lang.cce.vmul(x1_broadcast, x1_broadcast),
-                                  axis=1)
-    mag_square2 = te.lang.cce.sum(te.lang.cce.vmul(x2_broadcast, x2_broadcast),
-                                  axis=1)
+    prod = te.lang.cce.vmul(x1_broadcast, x2_broadcast)
 
-    epsilon = tvm.const(1e-5, dtype="float32")
-    x1_sqrt = te.lang.cce.vsqrt(te.lang.cce.vadds(mag_square1, epsilon))
-    x2_sqrt = te.lang.cce.vsqrt(te.lang.cce.vadds(mag_square2, epsilon))
-    cos_res = te.lang.cce.vdiv(prod_num, te.lang.cce.vmul(x1_sqrt, x2_sqrt))
+    mag1 = te.lang.cce.vmul(x1_broadcast, x1_broadcast)
+    mag2 = te.lang.cce.vmul(x2_broadcast, x2_broadcast)
+    mag_square1 = te.lang.cce.sum(mag1, axis=1)
+    mag_square2 = te.lang.cce.sum(mag2, axis=1)
+
+    x1_epsilon = te.lang.cce.vadds(mag_square1, epsilon)
+    x2_epsilon = te.lang.cce.vadds(mag_square2, epsilon)
+    x1_sqrt = te.lang.cce.vsqrt(x1_epsilon)
+    x2_sqrt = te.lang.cce.vsqrt(x2_epsilon)
+    mode_num = te.lang.cce.vmul(x1_sqrt, x2_sqrt)
+    prod_num = te.lang.cce.sum(prod, axis=1)
+    cos_res = te.lang.cce.vdiv(prod_num, mode_num)
 
     # DSL description for 1 - cos(x1, x2)
     zero_tensor = te.lang.cce.vmuls(target_broadcast, 0)
@@ -141,8 +164,8 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
     # DSL description for max(0, cos(x1, x2) - margin)
     margin_const = tvm.const(margin, dtype="float32")
     margin_tensor = te.lang.cce.vmuls(one_tensor, margin_const)
-    neg = te.lang.cce.vmax(zero_tensor,
-                           te.lang.cce.vsub(cos_res, margin_tensor))
+    neg_sub = te.lang.cce.vsub(cos_res, margin_tensor)
+    neg = te.lang.cce.vmax(zero_tensor, neg_sub)
 
     # DSL description for output = pos if y == 1 else neg
     output_pos = te.lang.cce.vcmpsel(target_broadcast, one_tensor, 'eq',
@@ -150,19 +173,16 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
     output_neg = te.lang.cce.vcmpsel(target_broadcast, neg_one_tensor, 'eq',
                                      neg, zero_tensor)
     res = te.lang.cce.vadd(output_pos, output_neg)
+    if reduction in ['sum', 'mean']:
+        if reduction == 'mean':
+            num = reduce(lambda x, y: x * y, tgt_shape_broadcast)
+            mean_cof = num ** (-1)
+            res = te.lang.cce.vmuls(res, mean_cof)
+            res = te.lang.cce.cast_to(res, 'float32')
 
-    reduce_axis = [index for index, _ in enumerate(tgt_shape_broadcast)]
-    res_sum = te.lang.cce.sum(res, axis=reduce_axis)
-
-    # select reduction method
-    if reduction == 'sum':
-        return te.lang.cce.cast_to(res_sum, 'float32')
-
-    if reduction == 'mean':
-        num = reduce(lambda x, y: x * y, tgt_shape_broadcast)
-        mean_cof = num ** (-1)
-        res_mean = te.lang.cce.vmuls(res_sum, mean_cof)
-        return te.lang.cce.cast_to(res_mean, 'float32')
+        reduce_axis = [index for index, _ in enumerate(tgt_shape_broadcast)]
+        res_sum = te.lang.cce.sum(res, axis=reduce_axis)
+        return res_sum
 
     return te.lang.cce.cast_to(res, 'float32')
 
@@ -211,7 +231,7 @@ def cosine_embedding_loss(input_x1, input_x2, target, y,
     target_dtype = dtype_tgt.lower()
 
     util.check_kernel_name(kernel_name)
-    x_shape_broadcat, tgt_shape_broadcast = \
+    x_shape_broadcat, tgt_shape_broadcast, shape_x1, shape_x2, shape_tgt = \
         _shape_check(shape_x1, shape_x2, shape_tgt)
     _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction)
 
@@ -236,5 +256,3 @@ def cosine_embedding_loss(input_x1, input_x2, target, y,
     }
 
     te.lang.cce.cce_build_code(schedule, config)
-
-

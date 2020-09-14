@@ -18,6 +18,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 # pylint: disable=locally-disabled,unused-argument
 @fusion_manager.register("softmax_grad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x,
@@ -48,8 +49,9 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
     shape_input2 = te.lang.cce.util.shape_to_list(grad_softmax.shape)
     has_improve_precision = False
     if list(shape_input1) != list(shape_input2):
-        shape_input1, shape_input2, shape = util.produce_shapes(shape_input1,
-                                                                shape_input2)
+        shape_input1, shape_input2, shape = broadcast_shapes(shape_input1, shape_input2,
+                                                             param_name_input1="softmax",
+                                                             param_name_input2="grad_softmax")
         softmax = te.lang.cce.broadcast(softmax, shape, dtype)
         grad_softmax = te.lang.cce.broadcast(grad_softmax, shape, dtype)
 
@@ -71,7 +73,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     """
     Computes softmax gradients for a softmax operation
@@ -98,20 +100,16 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     dtype_softmax = softmax.get("dtype")
 
     util.compare_tensor_dict_key(softmax, grad_softmax, "dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_softmax)
-    util.check_shape_rule(shape_grad_softmax)
-    util.check_tensor_shape_size(shape_softmax)
-    util.check_tensor_shape_size(shape_grad_softmax)
+    check_shape(shape_softmax, param_name="softmax")
+    check_shape(shape_grad_softmax, param_name="grad_softmax")
 
     check_list = ("float16", "float32")
     input_dtype = dtype_softmax.lower()
 
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="softmax")
     if list(shape_softmax) != list(shape_grad_softmax):
         shape_softmax, shape_grad_softmax, shape_max = \
-            util.produce_shapes(shape_softmax, shape_grad_softmax)
-        util.check_tensor_shape_size(shape_max)
+            broadcast_shapes(shape_softmax, shape_grad_softmax, param_name_input1="softmax", param_name_input2="grad_softmax")
 
     softmax = tvm.placeholder(shape_softmax, name="softmax", dtype=input_dtype)
     grad_softmaxgrad = tvm.placeholder(shape_grad_softmax,

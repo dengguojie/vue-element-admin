@@ -17,7 +17,6 @@ from functools import reduce as function_reduce
 import te.lang.cce
 from te import tvm
 from te import platform as cceconf
-from topi.cce.util import is_v200_version
 
 
 def _get_tensor_map(res, tensor_map):
@@ -63,9 +62,10 @@ def _tilling_axis(shape, dtype_size, tensor_num):
     split_axis and split_factor
     """
     shape_new = list(shape).copy()
-    total_ele = (cceconf.CceProductParams().getParams(
-        "Unified_Buffer") - 1024 * 2) // dtype_size // tensor_num // 2
-    block_num = cceconf.CceProductParams().getParams("Device_core_num")
+    shape_new[2] = (shape_new[2] + 15) // 16 * 16
+    total_ele = cceconf.get_soc_spec("UB_SIZE") // \
+                dtype_size // tensor_num // 2
+    block_num = cceconf.get_soc_spec("CORE_NUM")
     val_cnt = 1
     index_cnt = 0
     for i in range(0, len(shape_new) - 1):
@@ -78,6 +78,7 @@ def _tilling_axis(shape, dtype_size, tensor_num):
                  function_reduce(lambda x, y: x * y, shape_new[index_cnt + 1:])
     if 256 <= block_size <= total_ele:
         total_ele = block_size
+    total_ele = total_ele // 256 * 256
     split_axis = 0
     split_factor = 1
     size = function_reduce(lambda x, y: x * y, shape_new[1:])
@@ -147,7 +148,7 @@ def _bind_fuse(fused_value, fused_list, axis_outer_num, sch, res,
     """
     bind the fused axis.
     """
-    core_num = cceconf.CceProductParams().getParams("Device_core_num")
+    core_num = cceconf.get_soc_spec("CORE_NUM")
     bind_axis = axis_outer
     if fused_list:
         if fused_value * axis_outer_num <= core_num:
@@ -192,7 +193,7 @@ def _bind_core(out_shape, sch, res, tensor_map):
     -------
     axis_outer, axis_inner
     """
-    core_num = cceconf.CceProductParams().getParams("Device_core_num")
+    core_num = cceconf.get_soc_spec("CORE_NUM")
     split_axis, split_factor = _tilling_axis(out_shape, 4, 2)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
                                             factor=split_factor)
@@ -250,8 +251,14 @@ def _set_buffer_emit_insn(sch, res, tensor_map, axis_inner):
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
         elif key == "dequant_to_fp16":
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
-            if is_v200_version():
-                sch[value].emit_insn(sch[value].op.axis[0], 'dma_copy')
+            if cceconf.get_soc_spec("SOC_VERSION") in ("Ascend710",
+                                                       "Ascend610",
+                                                       "Ascend615",
+                                                       "Hi3796CV300CS"):
+                if res.op.attrs['is_scalar'].value == 1:
+                    sch[value].emit_insn(sch[value].op.axis[0], 'dma_copy')
+                else:
+                    sch[value].emit_insn(sch[value].op.axis[2], 'dma_copy')
             else:
                 if res.op.attrs['is_scalar'].value == 1:
                     sch[value].pragma(value.op.axis[0], 'deq_scale', 'scalar')

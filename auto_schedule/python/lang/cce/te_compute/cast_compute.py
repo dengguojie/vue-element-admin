@@ -20,7 +20,7 @@ from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
 from .util import auto_cast_tensor
-from .util import is_cast_support
+from .util import is_cast_support, get_cast_type
 from .util import shape_to_list
 from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
@@ -58,9 +58,7 @@ def auto_cast_of_cast(func, *args, **kwargs):
 
 def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
     """
-    cast tensor from src_type to dst_dtype, only support float32 to float16,
-    float16 to float32, float16 to int8, int8 to float16,float16 to uint8, uint8
-     to float16
+    cast tensor from src_type to dst_dtype
 
     Parameters
     ----------
@@ -81,14 +79,24 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
                 "float32",
                 dst_dtype.lower()):
             raw_tensor = _cast_op(raw_tensor, "float32", 'elewise_single_cast')
+            src_dtype = raw_tensor.dtype
         elif is_cast_support(src_dtype.lower(), "float16") and is_cast_support(
                 "float16",
                 dst_dtype.lower()):
             raw_tensor = _cast_op(raw_tensor, "float16", 'elewise_single_cast')
+            src_dtype = raw_tensor.dtype
         else:
             raise RuntimeError("Unsupported cast type!")
 
-    return _cast_op(raw_tensor, dst_dtype, 'elewise_single_cast',
+    # Default cast_type is "cast", while float casting to int32 or int16 is "trunc"
+    # float to int8 or uint8 doesn't need to use "trunc" mode
+    # Reason: TF uses "trunc" strategy in its cast operator, so maintain consistency with it
+    cast_type = "cast"
+    if "int" in dst_dtype and "float" in src_dtype and \
+            intrinsic_check_support("Intrinsic_vconv",
+                                    get_cast_type(src_dtype, dst_dtype) + "z"):
+        cast_type = "trunc"
+    return _cast_op(raw_tensor, dst_dtype, 'elewise_single_' + cast_type,
                     is_auto_cast=is_auto_cast)
 
 
@@ -202,17 +210,14 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     if op_type == "elewise_single_cast":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_round":
-        lambda_func = lambda *indice: tvm.round(tensor(*indice)).astype(
-            output_dtype)
+        lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_ceil":
         lambda_func = lambda *indice: tvm.ceil(tensor(*indice)).astype(
             output_dtype)
     elif op_type == "elewise_single_floor":
-        lambda_func = lambda *indice: tvm.floor(tensor(*indice)).astype(
-            output_dtype)
+        lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_trunc":
-        lambda_func = lambda *indice: tvm.trunc(tensor(*indice)).astype(
-            output_dtype)
+        lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_round_d":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     else:

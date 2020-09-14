@@ -20,6 +20,7 @@ import math
 import te
 
 from te import tvm
+from te.platform import log
 
 from te.platform.cce_util import get_align_factor
 from .util import get_least_common_multiple
@@ -37,7 +38,7 @@ UINT8_MAXIMUM = 255
 def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """Do last axis broadcast"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     ###########################################################################
     # There are currently 3 ways to do last axis broadcast:
     # 1. Direct scalar move DSM
@@ -101,7 +102,7 @@ def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-sta
     # Final stage: Select and execute algorithm
     if len(enabled_algorithm) == 1:
         result_buffer = enabled_algorithm[0][1](ir_builder, index, input_buffer, output_buffer,
-                                                broadcast_src, broadcast_factor)
+                                                broadcast_src, broadcast_factor, scope)
     else:
         best_algorithm = None
         current_cycle = -1
@@ -113,7 +114,7 @@ def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-sta
                 best_algorithm = algorithm_info[1]
                 current_cycle = my_cycle
         result_buffer = best_algorithm(ir_builder, index, input_buffer, output_buffer,
-                                       broadcast_src, broadcast_factor)
+                                       broadcast_src, broadcast_factor, scope)
     return result_buffer
 
 
@@ -133,7 +134,7 @@ def is_falat_supported(broadcast_factor, broadcast_src, dtype_byte_size,
 def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """Do mid axis broadcast"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     ###########################################################################
     # There are currently 3 ways to do mid axis broadcast:
     # 1. Direct scalar move DSM
@@ -184,7 +185,8 @@ def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-stat
     # Final stage: Select and execute algorithm
     if len(enabled_algorithm) == 1:
         result_buffer = enabled_algorithm[0][1](ir_builder, index, input_buffer, output_buffer,
-                                                broadcast_src, broadcast_unit, broadcast_factor)
+                                                broadcast_src, broadcast_unit, broadcast_factor,
+                                                scope)
     else:
         best_algorithm = None
         current_cycle = -1
@@ -196,14 +198,14 @@ def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-stat
                 best_algorithm = algorithm_info[1]
                 current_cycle = my_cycle
         result_buffer = best_algorithm(ir_builder, index, input_buffer, output_buffer,
-                                       broadcast_src, broadcast_unit, broadcast_factor)
+                                       broadcast_src, broadcast_unit, broadcast_factor, scope)
     return result_buffer
 
 
 def mask_grouping_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """MGB broadcast algorithm"""
     ir_builder, _, input_tensor, output_tensor, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     # Dtype
     dtype = input_tensor.dtype
     # Block unit num
@@ -468,7 +470,7 @@ def broadcast_for_tensor_unaligned_emit_insn(inputs):  # pylint: disable=too-man
 def broadcast_last_axis_aligned(*args):  # pylint: disable=too-many-locals
     """LFA broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     ins, outs = ([input_buffer], [output_buffer])
 
     reg_num = 8
@@ -536,15 +538,15 @@ def broadcast_last_axis_aligned(*args):  # pylint: disable=too-many-locals
 def common_unaligned_broadcast_last_axis(*args):  # pylint: disable=too-many-locals
     """API for translating last axis DSM to common DSM"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     return common_unaligned_broadcast(ir_builder, index, input_buffer, output_buffer,
-                                      broadcast_src, 1, broadcast_factor)
+                                      broadcast_src, 1, broadcast_factor, scope)
 
 
 def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
     """DSM Broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     for_loop = broadcast_src
     # Be aware of using too much registers!
     maximum_reg_buffer = 8
@@ -599,7 +601,7 @@ def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
 def compound_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
     """CSM Broadcast algorithm"""
     ir_builder, idx, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     # Compound mode selection
     compound_mode_dict = {
         2: "uint16_t",
@@ -623,7 +625,7 @@ def compound_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
                                        data=input_buffer.data,
                                        offset_factor=input_buffer.offset_factor,
                                        data_alignment=input_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     output_buffer_byte_size = get_buffer_shape(output_buffer) * dtype_size
     output_buffer_compound_size = output_buffer_byte_size // compound_mode
@@ -633,19 +635,19 @@ def compound_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
                                         data=output_buffer.data,
                                         offset_factor=output_buffer.offset_factor,
                                         data_alignment=output_buffer.data_alignment,
-                                        scope=scope_ubuf,
+                                        scope=scope,
                                         elem_offset=0)
     # Do DSM with generated compound
     common_unaligned_broadcast(ir_builder, idx, input_buffer_com, output_buffer_com,
                                broadcast_src, broadcast_unit // compound_factor,
-                               broadcast_factor)
+                               broadcast_factor, scope)
     return output_buffer
 
 
 def full_aligned_broadcast(*args, remain=0):  # pylint: disable=too-many-locals
     """FA Broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     dtype_block_size, dtype_byte_size = get_align_factor(input_buffer.dtype)
     # Check if aligned
     if broadcast_unit % dtype_block_size != 0 or remain % dtype_block_size != 0:
@@ -665,7 +667,7 @@ def full_aligned_broadcast(*args, remain=0):  # pylint: disable=too-many-locals
         return full_aligned_broadcast_vector(*args, remain=remain)
     if input_buffer != output_buffer:
         return full_aligned_broadcast_vector_enhanced(*args)
-    print("[BroadcastIntrin][Warning] FA broadcast vector enhanced mode disabled!")
+    log.warn("[BroadcastIntrin] FA broadcast vector enhanced mode disabled!")
     no_enhanced = True
     if full_aligned_broadcast_selection(broadcast_src, broadcast_unit, broadcast_factor,
                                         input_buffer.dtype,
@@ -712,7 +714,7 @@ def is_support_full_aligned_broadcast_vector_enhanced(broadcast_unit, broadcast_
 def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-locals
     """Use copy_ubuf_to_ubuf when broadcast_unit is larger"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     dtype_block_size, dtype_byte_size = get_align_factor(input_buffer.dtype)
     block_num = broadcast_unit // dtype_block_size
     for_loop = broadcast_src
@@ -725,7 +727,7 @@ def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-local
                                       data=input_buffer.data,
                                       offset_factor=input_buffer.offset_factor,
                                       data_alignment=input_buffer.data_alignment,
-                                      scope=scope_ubuf,
+                                      scope=scope,
                                       elem_offset=0)
     output_buffer_1d_size = get_buffer_shape(output_buffer)
     output_buffer_16_size = output_buffer_1d_size * b16_factor
@@ -734,12 +736,11 @@ def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-local
                                        data=output_buffer.data,
                                        offset_factor=output_buffer.offset_factor,
                                        data_alignment=output_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     vor_buffer = apply_for_new_alloc(ir_builder, "uint16_t",
                                      (128,),
-                                     scope_ubuf)
-    init_vor_buffer(ir_builder, vor_buffer)
+                                     scope)
 
     if input_buffer == output_buffer:
         for_loop -= 1
@@ -758,6 +759,7 @@ def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-local
                     dst_address, src_address,
                     0, 1, block_num, 0, 0))
             if remain > 0:
+                init_vor_buffer(ir_builder, vor_buffer)
                 vector_insn_factory_normal(ir_builder, "vor", output_buffer_16,
                                            input_buffer_16, vor_buffer, remain * b16_factor,
                                            src1_stride=0, src1_repstr=0,
@@ -793,7 +795,7 @@ def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-local
 def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-locals
     """Use vor when broadcast_factor is larger"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     _, dtype_byte_size = get_align_factor(input_buffer.dtype)
     for_loop = broadcast_src
     # vor needs to treat original and target buffer as binary16
@@ -805,7 +807,7 @@ def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-
                                       data=input_buffer.data,
                                       offset_factor=input_buffer.offset_factor,
                                       data_alignment=input_buffer.data_alignment,
-                                      scope=scope_ubuf,
+                                      scope=scope,
                                       elem_offset=0)
     output_buffer_1d_size = get_buffer_shape(output_buffer)
     output_buffer_16_size = output_buffer_1d_size * b16_factor
@@ -814,11 +816,11 @@ def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-
                                        data=output_buffer.data,
                                        offset_factor=output_buffer.offset_factor,
                                        data_alignment=output_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     vor_buffer = apply_for_new_alloc(ir_builder, "uint16_t",
                                      (128,),
-                                     scope_ubuf)
+                                     scope)
     init_vor_buffer(ir_builder, vor_buffer)
     # Calculate vector instruction parameters
     broadcast_unit_16 = broadcast_unit * b16_factor
@@ -912,7 +914,7 @@ def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-
 def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-locals
     """Use vor enhanced when broadcast_src is larger"""
     ir_builder, _, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     _, dtype_byte_size = get_align_factor(input_buffer.dtype)
     if input_buffer == output_buffer:
         raise RuntimeError("Full aligned broadcast vector enhanced mode needs safety buffer")
@@ -926,7 +928,7 @@ def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-l
                                       data=input_buffer.data,
                                       offset_factor=input_buffer.offset_factor,
                                       data_alignment=input_buffer.data_alignment,
-                                      scope=scope_ubuf,
+                                      scope=scope,
                                       elem_offset=0)
     output_buffer_1d_size = get_buffer_shape(output_buffer)
     output_buffer_16_size = output_buffer_1d_size * b16_factor
@@ -935,11 +937,11 @@ def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-l
                                        data=output_buffer.data,
                                        offset_factor=output_buffer.offset_factor,
                                        data_alignment=output_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     vor_buffer = apply_for_new_alloc(ir_builder, "uint16_t",
                                      (128,),
-                                     scope_ubuf)
+                                     scope)
     init_vor_buffer(ir_builder, vor_buffer)
     # Calculate vector instruction parameters
     broadcast_unit_16 = broadcast_unit * b16_factor
@@ -993,7 +995,7 @@ def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-l
 def semi_aligned_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """SA Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_unit, broadcast_factor = args
+        broadcast_src, broadcast_unit, broadcast_factor, scope = args
     # Get block size of input tensor
     dtype_block_size, dtype_byte_size = get_align_factor(input_buffer.dtype)
     # Get least common multiple for alignment factor
@@ -1010,33 +1012,35 @@ def semi_aligned_broadcast(*args):  # pylint: disable=too-many-locals, too-many-
             selection != VECTOR_MODE:
         output_buffer = apply_for_new_alloc(ir_builder, input_buffer.dtype,
                                             (broadcast_src * broadcast_unit * factor_after,),
-                                            scope_ubuf)
+                                            scope)
 
     # Do DSM for alignment, broadcast broadcast_unit to least_common_multiple
     # Use CSM if possible
     if int(broadcast_unit * dtype_byte_size % 2) == 0:
         input_buffer = compound_unaligned_broadcast(ir_builder, index, input_buffer, output_buffer,
-                                                    broadcast_src, broadcast_unit, factor_after)
+                                                    broadcast_src, broadcast_unit, factor_after,
+                                                    scope)
     else:
         input_buffer = common_unaligned_broadcast(ir_builder, index, input_buffer, output_buffer,
-                                                  broadcast_src, broadcast_unit, factor_after)
+                                                  broadcast_src, broadcast_unit, factor_after,
+                                                  scope)
     # Do full aligned
     full_aligned_broadcast(ir_builder, index, input_buffer, original_output_buffer,
-                           broadcast_src, least_common_multiple, repeat_time, remain=remain)
+                           broadcast_src, least_common_multiple, repeat_time, scope, remain=remain)
     return original_output_buffer
 
 
 def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals, too-many-statements
     """Full Aligned Last Axis Transpose Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     dtype_block_size, dtype_byte_size = get_align_factor(input_buffer.dtype)
     vector_insn_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     if dtype_byte_size != 2:
         raise RuntimeError("FALAT broadcast supports fp16 only")
     full_aligned_broadcast(ir_builder, index, input_buffer, output_buffer,
                            broadcast_src // dtype_block_size,
-                           dtype_block_size, broadcast_factor)
+                           dtype_block_size, broadcast_factor, scope)
     output_buffer_1d_size = get_buffer_shape(output_buffer)
     output_buffer_16_size = output_buffer_1d_size
     transpose_count = broadcast_factor * broadcast_src // (vector_insn_one_repeat_size * 2)
@@ -1045,13 +1049,18 @@ def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals,
                                        data=output_buffer.data,
                                        offset_factor=output_buffer.offset_factor,
                                        data_alignment=output_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     for i in range(transpose_count):
+        # noinspection PyTypeChecker
         ir_builder.emit(tvm.call_extern(
             "uint16_t", "vtranspose",
-            output_buffer_16.access_ptr("rw", offset=i * vector_insn_one_repeat_size * 2),
-            output_buffer_16.access_ptr("r", offset=i * vector_insn_one_repeat_size * 2)
+            tvm.call_pure_intrin("uint16_t", "tvm_access_ptr", tvm.const(0, "uint16_t"),
+                                 output_buffer_16.data,
+                                 i * vector_insn_one_repeat_size * 2, 256, 3),
+            tvm.call_pure_intrin("uint16_t", "tvm_access_ptr", tvm.const(0, "uint16_t"),
+                                 output_buffer_16.data,
+                                 i * vector_insn_one_repeat_size * 2, 256, 1)
         ))
     return output_buffer
 
@@ -1059,7 +1068,7 @@ def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals,
 def last_axis_transpose_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """Last Axis Transpose Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
-        broadcast_src, broadcast_factor = args
+        broadcast_src, broadcast_factor, scope = args
     # Get original buffer dtype factor compared with binary16
     input_dtype_block_size, input_dtype_byte_size = get_align_factor(input_buffer.dtype)
     dtype_factor = input_dtype_byte_size // get_align_factor("uint16")[1]
@@ -1077,7 +1086,7 @@ def last_axis_transpose_broadcast(*args):  # pylint: disable=too-many-locals, to
                                       data=input_buffer.data,
                                       offset_factor=input_buffer.offset_factor,
                                       data_alignment=input_buffer.data_alignment,
-                                      scope=scope_ubuf,
+                                      scope=scope,
                                       elem_offset=0)
     output_buffer_1d_size = get_buffer_shape(output_buffer)
     output_buffer_16_size = output_buffer_1d_size
@@ -1086,17 +1095,17 @@ def last_axis_transpose_broadcast(*args):  # pylint: disable=too-many-locals, to
                                        data=output_buffer.data,
                                        offset_factor=output_buffer.offset_factor,
                                        data_alignment=output_buffer.data_alignment,
-                                       scope=scope_ubuf,
+                                       scope=scope,
                                        elem_offset=0)
     mid_buffer = apply_for_new_alloc(ir_builder, "uint16_t",
                                      (16, 16),
-                                     scope_ubuf)
+                                     scope)
     mid_buffer_target = apply_for_new_alloc(ir_builder, "uint16_t",
                                             (16, 16, broadcast_factor),
-                                            scope_ubuf)
+                                            scope)
     vor_buffer = apply_for_new_alloc(ir_builder, "uint16_t",
                                      (128,),
-                                     scope_ubuf)
+                                     scope)
     # Do emit insn
     reset_mask_insn(ir_builder, "uint16_t")
     # Use vor if dtype factor is 1

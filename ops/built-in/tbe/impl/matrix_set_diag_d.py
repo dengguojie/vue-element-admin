@@ -22,6 +22,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = -1
 SCALAR_NEGATIVE_ONE = -1
@@ -110,7 +111,7 @@ def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
 
 
 # pylint: disable=locally-disabled,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
                       kernel_name="matrix_set_diag_d"):
     """
@@ -140,14 +141,10 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     help_matrix = input_help.get("shape")
     dtype = input_matrix.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input)
-    util.check_shape_rule(shape_diag)
-    util.check_shape_rule(help_matrix)
+    check_shape(shape_input, param_name="input_matrix")
+    check_shape(shape_diag, param_name="input_diagonal")
+    check_shape(help_matrix, param_name="input_help")
 
-    util.check_tensor_shape_size(shape_input)
-    util.check_tensor_shape_size(shape_diag)
-    util.check_tensor_shape_size(help_matrix)
 
     # Check help_matrix can really help.
     _check_tensor_size(shape_input, help_matrix)
@@ -165,9 +162,9 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     input_dtype = dtype.lower()
     input_dtype_diagonal = dtype_diagonal.lower()
     input_dtype_help = dtype_help.lower()
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_dtype_rule(input_dtype_diagonal, check_list)
-    util.check_dtype_rule(input_dtype_help, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_matrix")
+    check_dtype(input_dtype_diagonal, check_list, param_name="input_diagonal")
+    check_dtype(input_dtype_help, check_list, param_name="input_help")
 
     data_a = tvm.placeholder(shape_input, name="data_a", dtype=input_dtype)
     data_b = tvm.placeholder(shape_b_newshape, name="data_b", dtype=input_dtype)

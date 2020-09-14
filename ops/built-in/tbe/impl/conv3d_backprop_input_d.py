@@ -7,9 +7,9 @@ conv3d_backprop_input
 """
 
 from __future__ import absolute_import
-
 import te.lang.cce
 from te import tvm
+from te.platform import get_soc_spec
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util as err_mana
 from topi import generic
@@ -34,6 +34,7 @@ DEDY_HW_MAX = 4096
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 FILTER_HW_SIZE = 256
+FILTER_D_MAX = 128
 
 # stride must be in [1,63] and h*w not lagger than 256
 STRIDE_HW_MIN = 1
@@ -47,7 +48,6 @@ PAD_MAX = 255
 
 # special num
 STRID_D_COEFF = 126
-KHW_COEFF = 2048
 HW_COEEF = 1024
 KHWD_COEFF = 343
 
@@ -62,12 +62,59 @@ DATA_SIZE_MAX = 9223372036854775807
 # pads valid mode to be [0, 0, 0, 0, 0, 0]
 PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 
+
+def ceil(x_1, x_2):
+    """
+    do ceiling division
+
+    Parameters
+    ----------
+    x_1: int
+    x_2: int
+    Returns
+    -------
+    result
+    """
+    if x_2 == 0:
+        dict_args = {
+            'errCode': 'E62502',
+            'first_operand': str(x_1),
+            'second_operand': str(x_2),
+        }
+        raise RuntimeError(dict_args,
+                           err_mana.get_error_message(dict_args))
+    return (x_1 + x_2 - 1) // x_2
+
+
+def align(x_1, x_2):
+    """
+    align x_1 with x_2
+
+    Parameters
+    ----------
+    x_1: int
+    x_2: int
+    Returns
+    -------
+    result
+    """
+    if x_2 == 0:
+        dict_args = {
+            'errCode': 'E62502',
+            'first_operand': str(x_1),
+            'second_operand': str(x_2),
+        }
+        raise RuntimeError(dict_args,
+                           err_mana.get_error_message(dict_args))
+    return ((x_1 + x_2 - 1) // x_2) * x_2
+
+
 @util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list),
-                       (str, tuple, list), str, (tuple, list), str)
+                       (str, tuple, list), (tuple, list), int, str, str)
 def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
                             out_backprop, y_input, input_sizes, strides,
-                            pads, data_format="NDHWC",
-                            dilations=(1, 1, 1, 1, 1),
+                            pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                            data_format="NDHWC",
                             kernel_name="conv3d_backprop_input"):
     """
     algorithm: conv3d_backprop_input
@@ -92,8 +139,17 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     pads: tuple/list of 6 integers
              [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
+    data_format: The data format of the input and output data. With the
+                default format "NDHWC"
+
     dilations: tuple/list of 5 integers
-               filter expand size of dilated conv3d_backprop_input
+             filter expand size of dilated conv3d_backprop_input
+
+    groups: int of blocked connections from input channels to output channels
+             default value 1
+
+    data_format: The data format of the input and output data. With the
+                 default format "NDHWC"
 
     kernel_name: str
                  kernel name, default value is "conv3d_backprop_input"
@@ -121,28 +177,28 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     ori_format_out_backprop = data_format
     ori_format_res = data_format
 
-    if ori_format_filters == "DHWNC":
+    if ori_format_filters == "DHWCN":
         shape_filters = ori_shape_filters
     elif ori_format_filters == "NDHWC":
         shape_filters = (ori_shape_filters[1],
                          ori_shape_filters[2],
                          ori_shape_filters[3],
-                         ori_shape_filters[0],
                          ori_shape_filters[4],
+                         ori_shape_filters[0],
                         )
     elif ori_format_filters == "NCDHW":
         shape_filters = (ori_shape_filters[2],
                          ori_shape_filters[3],
                          ori_shape_filters[4],
-                         ori_shape_filters[0],
                          ori_shape_filters[1],
+                         ori_shape_filters[0],
                         )
     else:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'filter',
             'expected_format_list': '[{}, {}, {}]'
-                                    .format('DHWNC', 'NDHWC', 'NCDHW'),
+                                    .format('DHWCN', 'NDHWC', 'NCDHW'),
             'format': ori_format_filters
         }
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
@@ -209,7 +265,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                    5-D with shape (depth, height, weight, batch, channels)
 
     shape_out_backprop : The shape of gradients.
-                         5-D with shape[batch, depth, height, weight,channels].
+                         5-D with shape[batch, depth, height, weight,channels]
 
     input_sizes : The shape of feature map.
                   5-D with shape [batch, depth, height, weight, channels].
@@ -222,7 +278,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     filter_dtype : The dtype of filter data. Default value is float16.
 
-    out_backprop_dtype : The dtype of gradients data. Default value is float16.
+    out_backprop_dtype : The dtype of gradients data. Default value is float16
 
     res_dtype : The dtype of result(De/Dx) data. Default value is float16.
 
@@ -234,52 +290,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     """
 
-    def _ceil(x_1, x_2):
-        if x_2 == 0:
-            dict_args = {
-                'errCode': 'E62502',
-                'first_operand': str(x_1),
-                'second_operand': str(x_2),
-            }
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-        return (x_1 + x_2 - 1) // x_2
 
-    def _align(x_1, x_2):
-        if x_2 == 0:
-            dict_args = {
-                'errCode': 'E62502',
-                'first_operand': str(x_1),
-                'second_operand': str(x_2),
-            }
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-        return (x_1 + x_2 - 1) // x_2 * x_2
-
-    def _check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
-        if not attr_min and not attr_max:
-            return
-        if not attr_min:
-            if attr_value > attr_max:
-                dict_args = {
-                    'errCode': 'E60011',
-                    'range': '(,{}]'.format(attr_max),
-                    'attr_name': attr_name,
-                    'value': str(attr_value)
-                }
-                raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
-        elif not attr_max:
-            if attr_value < attr_min:
-                dict_args = {
-                    'errCode': 'E60011',
-                    'range': '[{},)'.format(attr_min),
-                    'attr_name': attr_name,
-                    'value': str(attr_value)
-                }
-                raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
-        elif attr_value < attr_min or attr_value > attr_max:
+    def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
+        if attr_value < attr_min or attr_value > attr_max:
             dict_args = {
                 'errCode': 'E60011',
                 'range': '[{},{}]'.format(attr_min, attr_max),
@@ -302,24 +315,44 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             raise RuntimeError(dict_args,
                                err_mana.get_error_message(dict_args))
 
+    def _check_l1_limitation():
+        block_size = 16
+        w_value = dedy_w * stride_w
+        if fmap_w > block_size:
+            h_value_max = filter_h_dilation + 1
+        elif block_size % fmap_w == 0:
+            h_value_max = filter_h_dilation + block_size // fmap_w - 1
+        else:
+            h_value_max = filter_h_dilation + block_size // fmap_w + 1
+
+        a_l1_size = h_value_max * w_value * \
+                    ((filter_d_dilation - 2)//stride_d + 2) * block_size * 2
+        b_l1_size = filter_h_dilation * filter_w_dilation * \
+                    filter_d_dilation * block_size * block_size * 2
+        l1_size = get_soc_spec("L1_SIZE")
+        if (a_l1_size + b_l1_size) > l1_size:
+            dict_args = {
+                'errCode': 'E60022'
+            }
+            raise RuntimeError(dict_args,
+                               err_mana.get_error_message(dict_args))
+
     def _check_shape_error():
         fmap_h_padding = fmap_h + pad_up + pad_down
         fmap_w_padding = fmap_w + pad_left + pad_right
         fmap_d_padding = fmap_deep + pad_head + pad_tail
 
-        if fmap_channel != filter_batch:
+        if fmap_channel != filter_channel:
             dict_args = {
-                'errCode': 'E62505',
-                'input_C': str(fmap_channel),
-                'filter_N': str(filter_batch)
+                'errCode': 'E60108',
+                'reason': "Shape error: Fmap's C must be equal to Filter'C."
             }
             raise RuntimeError(dict_args,
                                err_mana.get_error_message(dict_args))
-        if dedy_channel != filter_channel:
+        if dedy_channel != filter_batch:
             dict_args = {
-                'errCode': 'E62506',
-                'backprop_C': str(dedy_channel),
-                'filter_C': str(filter_channel)
+                'errCode': 'E60108',
+                'reason': "Shape error: Dedy's C must be equal to Filter'N."
             }
             raise RuntimeError(dict_args,
                                err_mana.get_error_message(dict_args))
@@ -405,6 +438,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         raise RuntimeError(dict_args,
                            err_mana.get_error_message(dict_args))
 
+    if isinstance(pads, str) and pads not in ['SAME', 'VALID']:
+        dict_args = {
+            'errCode': 'E60000',
+            'param_name': 'pads',
+            'expected_value':'SAME or VALID',
+            'input_value': str(pads),
+        }
+        raise RuntimeError(dict_args,
+                           err_mana.get_error_message(dict_args))
     # dilations check
     util.check_shape_rule(dilations, CONV_BACKPROP_SHAPE_DIM,
                           CONV_BACKPROP_SHAPE_DIM,
@@ -435,7 +477,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     fmap_batch, fmap_deep, fmap_h, fmap_w, fmap_channel = input_sizes
     dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, \
-    filter_w, filter_batch, filter_channel = shape_filter
+    filter_w, filter_channel, filter_batch = shape_filter
     _, stride_d, stride_h, stride_w, _ = strides
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
@@ -443,15 +485,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
 
     if pads == 'SAME':
-        pad_h = _align(fmap_h, stride_h) - stride_h + filter_h - fmap_h
+        pad_h = align(fmap_h, stride_h) - stride_h + filter_h - fmap_h
         pad_h = max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
-        pad_w = _align(fmap_w, stride_w) - stride_w + filter_w - fmap_w
+        pad_w = align(fmap_w, stride_w) - stride_w + filter_w - fmap_w
         pad_w = max(pad_w, 0)
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
-        pad_d = _align(fmap_deep, stride_d)\
+        pad_d = align(fmap_deep, stride_d)\
                 - stride_d + filter_depth - fmap_deep
         pad_d = max(pad_d, 0)
         pad_head = pad_d // 2
@@ -477,6 +519,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         dey_hw_min = 1
         fmap_hw_min = 1
     _check_shape_error()
+    _check_l1_limitation()
+
     # Dedy value limit
     _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
                       dey_hw_min, DEDY_HW_MAX)
@@ -487,14 +531,11 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range("filter's D", filter_depth,
-                      FILTER_HW_MIN, STRID_D_COEFF*stride_d + 1)
+                      FILTER_HW_MIN, FILTER_D_MAX)
 
     _check_attr_range("filter H*W", filter_h * filter_w,
                       FILTER_HW_MIN, FILTER_HW_SIZE)
-    _check_attr_range("filter H*W*D",
-                      filter_h * filter_w * (2 + _ceil((filter_depth - 1),
-                                                       stride_d)),
-                      FILTER_HW_MIN, KHW_COEFF)
+
     _check_attr_range("filter H*W*D",
                       filter_h * filter_w * filter_depth,
                       FILTER_HW_MIN, KHWD_COEFF)
@@ -515,12 +556,12 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # check shape size, 64 bits limitation
     # ===========================================================
     c0_size = cce_params.C0_SIZE
-    fmap_size = fmap_batch * _align(fmap_channel, c0_size) \
+    fmap_size = fmap_batch * align(fmap_channel, c0_size) \
                 * fmap_deep * fmap_h * fmap_w
-    dedy_size = dedy_batch * _align(dedy_channel, c0_size) \
+    dedy_size = dedy_batch * align(dedy_channel, c0_size) \
                 * dedy_deep * dedy_h * dedy_w
-    filter_size = _align(filter_batch, c0_size) * \
-    _align(filter_channel, c0_size) * filter_depth * filter_h * filter_w
+    filter_size = align(filter_batch, c0_size) * \
+    align(filter_channel, c0_size) * filter_depth * filter_h * filter_w
     _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
     _check_64bits_limitation("out_backprop", dedy_size,
                              dtype=out_backprop_dtype)
@@ -578,74 +619,57 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
     ----------
     """
 
-    def _ceil(x_1, x_2):
-        if x_2 == 0:
-            dict_args = {
-                'errCode': 'E62502',
-                'first_operand': str(x_1),
-                'second_operand': str(x_2),
-            }
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-        return (x_1 + x_2 - 1) // x_2
 
-    def _align(x_1, x_2):
-        if x_2 == 0:
-            dict_args = {
-                'errCode': 'E62502',
-                'first_operand': str(x_1),
-                'second_operand': str(x_2),
-            }
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-        return (x_1 + x_2 - 1) // x_2 * x_2
+    def _conv3dbp_input_achieve_with_tvm():
+        dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
+        shape_filter_ncdhw = [filter_batch,
+                              filter_channel, filter_depth, filter_h, filter_w]
+
+        filters = tvm.placeholder(shape_filter_frac,
+                                  name="filter", dtype=filter_dtype)
+
+        dedx = te.lang.cce.conv3d_backprop_input_compute(
+            filters=filters,
+            out_backprop=dedy,
+            filter_sizes=shape_filter_ncdhw,
+            input_sizes=input_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name
+        )
+        tensor_list = [filters, dedy, dedx]
+
+        with tvm.target.cce():
+            sch = generic.auto_schedule(dedx)
+
+        config = {
+            "name": kernel_name,
+            "tensor_list": tensor_list
+        }
+        te.lang.cce.cce_build_code(sch, config)
+
 
     res = check_conv3dbp_input_params(shape_filter, shape_out_backprop,
                                       input_sizes, strides, pads, dilations,
                                       filter_dtype, out_backprop_dtype,
                                       res_dtype, kernel_name)
     shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,\
-    filter_dtype, out_backprop_dtype, res_dtype, kernel_name = res
+    filter_dtype, out_backprop_dtype, res_dtype, kernel_name  = res
 
     dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, filter_w,\
-    filter_batch, filter_channel = shape_filter
+    filter_channel, filter_batch = shape_filter
     pads = list(pads)
 
     # ===========================================================
     c0_size = cce_params.C0_SIZE  # Channel axis should be align with 16
     shape_dedy = (dedy_batch,
                   dedy_deep,
-                  _ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
+                  ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
 
     shape_filter_frac = (filter_depth,
-                         _ceil(filter_batch, c0_size) * filter_h * filter_w,
-                         _ceil(filter_channel, c0_size), c0_size, c0_size)
-    dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
-    shape_filter_ncdhw = [filter_batch,
-                          filter_channel, filter_depth, filter_h, filter_w]
-
-    filters = tvm.placeholder(shape_filter_frac,
-                              name="filter", dtype=filter_dtype)
-
-    dedx = te.lang.cce.conv3d_backprop_input_compute(
-        filters=filters,
-        out_backprop=dedy,
-        filter_sizes=shape_filter_ncdhw,
-        input_sizes=input_sizes,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name
-    )
-    tensor_list = [filters, dedy, dedx]
-
-    with tvm.target.cce():
-        sch = generic.auto_schedule(dedx)
-
-    config = {
-        "name": kernel_name,
-        "tensor_list": tensor_list
-    }
-    te.lang.cce.cce_build_code(sch, config)
+                         ceil(filter_channel, c0_size) * filter_h * filter_w,
+                         ceil(filter_batch, c0_size), c0_size, c0_size)
+    _conv3dbp_input_achieve_with_tvm()

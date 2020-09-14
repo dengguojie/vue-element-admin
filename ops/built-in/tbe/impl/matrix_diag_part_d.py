@@ -22,6 +22,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scaler, value = -2
 SCALER_NEGATIVE_TWO = -2
@@ -70,7 +71,7 @@ def matrix_diag_part_d_compute(input_diagonal, input_help, output_diagonal,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def matrix_diag_part_d(input_diagonal, input_help,
                        output_diagonal, kernel_name="matrix_diag_part_d"):
     """
@@ -96,11 +97,8 @@ def matrix_diag_part_d(input_diagonal, input_help,
     shape_input_help = input_help.get("shape")
     dtype_input_help = input_help.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_diagonal)
-    util.check_shape_rule(shape_input_help)
-    util.check_tensor_shape_size(shape_input_diagonal)
-    util.check_tensor_shape_size(shape_input_help)
+    check_shape(shape_input_diagonal, param_name="input_diagonal")
+    check_shape(shape_input_help, param_name="input_help")
 
     if len(shape_input_diagonal) < 2:
         raise RuntimeError("Input tensors of rank>=2 are supported!")
@@ -109,9 +107,9 @@ def matrix_diag_part_d(input_diagonal, input_help,
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     dtype_input_diagonal = dtype_input_diagonal.lower()
-    util.check_dtype_rule(dtype_input_diagonal, check_list)
+    check_dtype(dtype_input_diagonal, check_list, param_name="input_diagonal")
     dtype_input_help = dtype_input_help.lower()
-    util.check_dtype_rule(dtype_input_help, check_list)
+    check_dtype(dtype_input_help, check_list, param_name="input_help")
 
     data_input_diagonal = tvm.placeholder(shape_input_diagonal,
                                           name="data_input_diagonal",

@@ -44,6 +44,7 @@ from te.utils.op_utils import check_shape
 from te.utils.op_utils import refine_shape_axes
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name
@@ -90,8 +91,8 @@ def reduce_any_d_compute(x, y, axes, keepdims,
     res_s8 = te.lang.cce.cast_to(res_tmp, dtype, True)
     return res_s8
 
-@util.check_input_type(dict, dict, (int, list, tuple, NONE_TYPE),
-                       (bool, NONE_TYPE), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     """
     Reduce a tensor on a certain axes based on max
@@ -118,13 +119,12 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    check_shape(shape)
+    check_shape(shape, param_name="x")
 
     if dtype == "bool":
         dtype = "int8"
     check_list = ("int8",)
-    check_dtype(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="x")
 
     shape_len = len(shape)
     if not axes:
@@ -135,7 +135,7 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
 
     axes = util.axis_check(shape_len, axes)
 
-    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axes, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axes)
     if not is_5hdc:
         shape, axes = util.shape_refine(list(shape), axes)
         shape, axes = util.simplify_axis_shape(shape, axes)
@@ -143,6 +143,10 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     inp_dtype = dtype.lower()
     data_input = tvm.placeholder(shape, name="data_input_" + kernel_name, dtype=inp_dtype)
     res = reduce_any_d_compute(data_input, y, axes, keepdims, kernel_name)
+
+    if is_5hdc:
+        res.ori_shape = x["ori_shape"]
+        res.ori_format = x["ori_format"]
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

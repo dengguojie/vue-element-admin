@@ -69,6 +69,7 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
 
     return nd_to_5d
 
+
 def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
     select format dynamically
@@ -79,7 +80,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     dtype = input_x.get("dtype").lower()
     if length_x_ori >= 2 and (shape_x_ori[-1] % 16 != 0 or \
                               shape_x_ori[-2] % 16 != 0):
-        if tbe_product in ("Hi3796CV300ES",):
+        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float16",
                                format="NC1HWC0,ND")
@@ -87,7 +88,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                 datatype="float16,float16",
                                 format="NC1HWC0,ND")
 
-        if tbe_product in ("Ascend610", "Ascend620",):
+        if tbe_product in ("Ascend610", "Ascend710",):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float16,float",
                                format="NC1HWC0,ND,ND")
@@ -131,7 +132,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                            "NC1HWC0")
 
     else:
-        if tbe_product in ("Hi3796CV300ES",):
+        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float16,float16",
                                format="FRACTAL_NZ,NC1HWC0,ND")
@@ -139,7 +140,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                 datatype="float16,float16,float16",
                                 format="FRACTAL_NZ,NC1HWC0,ND")
 
-        if tbe_product in ("Ascend610", "Ascend620",):
+        if tbe_product in ("Ascend610", "Ascend710",):
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float,float16,float16,float",
                                format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND")
@@ -162,6 +163,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
+
 
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
@@ -484,7 +486,7 @@ def check_isusefp32(shape, dtype):
         use_fp32 = True
         return use_fp32
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tbe_product in ("Hi3796CV300ES",):
+    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         use_fp32 = False
         return use_fp32
     if shape[1] * shape[4] * 4 > UB_SIZE_LIMIT:
@@ -760,7 +762,7 @@ def compute_nopad(tensor_in, shape):
     return schedule, op_list, instruction_list
 
 
-def compute_padding_fp32(tensor_in, shape, pad_param):
+def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
     """
     the compute produce, handling the scenes with padding
     """
@@ -854,26 +856,26 @@ def compute_padding_fp32(tensor_in, shape, pad_param):
                                   name="res_max")
             op_list += [res_max]
             instruction_list += ['vector_max']
-    # sub
-    minus = tvm.const(-1, 'float16')
-    res_minus = tvm.compute(reduce_shape, lambda *i: minus * res_max(*i), name="res_minus")
-    op_list += [res_minus]
-    instruction_list += ['vector_muls']
 
+    res_max_broadcast = te.lang.cce.broadcast(res_max, shape)
+    op_list += [res_max_broadcast]
+    instruction_list += ['vector_broadcast']
+
+    # sub
     if tensor_in.dtype == "float32":
         res_sub = tvm.compute(shape,
-                              lambda n, c1, h, w, c0:
-                              tensor_in_ub_fp16[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0],
+                              lambda *i:
+                              tensor_in_ub_fp16(*i) - res_max_broadcast(*i),
                               name="res_sub")
         op_list += [res_sub]
-        instruction_list += ['vector_adds']
+        instruction_list += ['vector_sub']
     else:
         res_sub = tvm.compute(shape,
-                              lambda n, c1, h, w, c0:
-                              tensor_in_ub[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0],
+                              lambda *i:
+                              tensor_in_ub(*i) - res_max_broadcast(*i),
                               name="res_sub")
         op_list += [res_sub]
-        instruction_list += ['vector_adds']
+        instruction_list += ['vector_sub']
 
     # exp
     res_exp = tvm.compute(shape, lambda *i: tvm.exp(res_sub(*i)), name="res_exp")
@@ -903,7 +905,7 @@ def compute_padding_fp32(tensor_in, shape, pad_param):
         else:
             res_sum = tvm.compute(reduce_shape,
                             lambda n, c1, h, w, c0:
-                            res_exp_fp32[n, shape[1] - 1, h, w, 0],name="res_sum")
+                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -929,7 +931,7 @@ def compute_padding_fp32(tensor_in, shape, pad_param):
         else:
             sum2 = tvm.compute(reduce_shape,
                             lambda n, c1, h, w, c0:
-                            res_exp_fp32[n, shape[1] - 1, h, w, 0],name="sum2")
+                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
@@ -938,49 +940,66 @@ def compute_padding_fp32(tensor_in, shape, pad_param):
         op_list += [res_sum]
         instruction_list += ['vector_add']
 
-    # rec
-    res_rec = tvm.compute(reduce_shape, lambda *i: 1/(res_sum(*i)), name="res_rec")
-    op_list += [res_rec]
-    instruction_list += ['vector_rec']
+    # judge the platform is mini or not
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        res_mul_newton_broadcast = te.lang.cce.broadcast(res_sum, shape)
+        op_list += [res_mul_newton_broadcast]
+        instruction_list += ['vector_broadcast']
 
-    #loop 1
-    # vmlu
-    res_mul_newton = tvm.compute(reduce_shape,
-                                 lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
-    op_list += [res_mul_newton]
-    instruction_list += ['vector_mul']
+        res_mul = tvm.compute(shape,
+                              lambda *i:
+                              res_exp_fp32(*i) / res_mul_newton_broadcast(*i),
+                              name="res_mul")
+        op_list += [res_mul]
+        instruction_list += ['vector_div']
+    else:
+        # rec
+        res_rec = tvm.compute(reduce_shape, lambda *i: 1/(res_sum(*i)), name="res_rec")
+        op_list += [res_rec]
+        instruction_list += ['vector_rec']
 
-    # vmuls
-    const1 = tvm.const(-1, 'float32')
-    res_muls_newton = tvm.compute(reduce_shape,
-                                  lambda *i: const1 * res_mul_newton(*i),
-                                  name="res_muls_newton")
-    op_list += [res_muls_newton]
-    instruction_list += ['vector_muls']
+        if impl_mode == "high_performance":
+            res_mul_newton_broadcast = te.lang.cce.broadcast(res_rec, shape)
+            op_list += [res_mul_newton_broadcast]
+            instruction_list += ['vector_broadcast']
+        else:
+            #loop 1
+            # vmlu
+            res_mul_newton = tvm.compute(reduce_shape,
+                                     lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
+            op_list += [res_mul_newton]
+            instruction_list += ['vector_mul']
 
-    # vadds
-    const2 = tvm.const(2, 'float32')
-    res_adds_newton = tvm.compute(reduce_shape,
-                                  lambda *i: const2 + res_muls_newton(*i),
-                                  name="res_adds_newton")
-    op_list += [res_adds_newton]
-    instruction_list += ['vector_adds']
+            res_const2 = tvm.compute(reduce_shape,
+                                    lambda *i: 2.0,
+                                    name="res_const2")
+            op_list += [res_const2]
+            instruction_list += ['vector_auto']
 
-    # vmlu
-    res_mul_newton = tvm.compute(reduce_shape,
-                                 lambda *i: res_adds_newton(*i) * res_rec(*i),
-                                 name="res_mul_newton")
-    op_list += [res_mul_newton]
-    instruction_list += ['vector_mul']
+            # vsub
+            res_sub_newton = tvm.compute(reduce_shape,
+                                         lambda *i: res_const2(*i) - res_mul_newton(*i),
+                                         name="res_sub_newton")
+            op_list += [res_sub_newton]
+            instruction_list += ['vector_sub']
 
+            # vmlu
+            res_mul_newton = tvm.compute(reduce_shape,
+                                         lambda *i: res_sub_newton(*i) * res_rec(*i),
+                                         name="res_mul_newton")
+            op_list += [res_mul_newton]
+            instruction_list += ['vector_mul']
 
-    # mul
-    res_mul = tvm.compute(shape,
-                          lambda n, c1, h, w, c0:
-                          res_exp_fp32[n, c1, h, w, c0] * res_mul_newton[n, 0, h, w, 0],
-                          name="res_mul")
-    op_list += [res_mul]
-    instruction_list += ['vector_muls']
+            res_mul_newton_broadcast = te.lang.cce.broadcast(res_mul_newton, shape)
+            op_list += [res_mul_newton_broadcast]
+            instruction_list += ['vector_broadcast']
+        # mul
+        res_mul = tvm.compute(shape,
+                            lambda *i:
+                            res_exp_fp32(*i) * res_mul_newton_broadcast(*i),
+                            name="res_mul")
+        op_list += [res_mul]
+        instruction_list += ['vector_mul']
 
 
     if tensor_in.dtype == "float16":
@@ -1094,7 +1113,7 @@ def compute_padding(tensor_in, shape, pad_param):
         else:
             res_sum = tvm.compute(reduce_shape,
                             lambda n, c1, h, w, c0:
-                            res_exp[n, shape[1] - 1, h, w, 0],name="res_sum")
+                            res_exp[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -1120,7 +1139,7 @@ def compute_padding(tensor_in, shape, pad_param):
         else:
             sum2 = tvm.compute(reduce_shape,
                             lambda n, c1, h, w, c0:
-                            res_exp[n, shape[1] - 1, h, w, 0],name="sum2")
+                            res_exp[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
@@ -1153,7 +1172,7 @@ def compute_padding(tensor_in, shape, pad_param):
     return schedule, op_list, instruction_list
 
 
-def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name):
+def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name, impl_mode):
     """
     calculating data's softmax, produces an output tensor with shape
     the result equals the sum of the x power of e over the sum of
@@ -1190,7 +1209,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name):
             sch, op_list, instruction_list = compute_nopad(tensor_in, shape)
     else:
         if use_fp32:
-            sch, op_list, instruction_list = compute_padding_fp32(tensor_in, shape, pad_param)
+            sch, op_list, instruction_list = compute_padding_fp32(tensor_in, shape, pad_param, impl_mode)
         else:
             sch, op_list, instruction_list = compute_padding(tensor_in, shape, pad_param)
     res = op_list[-1]
@@ -1228,7 +1247,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name):
         ops_integrate(sch, op_list, xo)
 
         # buffer mapping
-        buffer_mapping(sch, op_list)
+        buffer_mapping(sch, op_list[:-1])
 
         # double buffer
         double_buf(sch, op_list)
@@ -1250,7 +1269,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name):
             ops_integrate(sch, op_list, xhi)
 
         # buffer mapping
-        buffer_mapping(sch, op_list)
+        buffer_mapping(sch, op_list[:-1])
 
         # double buffer
         double_buf(sch, op_list)
@@ -1304,8 +1323,6 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     ori_shape = in_tensor['ori_shape']
     out_dtype = output_tensor['dtype']
 
-    # kernel name check
-    util.check_kernel_name(kernel_name)
 
     # shape check, check length,min,max,size
     check_shape(in_shape, min_rank=5, max_rank=5, param_name="x")
@@ -1314,7 +1331,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
         ori_shape = list(ori_shape)
         ori_shape.insert(0, 1)
     check_shape(ori_shape, min_rank=4, max_rank=4, param_name="x")
-    
+
     # shape_matching check
     delta0 = in_shape[0] - ori_shape[0]
     delta2 = in_shape[2] - ori_shape[2]
@@ -1328,9 +1345,28 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
 
     # shape check
     if in_dtype == "float16" and in_shape[1] * in_shape[4] * 2 > UB_SIZE_LIMIT:
-        raise RuntimeError("the length of C in input tensor is too large")
+        error_info = {}
+        error_info['errCode'] = 'E80011'
+        error_info['param_name'] = 'C'
+        error_info['op_name'] = 'softmax_v2'
+        error_info['max_value'] = UB_SIZE_LIMIT
+        error_info['real_value'] = in_shape[1] * in_shape[4] * 2
+        raise RuntimeError(error_info, "In op[%s], the shape size(product of all dimensions) of "
+                                       "input[%s] should be less than [%s],but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['max_value'], error_info['real_value']))
+
     if in_dtype == "float32" and in_shape[1] * in_shape[4] * 4 > UB_SIZE_LIMIT:
-        raise RuntimeError("the length of C in input tensor is too large")
+        error_info = {}
+        error_info['errCode'] = 'E80011'
+        error_info['param_name'] = 'C'
+        error_info['op_name'] = 'softmax_v2'
+        error_info['max_value'] = UB_SIZE_LIMIT
+        error_info['real_value'] = in_shape[1] * in_shape[4] * 4
+        raise RuntimeError(error_info, "In op[%s], the shape size(product of all dimensions) of "
+                                       "input[%s] should be less than [%s],but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['max_value'], error_info['real_value']))
 
     # calc padding parameters
     if in_tensor.get("ori_format") == "NCHW":
@@ -1338,7 +1374,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     elif in_tensor.get("ori_format") == "NHWC":
         padding = in_shape[1] * in_shape[4] - ori_shape[3]
     else:
-        raise RuntimeError("original shape only support NCHW and NHWC")
+        check_format(in_tensor.get("ori_format"), ("NCHW", "NHWC"), param_name="x")
 
     pad_param = []
     if padding < 0:
@@ -1419,8 +1455,8 @@ def update_5hd_axis(origin_format, axis):
     return axis
 
 
-@util.check_input_type(dict, dict, (int, list, tuple), str)
-def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (OPTION_ATTR_INT, OPTION_ATTR_LIST_INT), KERNEL_NAME, OPTION_ATTR_STR)
+def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="high_performance"):
     """
     algorithm: softmax
     calculating data's softmax, produces an output tensor with shape
@@ -1440,6 +1476,9 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 range == [-d, d-1]
     kernel_name : str
         cce kernel name, default value is softmax_v2
+    impl_mode: str.
+        high_precision or high_performance for inference, default value is "high_performance".
+        no need to add into ops_info file.
 
     Returns
     -------
@@ -1478,7 +1517,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
         # compute & schedule & build
         softmax_channel_calculate(in_shape, in_dtype, pad_flag,
-                                  pad_param, kernel_name)
+                                  pad_param, kernel_name, impl_mode)
     else:
         # ND format, using DSL, UB fusion is not supported.
         # compute & schedule & build
@@ -1492,7 +1531,6 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             axis = update_5hd_axis(input_x.get("ori_format"), axis)
 
 
-        util.check_kernel_name(kernel_name)
         check_shape(shape, param_name="x")
         check_dtype(dtype, ("float16", "float32"), param_name="x")
 

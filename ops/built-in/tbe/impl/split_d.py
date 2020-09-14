@@ -732,7 +732,8 @@ def op_select_format(input_value,
             break
 
     is_support_nz = False
-    if input_ori_format[0] == "N" and split_dim == 0:
+    if input_ori_format[0] == "N" and split_dim == 0 and \
+            len(input_ori_shape) > 2:
         is_support_nz = True
 
     split_with_5hd_not_align = \

@@ -19,13 +19,14 @@ strided_slice_assign_d
 import copy
 import math
 from functools import reduce as functools_reduce
+
 import te.platform.cce_params as cce_params
-from te import tvm
-from te.platform.cce_build import build_config
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
+from te import tvm
 from te.platform import insn_cmd
+from te.platform.cce_build import build_config
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 
 
 def _check_num_is_power_of_two(num):
@@ -187,7 +188,8 @@ def _tilling_axis(shape, dtype):
     """
     split axis and return split_factor
     """
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 4
+    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.UB_SIZE) // 4
 
     # Convert byts to Bytes
     dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
@@ -341,7 +343,8 @@ def _strided_slice_assign_schedule(schedule_list, out, input_value_shape,
                                             factor=split_factor)
 
     # multi core
-    device_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.CORE_NUM)
     if split_axis == 0:
         init_core_num = (input_value_shape[0] + split_factor -
                          1) // split_factor
@@ -385,8 +388,12 @@ def _strided_slice_assign_schedule(schedule_list, out, input_value_shape,
 
 
 # pylint: disable=too-many-arguments
-@util.check_input_type(dict, dict, dict, (list, tuple), (list, tuple),
-                       (list, tuple), int, int, int, int, int, str)
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_ATTR_LIST_INT, op_utils.REQUIRED_ATTR_LIST_INT,
+    op_utils.REQUIRED_ATTR_LIST_INT, op_utils.OPTION_ATTR_INT,
+    op_utils.OPTION_ATTR_INT, op_utils.OPTION_ATTR_INT,
+    op_utils.OPTION_ATTR_INT, op_utils.OPTION_ATTR_INT, op_utils.KERNEL_NAME)
 def strided_slice_assign_d(ref_dict,
                            input_value_dict,
                            output_ref_dict,
@@ -446,19 +453,11 @@ def strided_slice_assign_d(ref_dict,
     """
     input_shape = ref_dict.get("shape")
     input_dtype = ref_dict.get("dtype")
-    check_list = ("float16", "float32", "int32")
+    check_list = ("float16", "float32", "int32", "int16")
     input_dtype = input_dtype.lower()
 
-    # when input_dtype is float16 and shape_size_limit > 2**30, then calculated
-    # address value in DMA caused Signed integer overflow.
-    # when input_dtype is float32 or int32 and shape_size_limit > 2**29, then
-    # calculated address value in DMA caused Signed integer overflow.
-    SHAPE_SIZE_LIMIT = 2**30 if input_dtype == "float16" else 2**29
-
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(input_shape, param_name="ref_dict")
+    op_utils.check_dtype(input_dtype, check_list, param_name="ref_dict")
 
     begin = list(begin)
     end = list(end)

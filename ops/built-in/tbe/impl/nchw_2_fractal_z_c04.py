@@ -332,9 +332,9 @@ class NCHW2FRACTAL4Compute:
                                  self.src_shape[2] * self.src_shape[3] +\
                                  num_row * CUBE_SIZE // 4 + row_index
                     with tik_instance.for_range(0, self.src_shape[1]) as num_c:
-                        ub_trans[trans_offset + num_c].set_as\
-                            (ub_ori[ori_offset + num_c * self.src_shape[2] *
-                                    self.src_shape[3]])
+                        ub_trans[trans_offset + num_c].set_as(
+                            ub_ori[ori_offset + num_c * self.src_shape[2] *
+                                   self.src_shape[3]])
             if chw % CUBE_SIZE != 0:
                 with tik_instance.for_range(0, (chw % CUBE_SIZE) // 4) \
                         as row_index:
@@ -346,9 +346,9 @@ class NCHW2FRACTAL4Compute:
                                  (self.dst_shape[0] - 1) * CUBE_SIZE // 4 + \
                                  row_index
                     with tik_instance.for_range(0, self.src_shape[1]) as num_c:
-                        ub_trans[trans_offset + num_c].set_as\
-                            (ub_ori[ori_offset + num_c * self.src_shape[2] *
-                                    self.src_shape[3]])
+                        ub_trans[trans_offset + num_c].set_as(
+                            ub_ori[ori_offset + num_c * self.src_shape[2] *
+                                   self.src_shape[3]])
 
     def data_rearrange_case_one(self, tik_instance, ub_trans, loop_number):
         """
@@ -380,8 +380,8 @@ class NCHW2FRACTAL4Compute:
                                row_index * 4
                 ori_offset = num_row * CUBE_SIZE // 4 + row_index
                 with tik_instance.for_range(0, self.src_shape[1]) as num_c:
-                    ub_trans[trans_offset + num_c].set_as\
-                        (ub_ori[ori_offset + num_c * hw_number])
+                    ub_trans[trans_offset + num_c].set_as(
+                        ub_ori[ori_offset + num_c * hw_number])
 
     def data_rearrange_case_three(self, tik_instance, ub_ori, ub_trans,
                                   hw_number):

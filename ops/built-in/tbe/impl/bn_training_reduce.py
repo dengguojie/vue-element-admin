@@ -18,9 +18,11 @@ bn_training_reduce
 from __future__ import division
 
 import math
+import numpy as np
 
 import te.lang.cce
 import te.platform.cce_params as cce_params
+from te import platform as cceconf
 import te.platform.cce_emitinsn_params as cce_emitinsn_params
 
 from te import tvm
@@ -32,10 +34,11 @@ from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin
+# pylint: disable=locally-disabled,redefined-builtin, too-many-locals
 def op_select_format(x, sum, square_sum,
                      kernel_name="bn_training_reduce"):
     """
@@ -338,12 +341,9 @@ def binary_reduce_output(stmt_op):
     remain_buffer_sec = new_alloc(ir_builder, out_buffer[1].dtype,
                                   (block_unit,), "copy_part_1",
                                   cce_params.scope_ubuf)
-    burst_len = output_size // block_unit
-    remains = output_size - burst_len * block_unit
+    burst_len = max(output_size // block_unit, 1)
+    remains = max(output_size - burst_len * block_unit, 0)
     remains_fill = block_unit - remains
-    if output_size < block_unit:
-        raise RuntimeError("DMA Copy cannot move less than 32 Byte data"
-                           " without corrupting original data")
 
     # Main part
     global_offset = out_buffer[0].elem_offset
@@ -405,7 +405,7 @@ def binary_reduce_output(stmt_op):
 
 
 # pylint: disable=locally-disabled,too-many-branches
-def bn_training_reduce_schedule_nd(res):
+def bn_training_reduce_schedule_nd(res, core_num=None):
     """bn_training_reduce schedule method"""
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     # Prepare extra tensors
@@ -421,27 +421,20 @@ def bn_training_reduce_schedule_nd(res):
     is_cast = False
     if "cast" in output_second.op.input_tensors[0].name:
         is_cast = True
-    # Prepare block split parameters
-    # First, try to split N axis with core_num, no toleration to remains
-    # If there exists remains, check if N axis is shorter than core_num
-    # If no rule applies, raise RuntimeError
+    # Calculate block split factor by axis_n_size and core_num
     axis_n_size = int(res[0].shape[1])
-    core_num = int(te.platform.CceProductParams().getParams("Device_core_num"))
-    # Try block split to core_num
-    core_split_remain = int(axis_n_size % core_num)
-
+    if not core_num:
+        core_num = int(cceconf.get_soc_spec("CORE_NUM"))
+    # Multi core kernel requires aligned output
     element_size = cce_util.get_align_factor(output_first.dtype)[1]
-    block_element_num = te.platform.cce_intrin_md.ALIGNMENT_BYTES // 2
-    if int(core_split_remain) == 0 and axis_n_size // core_num > \
-            block_element_num:
-        block_split_part = int(core_num)
-        block_split_factor = int(axis_n_size // core_num)
-    elif axis_n_size // core_num < block_element_num:
-        block_split_part = math.ceil(axis_n_size / block_element_num)
-        block_split_factor = axis_n_size // block_split_part
-    else:
-        raise RuntimeError("Unable to get block split factor, "
-                           "need backup plan: " + str(axis_n_size))
+    block_element_num = te.platform.cce_intrin_md.ALIGNMENT_BYTES // element_size
+    estimate_block_split_factor = max(axis_n_size // core_num, 8)
+    nearest_aligned_factor = estimate_block_split_factor % block_element_num
+    # Decrease core_num for aligned output
+    if estimate_block_split_factor < block_element_num and core_num > 1:
+        return bn_training_reduce_schedule_nd(res, core_num - 1)
+    # Round to the nearest
+    block_split_factor = estimate_block_split_factor - nearest_aligned_factor
     # Calculate UB split
     ub_size = te.platform.CceProductParams().getParams("Unified_Buffer") // 2
     reduce_data_num = 1
@@ -452,10 +445,14 @@ def bn_training_reduce_schedule_nd(res):
         reduce_data_num *= int(reduce_axis.dom.extent)
     reduce_data_num *= reduce_data_factor
     max_possible_loop = ub_size // (element_size * reduce_data_num)
+    actual_loop = 1
     for loop in range(max_possible_loop - 1, 0, -1):
         if block_split_factor % loop == 0:
             actual_loop = loop
             break
+    # Force aligned if multi-core is enabled
+    if actual_loop < block_element_num and actual_loop < block_split_factor and core_num > 1:
+        actual_loop = block_element_num
 
     # Find all tensors
     if is_cast:
@@ -489,7 +486,7 @@ def bn_training_reduce_schedule_nd(res):
     # ////////////////////////////////////
     outer, inner = \
         sch[final_output].split(sch[final_output].op.axis[1],
-                                nparts=block_split_part)
+                                factor=block_split_factor)
     ub_outer, ub_inner = sch[final_output].split(inner, factor=actual_loop)
     sch[final_output].bind(outer, tvm.thread_axis("blockIdx.x"))
     # ////////////////////////////////////
@@ -576,7 +573,7 @@ def bn_training_reduce_compute(x, sum, square_sum,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum,
                        kernel_name="bn_training_reduce"):
     """
@@ -604,9 +601,8 @@ def bn_training_reduce(x, sum, square_sum,
     shape_x = x.get("shape")
     dtype_x = x.get("dtype")
 
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
+    check_shape(shape_x, param_name="x")
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     data_format = x.get("format")
     origin_format = x.get("ori_format")

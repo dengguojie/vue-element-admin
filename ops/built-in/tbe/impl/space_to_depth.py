@@ -18,8 +18,10 @@ space_to_depth
 from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
+import impl
 from impl import common_util
 from impl import constant_util as constant
+from te.utils.op_utils import *
 
 # pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):
@@ -44,9 +46,9 @@ MAX_STRIDE = 65535
 UB_SIZE = 248 * 1024
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
-@util.check_input_type(dict, dict, int, str, str)
-def space_to_depth(x,
+# pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
+@check_op_params(REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_STR, KERNEL_NAME)
+def space_to_depth(x, filter,
                    y,
                    block_size,
                    data_format="NHWC",
@@ -68,8 +70,14 @@ def space_to_depth(x,
     tik_instance: tik_instance
     """
     _check_param(x, y, block_size, data_format, kernel_name)
-    fun = SpaceToDepth(x, block_size, kernel_name)
-    return fun.space_to_depth_compute()
+    if filter is not None:
+        pad = (0, 0, 0, 0)
+        block_size = (1, 1, block_size, block_size)
+        impl.conv2d(x, filter, None, None, y, block_size, pad,
+                    dilations=(1, 1, 1, 1), kernel_name=kernel_name)
+    else:
+        fun = SpaceToDepth(x, block_size, kernel_name)
+        return fun.space_to_depth_compute()
 
 
 def _check_param(x, y, block_size, data_format, kernel_name):
@@ -94,29 +102,25 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_dtype_rule(
+    check_shape(shape, param_name="x")
+    check_dtype(
         dtype, (constant.DATA_TYPE_FP32, constant.DATA_TYPE_FP16,
                 constant.DATA_TYPE_INT32, constant.DATA_TYPE_INT16,
                 constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT32,
                 constant.DATA_TYPE_UINT64, constant.DATA_TYPE_INT64,
-                constant.DATA_TYPE_UINT16, constant.DATA_TYPE_UINT8))
+                constant.DATA_TYPE_UINT16, constant.DATA_TYPE_UINT8), param_name="x")
+    if dtype != "float16":
+        if len(shape) != DIM_CNT_FOUR:
+            raise RuntimeError("The input x only supported 4D")
 
-    if len(shape) != DIM_CNT_FOUR:
-        raise RuntimeError("The input x only supported 4D")
+        if block_size < BLOCK_SIZE_MIN:
+            raise RuntimeError("the attr block_size must be greater than one")
 
-    if block_size < BLOCK_SIZE_MIN:
-        raise RuntimeError("the attr block_size must be greater than one")
-
-    if shape[1] % block_size != 0 or shape[2] % block_size != 0:
-        raise RuntimeError(
-            "both height and width must be divisible by block_size")
-    output_shape = (shape[0], shape[1] // block_size, shape[2] // block_size,
-                    shape[3] * block_size * block_size)
-    util.check_shape_rule(output_shape)
-    util.check_tensor_shape_size(output_shape)
+        if shape[1] % block_size != 0 or shape[2] % block_size != 0:
+            raise RuntimeError("both height and width must be divisible by block_size")
+        output_shape = (shape[0], shape[1] // block_size, shape[2] // block_size,
+                        shape[3] * block_size * block_size)
+        check_shape(output_shape, param_name="y")
 
 
 class SpaceToDepthBase:
@@ -408,8 +412,7 @@ class SpaceToDepth(SpaceToDepthBase):
                                                 scope=tik.scope_ubuf,
                                                 name="data_ub1")
             with self.tik_instance.if_scope(offset_align < burst_n):
-                with self.tik_instance.for_range(0, burst_info[0] -
-                                                 offset_align) as n_i:
+                with self.tik_instance.for_range(0, burst_info[0] - offset_align) as n_i:
                     self.tik_instance.tensor_mov(
                         self.data_gm_out[out_index + n_i * out_offset],
                         data_ub[ub_index + n_i * ub_offset], "", 1, burst_len,
@@ -424,8 +427,7 @@ class SpaceToDepth(SpaceToDepthBase):
                                                      self.get_bs_c()) as l_i:
                         data_ub1[loop_r +
                                  (loop_n - burst_n) * self.get_bs_c() +
-                                 l_j * self.get_bs_c() + l_i].set_as(
-                                     data_ub[l_j * ub_offset + l_i])
+                                 l_j * self.get_bs_c() + l_i].set_as(data_ub[l_j * ub_offset + l_i])
                 self.move_tail_less_32_loop((loop_n, loop_r, burst_n),
                                             (ub_index, buf_num, ub_offset),
                                             (data_ub, data_ub1),

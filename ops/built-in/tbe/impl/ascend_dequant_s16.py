@@ -13,9 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ascend_dequant_s16
 """
-
-import operator
-
+from functools import reduce as function_reduce
 from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
@@ -56,56 +54,114 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False,
     """
 
     x0_shape = x0.shape
-    deq_shape = deq_scale.shape
-
     x0_shape_list = te.lang.cce.util.shape_to_list(x0_shape)
-    deq_shape_list = te.lang.cce.util.shape_to_list(deq_shape)
+    align_shape = x0_shape_list.copy()
 
-    align_shape = x0_shape_list
-    align_shape[2] = (align_shape[2] + 15) // 16 * 16
-
+    ori_shape_deq = deq_scale.op.attrs['ori_shape']
+    ori_shape_deq_list = te.lang.cce.util.shape_to_list(ori_shape_deq)
+    deq_dim = function_reduce(lambda x, y: x * y, ori_shape_deq_list[:])
     tensor_flag = False
-    if operator.eq((deq_shape_list[1] * deq_shape_list[4]),
-                   (x0_shape_list[1] * x0_shape_list[3])):
+    if deq_dim > 1:
         tensor_flag = True
 
-    if x1 is not None:
-        if tensor_flag:
-            res_ub = tvm.compute(align_shape, lambda i, j, k, l:
-                                 tvm.vdeq_cast(x0(i, j, k, l),
-                                               deq_scale(0, j, 0, 0, l),
-                                               "int16",
-                                               do_relu=relu_flag)
-                                 + x1(0, j, 0, 0, l),
-                                 name='s32_to_s16', tag="dequant_s16_vector")
-        else:
-            res_ub = tvm.compute(align_shape, lambda i, j, k, l:
-                                 tvm.deq_cast(x0(i, j, k, l),
-                                              deq_scale(0, 0, 0, 0, 0),
-                                              "int16")
-                                 + x1(0, j, 0, 0, l),
-                                 name='s32_to_s16', tag="dequant_s16_scale")
-    else:
-        if tensor_flag:
-            res_ub = tvm.compute(align_shape, lambda i, j, k, l:
-                                 tvm.vdeq_cast(x0(i, j, k, l),
-                                               deq_scale(0, j, 0, 0, l),
-                                               "int16",
-                                               do_relu=relu_flag),
-                                 name='s32_to_s16', tag="dequant_s16_vector")
-        else:
-            res_ub = tvm.compute(align_shape, lambda i, j, k, l:
-                                 tvm.deq_cast(x0(i, j, k, l),
-                                              deq_scale(0, 0, 0, 0, 0),
-                                              "int16"),
-                                 name='s32_to_s16', tag="dequant_s16_scale")
+    c1_index = 1
+    if _is_nz_format(x0):
+        c1_index = len(x0_shape) - 4
+
+    align_shape[-2] = (align_shape[-2] + 15) // 16 * 16
+    res_ub = _s32_to_s16_normal_compute(x0, deq_scale, x1, align_shape,
+                                        c1_index, tensor_flag, relu_flag)
+
+    if _is_nz_format(x0):
+        res = tvm.compute(align_shape, lambda *i: res_ub[i],
+                          name='res', tag='dequant_s16_NZ')
+        return res
+
     res_shape = te.lang.cce.util.shape_to_list(res_ub.shape)
-    res_shape[2] = x0.shape[2]
+    res_shape[-2] = x0.shape[-2]
     res = tvm.compute(res_shape, lambda *indice: res_ub(*indice),
                       name='dequant_s16_remove_pad',
                       tag="dequant_s16_remove_pad")
 
     return res
+
+
+def _is_nz_format(x0):
+    """
+    check is nz format
+    """
+    tensor_format = "NC1HWC0"
+    if x0.op.attrs:
+        if 'format' in x0.op.attrs:
+            # NZ format,UB convergence scenario, input shape ..C1,N1,N0,C0
+            tensor_format = x0.op.attrs['format']
+    if tensor_format == "FRACTAL_NZ":
+        return True
+
+    return False
+
+
+def _s32_to_s16_normal_compute(x0, deq_scale, x1, align_shape, c1_index,
+                               tensor_flag, relu_flag):
+    """
+    generate s32_to_s16 compute
+    """
+    if tensor_flag:
+        res_ub = tvm.compute(align_shape,
+                             _deq_cast_compute(x0, deq_scale, x1,
+                                               align_shape, c1_index,
+                                               tensor_flag, relu_flag),
+                             name='s32_to_s16', tag="dequant_s16_vector")
+    else:
+        res_ub = tvm.compute(align_shape,
+                             _deq_cast_compute(x0, deq_scale, x1,
+                                               align_shape, c1_index,
+                                               tensor_flag, relu_flag),
+                             name='s32_to_s16', tag="dequant_s16_scale")
+
+    return res_ub
+
+
+def _deq_cast_compute(x0, deq_scale, x1,
+                      align_shape, c1_index, tensor_flag, relu_flag):
+    """
+    generate lambda func
+    """
+    n_dim = len(align_shape)
+    c0_index = n_dim - 1
+
+    def lambda_func(*indice):
+        deq_indice = [0] * 5
+        x1_indice = [0] * 5
+        x1_indice[4] = indice[c0_index]
+        x1_indice[1] = indice[c1_index]
+        if tensor_flag:
+            deq_indice[4] = indice[c0_index]
+            deq_indice[1] = indice[c1_index]
+
+        if x1 is not None:
+            if tensor_flag:
+                func = tvm.vdeq_cast(x0(*indice),
+                                     deq_scale(*deq_indice),
+                                     "int16",
+                                     do_relu=relu_flag) + x1(*x1_indice)
+            else:
+                func = tvm.deq_cast(x0(*indice),
+                                    deq_scale(*deq_indice),
+                                    "int16") + x1(*x1_indice)
+        else:
+            if tensor_flag:
+                func = tvm.vdeq_cast(x0(*indice),
+                                     deq_scale(*deq_indice),
+                                     "int16",
+                                     do_relu=relu_flag)
+            else:
+                func = tvm.deq_cast(x0(*indice),
+                                    deq_scale(*deq_indice),
+                                    "int16")
+        return func
+
+    return lambda_func
 
 
 @util.check_input_type((dict), (dict), (dict, NONETYPE), (dict), bool, str)
@@ -142,38 +198,51 @@ def ascend_dequant_s16(x0, deq_scale, x1, y, relu_flag=False,
     dtype_deq = deq_scale.get("dtype")
 
     check_list = [("int32",), ("uint64",), ("int16",)]
+    format_list = ["NC1HWC0", "FRACTAL_NZ"]
     util.check_dtype_rule(dtype_x0, check_list[0])
     util.check_dtype_rule(dtype_deq, check_list[1])
 
-    if len(shape_x0) != 5:
-        raise ValueError(
-            "the x0 shape must of length 5")
+    if format_x0 not in format_list:
+        raise RuntimeError("x0 only support [NC1HWC0, FRACTAL_NZ]")
+
+    if format_x0 == "NC1HWC0":
+        if len(shape_x0) != 5:
+            raise ValueError(
+                "x0 shape must of length 5 when format is NC1HWC0")
+
+    if format_x0 == "FRACTAL_NZ":
+        if len(shape_x0) < 4:
+            raise RuntimeError(
+                "x0 shape length must >= 4 when format is FRACTAL_NZ")
 
     if len(shape_deq) != 5:
         raise ValueError(
-            "the deq_scale shape must of length 5")
-
-    if format_x0 != "NC1HWC0":
-        raise ValueError(
-            "the x format must be NC1HWC0")
+            "deq_scale shape must of length 5")
 
     if format_deq != "NC1HWC0":
         raise ValueError(
-            "the deq format must be NC1HWC0")
+            "deq_scale only support NC1HWC0")
 
     if shape_deq[0] != 1 or shape_deq[2] != 1 or shape_deq[3] != 1:
         raise RuntimeError(
-            "ascend dequants16 deq shape must be 1 in n,h,w")
+            "deq_scale shape must be 1 in n,h,w")
 
-    # n, C1, H*W, C0
-    shape_x0 = [shape_x0[0], shape_x0[1], shape_x0[2] * shape_x0[3],
-                shape_x0[4]]
+    if format_x0 == "NC1HWC0":
+        # n, C1, H*W, C0
+        shape_x0 = [shape_x0[0], shape_x0[1], shape_x0[2] * shape_x0[3],
+                    shape_x0[4]]
 
+    ori_shape_deq = deq_scale.get("ori_shape")
+    attr = {"ori_shape": ori_shape_deq}
     input_x0 = tvm.placeholder(shape_x0, dtype_x0, "x0")
-    input_deq = tvm.placeholder(shape_deq, dtype_deq, "deq_scale")
+    input_deq = tvm.placeholder(shape_deq,
+                                name="deq_scale",
+                                dtype=dtype_deq,
+                                attrs=attr)
     input_x1 = None
     if x1:
-        input_x1 = tvm.placeholder(shape_x0, "int16", "x1")
+        shape_bias = x1.get("shape")
+        input_x1 = tvm.placeholder(shape_bias, "int16", "x1")
 
     with tvm.target.cce():
         res = ascend_dequant_s16_compute(input_x0, input_deq, input_x1,

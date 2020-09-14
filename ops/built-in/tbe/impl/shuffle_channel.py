@@ -15,17 +15,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 shuffle_channel
 """
 from te import tik
-from topi.cce import util
 from te.utils import op_utils
+from te import platform as tbe_platform
 from impl import constant_util as constant
 from impl import common_util
-from te import platform as tbe_platform
 
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
 
 
-# pylint: disable=invalid-name,too-many-locals
+# pylint: disable=invalid-name,too-many-locals,too-many-statements
 @op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
                           op_utils.OPTION_ATTR_INT, op_utils.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
@@ -117,9 +116,8 @@ class ShuffleChannel:
       -------
       None
       """
-        #block_num = tik.Dprofile().get_aicore_num()
         block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        
+
         shape_y = self.input_dict.get("y").get("shape")
         limit_size_of_each_block = shape_y[2] * shape_y[3]
         total_channel = shape_y[0] * shape_y[1]
@@ -476,46 +474,51 @@ def check_param(input_dict):
     -------
     None
     """
-    
     x_dtype = input_dict.get("x").get("dtype").lower()
     x_shape = input_dict.get("x").get("shape")
     y_dtype = input_dict.get("y").get("dtype").lower()
     y_shape = input_dict.get("y").get("shape")
-    
+
     op_utils.check_shape(x_shape, param_name="input_x")
-    op_utils.check_dtype(x_dtype, 
-                        ["int8", "uint8", "int16", "uint16", "int32",
-                         "uint32", "int64", "uint64", "float16", "float32"],
-                        param_name="input_x")
+    op_utils.check_dtype(x_dtype,
+                         ["int8", "uint8", "int16", "uint16", "int32",
+                          "uint32", "int64", "uint64", "float16", "float32"],
+                         param_name="input_x")
 
     op_utils.check_shape(y_shape, param_name="output_y")
-    op_utils.check_dtype(y_dtype, 
-                        ["int8", "uint8", "int16", "uint16", "int32",
-                         "uint32", "int64", "uint64", "float16", "float32"],
-                        param_name="output_y")
-
+    op_utils.check_dtype(y_dtype,
+                         ["int8", "uint8", "int16", "uint16", "int32",
+                          "uint32", "int64", "uint64", "float16", "float32"],
+                         param_name="output_y")
+    error_info = {}
     if x_dtype != y_dtype:
-        error_info = {}
         error_info['errCode'] = 'E80018'
         error_info['opname'] = 'shuffle_channel'
         error_info['input1_name'] = 'x'
         error_info['input2_name'] = 'y'
         error_info['input1_dtype'] = x_dtype
         error_info['input2_dtype'] = y_dtype
-        raise RuntimeError(error_info,
-            "In op[%s], the dtype of input[%s] and input[%s] should be the same, but actually are [%s] and [%s]."
-            %(error_info['opname'], error_info['input1_name'], error_info['input2_name'], error_info['input1_dtype'], error_info['input2_dtype']))
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the dtype of input[%s] and input[%s] should be the "
+            "same, but actually are [%s] and [%s]."
+            % (error_info['opname'], error_info['input1_name'],
+               error_info['input2_name'], error_info['input1_dtype'],
+               error_info['input2_dtype']))
 
     if len(x_shape) > 4 or len(x_shape) < 2:
-        error_info = {}
         error_info['errCode'] = 'E80012'
         error_info['opname'] = 'shuffle_channel'
         error_info['input_name'] = 'x'
         error_info['min_value'] = '3'
         error_info['max_value'] = '4'
-        raise RuntimeError(error_info,
-            "In op[%s], the num of dimensions of input[%s] should be in the range of [%s, %s], but actually is [%s]."
-            %(error_info['opname'], error_info['input_name'], error_info['min_value'], error_info['max_value']))
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the num of dimensions of input[%s] should be in "
+            "the range of [%s, %s], but actually is [%s]."
+            % (error_info['opname'], error_info['input_name'],
+               error_info['min_value'], error_info['max_value'],
+               len(x_shape)))
 
     if len(x_shape) == 3:
         x_shape = list((x_shape[0], x_shape[1], x_shape[2], 1))
@@ -524,15 +527,18 @@ def check_param(input_dict):
     input_dict["x"]["shape"] = x_shape
 
     if len(y_shape) > 4 or len(y_shape) < 2:
-        error_info = {}
         error_info['errCode'] = 'E80012'
         error_info['opname'] = 'shuffle_channel'
         error_info['input_name'] = 'y'
         error_info['min_value'] = '3'
         error_info['max_value'] = '4'
-        raise RuntimeError(error_info,
-            "In op[%s], the num of dimensions of input[%s] should be in the range of [%s, %s], but actually is [%s]."
-            %(error_info['opname'], error_info['input_name'], error_info['min_value'], error_info['max_value']))
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the num of dimensions of input[%s] should be in "
+            "the range of [%s, %s], but actually is [%s]."
+            % (error_info['opname'], error_info['input_name'],
+               error_info['min_value'], error_info['max_value'],
+               len(y_shape)))
 
     if len(y_shape) == 3:
         y_shape = list((y_shape[0], y_shape[1], y_shape[2], 1))
@@ -541,31 +547,36 @@ def check_param(input_dict):
     input_dict["y"]["shape"] = y_shape
 
     if not check_same_dim(y_shape, x_shape):
-        error_info = {}
         error_info['errCode'] = 'E80019'
         error_info['opname'] = 'shuffle_channel'
         error_info['input1_name'] = 'x'
         error_info['input2_name'] = 'y'
         error_info['input1_shape'] = str(x_shape)
         error_info['input2_shape'] = str(y_shape)
-        raise RuntimeError(error_info,
-            "In op[%s], the shape of input[%s] and input[%s] should be the same, but actually are [%s] and [%s]."
-            %(error_info['opname'], error_info['input1_name'], error_info['input2_name'], error_info['input1_shape'], error_info['input2_shape']))
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the shape of input[%s] and input[%s] should be the "
+            "same, but actually are [%s] and [%s]."
+            % (error_info['opname'], error_info['input1_name'],
+               error_info['input2_name'], error_info['input1_shape'],
+               error_info['input2_shape']))
 
 
     group = input_dict.get("group")
     if group <= 0:
-        error_info = {}
         error_info['errCode'] = 'E80002'
         error_info['opname'] = 'shuffle_channel'
         error_info['param_name'] = 'group'
         error_info['min_value'] = '1'
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str(group)
-        raise RuntimeError(error_info, 
-            "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-            %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-              error_info['max_value'], error_info['real_value']))
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the parameter[%s] should be in the range of [%s, %s), "
+            "but actually is [%s]."
+            % (error_info['opname'], error_info['param_name'],
+               error_info['min_value'],
+               error_info['max_value'], error_info['real_value']))
 
     channel = x_shape[1]
     if channel % group != 0:
@@ -574,9 +585,12 @@ def check_param(input_dict):
         error_info['real_channel'] = str(channel)
         error_info['real_group'] = str(group)
 
-        raise RuntimeError(error_info, 
-            "In op[shuffle_channel], the channel of  input[x] should be divisible by the parameter[group], but actually they are [%s] and [%s]."
-            %(error_info['real_channel'], error_info['real_group'], error_info['min_value']))
+        raise RuntimeError(
+            error_info,
+            "In op[shuffle_channel], the channel of  input[x] should be "
+            "divisible by the parameter[group], but actually "
+            "they are [%s] and [%s]."
+            % (error_info['real_channel'], error_info['real_group']))
 
 
 def get_shape_total_number(shape):

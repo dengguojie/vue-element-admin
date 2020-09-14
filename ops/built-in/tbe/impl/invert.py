@@ -25,6 +25,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -51,7 +52,7 @@ def invert_compute(input_x, output_y, kernel_name="invert"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def invert(input_x, output_y, kernel_name="invert"):
     """Flips all bits elementwise.
 
@@ -74,10 +75,8 @@ def invert(input_x, output_y, kernel_name="invert"):
     dtype_x_lower = dtype_x.lower()
     check_list = ("int16", "uint16")
 
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
-    util.check_dtype_rule(dtype_x_lower, check_list)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_x, param_name="input_x")
+    check_dtype(dtype_x_lower, check_list, param_name="input_x")
 
     shape_x = (functools_reduce(lambda x, y: x * y, shape_x[:]),)
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x_lower)

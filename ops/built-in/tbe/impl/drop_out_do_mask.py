@@ -27,6 +27,7 @@ from te.platform.cce_build import build_config
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 # shape limit
 SHAPE_SIZE_LIMIT = 1 << 30
@@ -482,13 +483,16 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                                         offset=offset_src*repeate_vmuls),
                 reg[0], repeat_left, 1, 1, 8, 8))
 
+        remains_divs = ELEMS_BATCH_PROCESS_FP16 if place_holders[0].dtype == 'float16' \
+            else 64
         [loops_remains[1], loops_remains[3]] = [
-            remain_shapes[0][0] // ELEMS_BATCH_PROCESS_FP16,
-            remain_shapes[0][0] % ELEMS_BATCH_PROCESS_FP16
+            remain_shapes[0][0] // remains_divs,
+            remain_shapes[0][0] % remains_divs
         ]
 
-        with ir_builder.for_range(0, loops_remains[1],
-                                  name='index2') as index2:
+        loops = ((loops_remains[1]) // 2) + 1 if place_holders[0].dtype == 'float32' \
+            else loops_remains[1]
+        with ir_builder.for_range(0, loops, name='index2') as index2:
             ir_builder.emit(
                 tvm.call_extern(
                     place_holders[1].dtype, 'set_cmpmask',
@@ -497,8 +501,8 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                       ELEMS_BATCH_PROCESS_FP16*index2)
 
         [offsets[4], offsets[5]] = [
-            plantform_paras[1] * loops_remains[1] * 2, plantform_paras[2] *
-            loops_remains[1] * 2
+            plantform_paras[1] * loops_remains[1], plantform_paras[2] *
+            loops_remains[1]
         ] if (place_holders[0].dtype == 'float32') else [
             plantform_paras[1] * loops_remains[1], plantform_paras[2] *
             loops_remains[1]
@@ -517,21 +521,23 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                     alloc_res[4].access_ptr('r', offset=offsets[4]), reg[0], 1,
                     1, 1, 8, 8))
 
-            ir_builder.emit(
-                tvm.call_extern(
-                    place_holders[1].dtype, 'set_cmpmask',
-                    alloc_res[5].access_ptr('r', offset=offsets[5])))
-            _sel_data(ir_builder, place_holders[0], alloc_res, offsets[4])
-            cce_intrin_md.reset_mask_insn(ir_builder,
-                                          place_holders[0].dtype,
-                                          bits=ELEMS_BATCH_PROCESS_FP16,
-                                          mask_func=None)
+            if place_holders[0].dtype == 'float16' or loops_remains[1] == 0:
+                ir_builder.emit(
+                    tvm.call_extern(
+                        place_holders[1].dtype, 'set_cmpmask',
+                        alloc_res[5].access_ptr('r', offset=offsets[5])))
+                _sel_data(ir_builder, place_holders[0], alloc_res, offsets[4])
+                cce_intrin_md.reset_mask_insn(ir_builder,
+                                              place_holders[0].dtype,
+                                              bits=ELEMS_BATCH_PROCESS_FP16,
+                                              mask_func=None)
 
         ir_builder.emit(
             tvm.call_extern(
                 place_holders[2].dtype, "copy_ubuf_to_gm",
                 place_holders[2].access_ptr('w', offset=offsets[0]),
                 alloc_res[4].access_ptr("r"), 0, 1, repeates[3], 0, 0))
+
 
 
 def _kernel_ir(dst, src, const_1):
@@ -637,7 +643,7 @@ def _get_target_core_num(data_input, data_mask):
     return target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
                      kernel_name="dropout_do_mask"):
     """
@@ -671,10 +677,8 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
     dtype = input_tensor.get("dtype")
     if shape_keep_prob == 1:
         shape_keep_prob = (shape_keep_prob, )
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_tensor)
-    util.check_shape_size(shape_tensor, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(dtype.lower(), ["float16", "float32"])
+    check_shape(shape_tensor, param_name="input_tensor")
+    check_dtype(dtype.lower(), ["float16", "float32"], param_name="input_tensor")
     if len(shape_mask) != 1:
         raise RuntimeError("The length of mask shape must be 1")
     if shape_keep_prob not in [(1, ), [1, ]]:

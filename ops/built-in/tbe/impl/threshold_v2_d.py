@@ -27,6 +27,7 @@ from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import REQUIRED_ATTR_FLOAT
 from te.utils.op_utils import KERNEL_NAME
 
+
 @fusion_manager.register("threshold_v2_d")
 # pylint: disable=invalid-name
 def threshold_v2_d_compute(x, y, threshold, value,

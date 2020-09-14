@@ -24,6 +24,7 @@ from impl import ssd_decode_bbox
 from impl import topk
 from impl import nms
 
+
 def check_product_info(input_dict):
     """
     check product info
@@ -51,13 +52,15 @@ def check_product_info(input_dict):
         op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
     elif tik_name in ("Ascend910",):
         op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in ("Hi3796CV300ES",):# "Hi3796CV300CS"):
+    elif tik_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
         op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in ("Ascend610","Ascend620"):
+    elif tik_name in ("Ascend610", "Ascend710"):
         op_utils.check_dtype(conf_dtype.lower(), ["float16", "float32"], param_name="input_conf")
 
+
 def check_param_range(param_name, min_value, max_value, real_value,
-                      op_name='ssd_detection_output'):
+                      op_name='ssd_detection_output',
+                      left_open_interval=False):
     """
     check param range,
 
@@ -75,17 +78,27 @@ def check_param_range(param_name, min_value, max_value, real_value,
     """
     error_info = {}
     error_info['errCode'] = 'E80002'
-    error_info['opname'] = op_name
+    error_info['op_name'] = op_name
     error_info['param_name'] = param_name
     error_info['min_value'] = str(min_value)
     error_info['max_value'] = str(max_value)
-    error_info['real_value'] = str(real_value)
+    error_info['value'] = str(real_value)
+    if left_open_interval:
+        raise RuntimeError(error_info,
+                           "In op[%s], the parameter[%s] should be in "
+                           "the range of (%s, %s], "
+                           "but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['min_value'], error_info['max_value'],
+                              error_info['value']))
+
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in "
                                    "the range of [%s, %s], "
                                    "but actually is [%s]."
-                       %(error_info['opname'], error_info['param_name'],
-                         error_info['min_value'], error_info['max_value'],
-                         error_info['real_value']))
+                       % (error_info['op_name'], error_info['param_name'],
+                          error_info['min_value'], error_info['max_value'],
+                          error_info['value']))
+
 
 def check_input_attr_value(input_dict):
     """
@@ -106,14 +119,14 @@ def check_input_attr_value(input_dict):
     if not input_dict.get("share_location"):
         error_info = {}
         error_info['errCode'] = 'E80000'
-        error_info['opname'] = 'ssd_detection_output'
+        error_info['op_name'] = 'ssd_detection_output'
         error_info['param_name'] = 'share_location'
         error_info['excepted_value'] = 'True'
         error_info['real_value'] = str(input_dict.get("share_location"))
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'],
-                             error_info['excepted_value'], error_info['real_value']))
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['excepted_value'], error_info['real_value']))
 
     if not (input_dict.get("background_label_id") >= -1 and input_dict.get(
             "background_label_id") <= (input_dict.get("num_classes") - 1)):
@@ -124,19 +137,21 @@ def check_input_attr_value(input_dict):
 
     if not (input_dict.get("nms_threshold") > 0 and
             input_dict.get("nms_threshold") <= 1):
-        check_param_range('nms_threshold', 0, 1, input_dict.get("nms_threshold"))
+        check_param_range('nms_threshold', 0, 1,
+                          input_dict.get("nms_threshold"),
+                          left_open_interval=True)
 
     if not input_dict.get("eta") == 1:
         error_info = {}
         error_info['errCode'] = 'E80000'
-        error_info['opname'] = 'ssd_detection_output'
+        error_info['op_name'] = 'ssd_detection_output'
         error_info['param_name'] = 'eta'
         error_info['excepted_value'] = '1'
         error_info['real_value'] = str(eta)
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'],
-                             error_info['excepted_value'], error_info['real_value']))
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['excepted_value'], error_info['real_value']))
 
     if not (input_dict.get("code_type") >= 1 and
             input_dict.get("code_type") <= 3):
@@ -146,7 +161,7 @@ def check_input_attr_value(input_dict):
             or input_dict.get("keep_top_k") == -1):
         error_info = {}
         error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'ssd_detection_output'
+        error_info['op_name'] = 'ssd_detection_output'
         error_info['param_name'] = 'keep_top_k'
         error_info['min_value'] = '0'
         error_info['max_value'] = '1024'
@@ -154,9 +169,9 @@ def check_input_attr_value(input_dict):
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " in the range of [%s, %s] or -1,"
                                        " but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'],
-                             error_info['min_value'],
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
 
     if not (input_dict.get("confidence_threshold") >= 0 and
             input_dict.get("confidence_threshold") <= 1):
@@ -165,6 +180,7 @@ def check_input_attr_value(input_dict):
 
     check_input_topk_value(input_dict.get("mbox_loc").get("dtype").lower(),
                            input_dict.get("top_k"))
+
 
 def check_input_topk_value(dtype, topk_value):
     """
@@ -197,6 +213,7 @@ def check_input_topk_value(dtype, topk_value):
         else:
             if not topk_value <= 6000:
                 check_param_range('top_k', 1, 6000, topk_value)
+
 
 def check_input_data_logical_relationship(input_dict):
     """
@@ -321,7 +338,7 @@ def ssd_detection_output(bbox_delta, score, anchors,
         batch = tik_instance.Scalar("int32", "batch", 0)
         with tik_instance.for_range(0, outer_loop) as outer_i:
             batch.set_as(block_i * outer_loop + outer_i)
-            if decode_bbox_process.ascend_name in ("Ascend610", "Ascend620"):
+            if decode_bbox_process.ascend_name in ("Ascend610", "Ascend710"):
                 decode_bbox_process.parser_loc_data_v200(batch)
                 decode_bbox_process.parser_priorbox_data_v200(batch)
             else:
@@ -352,6 +369,7 @@ def ssd_detection_output(bbox_delta, score, anchors,
                                    detection_out_process.out_box_gm))
 
     return tik_instance
+
 
 # pylint: disable=too-many-instance-attributes
 class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
@@ -452,6 +470,13 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                                (self.batch, out_box_len, 8),
                                                name="out_box_gm",
                                                scope=tik.scope_gm)
+
+        self.out_box_gm_tmp = self.instance.Tensor(self.dtype,
+                                                   (self.batch,
+                                                    out_box_len, 8),
+                                                   name="out_box_gm_tmp",
+                                                   is_workspace=True,
+                                                   scope=tik.scope_gm)
 
         self.out_box_num_gm = self.instance.Tensor("int32",
                                                    (self.batch, 8),
@@ -639,7 +664,8 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             with self.instance.if_scope(tik.all(self.keep_top_k > -1,
                                                 topk_num_ecah_class > self.keep_top_k)):
                 if self.keep_top_k > 0:
-                    self.instance.data_move(box_data_ub, self.out_box_gm[batch, 0, 0],
+                    self.instance.data_move(box_data_ub,
+                                            self.out_box_gm_tmp[batch, 0, 0],
                                             0, 1,
                                             math.ceil(self.keep_top_k * 8 / self.burnest_len),
                                             0, 0)
@@ -751,6 +777,18 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             with self.instance.for_range(0, topk_num_ecah_class) as index:
                 self.instance.data_move(self.out_box_gm[batch, index, 0],
                                         vnchw_dst[index*16], 0, 1, 1, 0, 0)
+            # fill in zero
+            remain_size = self.keep_top_k - topk_num_ecah_class
+            with self.instance.if_scope(remain_size > 0):
+                scalar_zero = self.instance.Scalar(init_value=0,
+                                                   dtype="float16")
+                self.instance.vector_dup(128, vnchw_src, scalar_zero,
+                                         (remain_size + 15) // 16, 1, 8)
+                self.instance.data_move(
+                    self.out_box_gm[batch, topk_num_ecah_class, 0],
+                    vnchw_src, 0, 1, (remain_size + 1) // 2, 0, 0)
+
+
 
     def sort_each_class(self, batch, topk1_data_num, topk1_out_actual_num):
         """
@@ -951,7 +989,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
 
         topk_out_data = {
             "batch_id": batch,
-            "regions_sorted": self.out_box_gm,
+            "regions_sorted": self.out_box_gm_tmp,
             "proposal_actual_num": self.topk2_num,
         }
 

@@ -18,6 +18,7 @@ resize_bilinear_v2_grad
 from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # parameters for vector instruct
 MASK = 64
@@ -87,15 +88,12 @@ def _check_param(grads, images, kernel_name, align_corners, half_pixel_centers):
     images_shape = images.get("shape")
     images_dtype = images.get("dtype")
     data_limit = ((1 << 31) - 1) // (4 if images_dtype == "float32" else 2)
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(grads_shape)
-    util.check_shape_rule(images_shape)
-    util.check_shape_size(grads_shape, data_limit)
-    util.check_shape_size(images_shape, data_limit)
+    check_shape(grads_shape, param_name="grads")
+    check_shape(images_shape, param_name="images")
     check_list_grads = ("float32")
     check_list_images = ("float32")
-    util.check_dtype_rule(grads_dtype.lower(), check_list_grads)
-    util.check_dtype_rule(images_dtype.lower(), check_list_images)
+    check_dtype(grads_dtype.lower(), check_list_grads, param_name="grads")
+    check_dtype(images_dtype.lower(), check_list_images, param_name="images")
 
 
 # pylint: disable=unused-argument,invalid-name, unused-variable
@@ -143,7 +141,8 @@ def check_supported(grads, images, y, align_corners=False,
     return True
 
 # pylint: disable=unused-argument,too-many-lines,invalid-name,too-many-arguments
-@util.check_input_type(dict, dict, dict, bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def resize_bilinear_v2_grad(grads, images, y, align_corners=False, half_pixel_centers=False,
                             kernel_name="resize_bilinear_v2_grad"):
     """

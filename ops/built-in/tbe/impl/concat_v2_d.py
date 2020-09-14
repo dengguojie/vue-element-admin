@@ -31,6 +31,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.concat_last_dim import ConcatWithVnchw
 from impl.concat_last_dim import ConcatWith5HD
 from impl.concat_tik import ConcatSchedule
+from impl.concat_l1fusion import ConcatL1Fusion
 from te.utils.op_utils import *
 
 
@@ -282,10 +283,17 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
         for j, _ in enumerate(first_input_shape):
             if element_shape[j] != first_input_shape[j] and j != axis_new:
                 raise RuntimeError("Axes must equal except merge axis")
-
+    
     # when format is 5HD check whether concat by C and redefine the axis
     input_format = input_values[0].get("format")
     ori_format = input_values[0].get("ori_format")
+    input_addr_type = input_values[0].get("addr_type")
+    output_addr_type = output_data.get("addr_type")
+    if output_addr_type == 1 or input_addr_type == 1:
+        concat_l1fusion = ConcatL1Fusion(input_values, output_data, axis, kernel_name)
+        if_l1_support = concat_l1fusion.check_support_l1_fusion()
+        if if_l1_support:
+            concat_l1fusion.do_concat_l1fusion()
     if input_format == "NC1HWC0":
         axis = util.axis_transfrom_5d(axis, ori_format)
         # check whether use 5HD when input is not align

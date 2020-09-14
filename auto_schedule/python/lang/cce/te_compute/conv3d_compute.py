@@ -141,8 +141,7 @@ def check_h_dimension(fmap_h, filter_h, pad_h, stride_h):
             'param_name': 'stride',
             'dim': 'H',
             'range': '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX),
-            'actual_value': 'stride_h[0] = \
-                {}, stride_h[1] = {}'.format(stride_h[0], stride_h[1])
+            'actual_value': 'stride_h = {}'.format(stride_h)
         }
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
@@ -182,7 +181,7 @@ def check_w_dimension(fmap_w, filter_w, pad_w, stride_w):
             'param_name': 'pad',
             'dim': 'W',
             'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-            'actual_value': 'stride_h[0] = {}, stride_h[1] = {}'
+            'actual_value': 'pad_w[0] = {}, pad_w[1] = {}'
                             .format(pad_w[0], pad_w[1])
         }
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
@@ -204,6 +203,14 @@ def check_w_dimension(fmap_w, filter_w, pad_w, stride_w):
             'dim': 'W',
             'range': '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX),
             'actual_value': str(stride_w)
+        }
+        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+
+    if pad_w[0] >= filter_w or pad_w[1] >= filter_w:
+        dict_args = {
+            'errCode': 'E60017',
+            'w_of_filter': str(filter_w),
+            'w_of_pad': '[pad_w[0]={}, pad_w[1]={}]'.format(pad_w[0], pad_w[1])
         }
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
@@ -725,17 +732,25 @@ def get_cyclebuffer_flag(tiling, shape_w, w_dtype, shape_fmap, stride_d,
     """
     cyclebuffer_flag = False
     filter_d = shape_w[1]
+    filter_h = shape_w[3]
+    filter_w = shape_w[4]
     fmap_d = shape_fmap[1]
     channel_c1 = shape_fmap[2]
-    d_out = (fmap_d + pad_d[0] + pad_d[1] - filter_d) // stride_d + 1
     d_dim = tiling["block_dim"][-1]
+    matrix_ka = tiling["AL0_matrix"][1] * tiling["AL0_matrix"][-1]
+    d_out = (fmap_d + pad_d[0] + pad_d[1] - filter_d) // stride_d + 1
     cyc_size = 0
     if tiling["AL1_shape"]:
         cyc_size = int(tiling["AL1_shape"][0] * tiling["AL1_shape"][-1] // \
                        (shape_w[-3] * shape_w[-2] * CUBE_MKN[w_dtype]['mac'][1]))
+
     if cyc_size == filter_d * channel_c1:
         cyclebuffer_flag = True
+
     if l0a_load2d_flag or filter_d <= stride_d or d_out == d_dim:
+        cyclebuffer_flag = False
+
+    if channel_c1 * filter_h * filter_w % matrix_ka != 0:
         cyclebuffer_flag = False
 
     return cyclebuffer_flag
@@ -940,8 +955,8 @@ def conv3d(data, weight, para_dict):
 
     block_size_k = CUBE_MKN[w_dtype]['mac'][1]
     filter_c1 = (filter_c + block_size_k - 1) // block_size_k
-    shape_w_ndc1hwc0 = (filter_n, filter_d, filter_c1, filter_h, filter_w,
-                        block_size_k)
+    shape_w_ndc1hwc0 = [filter_n, filter_d, filter_c1, filter_h, filter_w,
+                        block_size_k]
 
     fmap_shape_ndc1hwc0 = te_util.shape_to_list(data.shape)
 

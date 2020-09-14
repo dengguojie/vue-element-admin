@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+
 """
 Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -23,6 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = -0.5
 SCALAR = -0.5
@@ -64,7 +66,7 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def rsqrt_grad(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     """
     calculate the backpropagation of rsqrt operation
@@ -91,18 +93,15 @@ def rsqrt_grad(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     shape_input_dy = input_dy.get("shape")
     dtype_input_dy = input_dy.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_y)
-    util.check_shape_rule(shape_input_dy)
-    util.check_tensor_shape_size(shape_input_y)
-    util.check_tensor_shape_size(shape_input_dy)
+    check_shape(shape_input_y, param_name="input_y")
+    check_shape(shape_input_dy, param_name="input_dy")
     util.compare_tensor_dict_key(input_y, input_dy, "shape")
 
     check_list = ("float16", "float32", "int32", "int8")
     dtype_input_y = dtype_input_y.lower()
-    util.check_dtype_rule(dtype_input_y, check_list)
+    check_dtype(dtype_input_y, check_list, param_name="input_y")
     dtype_input_dy = dtype_input_dy.lower()
-    util.check_dtype_rule(dtype_input_dy, check_list)
+    check_dtype(dtype_input_dy, check_list, param_name="input_dy")
     util.compare_tensor_dict_key(input_y, input_dy, "dtype")
     reshape_y, reshape_dy = refine_shapes_for_broadcast(shape_input_y,
                                                         shape_input_dy)

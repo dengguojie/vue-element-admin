@@ -15,6 +15,7 @@ inplace schedule, provide a schedule for inplace compute
 """
 from te import tvm
 from te import platform as cceconf
+from te.platform import log
 from .util import get_align_factor
 from .util import shape_to_list
 
@@ -77,6 +78,7 @@ class CceInplaceOp:
         """
         schedule entry of inplace
         """
+        log.debug("start inplace_schedule")
         self._schedule = sch_list[0]
         self._spec_node_list = spec_node_list
 
@@ -105,6 +107,7 @@ class CceInplaceOp:
         if self._need_double_buffer:
             self._do_double_buffer()
 
+        log.debug("end inplace_schedule")
         sch_list[0] = self._schedule
         return True
 
@@ -387,7 +390,7 @@ class CceInplaceOp:
     # so that shape[split_axis + 1]*...*shape[n] < ub_tiling_max_size
     # and shape[split_axis ]* shape[split_axis + 1]*...*shape[n] > ub_tiling_max_size
     # pylint: disable=no-self-use
-    def _calculate_ub_tiling(self, shape, ub_tiling_max_size, align_factor=128):
+    def _calculate_ub_tiling(self, shape, ub_tiling_max_size, align_factor=1):
         # get ub split axis
         bound_size = 1
         split_axis = len(shape) - 1

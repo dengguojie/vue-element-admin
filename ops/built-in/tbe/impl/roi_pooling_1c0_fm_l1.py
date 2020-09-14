@@ -54,7 +54,7 @@ class RoiClassOneC0FML1(RoiClass):
                    kernel_name):
         super(RoiClassOneC0FML1, self).init_param(roinum_pooledimg, \
                             shapedict_list, spatial_scale_list, kernel_name)
-        self.res_pad = 0 if((self.pooled_h%8) == 0) else \
+        self.res_pad = 0 if((self.pooled_h % 8) == 0) else \
             (align(self.pooled_h, 8)-self.pooled_h)
         self.fm_w_align = align(self.fm_w, 8)
 
@@ -99,10 +99,10 @@ class RoiClassOneC0FML1(RoiClass):
                                                 0],
                                             0,
                                             scalar_roi_bin_h,
-                                            scalar_roi_width*coeff,
-                                            (self.fm_w-
+                                            scalar_roi_width * coeff,
+                                            (self.fm_w -
                                              scalar_roi_width) * coeff,
-                                            (self.fm_w_align-
+                                            (self.fm_w_align -
                                              scalar_roi_width) * coeff)
 
                 ceil_loop = 16//TYPELEN_DICT[self.dtype]
@@ -110,7 +110,7 @@ class RoiClassOneC0FML1(RoiClass):
                                                  ceil_div(scalar_roi_width,
                                                           ceil_loop)) as \
                         loop_w:
-                    self.tik_instance.vec_max(256//
+                    self.tik_instance.vec_max(256 // 
                                            TYPELEN_DICT[self.dtype],
                                            self.pooled_h_res[poolh,
                                                              ceil_loop *
@@ -226,7 +226,7 @@ class RoiClassOneC0FML1(RoiClass):
                                                       self.fm_c0),
                                          name="fm_c0_data",
                                          scope=tik.scope_cbuf)
-            c0_burst_len = self.fm_h*self.fm_w*self.fm_c0*\
+            c0_burst_len = self.fm_h * self.fm_w * self.fm_c0 * \
                            TYPELEN_DICT[self.dtype]//32
 
 
@@ -234,7 +234,7 @@ class RoiClassOneC0FML1(RoiClass):
                                         self.x[block_id, fm_c1_index, 0, 0, 0],
                                         0, 1, c0_burst_len, 0, 0)
             if self.feature_batch == 1:
-                self.calced_rois.set_as(self.proposal_num_per_tiling*\
+                self.calced_rois.set_as(self.proposal_num_per_tiling * \
                                         tiling_index)
             with self.tik_instance.for_range(0, self.proposal_ub_validnum,
                                              thread_num=2) as proposal_id:
@@ -392,11 +392,11 @@ class RoiClassOneC0FML1(RoiClass):
         None
         """
         self.proposal_num_per_tiling = 128
-        if self.roi_max_num%self.proposal_num_per_tiling == 0:
-            self.tiling_num = self.roi_max_num//self.proposal_num_per_tiling
+        if self.roi_max_num % self.proposal_num_per_tiling == 0:
+            self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling
         else:
-            self.tiling_num = self.roi_max_num//self.proposal_num_per_tiling \
-                              + 1
+            self.tiling_num = self.roi_max_num // \
+                              self.proposal_num_per_tiling + 1
 
         with self.tik_instance.for_range(0, self.tiling_num, \
                 block_num=self.tiling_num) as tiling_index:

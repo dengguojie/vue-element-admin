@@ -77,7 +77,7 @@ def _bnll_computer(input_x, product):
     """
     dtype = input_x.dtype
 
-    if dtype == "float16" and product not in ("Hi3796CV300ES",):
+    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS"):
         input_x = te.lang.cce.cast_to(input_x, "float32")
         d_dtype = "float32"
     else:
@@ -85,7 +85,7 @@ def _bnll_computer(input_x, product):
 
     res = _bnll_compute(input_x, d_dtype)
 
-    if dtype == "float16" and product not in ("Hi3796CV300ES",):
+    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS"):
         res = te.lang.cce.cast_to(res, "float16")
 
     return res
@@ -118,9 +118,18 @@ def bnll(input_x, output_y, kernel_name="bnll"):
     check_list = ("float16", "float32")
     check_dtype(input_dtype, check_list, param_name="x")
     product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if product in ["Ascend310", "Hi3796CV300ES"] and input_dtype == "float32":
-        raise RuntimeError(
-            "Input dtype only support float16 while input dtype is float32")
+    if product in ["Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"] and \
+        input_dtype == "float32":
+        error_info = {}
+        error_info['errCode'] = 'E80008'
+        error_info['param_name'] = 'input_x'
+        error_info['op_name'] = 'bnll'
+        error_info['expect_value'] = "float16"
+        error_info['real_value'] = input_dtype
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
+                                       "should be [%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'],\
+                              error_info['expect_value'], error_info['real_value']))
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape)

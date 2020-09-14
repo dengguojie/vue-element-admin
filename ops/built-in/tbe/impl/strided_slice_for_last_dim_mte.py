@@ -20,6 +20,7 @@ from functools import reduce as funct_reduce
 from te import tik
 from te import platform as tbe_platform
 
+
 # pylint: disable=too-many-arguments, too-many-locals, too-many-statements
 def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
                                begin, kernel_name):
@@ -37,6 +38,8 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
     output_size = funct_reduce(lambda x, y: x * y, output_shape[:])
     # can't change
     start_num = begin[len(begin) - 1]
+    if len(output_shape) == 1:
+        return False
 
     # gm_size
     output_data = tik_instance.Tensor(dtype,

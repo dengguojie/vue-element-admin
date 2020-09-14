@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -63,7 +64,7 @@ def relu_grad_v2_compute(gradients, mask, backprops,
     return result
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     """
     calculate the backpropagation of relu operation
@@ -88,18 +89,15 @@ def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     shape_input_gradients = gradients.get("shape")
     shape_input_features = mask.get("shape")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_gradients)
-    util.check_shape_rule(shape_input_features)
-    util.check_tensor_shape_size(shape_input_gradients)
-    util.check_tensor_shape_size(shape_input_features)
+    check_shape(shape_input_gradients, param_name="gradients")
+    check_shape(shape_input_features, param_name="mask")
 
     dtype_input_gradients = gradients.get("dtype").lower()
     dtype_input_features = mask.get("dtype").lower()
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    util.check_dtype_rule(dtype_input_gradients, check_list)
-    util.check_dtype_rule(dtype_input_features, ("uint8"))
+    check_dtype(dtype_input_gradients, check_list, param_name="gradients")
+    check_dtype(dtype_input_features, ("uint8"), param_name="mask")
 
     shape_in = list(shape_input_gradients)
 

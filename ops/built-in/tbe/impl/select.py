@@ -196,6 +196,7 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
         res = te.lang.cce.cast_to(res, num_dtype)
     return res
 
+
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def select(condition, x1, x2, y, kernel_name="select"):
     """
@@ -267,7 +268,12 @@ def select(condition, x1, x2, y, kernel_name="select"):
     with tvm.target.cce():
         res = select_compute(condition, input_x1, input_x2, y, kernel_name)
         sch = generic.auto_schedule(res)
-    config = {"name": kernel_name,
-              "tensor_list": [condition, input_x1, input_x2, res],
-              "bool_storage_as_1bit": False}
+
+    if list(con_shape) == list(shape_x1):
+        config = {"name": kernel_name,
+                  "tensor_list": [condition, input_x1, input_x2, res],
+                  "bool_storage_as_1bit": False}
+    else:
+        config = {"name": kernel_name,
+                  "tensor_list": [condition, input_x1, input_x2, res]}
     te.lang.cce.cce_build_code(sch, config)

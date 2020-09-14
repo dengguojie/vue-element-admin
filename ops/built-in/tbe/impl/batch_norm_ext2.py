@@ -25,6 +25,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 NONETYPE = type(None)
 
@@ -149,22 +150,17 @@ def _shape_check(shape_x, shape_scale, shape_offset,
     _check_shape_dims(shape_scale, data_format)
     _check_shape_dims(shape_offset, data_format)
 
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_scale)
-    util.check_shape_rule(shape_offset)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_scale)
-    util.check_tensor_shape_size(shape_offset)
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_scale, param_name="input_scale")
+    check_shape(shape_offset, param_name="input_offset")
     _check_dims_equal(shape_x, shape_scale, data_format)
     _check_dims_equal(shape_x, shape_offset, data_format)
 
     if not is_training:
         shape_mean = mean.get("shape")
         shape_variance = variance.get("shape")
-        util.check_shape_rule(shape_mean)
-        util.check_shape_rule(shape_variance)
-        util.check_tensor_shape_size(shape_mean)
-        util.check_tensor_shape_size(shape_variance)
+        check_shape(shape_mean, param_name="input_mean")
+        check_shape(shape_variance, param_name="input_variance")
         _check_shape_dims(shape_mean, data_format)
         _check_shape_dims(shape_variance, data_format)
         _check_dims_equal(shape_x, shape_mean, data_format)
@@ -209,8 +205,8 @@ def _dtype_check(input_x, input_scale, input_offset,
         util.compare_tensor_dict_key(input_scale, input_mean, "dtype")
         util.compare_tensor_dict_key(input_scale, input_variance, "dtype")
 
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
-    util.check_dtype_rule(dtype_scale.lower(), ("float32", "float16"))
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="input_x")
+    check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="input_scale")
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -473,8 +469,10 @@ def batch_norm_ext2_compute(input_x, input_scale, input_offset, input_mean,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, (NONETYPE, dict), (NONETYPE, dict),
-                       dict, dict, dict, dict, dict, float, str, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
+                 OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def batch_norm_ext2(input_x, input_scale, input_offset, input_mean,
                     input_variance, output_y, output_batch_mean,
                     output_batch_variance, output_reserve_space_1,
@@ -549,7 +547,6 @@ def batch_norm_ext2(input_x, input_scale, input_offset, input_mean,
     _dtype_check(input_x, input_scale, input_offset, input_mean,
                  input_variance, is_training)
 
-    util.check_kernel_name(kernel_name)
 
     if format_data == "NHWC":
         shape_scale = [1, 1, 1] + list(shape_scale)

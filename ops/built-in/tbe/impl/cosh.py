@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -83,7 +84,7 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def cosh(input_x, output_cosh, kernel_name="cosh"):
     """
     algorithm: cosh
@@ -104,12 +105,10 @@ def cosh(input_x, output_cosh, kernel_name="cosh"):
     """
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
-    util.check_tensor_shape_size(shape)
-    util.check_shape_rule(shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="input_x")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
     reshape_input = (functools_reduce(lambda x, y: x * y, shape[:]),)
     data_input = tvm.placeholder(reshape_input,
                                  name="data_input", dtype=input_dtype)

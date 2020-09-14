@@ -18,14 +18,14 @@ f(x) = min(max(0,x), 6)
 """
 
 from functools import reduce as reduce_ins
-from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-import topi
-from topi.cce import util
-from te import platform as tbe_platform
 
-SHAPE_SIZE_LIMIT = 2**30  # shape limit
+import te.lang.cce
+import topi
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
+from topi.cce import util
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -47,13 +47,13 @@ def relu6_d_compute(input_x, output_y, scale, kernel_name="relu6_d"):
     compute result of relu6
     """
     tmp_res = te.lang.cce.vmaxs(input_x, tvm.const(0, input_x.dtype))
-    final_res = te.lang.cce.vmins(tmp_res,
-                                  tvm.const(6 * scale, input_x.dtype))
+    final_res = te.lang.cce.vmins(tmp_res, tvm.const(6 * scale, input_x.dtype))
 
     return final_res
 
 
-@util.check_input_type(dict, dict, float, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.OPTION_ATTR_FLOAT, op_utils.KERNEL_NAME)
 def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
     """
        f(x)= 6(x >= 6)
@@ -76,9 +76,7 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
     """
     input_shape = util.scalar2tensor_one(input_x.get("shape"))
     input_dtype = input_x.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(input_shape, param_name="input_x")
 
     vmaxs_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmaxs", "float32")
@@ -88,8 +86,7 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
 
     # check input tensor data_type
     check_list = ("int32", "float16", "float32")
-    if not input_dtype in check_list:
-        raise RuntimeError("relu6 only support int32 float16 float32.")
+    op_utils.check_dtype(input_dtype, check_list, param_name="input_x")
 
     input_shape = [reduce_ins(lambda x, y: x * y, input_shape[:])]
     input_data = tvm.placeholder(input_shape,

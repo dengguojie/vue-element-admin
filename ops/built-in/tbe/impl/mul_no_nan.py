@@ -56,7 +56,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
 
     mul_res = te.lang.cce.vmul(input_x1, input_x2)
     zero = tvm.const(0, dtype=src_dtype)
-    zeros = te.lang.cce.broadcast(zero,shape_max)
+    zeros = te.lang.cce.broadcast(zero, shape_max)
     res = te.lang.cce.vcmpsel(input_x2,
                               zeros,
                               operation='eq',

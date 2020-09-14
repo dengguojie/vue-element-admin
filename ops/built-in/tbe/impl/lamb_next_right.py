@@ -19,6 +19,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-variable,unused-argument
@@ -44,8 +45,9 @@ def shape_broadcast(data_1, data_2):
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-        util.check_tensor_shape_size(shape_max)
+        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+                                                       param_name_input1="data_1",
+                                                       param_name_input2="data_2")
         data_1 = te.lang.cce.broadcast(data_1, shape_max)
         data_2 = te.lang.cce.broadcast(data_2, shape_max)
 
@@ -121,7 +123,9 @@ def lamb_next_right_compute(data_input_square, data_input_mul2, data_mul2_x,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 KERNEL_NAME)
 def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
                     truediv1_recip, add2_y,
                     y1, y2, kernel_name="lamb_next_right"):
@@ -167,19 +171,23 @@ def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
     dtype_truediv1_recip = truediv1_recip.get("dtype").lower()
     dtype_add2_y = add2_y.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
 
     # broadcast
     shape_input_square, shape_mul3_x, shape_max_mul3 = \
-        util.produce_shapes(shape_input_square, shape_mul3_x)
+        broadcast_shapes(shape_input_square, shape_mul3_x, param_name_input1="input_square",
+                         param_name_input2="mul3_x")
     shape_input_mul2, shape_mul2_x, shape_max_mul2 = \
-        util.produce_shapes(shape_input_mul2, shape_mul2_x)
+        broadcast_shapes(shape_input_mul2, shape_mul2_x, param_name_input1="input_mul2",
+                         param_name_input2="mul2_x")
     shape_max_mul2, shape_max_mul3, shape_max_add1 = \
-        util.produce_shapes(shape_max_mul2, shape_max_mul3)
+        broadcast_shapes(shape_max_mul2, shape_max_mul3, param_name_input1="shape_max_mul2",
+                         param_name_input2="shape_max_mul3")
     shape_max_add1, shape_truediv1_recip, shape_max_truediv1 = \
-        util.produce_shapes(shape_max_add1, shape_truediv1_recip)
+        broadcast_shapes(shape_max_add1, shape_truediv1_recip, param_name_input1="shape_max_add1",
+                         param_name_input2="truediv1_recip")
     shape_max_truediv1, shape_add2_y, shape_max_add2 = \
-        util.produce_shapes(shape_max_truediv1, shape_add2_y)
+        broadcast_shapes(shape_max_truediv1, shape_add2_y, param_name_input1="shape_max_truediv1",
+                         param_name_input2="add2_y")
 
     data_input_square = tvm.placeholder(shape_input_square,
                                         name="data_input_square",

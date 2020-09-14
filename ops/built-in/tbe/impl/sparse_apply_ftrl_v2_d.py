@@ -11,21 +11,19 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-sparse_apply_ftrl
+sparse_apply_ftrl_v2_d
 """
 
-from topi.cce import util
 from impl.sparse_apply_common import SparseApply
+from te.utils import op_utils
 
-SHAPE_SIZE_LIMIT = (2**29 - 1)
 
 class SparseApplyFtrl(SparseApply):
     """
     Sub class inherited form SparseApply for sparse_apply_ftrl op
     """
-
-    def __init__(self, var, accum, linear, grad, indices,
-                 lr, lr_power, l1, l2, l2_shrinkage, kernel_name):
+    def __init__(self, var, accum, linear, grad, indices, lr, lr_power, l1, l2,
+                 l2_shrinkage, kernel_name):
         """
         init sparse_apply_ftrl  base parameters
 
@@ -73,17 +71,15 @@ class SparseApplyFtrl(SparseApply):
         -------
         None
         """
-        util.check_shape_rule(self.var_shape)
-        util.check_shape_rule(self.accum_shape)
-        util.check_shape_rule(self.linear_shape)
-        util.check_shape_size(self.var_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.accum_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.linear_shape, SHAPE_SIZE_LIMIT)
+        op_utils.check_shape(self.var_shape, param_name="var")
+        op_utils.check_shape(self.accum_shape, param_name="accum")
+        op_utils.check_shape(self.linear_shape, param_name="linear")
 
-        check_list_var_dtype = ("float32")
-        util.check_dtype_rule(self.var_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.accum_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.linear_dtype, check_list_var_dtype)
+        op_utils.check_dtype(self.var_dtype, ("float32", ), param_name="var")
+        op_utils.check_dtype(self.accum_dtype, ("float32", ),
+                             param_name="accum")
+        op_utils.check_dtype(self.linear_dtype, ("float32", ),
+                             param_name="linear")
 
         if self.accum_shape != self.var_shape:
             raise RuntimeError("accum's shape must be the same as var's shape")
@@ -121,97 +117,97 @@ class SparseApplyFtrl(SparseApply):
             grad_ub = self.grad_ub[offset]
 
         if self.l2_shrinkage != 0:
-            self.tik_instance.vmuls(mask, tmp_ub, var_ub, 2 * self.l2_shrinkage,
-                                    repeat, 1, 1, 8, 8)
-            self.tik_instance.vadd(mask, tmp2_ub, grad_ub, tmp_ub,
-                                   repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmuls(mask, tmp_ub, var_ub,
+                                    2 * self.l2_shrinkage, repeat, 1, 1, 8, 8)
+            self.tik_instance.vadd(mask, tmp2_ub, grad_ub, tmp_ub, repeat, 1,
+                                   1, 1, 8, 8, 8)
 
         # tmp =  grad*grad
-        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
         # linear += grad, grad will not used after this operation
         if self.l2_shrinkage != 0:
-            self.tik_instance.vadd(mask, linear_ub, tmp2_ub, linear_ub,
-                                   repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vadd(mask, linear_ub, tmp2_ub, linear_ub, repeat,
+                                   1, 1, 1, 8, 8, 8)
         else:
-            self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub,
-                                   repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub, repeat,
+                                   1, 1, 1, 8, 8, 8)
         # a^b = e^(b*lna)
         # grad = ln(accum)
-        self.tik_instance.vln(mask, grad_ub, accum_ub,
-                              repeat, 1, 1, 8, 8)
+        self.tik_instance.vln(mask, grad_ub, accum_ub, repeat, 1, 1, 8, 8)
         # grad = -lr_power*ln(accum)
-        self.tik_instance.vmuls(mask, grad_ub, grad_ub, -self.lr_power,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, grad_ub, grad_ub, -self.lr_power, repeat,
+                                1, 1, 8, 8)
         # grad = e^(-lr_power*ln(accum)) = accum ^ (-lr_power)
-        self.tik_instance.vexp(mask, grad_ub, grad_ub,
-                               repeat, 1, 1, 8, 8)
+        self.tik_instance.vexp(mask, grad_ub, grad_ub, repeat, 1, 1, 8, 8)
 
         # accum += grad*grad
-        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub, repeat, 1, 1,
+                               1, 8, 8, 8)
         # tmp = ln(accum_new)
-        self.tik_instance.vln(mask, tmp_ub, accum_ub,
-                              repeat, 1, 1, 8, 8)
+        self.tik_instance.vln(mask, tmp_ub, accum_ub, repeat, 1, 1, 8, 8)
 
         # accum_new^(-lr_power)
-        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power, repeat,
+                                1, 1, 8, 8)
 
         # tmp = accum_new ^ (-lr_power)
-        self.tik_instance.vexp(mask, tmp_ub, tmp_ub,
-                               repeat, 1, 1, 8, 8)
+        self.tik_instance.vexp(mask, tmp_ub, tmp_ub, repeat, 1, 1, 8, 8)
 
         # tmp2 =accum_new^(-lr_power)/lr, used by y_res
-        self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_vrec,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_vrec, repeat, 1,
+                                1, 8, 8)
 
         # tmp = accum^(-lr_power)- accum_new^(-lr_power)
-        self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
 
         # tmp = tmp / lr
-        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr_vrec,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr_vrec, repeat, 1,
+                                1, 8, 8)
 
         # tmp = tmp / lr * var
-        self.tik_instance.vmul(mask, tmp_ub, tmp_ub, var_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, tmp_ub, tmp_ub, var_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
 
         # linear += grad +(accum^(-lr_power)-accum_new^(-lr_power))/lr*var
-        self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub, repeat, 1,
+                               1, 1, 8, 8, 8)
 
         # x_res=linear.min(l1).max(-l1)-linear
 
-        self.tik_instance.vector_dup(mask, tmp_ub, self.l1,
-                                     repeat, 1, 8)
-        self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vector_dup(mask, tmp_ub, -self.l1,
-                                     repeat, 1, 8)
-        self.tik_instance.vmax(mask, tmp_ub, grad_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vector_dup(mask, tmp_ub, self.l1, repeat, 1, 8)
+        self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub, repeat, 1, 1,
+                               1, 8, 8, 8)
+        self.tik_instance.vector_dup(mask, tmp_ub, -self.l1, repeat, 1, 8)
+        self.tik_instance.vmax(mask, tmp_ub, grad_ub, tmp_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
+        self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub, repeat, 1, 1,
+                               1, 8, 8, 8)
 
         # y_res = accum_new^(-lr_power)/lr + 2*l2
 
-        self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2, repeat, 1,
+                                1, 8, 8)
 
         # var = x_res/y_res
-        self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
 
 
 # pylint: disable=too-many-arguments,unused-argument,locally-disabled
 # pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # pylint: disable=attribute-defined-outside-init,invalid-name,,too-many-lines
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict,dict,(float, int),
-                       (float, int),
-                       (float, int), (float, int), (float, int),
-                       bool, str)
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def sparse_apply_ftrl_v2_d(var,
                            accum,
                            linear,
@@ -220,7 +216,11 @@ def sparse_apply_ftrl_v2_d(var,
                            out_var,
                            out_accum,
                            out_linear,
-                           lr, l1, l2, l2_shrinkage, lr_power,
+                           lr,
+                           l1,
+                           l2,
+                           l2_shrinkage,
+                           lr_power,
                            use_locking=False,
                            kernel_name="sparse_apply_ftrl_v2"):
     """
@@ -263,8 +263,8 @@ def sparse_apply_ftrl_v2_d(var,
     Returns:
     None
     """
-    apply_ftrl = SparseApplyFtrl(var, accum, linear, grad, indices,
-                                 lr, lr_power, l1, l2, l2_shrinkage, kernel_name)
+    apply_ftrl = SparseApplyFtrl(var, accum, linear, grad, indices, lr,
+                                 lr_power, l1, l2, l2_shrinkage, kernel_name)
     var_shape = var.get('shape')
     apply_ftrl.add_input("var_in_gm", "float32", var_shape)
     apply_ftrl.add_input("accum_in_gm", "float32", var_shape)

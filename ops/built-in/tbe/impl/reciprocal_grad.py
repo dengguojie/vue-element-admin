@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -82,7 +83,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def reciprocal_grad(input_y, input_dy, output_data,
                     kernel_name="reciprocal_grad"):
     """
@@ -111,11 +112,8 @@ def reciprocal_grad(input_y, input_dy, output_data,
     dtype_y = input_y.get("dtype").lower()
     dtype_dy = input_dy.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_y)
-    util.check_shape_rule(shape_dy)
-    util.check_tensor_shape_size(shape_y)
-    util.check_tensor_shape_size(shape_dy)
+    check_shape(shape_y, param_name="input_y")
+    check_shape(shape_dy, param_name="input_dy")
 
     shape_y = util.shape_refine(shape_y)
     shape_dy = util.shape_refine(shape_dy)
@@ -124,7 +122,7 @@ def reciprocal_grad(input_y, input_dy, output_data,
     util.compare_tensor_dict_key(input_y, input_dy, "dtype")
 
     check_list = ("float16", "float32", "int32", "int8")
-    util.check_dtype_rule(dtype_y, check_list)
+    check_dtype(dtype_y, check_list, param_name="input_y")
 
     reshape_y, reshape_dy = refine_shapes_for_broadcast(shape_y, shape_dy)
     data_dy = tvm.placeholder(reshape_dy, name="data_dy", dtype=dtype_dy)

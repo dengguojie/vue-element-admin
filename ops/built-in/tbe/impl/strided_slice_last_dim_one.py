@@ -18,12 +18,17 @@ NPUClearFloatStatus
 from te import tik
 from te import platform as tbe_platform
 
+
 # pylint: disable=invalid-name, too-many-locals, unused-argument
 # pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
 # pylint: disable=too-many-branches, too-many-statements
 def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_name):
+    vmul_support = tbe_platform.cce_conf.api_check_support("tik.vmul", "float32")
+    if not vmul_support:
+        return False
     tik_instance = tik.Tik()
     aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+
     def _get_ub_block_num():
         """
         get the ub_size for dtype, get the block_size for dtype
@@ -88,9 +93,9 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
     max_num = len_burst_one // len_burst
     input_ub_len_one = consecutive * max_num
 
-    tail_num = input_size - len_burst_one*(core_num - 1)
+    tail_num = input_size - len_burst_one * (core_num - 1)
     max_num_one = tail_num // len_burst
-    output_tail_size = max_num_one*consecutive
+    output_tail_size = max_num_one * consecutive
     max_ub_data = input_ub_len_one + len_burst_one
     last_max_ub_data = tail_num + output_tail_size
 
@@ -130,7 +135,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
 
             use_input_length = use_input_ub_size // type_block_num
             max_use_number = use_input_ub_size // len_burst
-            max_use_number_one = max_use_number *consecutive
+            max_use_number_one = max_use_number * consecutive
             use_output_length = max_use_number_one // type_block_num
 
             loop_index = len_burst_one // use_input_ub_size
@@ -174,7 +179,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
             both_ub_data_length = max_ub_size_last // type_block_num
             max_both_number = max_ub_size_last // len_burst
 
-            max_out_ub_size = max_ub_size_last // len_burst *consecutive
+            max_out_ub_size = max_ub_size_last // len_burst * consecutive
             max_out_ub_size_stride = max_out_ub_size // type_block_num
 
             input_ub_data_one = tik_instance.Tensor(dtype, (max_ub_size_last_one, ),
@@ -266,7 +271,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                                                input_ub_data_one, 0, 1,
                                                tail_output_data_length, 0, 0)
 
-                with tik_instance.if_scope(total_cycle == core_num -1):
+                with tik_instance.if_scope(total_cycle == core_num - 1):
                     with tik_instance.for_range(0, last_core_loop_index) as loop:
                         tik_instance.data_move(input_ub_data,
                                                input_data[(core_num-1) * len_burst_one
@@ -322,7 +327,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                         with tik_instance.for_range(0, max_last_use_number) as group:
                             with tik_instance.for_range(0, consecutive) as cur_num:
                                 input_ub_data_one[group * consecutive + cur_num]\
-                                    .set_as(input_ub_data[group * len_burst + start_num +cur_num])
+                                    .set_as(input_ub_data[group * len_burst + start_num + cur_num])
                         tik_instance.data_move(output_data[total_cycle * input_ub_len_one
                                                            + loop_index * max_use_number_one],
                                                input_ub_data_one, 0, 1,

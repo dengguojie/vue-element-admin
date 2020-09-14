@@ -17,9 +17,11 @@ softmax schedule, provide a schedule for softmax
 from __future__ import absolute_import
 from te import tvm
 from te import platform as cce
+from te.platform import log
 from te.platform import cce_emitinsn_params
 from te.platform import cce_util
 from te.platform import intrinsic_check_support
+from te.platform.cce_intrin_md import vec_cmd_factory
 from .vector_schedule import VectorSchedule
 from .util import shape_to_list
 from .util import get_align_factor
@@ -120,6 +122,7 @@ class SoftmaxSchedule(VectorSchedule):
         Bool, now is true
 
         """
+        log.debug("start softmax_schedule")
         self._construct_compute_graph(out_tensors)
         shape = shape_to_list(self._res.shape)
         align_factor_32byte, _ = get_align_factor(self._res.dtype)
@@ -141,9 +144,11 @@ class SoftmaxSchedule(VectorSchedule):
 
             if self._is_this_schedule_support:
                 sch = self._do_schedule_last_with_workspace()
+                log.debug("end softmax_schedule: last_with_workspace")
                 return sch, self._spec_node_list
 
         if not self._is_this_schedule_support:
+            log.debug("end softmax_schedule: not support")
             return None, []
 
         if not self._is_last_reduce_axis:
@@ -164,6 +169,7 @@ class SoftmaxSchedule(VectorSchedule):
             else:
                 sch = self._do_schedule_last_noalign_storagealign()
 
+        log.debug("end softmax_schedule")
         return sch, []
 
 
@@ -910,7 +916,7 @@ class SoftmaxSchedule(VectorSchedule):
 
         # 4. sigle-core ub_tiling is too little processing performance reduced,
         # therefore not optimized
-        if not self._is_multi_core and is_ub_tiling_less_32byte:
+        if not self._is_multi_core and (is_ub_tiling_less_32byte or is_tail_less_32byte):
             self._is_this_schedule_support = False
             return
 
@@ -1331,9 +1337,8 @@ class SoftmaxSchedule(VectorSchedule):
                 insn_para = {"scope": write_buffer.op.reduce_axis[0], "instruction": insn}
             # 3.2 elewise using reduce result, compute_inline broadcast(not last axis)
             elif i in self._after_reduce_bc_tensors and (not self._is_last_reduce_axis):
-                insn_para = {
-                    "scope": write_buffer.op.axis[self._tiling_result["ub_tiling"]["axis"]],
-                    "instruction": insn}
+                insn_para = {"scope": write_buffer.op.axis[0],
+                             "instruction": insn}
             # 3.3 last reduce axis broadcast
             elif i in self._broadcast_tensors and self._is_last_reduce_axis:
                 insn_para = {"scope": write_buffer.op.axis[self._reduce_axis_num],
@@ -1413,6 +1418,10 @@ class SoftmaxSchedule(VectorSchedule):
 
         # res dma_copy, if self._is_multi_core and >=32B:
         ub_inner = self._tiling_result["ub_tiling"]["inner_itervar"]
+        # nlst pragma: ub_inner
+        # last pragma: reduce_axis
+        if not self._is_last_reduce_axis:
+            ub_inner = self._res.op.axis[self._reduce_axis_num]
         self._schedule[self._res].emit_insn(ub_inner, 'dma_copy', {"no_overlap": 1})
 
     def _do_double_buffer(self):
@@ -1932,21 +1941,138 @@ def reduce_last_axis_enhance_reduce_sum(tensor_op):
     """
     reduce last axis reduce sum enhance
     """
-    return reduce_last_axis_enhance(tensor_op, "vcadd")
+    return reduce_last_axis_enhance(tensor_op, "vadd")
 
 @tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_max")
 def reduce_last_axis_enhance_reduce_max(tensor_op):
     """
     reduce last axis reduce max enhance
     """
-    return reduce_last_axis_enhance(tensor_op, "vcmax")
+    return reduce_last_axis_enhance(tensor_op, "vmax")
 
 @tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_min")
 def reduce_last_axis_enhance_reduce_min(tensor_op):
     """
     reduce last axis reduce min enhance
     """
-    return reduce_last_axis_enhance(tensor_op, "vcmin")
+    return reduce_last_axis_enhance(tensor_op, "vmin")
+
+
+def reduce_last_axis_enhance(tensor_op, intrin_cmd):
+    """
+    reduce last axis reduce sum and max
+    """
+    if intrin_cmd in ("vadd", "vmin", "vmax"):
+        return reduce_last_axis_enhance_vcmd(tensor_op, intrin_cmd)
+
+    # intrin_cmd is vcadd/vcmin/vcmax
+    return reduce_last_axis_enhance_vccmd(tensor_op, intrin_cmd)
+
+
+
+def reduce_last_axis_enhance_vcmd(tensor_op, intrin_cmd):
+    """
+    reduce last axis reduce sum and max
+    """
+    ins, outs = cce_util.get_buffer(tensor_op)
+    ib_expr = tvm.ir_builder.create()
+
+    for_vars, for_extent_vals = _get_for_vars(tensor_op)
+    reduce_axis_len = for_extent_vals[0]
+
+    src_buffer = ins[1]
+    res_buffer = outs[0]
+    dtype = src_buffer.dtype
+
+    no_reduce_len = 1
+    for i, var in enumerate(for_vars):
+        if "k" not in var.name:
+            no_reduce_len *= for_extent_vals[i]
+
+    src_buffer = tvm.decl_buffer(src_buffer.shape, dtype,
+                                 name=src_buffer.name,
+                                 data=src_buffer.data,
+                                 offset_factor=1,
+                                 data_alignment=16,
+                                 scope=cce.scope_ubuf,
+                                 elem_offset=0)
+
+    tmp_buf_shape = (no_reduce_len,)
+    tmp_buf = new_alloc(ib_expr, dtype, tmp_buf_shape,
+                        'tmp_buf', scope=cce.scope_ubuf)
+
+    # reg_buf shape(8,)
+    reg_size = 8
+    reg = ib_expr.allocate(dtype, (reg_size,),
+                           name="reg_buf", scope=cce.scope_reg)
+
+    # src_buffer column[0] -> res_buffer
+    _matrix_column_reg_mov(ib_expr, reg, reg_size,
+                           res_buffer, src_buffer,
+                           (no_reduce_len, reduce_axis_len), 0)
+
+    with ib_expr.for_range(0, reduce_axis_len-1, name="lp_idx") as loop_idx:
+        index = loop_idx + 1
+        _matrix_column_reg_mov(ib_expr, reg, reg_size,
+                               tmp_buf, src_buffer,
+                               (no_reduce_len, reduce_axis_len), index)
+
+        vec_cmd_factory(ib_expr, intrin_cmd,
+                        [tmp_buf, res_buffer], [res_buffer], no_reduce_len,
+                        reset_mask=1, extern_args=[], args=[1, 1, 1, 8, 8, 8])
+
+    reset_mask_insn(ib_expr, res_buffer.dtype)
+    return ib_expr.get()
+
+
+def _matrix_column_reg_mov(ib_expr,
+                           reg,
+                           reg_size,
+                           dst_buffer,
+                           src_buffer,
+                           shape_2d,
+                           index):
+    high_len, low_len = shape_2d[0], shape_2d[1]
+    repeat_time = high_len // reg_size
+    remain_size = high_len % reg_size
+
+    # (x, y) -> (y, x)
+    if repeat_time > 0:
+        with ib_expr.for_range(0, repeat_time, name="lp_idx") as loop_idx:
+            for i in range(reg_size):
+                dst_offset = loop_idx * reg_size + i
+                src_offset = dst_offset * low_len + index
+                ib_expr.emit(tvm.call_extern(
+                    src_buffer.dtype, "reg_mov",
+                    tvm.call_extern(reg.dtype, "reg", reg[i]),
+                    src_buffer.access_ptr(
+                        "rw", offset=src_offset)
+                ))
+            for j in range(reg_size):
+                dst_offset = loop_idx * reg_size + j
+                ib_expr.emit(tvm.call_extern(
+                    src_buffer.dtype, "reg_mov",
+                    dst_buffer.access_ptr("rw", offset=dst_offset),
+                    tvm.call_extern(reg.dtype, "reg", reg[j])
+                ))
+
+    if remain_size > 0:
+        for i in range(remain_size):
+            dst_offset = repeat_time * reg_size + i
+            src_offset = dst_offset * low_len + index
+            ib_expr.emit(tvm.call_extern(
+                src_buffer.dtype, "reg_mov",
+                tvm.call_extern(reg.dtype, "reg", reg[i]),
+                src_buffer.access_ptr(
+                    "rw", offset=src_offset)
+            ))
+        for j in range(remain_size):
+            dst_offset = repeat_time * reg_size + j
+            ib_expr.emit(tvm.call_extern(
+                src_buffer.dtype, "reg_mov",
+                dst_buffer.access_ptr("rw", offset=dst_offset),
+                tvm.call_extern(reg.dtype, "reg", reg[j])
+            ))
 
 
 def get_mask_fp16_skip_one(length):
@@ -2203,7 +2329,7 @@ def _insn_reg_mov(ib_expr, dst_buffer, src_buffer, reg, reg_num,
             ))
 
 
-def reduce_last_axis_enhance(tensor_op, intrin_cmd):
+def reduce_last_axis_enhance_vccmd(tensor_op, intrin_cmd):
     """
     reduce last axis reduce sum and max
     """

@@ -170,6 +170,8 @@ def apply_power_sign_d_compute(var,
     if dtype == "float16":
         res1 = te.lang.cce.cast_to(res1, "float16")
         res2 = te.lang.cce.cast_to(res2, "float16")
+        var_t = te.lang.cce.cast_to(var_t, "float16")
+        m_t = te.lang.cce.cast_to(m_t, "float16")
 
     #this compute is for muti output
     def _compute(*index):

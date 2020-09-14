@@ -24,6 +24,7 @@ C0 = 16
 # size of c0 for uint8 int8
 INT8_C0_SIZE = 32
 
+
 #pylint: disable=locally-disabled,invalid-name
 def check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w):
     """
@@ -39,14 +40,14 @@ def check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, s
         error_info['opname'] = 'upsample'
         error_info['expect_value'] = '5'
         error_info['real_value'] = str(len(input_shape))
-        raise RuntimeError(error_info, 
+        raise RuntimeError(error_info,
             "In op[%s], the num of dimensions of input[%s] should be [%s], but actually is [%s]."
             % (error_info['opname'], 'x', error_info['expect_value'], error_info['real_value']))
     n, c1, h, w, c0 = input_shape
 
-    op_utils.check_shape([n, c1, h * stride_h, w *stride_w, c0])
+    op_utils.check_shape([n, c1, h * stride_h, w * stride_w, c0])
     product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    product_list = ["Hi3796CV300ES"]
+    product_list = ["Hi3796CV300ES", "Hi3796CV300CS"]
     if product in product_list:
         check_list = ["float16"]
     else:
@@ -106,12 +107,14 @@ def upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
         error_info['min_value'] = '0'
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str((stride_w, stride_h))
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] "
+                                       "should be in the range of [%s, %s),"
+                                       " but actually is [%s]."
+                           % (error_info['opname'], error_info['param_name'], 
+                              error_info['min_value'], 
                              error_info['max_value'], error_info['real_value']))
 
     check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w)
-
 
 
 def buffer_mapping(schedule, op_list):
@@ -141,11 +144,9 @@ def cal_shape(dshape, stride_h, stride_w):
     output shape
     """
     batch, channel1, height, width, shape_c0 = dshape
-    #input_shape = (batch, channel1, height, width, shape_c0)
+
     output_shape = (batch, channel1, height * stride_h, width * stride_w, shape_c0)
     return output_shape
-
-
 
 
 #pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
@@ -170,16 +171,16 @@ def gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     tensor_dic = {}
     op_list = []
     ins_list = []
-    tensor_in_ub = tvm.compute(dshape, lambda *i: feature(*i)
-                               , name="tensor_in_ub")
+    tensor_in_ub = tvm.compute(dshape, lambda *i: feature(*i),
+                               name="tensor_in_ub")
     tensor_dic["tensor_in_ub"] = tensor_in_ub
     op_list += [tensor_in_ub]
     ins_list += ["dma_copy"]
     scale_value = tvm.const(scale, dtype)
-    tensor_cal = tvm.compute(output_shape \
-                             , lambda n, ci, h, w, c0 \
-                                 : tensor_in_ub[n, ci \
-            , h // stride_h, w // stride_w, c0] * scale_value, name="tensor_cal")
+    tensor_cal = tvm.compute(output_shape,
+                             lambda n, ci, h, w, c0:
+                             tensor_in_ub[n, ci,
+                                          h // stride_h, w // stride_w, c0] * scale_value, name="tensor_cal")
     tensor_dic["tensor_cal"] = tensor_cal
     op_list += [tensor_cal]
     ins_list += ["vector_muls"]
@@ -248,6 +249,7 @@ def cal_tilling(input_x, stride_h, stride_w, data_type):
             break
     factor = ub_limit // size
     return factor, axis
+
 
 def spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     '''
@@ -376,17 +378,17 @@ def upsample_compute(schedule, cal_axis_dic, tensor_dic):
     """
 
     schedule[tensor_dic.get("tensor_in_ub")] \
-        .compute_at(schedule[tensor_dic.get("res")] \
-                    , cal_axis_dic.get("axis_xo"))
+        .compute_at(schedule[tensor_dic.get("res")],
+                    cal_axis_dic.get("axis_xo"))
     schedule[tensor_dic.get("tensor_cal")] \
-        .compute_at(schedule[tensor_dic.get("res")] \
-                    , cal_axis_dic.get("axis_xo"))
+        .compute_at(schedule[tensor_dic.get("res")],
+                    cal_axis_dic.get("axis_xo"))
 
     schedule[tensor_dic.get("tensor_in_ub")].double_buffer()
     schedule[tensor_dic.get("tensor_cal")].double_buffer()
 
-    axis_list = [cal_axis_dic.get("axis_di") \
-        , cal_axis_dic.get("axis_ei"), cal_axis_dic.get("axis_xi")]
+    axis_list = [cal_axis_dic.get("axis_di"),
+                 cal_axis_dic.get("axis_ei"), cal_axis_dic.get("axis_xi")]
     return axis_list
 
 
@@ -408,6 +410,7 @@ def ins_emit(schedule, op_list, axis_list, ins_list):
     length = len(op_list)
     for i in range(0, length):
         schedule[op_list[i]].emit_insn(axis_list[i], ins_list[i])
+
 
 def bind_multcore(axis, x, schedule, res_op):
     '''
@@ -453,6 +456,7 @@ def bind_multcore(axis, x, schedule, res_op):
         res_out, res_in = schedule[res_op].split(res_op.op.axis[0], batch_factor)
     return res_out, res_in
 
+
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,too-many-locals
 @op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT, 
                           op_utils.OPTION_ATTR_FLOAT, op_utils.OPTION_ATTR_INT, 
@@ -484,12 +488,13 @@ def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
     op_list, ins_list, tensor_dic, feature, y \
         = gen_upsample(x, dtype, scale, stride_h, stride_w)
     schedule = tvm.create_schedule(y.op)
-    buffer_mapping(schedule, op_list)
+    # skip the res buffer
+    buffer_mapping(schedule, op_list[:-1])
     tilling_spilt_axis_dic \
         = tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w)
     cal_axis_dic, axis \
-        = cal_axis_spilt(x, stride_h, stride_w
-                         , tilling_spilt_axis_dic, tensor_dic, schedule)
+        = cal_axis_spilt(x, stride_h, stride_w,
+                         tilling_spilt_axis_dic, tensor_dic, schedule)
 
     axis_list = upsample_compute(schedule, cal_axis_dic, tensor_dic)
     res_op = tensor_dic.get("res")
@@ -501,5 +506,4 @@ def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
         schedule[y].bind(res_out, tvm.thread_axis("blockIdx.x"))
 
     with build_config:
-        # print(tvm.lower(schedule, [feature, y], simple_mode=True))
         tvm.build(schedule, [feature, y], "cce", name=kernel_name)

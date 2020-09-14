@@ -21,7 +21,7 @@ import functools
 from te import tvm
 from te.lang.cce.te_compute import util
 from te.utils.error_manager import error_manager_util as err_mana
-from topi.cce.util import is_lhisi_version
+from te.platform.cce_conf import get_soc_spec
 
 # fractal size, only support 16 for now
 BLOCK_SIZE = 16
@@ -273,7 +273,9 @@ class Conv3dBackpropFilter:
             }
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
-        if is_lhisi_version() and self.res_dtype != "float16":
+        is_lhisi_version = get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                                           "Hi3796CV300CS")
+        if is_lhisi_version and self.res_dtype != "float16":
             args_dict = {
                 'errCode': 'E60005',
                 'param_name': 'res_dtype_lhisi',
@@ -282,7 +284,7 @@ class Conv3dBackpropFilter:
             }
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
-        if not is_lhisi_version() and self.res_dtype != "float32":
+        if not is_lhisi_version and self.res_dtype != "float32":
             args_dict = {
                 'errCode': 'E60005',
                 'param_name': 'res_dtype',

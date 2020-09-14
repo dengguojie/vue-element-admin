@@ -16,11 +16,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 nms_with_mask
 """
 
-import os
-import numpy as np
 from te import platform as tbe_platform
 from te import tik
-from topi.cce import util
+from te.utils import op_utils
 
 # pylint: disable = locally-disabled,invalid-name,too-many-statements
 # pylint: disable = too-many-arguments,unused-argument,no-member
@@ -177,17 +175,24 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
         [ceil_div(burst_proposal_num, rpn_proposal_num) * rpn_proposal_num, 5],
         name="output_proposals_ub",
         scope=tik.scope_ubuf)
-    selected_reduced_proposals_ub = tik_instance.Tensor("float16", [
-        ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num, 8], name="selected_reduced_proposals_ub",
-                                                        scope=tik.scope_ubuf)
+    selected_reduced_proposals_ub = tik_instance.Tensor(
+        "float16", [
+            ceil_div(total_output_proposal_num, rpn_proposal_num) *
+            rpn_proposal_num, 8
+        ],
+        name="selected_reduced_proposals_ub",
+        scope=tik.scope_ubuf)
     selected_area_ub = tik_instance.Tensor("float16", [
         ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num], name="selected_area_ub",
+        rpn_proposal_num
+    ],
+                                           name="selected_area_ub",
                                            scope=tik.scope_ubuf)
     sup_vec_ub = tik_instance.Tensor("uint16", [
         ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num], name="sup_vec_ub",
+        rpn_proposal_num
+    ],
+                                     name="sup_vec_ub",
                                      scope=tik.scope_ubuf)
     tik_instance.vector_dup(16, sup_vec_ub[0], 1, 1, 1, 8)
     # change with burst
@@ -201,15 +206,21 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                                        scope=tik.scope_ubuf)
     temp_iou_ub = tik_instance.Tensor("float16", [
         ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num, 16], name="temp_iou_ub",
+        rpn_proposal_num, 16
+    ],
+                                      name="temp_iou_ub",
                                       scope=tik.scope_ubuf)
     temp_join_ub = tik_instance.Tensor("float16", [
         ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num, 16], name="temp_join_ub",
+        rpn_proposal_num, 16
+    ],
+                                       name="temp_join_ub",
                                        scope=tik.scope_ubuf)
     temp_sup_matrix_ub = tik_instance.Tensor("uint16", [
         ceil_div(total_output_proposal_num, rpn_proposal_num) *
-        rpn_proposal_num], name="temp_sup_matrix_ub",
+        rpn_proposal_num
+    ],
+                                             name="temp_sup_matrix_ub",
                                              scope=tik.scope_ubuf)
     temp_sup_vec_ub = tik_instance.Tensor("uint16", [burst_proposal_num],
                                           name="temp_sup_vec_ub",
@@ -226,7 +237,10 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                                 thread_num=1) as burst_index:
         fresh_proposals_ub = tik_instance.Tensor("float16", [
             ceil_div(burst_proposal_num, rpn_proposal_num) * rpn_proposal_num,
-            8], name="fresh_proposals_ub", scope=tik.scope_ubuf)
+            8
+        ],
+                                                 name="fresh_proposals_ub",
+                                                 scope=tik.scope_ubuf)
         # update counter
         with tik_instance.if_scope(left_proposal_cnt < burst_proposal_num):
             handling_proposals_cnt.set_as(left_proposal_cnt)
@@ -255,21 +269,20 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
         with tik_instance.if_scope(
                 selected_proposals_cnt < total_output_proposal_num):
             with tik_instance.new_stmt_scope():
-                with tik_instance.for_range(0,
-                                            ceil_div(handling_proposals_cnt,
-                                                     16)) as i:
+                with tik_instance.for_range(
+                        0, ceil_div(handling_proposals_cnt, 16)) as i:
                     length.set_as(length + 16)
                     # calculate intersection of tempReducedProposals
                     # and selReducedProposals
-                    tik_instance.viou(temp_iou_ub[0,
-                                                  0], selected_reduced_proposals_ub[0],
+                    tik_instance.viou(temp_iou_ub[0, 0],
+                                      selected_reduced_proposals_ub[0],
                                       temp_reduced_proposals_ub[i * 16, 0],
                                       ceil_div(selected_proposals_cnt, 16))
                     # calculate intersection of tempReducedProposals and
                     # tempReducedProposals(include itself)
                     tik_instance.viou(
-                        temp_iou_ub[ceil_div(selected_proposals_cnt, 16) * 16,
-                                    0], temp_reduced_proposals_ub[0],
+                        temp_iou_ub[ceil_div(selected_proposals_cnt, 16) *
+                                    16, 0], temp_reduced_proposals_ub[0],
                         temp_reduced_proposals_ub[i * 16, 0], i + 1)
                     # calculate join of tempReducedProposals
                     # and selReducedProposals
@@ -279,16 +292,17 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                     # calculate intersection of tempReducedProposals and
                     # tempReducedProposals(include itself)
                     tik_instance.vaadd(
-                        temp_join_ub[ceil_div(selected_proposals_cnt, 16) * 16,
-                                     0], temp_area_ub, temp_area_ub[i * 16],
-                        i + 1)
+                        temp_join_ub[ceil_div(selected_proposals_cnt, 16) *
+                                     16, 0], temp_area_ub,
+                        temp_area_ub[i * 16], i + 1)
                     # calculate join*(thresh/(1+thresh))
                     tik_instance.vmuls(128, temp_join_ub[0, 0],
                                        temp_join_ub[0, 0], thresh,
                                        ceil_div(length, 8), 1, 1, 8, 8)
                     # compare and generate suppression matrix
                     tik_instance.vcmpv_gt(temp_sup_matrix_ub[0],
-                                          temp_iou_ub[0, 0], temp_join_ub[0, 0],
+                                          temp_iou_ub[0, 0],
+                                          temp_join_ub[0, 0],
                                           ceil_div(length, 8), 1, 1, 8, 8)
                     # generate suppression vector
                     # clear rpn_cor_ir
@@ -300,8 +314,8 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                     with tik_instance.if_scope(i > 0):
                         rpn_cor_ir = tik_instance.rpn_cor(
                             temp_sup_matrix_ub[ceil_div(
-                                selected_proposals_cnt, 16)
-                                               * 16], temp_sup_vec_ub[0], 1, 1, i)
+                                selected_proposals_cnt, 16) * 16],
+                            temp_sup_vec_ub[0], 1, 1, i)
                     # diagonal
                     tik_instance.rpn_cor_diag(temp_sup_vec_ub[i * 16],
                                               temp_sup_matrix_ub[length - 16],
@@ -310,7 +324,8 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                 # find & mov unsuppressed proposals
                 with tik_instance.for_range(0, handling_proposals_cnt) as i:
                     with tik_instance.if_scope(
-                            selected_proposals_cnt < total_output_proposal_num):
+                            selected_proposals_cnt < total_output_proposal_num
+                    ):
                         with tik_instance.for_range(0, 5) as j:
                             # update selOriginalProposals_ub
                             tt.set_as(fresh_proposals_ub[i, j])
@@ -323,8 +338,7 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                                 # update selected_reduced_proposals_ub
                                 tt.set_as(temp_reduced_proposals_ub[i, j])
                                 selected_reduced_proposals_ub[
-                                    selected_proposals_cnt,
-                                    j].set_as(tt)
+                                    selected_proposals_cnt, j].set_as(tt)
                             # update selected_area_ub
                             tt.set_as(temp_area_ub[i])
                             selected_area_ub[selected_proposals_cnt].set_as(tt)
@@ -335,17 +349,17 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
                             output_mask_ub[i].set_as(mask)
                             # update counter
                             selected_proposals_cnt.set_as(
-                                selected_proposals_cnt +
-                                1)
+                                selected_proposals_cnt + 1)
                         with tik_instance.else_scope():
                             mask.set_as(0)
                             output_mask_ub[i].set_as(mask)
-            left_proposal_cnt.set_as(left_proposal_cnt - handling_proposals_cnt)
+            left_proposal_cnt.set_as(left_proposal_cnt -
+                                     handling_proposals_cnt)
         # mov target proposals to out - mte3
         tik_instance.data_move(ret[burst_index * burst_proposal_num, 0],
                                output_proposals_ub, 0, 1,
-                               ceil_div(handling_proposals_cnt * 5, 16),
-                               0, 0, 0)
+                               ceil_div(handling_proposals_cnt * 5,
+                                        16), 0, 0, 0)
         tik_instance.data_move(out_index[burst_index * burst_proposal_num],
                                output_index_ub, 0, 1,
                                ceil_div(handling_proposals_cnt, 8), 0, 0, 0)
@@ -362,7 +376,9 @@ def tik_func_nms_single_core_multithread(input_shape, thresh,
 
 # pylint: disable=locally-disabled, too-many-arguments, invalid-name
 # pylint: disable=locally-disabled, too-many-locals, too-many-statements
-@util.check_input_type(dict, dict, dict, dict, float, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.OPTION_ATTR_FLOAT, op_utils.KERNEL_NAME)
 def nms_with_mask(box_scores,
                   selected_boxes,
                   selected_idx,
@@ -402,28 +418,24 @@ def nms_with_mask(box_scores,
     """
     input_shape = box_scores.get("shape")
     input_dtype = box_scores.get("dtype").lower()
-    output_shape = selected_boxes.get("shape")
-    output_dtype = selected_boxes.get("dtype").lower()
-    idx_shape = selected_idx.get("shape")
-    idx_dtype = selected_idx.get("dtype").lower()
-    mask_shape = selected_mask.get("shape")
-    mask_dtype = selected_mask.get("dtype").lower()
 
     # check dtype
     check_list = ("float16")
-    util.check_dtype_rule(input_dtype, check_list)
+    op_utils.check_dtype(input_dtype, check_list, param_name="box_scores")
     #check shape
-    util.check_shape_rule(input_shape, INPUT_DIM, INPUT_DIM)
-    #check kernel name
-    util.check_kernel_name(kernel_name)
+    op_utils.check_shape(input_shape,
+                         min_rank=INPUT_DIM,
+                         max_rank=INPUT_DIM,
+                         param_name="box_scores")
 
     def _ceil(x):
         """
         Return the least multiple of 16 integer number
         which is greater than or equal to x.
         """
-        return ((x + rpn_proposal_num - 1) //
-                rpn_proposal_num) * rpn_proposal_num
+        return (
+            (x + rpn_proposal_num - 1) // rpn_proposal_num) * rpn_proposal_num
+
     # Considering the memory space of Unified_Buffer
     # burst_size + selected_proposal_size + temp_proposal_size +
     # fresh_roposal_size ≤ UB_size

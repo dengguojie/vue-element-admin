@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -77,7 +78,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     return res
 
 
-@util.check_input_type(dict, dict, (int, list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (OPTION_ATTR_INT, OPTION_ATTR_LIST_INT), KERNEL_NAME)
 def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     """
     algorithm: log_softmax
@@ -107,10 +108,8 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     if not isinstance(axis, int):
         axis = list(axis)
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_dtype_rule(input_dtype, check_list)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    check_shape(shape, param_name="input_x")
+    check_dtype(input_dtype, check_list, param_name="input_x")
 
     axis = util.axis_check(shape_len, axis)
 

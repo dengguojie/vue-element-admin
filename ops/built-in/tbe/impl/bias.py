@@ -18,7 +18,6 @@ import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-#from te import platform as cceconf
 from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
@@ -27,15 +26,6 @@ from te.utils.op_utils import *
 
 
 # pylint: disable=too-few-public-methods
-# class Version():
-#     """
-#     version class:
-#     product and the core relation
-#     """
-#     MINI = ['1.1', '1.3']
-#     CLOUD = ['1.60']
-#     HISI = ['5.10']
-#     V200 = ['2.3']
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 # pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
@@ -61,11 +51,9 @@ def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
         format_bias = "NC1HWC0,NC1HWC0,ND,ND"
         format_bias_hisi = "NC1HWC0,ND"
 
-    #product_version = cceconf.CceProductParams().cce_product
     if length_x_ori == 4:
         # NC1HWC0+ND
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",):
-            #if product_version in Version.HISI:
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16,float16",
                                format="NC1HWC0,ND")
@@ -88,7 +76,6 @@ def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
     else:
         # ND+ND
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",):
-            #if product_version in Version.HISI:
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16",
                                format="ND")
@@ -148,9 +135,9 @@ def param_bias_check(shape_x, shape_bias):
                 errorInfo['input2_shape'] = ",".join(str(i) for i in shape_x)
                 raise RuntimeError(errorInfo, "In op[%s], the inputs[%s][%s] could not be"
                                               " broadcast together with shapes[%s][%s]."
-                                   % (errorInfo['op_name'], errorInfo['input1_name'] \
-                                          , errorInfo['input2_name'], errorInfo['input1_shape'] \
-                                          , errorInfo['input2_shape']))
+                                   % (errorInfo['op_name'], errorInfo['input1_name'],
+                                      errorInfo['input2_name'], errorInfo['input1_shape'],
+                                      errorInfo['input2_shape']))
 
 
 def get_param_bias_shape(shape_x, shape_bias):
@@ -308,9 +295,9 @@ def _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob):
                     raise RuntimeError(errorInfo,
                                        "In op[%s], the parameter[%s][%s] are not equal "
                                        "in shape with shapes[%s][%s]."
-                                       % (errorInfo['op_name'], errorInfo['param_name1']
-                                          , errorInfo['param_name2'], errorInfo['param1_shape']
-                                          , errorInfo['param2_shape']))
+                                       % (errorInfo['op_name'], errorInfo['param_name1'],
+                                          errorInfo['param_name2'], errorInfo['param1_shape'],
+                                          errorInfo['param2_shape']))
 
 
 def get_shape(shape_x, shape_bias, axis_, num_axes, bias_from_blob):
@@ -377,8 +364,6 @@ def _check_dtype(dtype_x, dtype_bias):
     None
     """
 
-    #product_version = cceconf.CceProductParams().cce_product
-    #if product_version in Version.HISI:
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",):
         if dtype_x == "float32" or dtype_bias == "float32":
             raise RuntimeError("float32 is not support in ES")
@@ -425,11 +410,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob,
     dtype_bias = bias.dtype
 
     is_cast = False
-    #product_version = cceconf.CceProductParams().cce_product
-
-    #if product_version not in Version.HISI:
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
-        #if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300ES"):
         if dtype_x == "float16":
             is_cast = True
             x = te.lang.cce.cast_to(x, 'float32')

@@ -16,10 +16,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 conv3d_backprop_filter
 """
 from __future__ import absolute_import
+from functools import reduce as func_reduce
 import te.lang.cce
 from te import tvm
 from te.platform import cce_params
-from te.platform import CceProductParams
+from te.platform.cce_conf import get_soc_spec
 from te.utils.error_manager import error_manager_util as err_mana
 from topi import generic
 from topi.cce import util
@@ -79,15 +80,27 @@ PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 PADDING_SUPPORT = ('SAME', 'VALID')
 
 
+def align(input_x, input_y):
+    if input_y == 0:
+        args_dict = {
+            'errCode': 'E62502',
+            'first_operand': str(input_x),
+            'second_operand': str(input_y)
+        }
+        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
+    return (input_x + input_y - 1) // input_y * input_y
+
+
 @util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list),
                        (str, tuple, list), (tuple, list), int, str, str)
-def conv3d_backprop_filter_d(out_backprop,
-                             x_dict,
+def conv3d_backprop_filter_d(x_dict,
+                             out_backprop,
                              y_dict,
                              filter_size,
                              strides,
                              pads,
-                             dilations=(1, 1, 1, 1),
+                             dilations=(1, 1, 1, 1, 1),
+                             groups=1,
                              data_format='NDHWC',
                              kernel_name="conv3d_backprop_filter"):
     """
@@ -117,7 +130,7 @@ def conv3d_backprop_filter_d(out_backprop,
                filter expand size of dilated conv3d_backprop_filter
 
     data_format: str
-            An optional string from: "NDHWC", "NDCHW". Defaults to "NDHWC".
+            An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC".
             Specify the data format of the input and output data.
 
     kernel_name: str
@@ -207,45 +220,38 @@ def conv3d_backprop_filter_d(out_backprop,
                                err_mana.get_error_message(args_dict))
 
         if isinstance(pads, (tuple, list)) and len(pads) != 6:
+            args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
+            raise RuntimeError(args_dict,
+                               err_mana.get_error_message(args_dict))
+
+    def _normalize_shape_ndchw(ori_shape, ori_format, format_list,
+                               param_name='input_param'):
+        """
+        normalizing the shape to NDCHW
+        """
+        if ori_format not in format_list:
             args_dict = {
-                'errCode': 'E62501',
-                'param_name': 'pads'
+                'errCode': 'E60008',
+                'param_name': param_name,
+                'expected_format_list': ','.join(format_list),
+                'format': ori_format
             }
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
 
-    def _calcute_input_shape():
-        if ori_format_x == "NDHWC":
-            x_shape = (ori_shape_x[0], ori_shape_x[1], ori_shape_x[4],
-                       ori_shape_x[2], ori_shape_x[3])
-        elif ori_format_x == "NDCHW":
-            x_shape = ori_shape_x
-        else:
-            args_dict = {
-                'errCode': 'E60008',
-                'param_name': 'input_shape',
-                'expected_format_list': '[{}, {}]'.format('NDCHW', 'NDHWC'),
-                'format': ori_format_x
-            }
-            raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+        n_index = ori_format.find('N')
+        d_index = ori_format.find('D')
+        c_index = ori_format.find('C')
+        h_index = ori_format.find('H')
+        w_index = ori_format.find('W')
 
-        if ori_format_out_backprop == "NDCHW":
-            shape_out = ori_shape_out_backprop
-        elif ori_format_out_backprop == "NDHWC":
-            shape_out = (ori_shape_out_backprop[0], ori_shape_out_backprop[1],
-                         ori_shape_out_backprop[4], ori_shape_out_backprop[2],
-                         ori_shape_out_backprop[3])
-        else:
-            args_dict = {
-                'errCode': 'E60008',
-                'param_name': 'out_backprop_shape',
-                'expected_format_list': '[{}, {}]'.format('NDCHW', 'NDHWC'),
-                'format': ori_format_x
-            }
-            raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
-        return x_shape, shape_out
+        new_shape = [
+            ori_shape[n_index], ori_shape[d_index],
+            ori_shape[c_index], ori_shape[h_index],
+            ori_shape[w_index]
+        ]
+
+        return new_shape
 
     ori_shape_x = x_dict.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
@@ -267,56 +273,30 @@ def conv3d_backprop_filter_d(out_backprop,
 
     _check_inputs_rules()
 
-    shape_x, shape_out_backprop = _calcute_input_shape()
+    input_format_list = ("NDHWC", "NCDHW")
+    shape_x = _normalize_shape_ndchw(ori_shape_x,
+                                     ori_format_x,
+                                     input_format_list,
+                                     'x')
+    shape_out_backprop = _normalize_shape_ndchw(
+                            ori_shape_out_backprop,
+                            ori_format_out_backprop,
+                            input_format_list,
+                            'out_backprop')
+    dilations = _normalize_shape_ndchw(dilations,
+                                       ori_format_out_backprop,
+                                       input_format_list,
+                                       'dilations')
 
-    if ori_format_res == "NDCHW":
-        shape_res = ori_shape_res
-    elif ori_format_res == "NDHWC":
-        shape_res = (ori_shape_res[0], ori_shape_res[1], ori_shape_res[4],
-                     ori_shape_res[2], ori_shape_res[3])
-    elif ori_format_res == "DHWCN":
-        shape_res = (ori_shape_res[4], ori_shape_res[0], ori_shape_res[3],
-                     ori_shape_res[1], ori_shape_res[2])
-    else:
-        args_dict = {
-            'errCode': 'E60008',
-            'param_name': 'res_shape',
-            'expected_format_list':
-                '[{}, {}, {}]'.format('NDCHW', 'NDHWC', 'DHWCN'),
-            'format': ori_format_res
-        }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+    res_format_list = ("NDHWC", "NCDHW", "DHWCN")
+    shape_res = _normalize_shape_ndchw(ori_shape_res,
+                                       ori_format_res,
+                                       res_format_list,
+                                       'y')
 
-    dilations = get_shape_dilation(ori_format_out_backprop, dilations)
-
-    conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res, strides,
-                               pads, dilations, x_dtype, out_backprop_dtype,
-                               res_dtype, kernel_name)
-
-
-def get_shape_dilation(ori_format_out_backprop, dilations):
-    """
-    Get result shape of NDCHW from original shape
-    :param ori_format_res:
-    :param ori_shape_res:
-    :return: result shape of NDCHW
-    """
-    if ori_format_out_backprop == "NDCHW":
-        shape_dilations = dilations
-    elif ori_format_out_backprop == "NDHWC":
-        shape_dilations = (dilations[0], dilations[1], dilations[4],
-                           dilations[2], dilations[3])
-    else:
-        args_dict = {
-            'errCode': 'E60008',
-            'param_name': 'dilations',
-            'expected_format_list': '[{}, {}]'.format('NDCHW', 'NDHWC'),
-            'format': ori_format_out_backprop
-        }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
-    return shape_dilations
+    conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res,
+                                   strides, pads, dilations, x_dtype,
+                                   out_backprop_dtype, res_dtype, kernel_name)
 
 
 @util.check_input_type((list, tuple), (list, tuple), (list, tuple),
@@ -358,17 +338,6 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     Returns : All transformed params.
     ----------
     """
-    def _align(input_x, input_y):
-        if input_y == 0:
-            args_dict = {
-                'errCode': 'E62502',
-                'first_operand': str(input_x),
-                'second_operand': str(input_y)
-            }
-            raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
-        return (input_x + input_y - 1) // input_y * input_y
-
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
         if not attr_min and not attr_max:
             return
@@ -408,10 +377,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         else:
             bit_ratio = BIT_RATIO_DICT.get("float16")
         if attr_value * bit_ratio > DATA_SIZE_MAX:
-            args_dict = {
-                'errCode': 'E60020',
-                'attr_name': attr_name
-            }
+            args_dict = {'errCode': 'E60020', 'attr_name': attr_name}
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
 
@@ -432,10 +398,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         # pads check
         if isinstance(pads, (tuple, list)) and \
                 len(pads) != PADDING_SHAPE_DIM:
-            args_dict = {
-                'errCode': 'E62501',
-                'param_name': 'pads'
-            }
+            args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
 
@@ -465,8 +428,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
             'dilation_n': str(dilation_n),
             'dilation_c': str(dilation_c)
         }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
 
     # detype check
     x_dtype = x_dtype.lower()
@@ -495,17 +457,17 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     # pads compute
     if pads == 'SAME':
         pad_d = \
-            _align(fmap_d, stride_d) - stride_d + filter_d_dilation - fmap_d
+            align(fmap_d, stride_d) - stride_d + filter_d_dilation - fmap_d
         pad_d = max(pad_d, 0)
         pad_front = pad_d // 2
         pad_back = pad_d - pad_front
         pad_w = \
-            _align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
+            align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
         pad_w = max(pad_w, 0)
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
         pad_h = \
-            _align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
+            align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
@@ -520,24 +482,21 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
             'depth_of_pad': '{}, {}'.format(pad_front, pad_back),
             'depth_of_filter': '{}'.format(filter_d_dilation)
         }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
     if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
         args_dict = {
             'errCode': 'E60016',
             'h_of_filter': '{}'.format(filter_h_dilation),
             'h_of_pad': '{}, {}'.format(pad_up, pad_down)
         }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
     if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
         args_dict = {
             'errCode': 'E60017',
             'w_of_filter': '{}'.format(filter_w_dilation),
             'w_of_pad': '{}, {}'.format(pad_left, pad_right)
         }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
 
     fmap_w_padding = fmap_w + pad_left + pad_right
     fmap_h_padding = fmap_h + pad_up + pad_down
@@ -613,16 +572,12 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         # Third : value check, Mainly required by the convolution rule
         if ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w +
                 1) != dedy_w:
-            args_dict = {
-                'errCode': 'E60025'
-            }
+            args_dict = {'errCode': 'E60025'}
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
         if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h +
                 1) != dedy_h:
-            args_dict = {
-                'errCode': 'E60024'
-            }
+            args_dict = {'errCode': 'E60024'}
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
 
@@ -637,23 +592,21 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         else:
             bl1_min_byte = (filter_h_dilation + stride_h) * fmap_w * C0 * 2
 
-        l1_size = CceProductParams().getParams("L1_Buffer")  # L1 size
+        l1_size = get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
-            args_dict = {
-                'errCode': 'E60022'
-            }
+            args_dict = {'errCode': 'E60022'}
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
 
     _min_l1_byte()
     # Fifth : check shape size, 64 bits limitation
     c0_size = cce_params.C0_SIZE
-    fmap_size = fmap_batch * fmap_d * _align(fmap_channel,
-                                             c0_size) * fmap_h * fmap_w
-    dedy_size = dedy_batch * dedy_d * _align(dedy_channel,
-                                             c0_size) * dedy_h * dedy_w
+    fmap_size = fmap_batch * fmap_d * align(fmap_channel,
+                                            c0_size) * fmap_h * fmap_w
+    dedy_size = dedy_batch * dedy_d * align(dedy_channel,
+                                            c0_size) * dedy_h * dedy_w
     filter_size = \
-        _align(filter_batch, c0_size) * filter_d * _align(filter_channel, c0_size) \
+        align(filter_batch, c0_size) * filter_d * align(filter_channel, c0_size) \
         * filter_h * filter_w
     _check_64bits_limitation("fmap_size", fmap_size, dtype=x_dtype)
     _check_64bits_limitation("dedy_size", dedy_size, dtype=out_backprop_dtype)
@@ -723,6 +676,10 @@ def conv3d_backprop_filter_cce(shape_x,
             raise RuntimeError(args_dict,
                                err_mana.get_error_message(args_dict))
         return (x_1 + x_2 - 1) // x_2
+
+    if get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                       "Hi3796CV300CS"):
+        res_dtype = "float16"
 
     res = check_conv3dbp_filter_params(shape_x, shape_out_backprop,
                                        filter_sizes, strides, pads, dilations,

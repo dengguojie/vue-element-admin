@@ -29,6 +29,7 @@ from topi.cce import util
 from te.platform.cce_intrin_md import reset_mask_insn
 from te.platform.cce_build import build_config
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 CCE_GLOBAL_AXIS = tvm.thread_axis("cce_global")
 CCE_MASK_AXIS = tvm.thread_axis("cce_mask")
@@ -211,12 +212,12 @@ def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
 
     """
 
-    util.check_shape_rule(shape_labels, min_dim=1, max_dim=1)
-    util.check_shape_rule(shape_predictions, min_dim=1, max_dim=1)
+    check_shape(shape_labels, min_rank=1, max_rank=1, param_name="labels")
+    check_shape(shape_predictions, min_rank=1, max_rank=1, param_name="predictions")
     if list(shape_labels) != list(shape_predictions):
         raise RuntimeError("The shape of labels and predictions shoud be same")
     if shape_weights is not None:
-        util.check_shape_rule(shape_weights, min_dim=1, max_dim=1)
+        check_shape(shape_weights, min_rank=1, max_rank=1, param_name="weights")
         if list(shape_labels) != list(shape_weights):
             raise RuntimeError("The shape of labels and weights shoud be same")
 
@@ -1050,6 +1051,9 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
 # @util.check_input_type((list, tuple), int, str, str, bool, bool)
 # pylint: disable=locally-disabled,invalid-name,unused-argument
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_INT, REQUIRED_ATTR_STR, KERNEL_NAME, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL)
 def confusion_matrix(labels,
                      predictions,
                      weights,
@@ -1081,12 +1085,12 @@ def confusion_matrix(labels,
     """
 
     shape = labels.get("shape")
-    util.check_tensor_shape_size(shape)
+    check_shape(shape, param_name="labels")
     shape_predictions = predictions.get("shape")
-    util.check_tensor_shape_size(shape_predictions)
+    check_shape(shape_predictions, param_name="predictions")
     if weights is not None:
         shape_weights = weights.get("shape")
-        util.check_tensor_shape_size(shape_weights)
+        check_shape(shape_weights, param_name="weights")
         weights_dtype = weights.get("dtype").lower()
     else:
         shape_weights = None
@@ -1097,7 +1101,6 @@ def confusion_matrix(labels,
     params_check(shape, shape_predictions, dtype, labels_dtype,
                  predictions_dtype, shape_weights, weights_dtype)
 
-    util.check_kernel_name(kernel_name)
     labels = tvm.placeholder(shape, dtype=labels_dtype, name="labels")
     prediction = tvm.placeholder(
         shape, dtype=predictions_dtype, name="prediction")

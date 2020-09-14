@@ -19,6 +19,7 @@ from te import tik
 from topi.cce import util
 from impl import max_pool_with_argmax_resnet50 as resnet50
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -37,6 +38,7 @@ SRC1STRIDEM1 = 8
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 # get available l1 size
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+
 
 def _ceil_div(value, factor):
     """
@@ -84,10 +86,8 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_dtype_rule(input_dtype, ("float16",))
+    check_shape(input_shape, param_name="input_x")
+    check_dtype(input_dtype, ("float16",), param_name="input_x")
 
     # the format of input_x must be NC1HWC0
     if len(input_shape) != 5:
@@ -117,7 +117,7 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
                            "width/height, and other strides dimension "
                            "should be one")
 
-    if ksize[1] >= in_size_h or ksize[2] >= in_size_w:
+    if ksize[1] > in_size_h or ksize[2] > in_size_w:
         raise RuntimeError("can not support global pooling now")
 
     if ksize[1] * ksize[2] > 255:
@@ -130,7 +130,8 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
 
 
 # pylint: disable=too-many-arguments,unused-argument,too-many-lines
-@util.check_input_type(dict, dict, dict, (list, tuple), (list, tuple), str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_STR, KERNEL_NAME)
 def max_pool_with_argmax(input_x, output_y, output_argmax, ksize, strides,
                          padding, kernel_name="max_pool_with_argmax"):
     """
@@ -248,7 +249,8 @@ class MaxPoolWithargmax():
         self.output_mask_gm = self.tik_instance.Tensor("uint16",
                                                        output_mask_gm_shape,
                                                        name="output_mask_gm",
-                                                       scope=tik.scope_gm)
+                                                       scope=tik.scope_gm,
+                                                       is_atomic_add=True)
 
     # pylint: disable=too-many-locals,too-many-function-args,too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):

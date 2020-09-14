@@ -22,13 +22,15 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-arguments,unnecessary-lambda
 @fusion_manager.register("max_pool_ext2")
 def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
-                          data_format="NC1HWC0", kernel_name="max_pool"):
+                          data_format="NC1HWC0", is_fused_compute=True,
+                          kernel_name="max_pool"):
     """
     Performs max_pool_ext2 on the input.
 
@@ -78,21 +80,14 @@ def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
     in_split_index = input_data.op.attrs["split_index"].value \
         if "split_index" in input_data.op.attrs else 0
     out_l1_flag = output_data.get("addr_type") == 1
-    out_valid_shape = output_data.get("valid_shape", [])
-    out_select_write_flag = bool(out_valid_shape)
-    out_shape = output_data.get("shape")
-    out_total_shape = output_data.get("valid_shape") \
-        if out_select_write_flag else output_data.get("shape")
-    out_slice_offset = output_data.get("slice_offset", [0, 0, 0, 0, 0])
-    fusion_params = {"l1_fusion_type": l1_fusion_type,
+    fusion_params = {"is_fused_compute": is_fused_compute,
+                     "l1_fusion_type": l1_fusion_type,
                      "in_l1_flag": in_l1_flag,
                      "out_l1_flag": out_l1_flag,
                      "in_select_read_flag": in_select_read_flag,
                      "in_split_index": in_split_index,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_total_shape": out_total_shape,
-                     "out_shape": out_shape,
-                     "out_slice_offset": out_slice_offset}
+                     "in_slice_offset": in_slice_offset,
+                     "in_valid_shape": in_valid_shape}
 
     if in_select_read_flag:
         select_tensor_in = tvm.compute(in_valid_shape,
@@ -128,7 +123,8 @@ def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
     return res
 
 
-@util.check_input_type(dict, dict, (list, tuple), (list, tuple), str, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
+                 REQUIRED_ATTR_STR, OPTION_ATTR_STR, KERNEL_NAME)
 def max_pool_ext2(input_data, output_data, ksize, strides, padding,
                   data_format="NC1HWC0", kernel_name="max_pool_ext2"):
     """
@@ -160,12 +156,10 @@ def max_pool_ext2(input_data, output_data, ksize, strides, padding,
     input_shape = input_data.get("shape")
     input_dtype = input_data.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
+    check_shape(input_shape, param_name="input_data")
 
     check_list = ("float16", "int8", "uint8")
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_data")
 
     if data_format in ("NHWC",):
         if len(ksize) != 4:
@@ -218,6 +212,7 @@ def max_pool_ext2(input_data, output_data, ksize, strides, padding,
 
     res = max_pool_ext2_compute(data_input, output_data, ksize, strides,
                                 padding, data_format=data_format,
+                                is_fused_compute=False,
                                 kernel_name=kernel_name)
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

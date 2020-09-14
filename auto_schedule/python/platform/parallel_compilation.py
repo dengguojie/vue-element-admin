@@ -21,9 +21,12 @@ import multiprocessing as mp
 import queue
 import time
 import os
+import stat
 import importlib
 import signal
 import datetime
+import traceback
+import shutil
 import zlib
 import pickle
 import sys
@@ -36,11 +39,9 @@ import te.platform.log_util as telog
 import te.platform.fusion_manager as fusion_manager
 import te.platform.fusion_util as fusion_util
 import te.platform.cce_policy as cce_policy
-from .cce_policy import OpImplPolicy
 
-
+FILE_MODE_440 = stat.S_IRUSR | stat.S_IRGRP
 MAXINT32 = 2**32
-
 
 def init_logger():
     """
@@ -143,11 +144,31 @@ def exec_compilation_task(worker_env, task_env):
     signal.signal(signal.SIGINT, worker_sigint_handler)
 
     cce = importlib.import_module("te.platform.cce_conf")
-    logger.info("socinfo:%s", worker_env)
-    cce.te_set_version(*worker_env)
+
+    socinfo, dispatcher, autotune_dispatcher,\
+        pid, worker_idx, slog_level, slog_event = worker_env
+    try:
+        from te.utils.AscendLog import AscendLog
+        slog = AscendLog()
+        if slog_level is not None:
+            slog.set_level(-1, slog_level, slog_event)
+    except Exception:       # 'pylint: disable=broad-except
+        pass
+
+    logger.info("socinfo:%s", socinfo)
+    cce.te_set_version(*socinfo)
+    OpCompiler.task_dispatcher = dispatcher
+    OpCompiler.autotune_task_dispatcher = autotune_dispatcher
+    OpCompiler.master_pid = pid
+    OpCompiler.autotune_worker_idx = worker_idx
+
     importlib.import_module("te.platform.fusion_manager")
     importlib.import_module("te.platform.fusion_util")
     worker = TaskWorker(task_env)
+
+    logger.info("Default compiler:%s", OpCompiler.compiler)
+    logger.info("Autotune compiler:%s", OpCompiler.autotune_compiler)
+
     worker.loop()
 
 
@@ -159,6 +180,7 @@ def get_multi_process_count(tune_mode):
     try:
         if 'TE_PARALLEL_COMPILER' in os.environ:
             count = int(os.getenv('TE_PARALLEL_COMPILER'))
+            logger.info("TE_PARALLEL_COMPILER=%s", count)
         else:
             home_path = os.getenv('HOME')
             config_file_path = os.path.join(home_path, ".tbe_build.ini")
@@ -228,14 +250,22 @@ class OpCompiler:
     OpCompiler
     """
     compiler = None
+    autotune_compiler = None
+    worker_checker_count = 0
+    master_pid = 0
+    task_dispatcher = None
+    autotune_task_dispatcher = None
+    autotune_worker_idx = -1
+    atc_time_stamp = None
 
-    def __init__(self, embedding, worker_num, worker_env):
+    def __init__(self, embedding, worker_num, worker_env, autotune=False,
+                 time_stamp=None, slog_level=None, slog_event=1):
         """
         init
         :param task_env:
         :param worker_list:
         """
-        self._task_dispatcher = None
+        self.task_dispatcher = None
         # '{graphid: {taskid: desc}}
         self._task_running = {}
 
@@ -247,26 +277,59 @@ class OpCompiler:
         self.finished_task_queue = None
         self.live_checker = None
         self.termination_event = None
-        OpCompiler.compiler = self
+        self.extra_res_queue = {}
+        self._worker_list = []
+        self.data_queue = []
+        self.task_queue = []
+        self._autotune = autotune
+        self._time_stamp = time_stamp
+        self._slog_level = slog_level
+        self._slog_event = slog_event
+        if autotune:
+            OpCompiler.autotune_compiler = self
+        else:
+            OpCompiler.compiler = self
+        OpCompiler.master_pid = os.getpid()
+
+    def init(self):
+        """
+        init task queue, data queue and result queue
+        """
+        if self.task_dispatcher is not None:
+            return
+
+        ctx = mp.get_context("forkserver")
+        self.task_queue = ctx.Queue()
+        self.task_queue.cancel_join_thread()
+        if self._autotune:
+            # Each autotune sub process has it's own finished task queue
+            self.finished_task_queue = [ctx.Queue() for
+                                        _ in range(0, self._worker_num)]
+            for tqueue in self.finished_task_queue:
+                tqueue.cancel_join_thread()
+        else:
+            self.finished_task_queue = ctx.Queue()
+            self.finished_task_queue.cancel_join_thread()
+        self.termination_event = ctx.Event()
+        self.live_checker = ctx.Pipe()
+        self.data_queue = [ctx.Queue() for
+                           worker in range(0, self._worker_num)]
+        for dqueue in self.data_queue:
+            dqueue.cancel_join_thread()
+        self.task_dispatcher = \
+            TaskDispatcher((self.task_queue, self.finished_task_queue,
+                            self.data_queue))
 
     def start(self):
         """
         start worker compiler process
         """
-        if self._task_dispatcher is not None:
+        if self._worker_list:
             return self._worker_num, self.finished_task_queue, \
-                    self.live_checker, self.termination_event
+                self.live_checker, self.termination_event
 
         if self._embedding:
             guess_pyexe_path(mp)
-
-        ctx = mp.get_context("forkserver")
-        task_queue = ctx.Queue()
-        self.finished_task_queue = ctx.Queue()
-        worker_list = []
-        self.termination_event = ctx.Event()
-        self.live_checker = ctx.Pipe()
-        data_queue = []
 
         # multiprocessing will access sys.argv, if sys.argv not exist,
         # exception raised and can not be caught here
@@ -277,25 +340,29 @@ class OpCompiler:
         # by parent, which is unnecessary and problematic, here is a hack to
         # bypass it.
         main_mod_name, main_path = set_main_info()
-
-        for _ in range(0, self._worker_num):
-            new_queue = ctx.Queue()
+        autotune_dispatcher = None
+        if OpCompiler.autotune_compiler is not None:
+            autotune_dispatcher = OpCompiler.autotune_compiler.task_dispatcher
+        for idx in range(0, self._worker_num):
+            data_queue = self.data_queue[idx]
+            ctx = mp.get_context("forkserver")
             worker = \
                 ctx.Process(target=exec_compilation_task,
-                            args=(self._worker_env,
-                                  (task_queue, self.finished_task_queue,
-                                   new_queue, self.termination_event,
-                                   self.live_checker[0])),
+                            args=(
+                                (self._worker_env,
+                                 OpCompiler.compiler.task_dispatcher,
+                                 autotune_dispatcher,
+                                 OpCompiler.master_pid, idx, self._slog_level,
+                                 self._slog_event),
+                                (self.task_queue, self.finished_task_queue,
+                                 data_queue, self.termination_event,
+                                 self.live_checker[0], self._time_stamp)
+                            ),
                             daemon=True)
             worker.start()
-            worker_list.append(worker)
-            data_queue.append(new_queue)
-        self._task_dispatcher = \
-            TaskDispatcher((task_queue, self.finished_task_queue,
-                            data_queue, self.termination_event,
-                            self.live_checker), worker_list)
-
+            self._worker_list.append(worker)
         restore_main_info(main_mod_name, main_path)
+
         return self._worker_num, self.finished_task_queue, self.live_checker, \
             self.termination_event
 
@@ -304,57 +371,53 @@ class OpCompiler:
         deinit multi compilation process
         :return: None
         """
-        dispatcher = self._task_dispatcher
+        dispatcher = self.task_dispatcher
         if dispatcher is None:
             return
-        worker_list = dispatcher.worker_list
-        dispatcher.term_event.set()
+        self.termination_event.set()
 
-        time.sleep(0.2)
-        for worker in worker_list:
-            if worker.is_alive():
-                worker.terminate()
-        time.sleep(0.1)
-        for worker in worker_list:
-            if worker.is_alive():
-                os.kill(worker.pid, signal.SIGKILL)
-        self._task_dispatcher = None
+        try:
+            time.sleep(0.2)
+            for worker in self._worker_list:
+                if worker.is_alive():
+                    worker.terminate()
+        except Exception:       # 'pylint: disable=broad-except
+            # Sub processes may already quit when being killed
+            pass
+        self.task_dispatcher = None
         self._task_running = {}
+        OpCompiler.compiler = None
+        OpCompiler.autotune_compiler = None
+        OpCompiler.master_pid = 0
 
     def is_worker_alive(self):
         """
         check wether all worker processes are alive
         :return:
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return False
-        worker_list = self._task_dispatcher.worker_list
         all_alive = True
-        for worker in worker_list:
+        for worker in self._worker_list:
             if not worker.is_alive():
                 logger.warning("worker process %s died. exitcode %s",
                                worker.pid, worker.exitcode)
                 all_alive = False
         return all_alive
 
-    def get_finished_task(self, graphid=None, taskids=None):
+    def check_worker_status(self):
         """
-        return finished compilation task
-        :return:
+        check if worker process are alive, if not, set all running task as fail
         """
-        if self._task_dispatcher is None:
-            return []
-        try:
-            while True:
-                task_res = self._task_dispatcher.get_result(False)
-                gid = task_res['graph_id']
-                tid = task_res['task_id']
-                self.save_finished_task(gid, tid, task_res)
-        except queue.Empty:
-            pass
-
         # if any worker process dead, all task will be markded as failed
-        if not self.is_worker_alive():
+        OpCompiler.worker_checker_count += 1
+        if OpCompiler.worker_checker_count % 3000 != 0:
+            return
+
+        worker_alive = self.is_worker_alive()
+        autotune_worker_alive = True if OpCompiler.autotune_compiler is None \
+            else OpCompiler.autotune_compiler.is_worker_alive()
+        if not worker_alive or not autotune_worker_alive:
             for gid, tasks in list(self._task_running.items()):
                 for tid, task_desc in list(tasks.items()):
                     errmsg = "compiler process died"
@@ -363,6 +426,24 @@ class OpCompiler:
                                             err_args=task_desc)
                     self.save_finished_task(gid, tid, task_res)
             self._task_running.clear()
+
+    def get_finished_task(self, graphid=None, taskids=None):
+        """
+        return finished compilation task
+        :return:
+        """
+        if self.task_dispatcher is None:
+            return []
+        try:
+            while True:
+                task_res = self.task_dispatcher.get_result(False)
+                gid = task_res['graph_id']
+                tid = task_res['task_id']
+                self.save_finished_task(gid, tid, task_res)
+        except queue.Empty:
+            pass
+
+        self.check_worker_status()
 
         res = []
         if graphid is not None:
@@ -389,7 +470,7 @@ class OpCompiler:
         update task to _task_running
         :param task:
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return
         runnings = self._task_running.setdefault(task.graph_id, {})
         running = runnings.get(task.task_id)
@@ -404,9 +485,9 @@ class OpCompiler:
         dispatch task to workers
         :param task:
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return
-        self._task_dispatcher.dispatch(task)
+        self.task_dispatcher.dispatch(task)
         self.update_running_task(task)
 
     def sync_data(self, data):
@@ -414,9 +495,9 @@ class OpCompiler:
         sync data to all workers
         :param data:
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return
-        self._task_dispatcher.sync_data(data)
+        self.task_dispatcher.sync_data(data)
 
     def clear_running_task(self, gid, tid):
         """
@@ -424,18 +505,18 @@ class OpCompiler:
         :param gid: task graphid
         :param tid: task taskid
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return True
         tasks_in_gid = self._task_running.get(gid)
         if tasks_in_gid is None:
-            logger.warning("task finished, but graphid not found. %d:%d",
-                           gid, tid)
+            logger.info("task finished, but graphid not found. %d:%d",
+                        gid, tid)
             return False
 
         running = tasks_in_gid.get(tid)
         if running is None:
-            logger.warning("task finished, but taskid not found. %d:%d",
-                           gid, tid)
+            logger.info("task finished, but taskid not found. %d:%d",
+                        gid, tid)
             return False
 
         del tasks_in_gid[tid]
@@ -448,10 +529,9 @@ class OpCompiler:
         :param tid: task taskid
         :param res: task result
         """
-        if self._task_dispatcher is None:
+        if self.task_dispatcher is None:
             return
-        if not self.clear_running_task(gid, tid):
-            return
+        self.clear_running_task(gid, tid)
 
         finished_task_in_gid = self._task_finished.setdefault(gid, {})
         finished_task_in_gid[tid] = res
@@ -462,7 +542,9 @@ class DeferredOpRes:
     """
     DeferredOpRes
     """
-    def __init__(self, gid, tid, res=None):
+    _task_finished = {}
+
+    def __init__(self, gid, tid, res=None, tag=None, from_worker=-1):
         """
         init DeferredOpRes
         :param gid
@@ -471,6 +553,8 @@ class DeferredOpRes:
         self._gid = gid
         self._tid = tid
         self._res = res
+        self._tag = tag
+        self._from_worker = from_worker
 
     def get(self):
         """
@@ -480,7 +564,28 @@ class DeferredOpRes:
         if self._res is not None:
             return self._res
 
-        res = OpCompiler.compiler.get_finished_task(self._gid, [self._tid])
+        if self._tag == "autotune_compile_op":
+            try:
+                while True:
+                    autotune_dispatcher = OpCompiler.autotune_task_dispatcher
+                    task_res = autotune_dispatcher\
+                        .get_result(False, self._from_worker)
+                    gid = task_res['graph_id']
+                    tid = task_res['task_id']
+                    DeferredOpRes._task_finished[(gid, tid)] = task_res
+            except queue.Empty:
+                pass
+
+            res = DeferredOpRes._task_finished.get((self._gid, self._tid),
+                                                   None)
+            if res:
+                res = [res]
+            else:
+                res = []
+        else:
+            compiler = OpCompiler.compiler
+            res = compiler.get_finished_task(self._gid, [self._tid])
+
         if len(res) == 0:
             return None
         res = res[0]
@@ -490,7 +595,8 @@ class DeferredOpRes:
         return self._res
 
 
-def init_multi_process_env(embedding, socinfo, tune_mode):
+def init_multi_process_env(embedding, socinfo, tune_mode,
+                           slog_level=None, slog_event=1):
     """
     init multi compilation process
     :param embedding: if is embedding python
@@ -498,12 +604,90 @@ def init_multi_process_env(embedding, socinfo, tune_mode):
     :param l2mode:
     :return: compilation worker number
     """
+    pid = os.getpid()
+    time_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    atc_time_stamp = "pid{}_{}".format(pid, time_str)
+    OpCompiler.atc_time_stamp = atc_time_stamp
+    lock_tick_file = "lock_tick_{}.tmp".format(atc_time_stamp)
+    ltf_path = os.path.join(os.getcwd(), lock_tick_file)
+    if not os.path.isfile(ltf_path):
+        with open(ltf_path, 'w') as ltf:
+            pass
+    lock_data_file = "lock_data_{}.tmp".format(atc_time_stamp)
+    ldf_path = os.path.join(os.getcwd(), lock_data_file)
+    if not os.path.isfile(ldf_path):
+        with open(ldf_path, 'w') as ldf:
+            pass
     process_count = get_multi_process_count(tune_mode)
     if process_count <= 0:
         return 0, None, None, None
 
-    compiler = OpCompiler(embedding, process_count, socinfo)
-    return compiler.start()
+    compiler = OpCompiler(embedding, process_count, socinfo,
+                          slog_level=slog_level,
+                          slog_event=slog_event)
+    if 'GA' in tune_mode:
+        autotune_compiler = OpCompiler(embedding, process_count, socinfo, True,
+                                       atc_time_stamp,
+                                       slog_level=slog_level,
+                                       slog_event=slog_event)
+    compiler.init()
+    if 'GA' in tune_mode:
+        autotune_compiler.init()
+
+    res = compiler.start()
+    if 'GA' in tune_mode:
+        autotune_compiler.start()
+    return res
+
+
+def deal_with_atc_data():
+    """
+    deal with the atc process data file before deinit atc multi-process
+    :return: None
+    """
+    best_ticks_file_name = "best_ticks_{}.json".format(\
+                                                    OpCompiler.atc_time_stamp)
+    res_data_file_name = "res_data_{}.json".format(OpCompiler.atc_time_stamp)
+    tune_show_dir_name = "tune_show_{}".format(OpCompiler.atc_time_stamp)
+    lock_file_name = "file.lock"
+    cur_path = os.getcwd()
+    tick_file_path = os.path.join(cur_path, best_ticks_file_name)
+    res_file_path = os.path.join(cur_path, res_data_file_name)
+    tune_show_dir = os.path.join(cur_path, tune_show_dir_name)
+    lock_file = os.path.join(cur_path, lock_file_name)
+    if not (os.path.isfile(tick_file_path) and os.path.isfile(res_file_path)):
+        return
+    file_dict = {}
+    file_dict["process_data"] = {}
+    file_dict["result_data"] = {}
+    with open(tick_file_path, 'r') as tick_file:
+        file_dict["process_data"] = json.load(tick_file)
+    os.remove(tick_file_path)
+    with open(res_file_path, 'r') as res_file:
+        res_data_list = res_file.readlines()
+        for res_data in res_data_list:
+            file_dict["result_data"].update(json.loads(res_data))
+    os.remove(res_file_path)
+    stamp_str = res_data_file_name.split('.')[0][8:]
+    json_file_path = os.path.join(cur_path,\
+                                    "tune_result{}.json".format(stamp_str))
+    if os.path.isfile(json_file_path):
+        os.remove(json_file_path)
+    with open(json_file_path, 'w') as json_file:
+        json_file.write(json.dumps(file_dict))
+    os.chmod(json_file_path, FILE_MODE_440)
+    lock_tick_file = "lock_tick_{}.tmp".format(OpCompiler.atc_time_stamp)
+    ltf_path = os.path.join(os.getcwd(), lock_tick_file)
+    if os.path.isfile(ltf_path):
+        os.remove(ltf_path)
+    lock_data_file = "lock_data_{}.tmp".format(OpCompiler.atc_time_stamp)
+    ldf_path = os.path.join(os.getcwd(), lock_data_file)
+    if os.path.isfile(ldf_path):
+        os.remove(ldf_path)
+    if os.path.isfile(lock_file):
+        os.remove(lock_file)
+    if os.path.isdir(tune_show_dir):
+        shutil.rmtree(tune_show_dir)
 
 
 def deinit_multi_process_env():
@@ -511,10 +695,15 @@ def deinit_multi_process_env():
     deinit multi compilation process
     :return: None
     """
-    compiler = OpCompiler.compiler
-    if compiler is None:
-        return
-    compiler.destory()
+    deal_with_atc_data()
+    compilers = (OpCompiler.compiler,
+                 OpCompiler.autotune_compiler)
+    for compiler in compilers:
+        if compiler is None:
+            continue
+        logger.info("destory compiler %s", compiler)
+        compiler.destory()
+    logger.info("all compiler destoryed")
 
 
 def get_finished_compilation_task(graph_id):
@@ -554,28 +743,29 @@ class TaskDispatcher:
     """
     Task Dispatcher
     """
-    def __init__(self, task_env, worker_list):
+    def __init__(self, task_env):
         """
         init
         :param task_env:
         :param worker_list:
         """
         self._task_queue, \
-            self._fin_task_queue, \
+            self.fin_task_queue, \
             self._data_queue, \
-            self.term_event, \
-            self._live_checker = task_env
-        self.worker_list = worker_list
-        self._data_sync_count = 0
+            = task_env
+        self._data_sync_count = {}
         self._concurrent = 0
 
-    def get_result(self, block=True):
+    def get_result(self, block=True, queue_idx=-1):
         """
         get result form finished task queue
         :param block:
         :return:
         """
-        task = self._fin_task_queue.get(block)
+        fin_queue = self.fin_task_queue
+        if queue_idx >= 0:
+            fin_queue = fin_queue[queue_idx]
+        task = fin_queue.get(block)
         self._concurrent -= 1
         return task
 
@@ -590,15 +780,17 @@ class TaskDispatcher:
         tqueue.put(task, True)
         self._concurrent += 1
 
-    def sync_data(self, data_task):
+    def sync_data(self, data_task, pidfrom=0):
         """
         sync data to compilation worker
         :param data_task:
         :return:
         """
+        data_task.pidfrom = pidfrom
         for dqueue in self._data_queue:
             dqueue.put(data_task, True)
-        self._data_sync_count += 1
+        count = self._data_sync_count.setdefault(pidfrom, 0)
+        self._data_sync_count[pidfrom] = count + 1
 
 
 # pylint: disable=too-many-instance-attributes
@@ -612,12 +804,13 @@ class TaskWorker:
         :param task_env:
         """
         self._task_queue, \
-            self._fin_task_queue, \
+            self.fin_task_queue, \
             self._data_queue, \
             self.term_event, \
-            self._live_checker = task_env
+            self._live_checker,\
+            self._time_stamp = task_env
         self._block_timeout = 2
-        self._data_synced = 0
+        self._data_synced = {}
         self._start = None
         self._end = None
         self._delta = datetime.timedelta()
@@ -632,7 +825,9 @@ class TaskWorker:
         """
         data_task = self._data_queue.get(block, timeout)
         data_task.run()
-        self._data_synced += 1
+        pidfrom = data_task.pidfrom
+        count = self._data_synced.setdefault(pidfrom, 0)
+        self._data_synced[pidfrom] = count + 1
 
     def try_sync_data(self):
         """
@@ -646,7 +841,7 @@ class TaskWorker:
         except queue.Empty:
             return
 
-    def mandatory_sync_data(self, count):
+    def mandatory_sync_data(self, need_sync):
         """
         sync exactly count data
         :param count:
@@ -655,18 +850,20 @@ class TaskWorker:
         # sync exactly 'count' data
         # if there's no enough data, raise exception
         try:
-            for _ in range(0, count):
-                self.do_sync_data(True, 60)
+            for pidfrom, count in need_sync.items():
+                while count - self._data_synced.get(pidfrom, 0) > 0:
+                    self.do_sync_data(True, 60)
         except queue.Empty:
             logger.warning("syncing mandatory data failed. count: %d/%d",
                            count, self._data_synced)
-
 
     def loop(self):
         """
         main loop
         :return:
         """
+        optask_dispatcher = OpCompiler.task_dispatcher
+        autotune_dispatcher = OpCompiler.autotune_task_dispatcher
         while not self.term_event.is_set():
             try:
                 # check dispatcher process is alive
@@ -687,17 +884,32 @@ class TaskWorker:
                     self._start = datetime.datetime.now()
 
                 count = task.check_need_sync()
-                self.mandatory_sync_data(count - self._data_synced)
+                self.mandatory_sync_data(count)
 
                 if task.l1size >= 0:
                     cce_policy.set_L1_info("op_L1_space", task.l1size)
-                res = task.run()
+                if self._time_stamp:
+                    res = task.run(self._time_stamp)
+                else:
+                    res = task.run()
                 if task.l1size >= 0:
                     cce_policy.set_L1_info("op_L1_space", -1)  # reset l1 space
 
                 self._count += 1
-                if res is not None:
-                    self._fin_task_queue.put(res)
+                task_tag = getattr(task, "tag", None)
+                if res is None:
+                    continue
+
+                if task_tag is None:
+                    self.fin_task_queue.put(res)
+                elif task_tag == "autotune":
+                    logger.info("autotune task %s", task.desc())
+                    fin_queue = optask_dispatcher.fin_task_queue
+                    fin_queue.put(res)
+                elif task_tag == "autotune_compile_op":
+                    fin_queue = autotune_dispatcher.fin_task_queue
+                    fin_queue = fin_queue[task.from_worker]
+                    fin_queue.put(res)
 
                 self._end = datetime.datetime.now()
 
@@ -715,16 +927,20 @@ class OpTask:
     """
     def __init__(self, timeout_ms=2000):
         self._timeout_ms = timeout_ms
-        self._data_sync_count = 0
+        self._data_sync_count = {}
         self.l1size = -1
         self.res = []
+        self.pidfrom = 0
 
-    def check_need_sync(self):
+    def check_need_sync(self, pidfrom=None):
         """
         check if need to sync data before do this op task
         :return:
         """
-        return self._data_sync_count
+        if pidfrom is None:
+            return self._data_sync_count
+
+        return self._data_sync_count.get(pidfrom, 0)
 
     def set_data_sync_count(self, count):
         """
@@ -817,12 +1033,103 @@ class ObjSyncTask(OpTask):
         mysetattr(pymodule, self._obj_name, obj)
 
 
+class AutotuneTask(OpTask):
+    """
+    Autotune Task
+    """
+    def __init__(self, graph_id, task_id, json_str, data_dict, kernel_name):
+        """
+        init
+        :param graph_id:
+        :param task_id:
+        :param json_str:
+        :param kernel_name:
+        """
+        super().__init__(self)
+        self.graph_id = graph_id
+        self.task_id = task_id
+        self._json_str = json_str
+        self._data_dict = data_dict
+        self._kernel_name = kernel_name
+        self.build_type = 2
+        self.tag = "autotune"
+
+    def __str__(self):
+        """
+        string representation
+        :return:
+        """
+        return "taskID[{}.{}]".format(self.graph_id, self.task_id)
+
+    def run(self, time_stamp=None):
+        """
+        do fusion op compilation
+        :return:
+        """
+        start = datetime.datetime.now()
+        try:
+            opm = importlib.import_module('auto_tune_main')
+            opfunc = mygetattr(opm, 'auto_tune_compile')
+            res = opfunc(self._json_str, self._data_dict, time_stamp)
+            end = datetime.datetime.now()
+            if res:
+                infomsg = "auto_tune_compile success. "\
+                    "kernel[{}], time:{}/{}"\
+                    .format(self._kernel_name, start, end-start)
+                return gen_task_res(self.build_type, self.graph_id,
+                                    self.task_id, 0, self._kernel_name,
+                                    infomsg)
+        except Exception as e:   # 'pylint: disable=broad-except
+            if isinstance(getattr(e, 'args', None), (tuple, list)) and \
+               len(e.args) > 0 and \
+               isinstance(e.args[0], dict) and \
+               'errCode' in e.args[0]:
+                except_msg, except_dict_msg = telog.except_msg()
+                errmsg = "autotune op compile fail. kernel_name[{}]"\
+                    .format(self._kernel_name)
+                logger.info("%s. json:%s\n%s", errmsg,
+                            self._json_str, except_msg)
+                return gen_task_res(1, self.graph_id,
+                                    self.task_id, 1, self._kernel_name,
+                                    errmsg,
+                                    err_args="json_str:{}".format(
+                                        self._json_str),
+                                    except_msg=except_msg,
+                                    except_tuple_msg=(except_dict_msg,
+                                                      self._kernel_name))
+            else:
+                logger.error("auto_tune_compile got unknown error, fallback "
+                             "to normal compilation. taskID[%s:%s], "
+                             "traceback message: %s",
+                             self.graph_id, self.task_id,
+                             traceback.format_exc())
+
+        logger.info("autotune compile failed. taskID[%s:%s]",
+                    self.graph_id, self.task_id)
+        task = FusionOpTask(self.graph_id, self.task_id, self._json_str,
+                            self._kernel_name)
+        task.set_l1size(self.l1size)
+        return task.run()
+
+    def desc(self):
+        """
+        task description in json format
+        """
+        op_desc = {
+            "type:": "auto_tune_compile",
+            "kernel_name": self._kernel_name,
+        }
+        return json.dumps(op_desc)
+
+
 class PrebuildTask(OpTask):
     """
     Task to prebuild tbe op
     """
     def __init__(self, graph_id, task_id, op_module,
-                 op_type, op_func, *op_args):
+                 op_type, op_func, *op_args,
+                 inputs=None, outputs=None, attrs=None,
+                 unknown_shape=False):
         """
         init
         :param graph_id:
@@ -837,8 +1144,13 @@ class PrebuildTask(OpTask):
         self._op_module = op_module
         self._op_type = op_type
         self._op_func = op_func
+        self._op_type = op_type
         self._op_args = op_args
+        self._op_inputs = inputs
+        self._op_outputs = outputs
+        self._op_attrs = attrs
         self.build_type = 0
+        self._unknown_shape = unknown_shape
 
     def __str__(self):
         """
@@ -854,16 +1166,13 @@ class PrebuildTask(OpTask):
         """
         try:
             start = datetime.datetime.now()
-            opm = importlib.import_module(self._op_module)
-            opfunc = getattr(opm, self._op_func)
-            fusion_manager.op_build_cfg_dis()
-            fusion_manager.set_op_build_type("prebuild")
-            fusion_manager.set_current_op_func_name(self._op_func)
-            fusion_manager.init_op_pattern()
-            kwargs = OpImplPolicy.get_op_impl_mode(opfunc, self._op_type)
-            opfunc(*self._op_args, **kwargs)
-            fusion_manager.op_build_cfg_en()
-            pattern = fusion_manager.get_op_pattern()
+            pattern = fusion_manager.build_single_op(self._op_module, self._op_func,
+                                                     self._op_type, "prebuild",
+                                                     *self._op_args,
+                                                     inputs=self._op_inputs,
+                                                     outputs=self._op_outputs,
+                                                     attrs=self._op_attrs,
+                                                     unknown_shape=self._unknown_shape)
             end = datetime.datetime.now()
             infomsg = "prebuild success. pattern[{}] module[{}] "\
                 "func[{}], time:{}/{}".format(pattern, self._op_module,
@@ -871,14 +1180,20 @@ class PrebuildTask(OpTask):
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 0, pattern, infomsg)
         except:                 # pylint: disable=bare-except
-            except_msg = telog.except_msg()
+            except_msg, except_dict_msg = telog.except_msg()
             errmsg = "prebuild failed. module[{}] func[{}]"\
                 .format(self._op_module, self._op_func)
             logger.info("%s, args:%s\n%s", errmsg, self._op_args, except_msg)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 1, 'None', errmsg,
-                                err_args="args:{}".format(self._op_args),
-                                except_msg=except_msg)
+                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"\
+                                .format(self._op_args,
+                                        self._op_inputs,
+                                        self._op_outputs,
+                                        self._op_attrs),
+                                except_msg=except_msg,
+                                except_tuple_msg=(except_dict_msg,
+                                                  self._op_func))
 
     def desc(self):
         """
@@ -898,7 +1213,9 @@ class SingleOpTask(OpTask):
     """
     # pylint: disable=too-many-arguments
     def __init__(self, graph_id, task_id, op_module, op_type,
-                 op_func, kernel_name, *op_args):
+                 op_func, kernel_name, *op_args,
+                 inputs=None, outputs=None, attrs=None,
+                 unknown_shape=False):
         """
         init
         :param graph_id:
@@ -914,9 +1231,14 @@ class SingleOpTask(OpTask):
         self._op_module = op_module
         self._op_type = op_type
         self._op_func = op_func
+        self._op_type = op_type
         self._kernel_name = kernel_name
         self._op_args = op_args
+        self._op_inputs = inputs
+        self._op_outputs = outputs
+        self._op_attrs = attrs
         self.build_type = 1
+        self._unknown_shape = unknown_shape
 
     def __str__(self):
         """
@@ -932,20 +1254,22 @@ class SingleOpTask(OpTask):
         """
         try:
             start = datetime.datetime.now()
-            opm = importlib.import_module(self._op_module)
-            opfunc = getattr(opm, self._op_func)
-            fusion_manager.op_build_cfg_en()
-            kwargs = OpImplPolicy.get_op_impl_mode(opfunc, self._op_type)
-            opfunc(*self._op_args, **kwargs)
+            res = fusion_manager.build_single_op(self._op_module, self._op_func,
+                                                 self._op_type, "build",
+                                                 *self._op_args,
+                                                 inputs=self._op_inputs,
+                                                 outputs=self._op_outputs,
+                                                 attrs=self._op_attrs,
+                                                 unknown_shape=self._unknown_shape)
             end = datetime.datetime.now()
             infomsg = "single op compile success. kernel[{}] "\
                 "module[{}] func[{}], time:{}/{}"\
                 .format(self._kernel_name, self._op_module,
                         self._op_func, start, end-start)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
-                                0, self._kernel_name, infomsg)
+                                0, self._kernel_name, infomsg, op_res=res)
         except:                 # pylint: disable=bare-except
-            except_msg = telog.except_msg()
+            except_msg, except_dict_msg = telog.except_msg()
             errmsg = "single op compile failed. kernel[{}] "\
                 "module[{}] func[{}]"\
                 .format(self._kernel_name, self._op_module,
@@ -953,8 +1277,14 @@ class SingleOpTask(OpTask):
             logger.info("%s, args:%s\n%s", errmsg, self._op_args, except_msg)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 1, self._kernel_name, errmsg,
-                                err_args="args:{}".format(self._op_args),
-                                except_msg=except_msg)
+                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"\
+                                .format(self._op_args,
+                                        self._op_inputs,
+                                        self._op_outputs,
+                                        self._op_attrs),
+                                except_msg=except_msg,
+                                except_tuple_msg=(except_dict_msg,
+                                                  self._op_func))
 
     def desc(self):
         """
@@ -987,6 +1317,9 @@ class FusionOpTask(OpTask):
         self._json_str = json_str
         self._kernel_name = kernel_name
         self.build_type = 2
+        self.tag = None
+        self.op_env_cfg = None
+        self.from_worker = -1
 
     def __str__(self):
         """
@@ -1005,22 +1338,26 @@ class FusionOpTask(OpTask):
             opm = importlib.import_module("te.platform.fusion_util")
             opfunc = getattr(opm, "fusion_op")
             fusion_manager.op_build_cfg_en()
-            opfunc(self._json_str)
+            op_run_env_func(self.op_env_cfg, "prerun")
+            res = opfunc(self._json_str)
+            op_run_env_func(self.op_env_cfg, "postrun")
             end = datetime.datetime.now()
             infomsg = "fusion op compile success. "\
                 "kernel[{}], time:{}/{}"\
                 .format(self._kernel_name, start, end-start)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
-                                0, self._kernel_name, infomsg)
+                                0, self._kernel_name, infomsg, op_res=res)
         except:                 # pylint: disable=bare-except
-            except_msg = telog.except_msg()
+            except_msg, except_dict_msg = telog.except_msg()
             errmsg = "fusion op compile fail. kernel_name[{}]"\
                 .format(self._kernel_name)
             logger.info("%s. json:%s\n%s", errmsg, self._json_str, except_msg)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 1, self._kernel_name, errmsg,
                                 err_args="json_str:{}".format(self._json_str),
-                                except_msg=except_msg)
+                                except_msg=except_msg,
+                                except_tuple_msg=(except_dict_msg,
+                                                  self._kernel_name))
 
     def desc(self):
         """
@@ -1035,7 +1372,8 @@ class FusionOpTask(OpTask):
 
 # 'pylint: disable=too-many-arguments
 def dispatch_prebuild_task(graph_id, task_id, l1size,
-                           op_module, op_type, op_func, op_args):
+                           op_module, op_type, op_func,
+                           unknown_shape, op_args):
     """
     prebuild task
     :param graph_id:
@@ -1046,15 +1384,19 @@ def dispatch_prebuild_task(graph_id, task_id, l1size,
     """
     if OpCompiler.compiler is None:
         return
+    inputs, outputs, attrs = op_args
     task = PrebuildTask(graph_id, task_id, op_module,
-                        op_type, op_func, *op_args)
+                        op_type, op_func,
+                        inputs=inputs, outputs=outputs, attrs=attrs,
+                        unknown_shape=unknown_shape)
     task.set_l1size(l1size)
     OpCompiler.compiler.dispatch_task(task)
 
 
 # 'pylint: disable=too-many-arguments
 def dispatch_single_op_compile_task(graph_id, task_id, l1size, op_module,
-                                    op_type, op_func, kernel_name, op_args):
+                                    op_type, op_func, kernel_name,
+                                    unknown_shape, op_args):
     """
     single op build task
     :param graph_id:
@@ -1064,10 +1406,15 @@ def dispatch_single_op_compile_task(graph_id, task_id, l1size, op_module,
     :param kernel_name:
     :param op_args:
     """
+
     if OpCompiler.compiler is None:
         return
+
+    inputs, outputs, attrs = op_args
     task = SingleOpTask(graph_id, task_id, op_module,
-                        op_type, op_func, kernel_name, *op_args)
+                        op_type, op_func, kernel_name,
+                        inputs=inputs, outputs=outputs, attrs=attrs,
+                        unknown_shape=unknown_shape)
     task.set_l1size(l1size)
     OpCompiler.compiler.dispatch_task(task)
 
@@ -1088,6 +1435,23 @@ def dispatch_fusion_op_compile_task(graph_id, task_id, l1size,
     OpCompiler.compiler.dispatch_task(task)
 
 
+def dispatch_autotune_op_compile_task(graph_id, task_id, l1size,
+                                      json_str, data_dict, kernel_name):
+    """
+    fusion op build task
+    :param graph_id:
+    :param task_id:
+    :param json_str:
+    :param kernel_name:
+    """
+    if OpCompiler.autotune_compiler is None:
+        return
+    task = AutotuneTask(graph_id, task_id, json_str, data_dict, kernel_name)
+    task.set_l1size(l1size)
+    OpCompiler.autotune_compiler.dispatch_task(task)
+    update_running_task(task)
+
+
 def import_py_module(module_list):
     """
     import py module task
@@ -1105,13 +1469,20 @@ def sync_py_object(module_name, obj_name):
     :param module_name:
     :param obj_name:
     """
-    if OpCompiler.compiler is None:
+    if OpCompiler.master_pid == 0:
         return
+
     opm = importlib.import_module(module_name)
     obj = mygetattr(opm, obj_name)
     obj = zlib.compress(pickle.dumps(obj))
     task = ObjSyncTask(module_name, obj_name, obj)
-    OpCompiler.compiler.sync_data(task)
+
+    if OpCompiler.master_pid == os.getpid():
+        OpCompiler.compiler.sync_data(task)
+    else:
+        # This is autotune sub process
+        pid = os.getpid()
+        OpCompiler.task_dispatcher.sync_data(task, pidfrom=pid)
 
 
 def sync_syspath(syspath):
@@ -1125,7 +1496,30 @@ def sync_syspath(syspath):
     OpCompiler.compiler.sync_data(task)
 
 
-def compile_op(json_str):
+def op_run_env_func(op_env_cfg, func_name):
+    """
+    run op environment setting function
+    """
+    if op_env_cfg is None:
+        return
+    prerun = op_env_cfg.get(func_name)
+    if prerun is None:
+        return
+    try:
+        args = []
+        kwargs = {}
+        if len(prerun) > 1:
+            args = prerun[1]
+        if len(prerun) > 2:
+            kwargs = prerun[2]
+
+        prerun[0](*args, **kwargs)
+    except Exception:   # 'pylint: disable=broad-except
+        except_msg, except_dict_msg = telog.except_msg()
+        logger.info("%s", except_msg)
+
+
+def compile_op(json_str, op_env_cfg=None):
     """
     compile op parallelly
     """
@@ -1133,23 +1527,39 @@ def compile_op(json_str):
     kernel_name = op_desc["fusion_op_name"]
     gid = os.getpid()
     tid = Counter.next()
-    task = FusionOpTask(gid, tid, json_str, op_desc['fusion_op_name'])
 
-    if OpCompiler.compiler is None:
+    if OpCompiler.master_pid == 0:
         # parallel compiler not active
         fusion_manager.op_build_cfg_en()
         try:
+            op_run_env_func(op_env_cfg, "prerun")
             fusion_util.fusion_op(json_str)
-            res = gen_task_res(2, gid, tid, 0, kernel_name, "syncbuild succ")
-        except Exception:       # pylint: disable=bare-except
-            except_msg = telog.except_msg()
+            op_run_env_func(op_env_cfg, "postrun")
+            res = gen_task_res(2, gid, tid, 0, kernel_name,
+                               "syncbuild succ")
+        except Exception:   # 'pylint: disable=broad-except
+            except_msg, _ = telog.except_msg()
             errmsg = "compile op fail. kernel[{}]".format(kernel_name)
             logger.info("%s. json:%s\n%s", errmsg, json_str, except_msg)
-            res = gen_task_res(2, gid, tid, 1, kernel_name, "syncbuild faild")
+            res = gen_task_res(2, gid, tid, 1, kernel_name,
+                               "syncbuild faild")
         return DeferredOpRes(gid, tid, res)
-    else:
+
+    task = FusionOpTask(gid, tid, json_str, op_desc['fusion_op_name'])
+    task.op_env_cfg = op_env_cfg
+
+    if OpCompiler.master_pid == gid:
+        # call from parent process
         OpCompiler.compiler.dispatch_task(task)
         return DeferredOpRes(gid, tid)
+
+    # call from autotune sub process
+    task.tag = "autotune_compile_op"
+    task.from_worker = OpCompiler.autotune_worker_idx
+    logger.info("autotune_compile_op from %s, pid %s",
+                task.from_worker, gid)
+    OpCompiler.task_dispatcher.dispatch(task)
+    return DeferredOpRes(gid, tid, tag=task.tag, from_worker=task.from_worker)
 
 
 def compile_op_sync(json_str):

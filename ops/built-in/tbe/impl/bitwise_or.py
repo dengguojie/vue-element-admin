@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,invalid-name
@@ -45,7 +46,10 @@ def bitwise_or_compute(placeholders, shape_x, shape_y):
     """
     data_x = placeholders[0]
     data_y = placeholders[1]
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
+                                                   shape_y,
+                                                   param_name_input1="x1",
+                                                   param_name_input2="x2")
     data_x_broadcast = te.lang.cce.broadcast(data_x, shape_max)
     data_y_broadcast = te.lang.cce.broadcast(data_y, shape_max)
     res = te.lang.cce.vor(data_x_broadcast, data_y_broadcast)
@@ -53,7 +57,7 @@ def bitwise_or_compute(placeholders, shape_x, shape_y):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str, bool, bool)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     """
     algorithm: bitwise_or
@@ -74,26 +78,31 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     -------
     None
     """
-    input_x = x1.get("shape")
-    input_y = x2.get("shape")
+    shape_x = x1.get("shape")
+    shape_y = x2.get("shape")
     dtype_x = x1.get("dtype")
     dtype_y = x2.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_x)
-    util.check_shape_rule(input_y)
-    util.check_tensor_shape_size(input_x)
-    util.check_tensor_shape_size(input_y)
+    check_shape(shape_x, param_name="x1")
+    check_shape(shape_y, param_name="x2")
 
-    check_tuple = ("int16", "uint16")
+    check_tuple = ("int16", "uint16", "int32")
     input_data_type = dtype_x.lower()
-    util.check_dtype_rule(input_data_type, check_tuple)
+    check_dtype(input_data_type, check_tuple, param_name="x1")
 
     if dtype_x != dtype_y:
         raise RuntimeError("The type of input must be the same")
 
-    shape_x, shape_y, shape_max = util.produce_shapes(input_x, input_y)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
+                                                   shape_y,
+                                                   param_name_input1="x1",
+                                                   param_name_input2="x2")
     shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+
+    if input_data_type == "int32":
+        input_data_type = "int16"
+        shape_x.append(2)
+        shape_y.append(2)
 
     data_x = tvm.placeholder(shape_x, dtype=input_data_type, name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=input_data_type, name="data_y")

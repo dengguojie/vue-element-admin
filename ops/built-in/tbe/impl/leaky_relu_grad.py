@@ -90,6 +90,7 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
     res = te.lang.cce.vmul(g, result_tmp)
     return res
 
+
 @util.check_input_type(dict, dict, dict, (int, float), str)
 def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     """

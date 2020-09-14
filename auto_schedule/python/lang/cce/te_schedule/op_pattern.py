@@ -598,6 +598,121 @@ bn_update_pattern_list = [
     ],
 ]
 
+in_update_pattern_list = [
+    # in_update, all
+    [
+        "elewise_binary_add",
+        "elewise_binary_mul",
+        "elewise_binary_div",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "broadcast_for_tensor",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_mul",
+        "broadcast_for_tensor",
+        "placeholder",
+        "broadcast_for_tensor",
+        "placeholder",
+        "elewise_binary_add",
+        "elewise_single_VS_mul",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_add",
+        "elewise_single_VS_mul",
+        "elewise_single_VS_mul",
+        "elewise_single_VS_mul",
+        "placeholder",
+    ],
+    # in_update, no mean and variance
+    [
+        "elewise_binary_add",
+        "elewise_binary_mul",
+        "elewise_binary_div",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "broadcast_for_tensor",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_mul",
+        "broadcast_for_tensor",
+        "placeholder",
+        "broadcast_for_tensor",
+        "placeholder",
+        "elewise_single_VS_mul",
+    ],
+    # in_update, no mean and variance and gamma and beta
+    [
+        "elewise_binary_div",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "broadcast_for_tensor",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_mul",
+        "elewise_single_VS_mul",
+    ],
+]
+
+gn_update_pattern_list = [
+    # gn_update all
+    [
+        "elewise_binary_add",
+        "elewise_binary_mul",
+        "elewise_binary_div",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "broadcast_for_tensor",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_mul",
+        "broadcast_for_tensor",
+        "placeholder",
+        "broadcast_for_tensor",
+        "placeholder",
+    ],
+    # gn_update, no scale and offset
+    [
+        "elewise_binary_div",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "broadcast_for_tensor",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+        "placeholder",
+        "elewise_binary_mul",
+    ]
+]
+
 # pylint: disable=invalid-name
 softmax_cross_entropy_with_logits_pattern_list = [
     # [NHW,C] fp32
@@ -1452,14 +1567,14 @@ floor_mod_tag_list = [
 threshold_grad_v2_d_tag_list = [
     # mini_fp16 & cloud_fp16_fp32
     [
-        "elewise_binary_cmpsel|gt",
+        "elewise_binary_cmpsel_gt|gt",
         "placeholder",
         "placeholder",
     ],
 
     # others
     [
-        "elewise_binary_cmpsel|gt",
+        "elewise_binary_cmpsel_gt|gt",
         "elewise_single_cast",
         "placeholder",
         "elewise_single_cast",
@@ -1499,4 +1614,35 @@ reduce_mean_2d_aligned_mid_reduce_no_cast_list = [  # pylint: disable=invalid-na
         "elewise_single_VS_mul",
         "placeholder",
      ],
+]
+
+cosine_embedding_loss_tag_list = [
+    # not contain elewise_single_cast and broadcast_for_tensor
+    [
+        "elewise_binary_add",
+        "elewise_binary_cmpsel_eq|eq",
+        "placeholder",
+        "elewise_single_VS_add",
+        "elewise_single_VS_mul",
+        "elewise_binary_sub",
+        "elewise_binary_div",
+        "reduce_sum",
+        "elewise_binary_mul",
+        "placeholder",
+        "placeholder",
+        "elewise_binary_mul",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "reduce_sum",
+        "elewise_binary_mul",
+        "elewise_single_sqrt",
+        "elewise_single_VS_add",
+        "reduce_sum",
+        "elewise_binary_mul",
+        "elewise_binary_cmpsel_eq|eq",
+        "elewise_binary_sub",
+        "elewise_binary_max",
+        "elewise_binary_sub",
+        "elewise_single_VS_mul",
+    ]
 ]

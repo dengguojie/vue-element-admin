@@ -60,7 +60,7 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     """
     calculate the loop number on each core
     """
-    #max_core_num = tik.Dprofile().get_aicore_num()
+
     max_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
@@ -209,7 +209,9 @@ class DepthToSpace:
                                                self.tiling_shape[i:])
             is_buffer_large_enough = self.ub_memory//buf_size_needed
             if is_buffer_large_enough > 0:
-                if i == 0:
+                batch_size = functools_reduce(lambda x1, x2: x1*x2,
+                                              self.input_shape[1:])
+                if i == 0 and batch_size >= self.num_data:
                     return 1
                 else:
                     return i
@@ -223,7 +225,7 @@ class DepthToSpace:
         # if UB cannot put in block_size*output_depth, set block_num according
         # to the product of first 4 axis of tiling_shape and number of times
         # to divide the block_size*output_depth
-        #max_core_num = tik.Dprofile().get_aicore_num()
+
         max_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         if tiling_index == 5:
             loop_memory = self.ub_memory - self.ub_memory % self.num_data

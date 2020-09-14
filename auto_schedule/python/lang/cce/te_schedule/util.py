@@ -25,6 +25,8 @@ from typing import Union
 from functools import reduce as functools_reduce
 from te import tvm
 from te import platform as cceconf
+from te.platform.cce_conf import CceProductParams as pver
+from te.platform.cce_conf import VERSION_CLOUD
 from . import pattern
 
 # fake node label
@@ -74,8 +76,8 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "uint8": 0.5,
                    "bool": 0.5}
 
-REDUCE_ATOMIC_SUPPORT = {"Ascend910": {"tag": "reduce_sum",
-                                       "dtype": "float32"}, }
+REDUCE_ATOMIC_SUPPORT = {VERSION_CLOUD: {"tag": "reduce_sum",
+                                         "dtype": "float32"}, }
 
 DEFAULT_INDEX = -1
 INIT_COUNT = 0
@@ -83,6 +85,14 @@ INIT_SIZE = 1
 
 TILING_RADICAL = 0
 TILING_CONSERVATIVE = 1
+
+
+class L1CommonParam():
+
+    def __init__(self):
+        pass
+
+    l1_fusion_tensors_map = None
 
 
 def get_split_axis(shape, max_ub_count):
@@ -705,7 +715,7 @@ def get_atomic_reduce_info():
     """
     get atomic reduce info
     """
-    version_code = cceconf.get_soc_spec("SOC_VERSION")
+    version_code = pver().get_product_version()
     if version_code in REDUCE_ATOMIC_SUPPORT.keys():
         return REDUCE_ATOMIC_SUPPORT[version_code]
     return {}
@@ -814,13 +824,23 @@ def get_emit_insn_map(tensor):
                 "elewise_binary_vcmpv_le": "vector_le",
                 "elewise_binary_vcmpv_eq": "vector_eq",
                 "elewise_binary_vcmpv_ne": "vector_ne",
+                "elewise_binary_cmpsel_gt": "vector_select_gt",
+                "elewise_binary_cmpsel_ge": "vector_select_ge",
+                "elewise_binary_cmpsel_lt": "vector_select_lt",
+                "elewise_binary_cmpsel_le": "vector_select_le",
+                "elewise_binary_cmpsel_eq": "vector_select_eq",
+                "elewise_binary_cmpsel_ne": "vector_select_ne",
                 "elewise_binary_or": "vector_or",
                 "elewise_binary_and": "vector_and",
                 "elewise_multiple_mla": "vector_multiple",
                 "elewise_multiple_madd": "vector_multiple",
                 "elewise_multiple_maddrelu": "vector_multiple",
-                "broadcast_for_tensor": "broadcast_for_tensor",
-                "elewise_binary_sub": "vector_sub"}
+                "elewise_multiple_sel": "vector_select_bool",
+                "broadcast_for_tensor": "unified_broadcast",
+                "elewise_binary_sub": "vector_sub",
+                "elewise_binary_cmpsel": "vector_cmpsel",
+                "emit_insn_elewise_binary_cmp": "elewise_binary_cmp",
+                "reduce_sum": "vector_reduce_sum"}
     if tensor.op.tag.find("|") != -1:
         str_list = tensor.op.tag.split("|")
         insn = insn_map.get(str_list[0])
@@ -904,7 +924,10 @@ def gen_dfs_tensor_map(outs):
     return visited, input_tensors, mid_tensors, tensor_map
 
 
-def _check_pattern_matched(dfs_tensor_list, expected_dfs_tag_list):
+def _check_pattern_matched(
+        dfs_tensor_list,
+        expected_dfs_tag_list,
+        ignore_tags=None):
     """
     check pattern matched
     """
@@ -912,6 +935,11 @@ def _check_pattern_matched(dfs_tensor_list, expected_dfs_tag_list):
     for i, _ in enumerate(dfs_tensor_list):
         if exct_idx == len(expected_dfs_tag_list):
             return True
+
+        if ignore_tags:
+            if dfs_tensor_list[i].op.tag in ignore_tags:
+                continue
+
         if dfs_tensor_list[i].op.tag == expected_dfs_tag_list[exct_idx] or \
                 (dfs_tensor_list[i].op.tag == "" and
                  expected_dfs_tag_list[exct_idx] == "placeholder"):

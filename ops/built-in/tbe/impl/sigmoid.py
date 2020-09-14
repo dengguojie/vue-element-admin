@@ -17,15 +17,13 @@ sigmoid
 """
 
 from functools import reduce as reduceIns
+
 import te.lang.cce
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_SIZE_LIMIT = 2**30
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -54,8 +52,17 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     mul_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
+        error_info = {}
+        error_info['errCode'] = 'E80008'
+        error_info['param_name'] = 'x'
+        error_info['op_name'] = 'sigmoid'
+        error_info['expect_value'] = "float16"
+        error_info['real_value'] = dtype
         raise RuntimeError(
-            "Input dtype only support float16 while input dtype is float32")
+            error_info, "In op[%s], the parameter[%s]'s dtype "
+            "should be [%s], but actually is [%s]." %
+            (error_info['op_name'], error_info['param_name'],
+             error_info['expect_value'], error_info['real_value']))
 
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
@@ -75,7 +82,8 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     return tmp_rec
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.KERNEL_NAME)
 def sigmoid(x, y, kernel_name="sigmoid"):
     """
     calculating data
@@ -95,13 +103,14 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype")
-    check_shape(shape, param_name="x")
+    op_utils.check_shape(shape, param_name="x")
     input_dtype = dtype.lower()
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list, param_name="x")
+    op_utils.check_dtype(dtype, check_list, param_name="x")
 
     fused_shape = [reduceIns(lambda a, b: a * b, shape[:])]
-    data_input = tvm.placeholder(fused_shape, name="data_input",
+    data_input = tvm.placeholder(fused_shape,
+                                 name="data_input",
                                  dtype=input_dtype)
 
     res = sigmoid_compute(data_input, y, kernel_name)
@@ -109,6 +118,5 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     with tvm.target.cce():
         sch = generic.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input, res]}
+    config = {"name": kernel_name, "tensor_list": [data_input, res]}
     te.lang.cce.cce_build_code(sch, config)

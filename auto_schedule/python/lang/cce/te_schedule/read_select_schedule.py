@@ -19,7 +19,7 @@ from te import platform as cce
 
 
 def _tilling_axis(valid_shape, input_dtype):
-    ub_size_bytes = cce.CceProductParams().getParams("Unified_Buffer") - 32
+    ub_size_bytes = cce.get_soc_spec("UB_SIZE") - 32
     dtype_bytes_size = cce.cce_intrin.get_bit_len(input_dtype) // 8
 
     total_ele = int(ub_size_bytes // dtype_bytes_size)

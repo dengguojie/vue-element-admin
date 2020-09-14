@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -67,8 +68,8 @@ def reduce_all_d_compute(input_data, output_data, axes,
 
     return result
 
-@util.check_input_type(dict, dict, (int, list, tuple, type(None)),
-                       (bool, type(None)), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_all_d(input_data, output_data, axes,
                  keepdims=None, kernel_name="reduce_all_d"):
     """
@@ -98,10 +99,8 @@ def reduce_all_d(input_data, output_data, axes,
     input_dtype = input_data.get("dtype").lower()
     if input_dtype == "bool":
         input_dtype = "int8"
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(input_dtype, ("int8"))
+    check_shape(input_shape, param_name="input_data")
+    check_dtype(input_dtype, ("int8"), param_name="input_data")
 
     shape_len = len(input_shape)
     if not axes:
@@ -120,7 +119,7 @@ def reduce_all_d(input_data, output_data, axes,
             raise RuntimeError("axes should be less than dimension")
 
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_data, axes, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(input_data, axes)
     if not is_5hdc:
         input_shape, axes = util.shape_refine(list(input_shape), axes)
         input_shape, axes = util.simplify_axis_shape(input_shape, axes)
@@ -129,6 +128,9 @@ def reduce_all_d(input_data, output_data, axes,
                                  dtype=input_dtype)
     result = reduce_all_d_compute(data_input, output_data, axes,
                                   keepdims, kernel_name)
+    if is_5hdc:
+        result.ori_shape = input_data["ori_shape"]
+        result.ori_format = input_data["ori_format"]
 
     with tvm.target.cce():
         sch = generic.auto_schedule(result)

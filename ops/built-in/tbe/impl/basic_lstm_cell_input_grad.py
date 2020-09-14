@@ -18,6 +18,7 @@ basic_lstm_cell_input_grad
 from te import platform as cce
 from te import tik
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=too-many-instance-attributes
@@ -87,10 +88,9 @@ class LstmCellGradInput():
         Returns:
         None
         """
-        for check_shape in (self.dgate_shape, self.w_shape):
-            util.check_shape_rule(check_shape, min_dim=4, max_dim=4)
-            util.check_tensor_shape_size(check_shape)
-            for check_dim in (check_shape[2], check_shape[3]):
+        for shape_check in (self.dgate_shape, self.w_shape):
+            check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
+            for check_dim in (shape_check[2], shape_check[3]):
                 if check_dim != 16:
                     raise RuntimeError("the shape do not match the format!")
 
@@ -101,15 +101,13 @@ class LstmCellGradInput():
         if self.w_shape[1] // 4 > self.w_shape[0]:
             raise RuntimeError(" the shape of weight is not satisfied!")
 
-        util.check_dtype_rule(self.dgate_dtype.lower(), ("float16",))
-        util.check_dtype_rule(self.w_dtype.lower(), ("float16",))
+        check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
+        check_dtype(self.w_dtype.lower(), ("float16",), param_name="w")
 
         if self.dropout_mask_dtype:
-            util.check_dtype_rule(self.dropout_mask_dtype.lower(), ("uint8",))
-            util.check_shape_rule(self.dropout_mask_shape, max_dim=1)
-            util.check_tensor_shape_size(self.dropout_mask_shape)
+            check_dtype(self.dropout_mask_dtype.lower(), ("uint8",), param_name="dropout_mask")
+            check_shape(self.dropout_mask_shape, min_rank=1, param_name="dropout_mask")
 
-        util.check_kernel_name(self.kernel_name)
 
     def init_gm_tensor(self):
         """
@@ -519,7 +517,8 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-@util.check_input_type(dict, dict, (dict, type(None)), dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, KERNEL_NAME)
 # pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_input_grad(dgate,
                                w,

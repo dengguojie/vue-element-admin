@@ -20,8 +20,14 @@ yolo_v3_correct_region_box
 import math
 from te import tik
 from te import platform as tbe_platform
-from impl.constant_util import BLOCK_SIZE, DATA_SIZE_TWO, DATA_SIZE_FOUR, \
-    VECTOR_BYTE_SIZE, STRIDE_ONE, DATA_TYPE_FP16, AIC, CLOUD
+from impl.constant_util import BLOCK_SIZE
+from impl.constant_util import DATA_SIZE_TWO
+from impl.constant_util import DATA_SIZE_FOUR
+from impl.constant_util import VECTOR_BYTE_SIZE
+from impl.constant_util import STRIDE_ONE
+from impl.constant_util import DATA_TYPE_FP16
+from impl.constant_util import AIC
+from impl.constant_util import CLOUD
 
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
@@ -394,7 +400,7 @@ class GetCorrectBoxTensor2(GetCorrectBoxTensor):
           -------
           None
           """
-        #block_num = tik.Dprofile().get_aicore_num()
+
         block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         if block_num > self.batch:
             outer_loop = 1
@@ -545,8 +551,7 @@ class GetCorrectBoxTensor3(GetCorrectBoxTensor2):
           -------
           None
           """
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-                "Ascend610","Ascend620","Ascend910") :
+        if tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
             self.instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                STRIDE_ONE,
                                STRIDE_ONE, STRIDE_ONE, STRIDE_EIGHT,
@@ -1321,8 +1326,8 @@ class GetCorrectBoxComputer(GetCorrectBoxTensor3):
                 param['burlen'].set_as(param['burlen'] - VALUE_ONE)
                 with self.instance.if_scope(param['burlen'] > VALUE_ZERO):
                     self.instance.data_move(
-                        self.inter_coords[batch, param['co_id'] \
-                            , param['out_offset'] + param['w'] * param['h'] * \
+                        self.inter_coords[batch, param['co_id'],
+                                          param['out_offset'] + param['w'] * param['h'] * \
                                           param['box_id'] + \
                                           param['mov_len'] * loop],
                         param['ub_b'], SID, NBURST_ONE,
@@ -1346,8 +1351,8 @@ class GetCorrectBoxComputer(GetCorrectBoxTensor3):
                     param['last_32b'][self.len_32b - \
                                       self.hwtail_len + \
                                       cycle].set_as(tmp_scalar)
-                self.instance.data_move(self.inter_coords[batch, param['co_id'] \
-                    , param['out_offset'] + param['w'] * param['h'] * \
+                self.instance.data_move(self.inter_coords[batch, param['co_id'],
+                                                          param['out_offset'] + param['w'] * param['h'] * \
                                                           param['box_id'] + \
                                                           param['mov_len'] * \
                                                           loop + tail_idx],
@@ -1447,7 +1452,7 @@ class GetCorrectBoxComputer(GetCorrectBoxTensor3):
             with self.instance.for_range(0, param['faces'], thread_num=2) as cycle:
                 # Calculate the cindex.
                 start_idx = self.instance.Scalar()
-                # start_idx.set_as((faces_in_one_loop * loop_idx + fi) * adj_hw)
+
                 start_idx.set_as(cycle * param['adj_hw'])
 
                 # Indicates the number of the box.

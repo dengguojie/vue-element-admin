@@ -18,6 +18,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from impl.util import util_frac_z as fz
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -66,8 +67,9 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     shape_input1 = te.lang.cce.util.shape_to_list(grad.shape)
     shape_input2 = te.lang.cce.util.shape_to_list(x.shape)
     if list(shape_input1) != list(shape_input2):
-        shape_input1, shape_input2, shape = util.produce_shapes(shape_input1,
-                                                                shape_input2)
+        shape_input1, shape_input2, shape = broadcast_shapes(shape_input1, shape_input2,
+                                                                param_name_input1="grad",
+                                                                param_name_input2="x")
         grad = _broadcast_nz(grad, shape)
         x = _broadcast_nz(x, shape)
 
@@ -93,7 +95,7 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
     """
     Computes softmax gradients for a softmax operation
@@ -120,20 +122,17 @@ def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
     dtype_grad = grad.get("dtype")
 
     util.compare_tensor_dict_key(grad, x, "dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_grad)
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_grad)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_grad, param_name="grad")
+    check_shape(shape_x, param_name="x")
 
     check_list = ("float16", "float32")
     input_dtype = dtype_grad.lower()
 
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="grad")
     if list(shape_grad) != list(shape_x):
         shape_grad, shape_x, shape_max = \
-            util.produce_shapes(shape_grad, shape_x)
-        util.check_tensor_shape_size(shape_max)
+            broadcast_shapes(shape_grad, shape_x,
+                             param_name_input1="grad", param_name_input2="x")
 
     data_grad = tvm.placeholder(shape_grad, name="data_grad", dtype=input_dtype)
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=input_dtype)

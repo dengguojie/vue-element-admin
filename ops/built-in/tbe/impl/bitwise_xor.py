@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals
@@ -47,7 +48,10 @@ def bitwise_xor_compute(x1, x2, y, kernel_name="bitwise_xor"):
     """
     shape_x = te.lang.cce.util.shape_to_list(x1.shape)
     shape_y = te.lang.cce.util.shape_to_list(x2.shape)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
+                                                   shape_y,
+                                                   param_name_input1="x1",
+                                                   param_name_input2="x2")
 
     data_x = te.lang.cce.broadcast(x1, shape_max)
     data_y = te.lang.cce.broadcast(x2, shape_max)
@@ -60,7 +64,7 @@ def bitwise_xor_compute(x1, x2, y, kernel_name="bitwise_xor"):
     return result
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     """
     algorithm: bitwise_xor
@@ -82,32 +86,32 @@ def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     """
     shape_x = x1.get("shape")
     shape_y = x2.get("shape")
-    shape_z = y.get("shape")
     dtype_x = x1.get("dtype").lower()
     dtype_y = x2.get("dtype").lower()
-    dtype_z = y.get("dtype").lower()
 
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
+    check_shape(shape_x, param_name="x1")
+    check_shape(shape_y, param_name="x2")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_shape_rule(shape_z)
-    util.check_tensor_shape_size(shape_x,)
-    util.check_tensor_shape_size(shape_y,)
-    util.check_tensor_shape_size(shape_max)
+    check_tuple = ("int16", "uint16", "int32")
+    input_data_type = dtype_x.lower()
+    check_dtype(input_data_type, check_tuple, param_name="x1")
 
-    check_tuple = ("int16", "uint16")
-    util.check_dtype_rule(dtype_x, check_tuple)
-    util.check_dtype_rule(dtype_y, check_tuple)
-    util.check_dtype_rule(dtype_z, check_tuple)
     if dtype_x != dtype_y:
-        raise RuntimeError(
-            "two input type must be the same")
+        raise RuntimeError("two input type must be the same")
+
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
+                                                   shape_y,
+                                                   param_name_input1="x1",
+                                                   param_name_input2="x2")
     shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
 
-    data_x = tvm.placeholder(shape_x, dtype=dtype_x, name="data_x")
-    data_y = tvm.placeholder(shape_y, dtype=dtype_y, name="data_y")
+    if input_data_type == "int32":
+        input_data_type = "int16"
+        shape_x.append(2)
+        shape_y.append(2)
+
+    data_x = tvm.placeholder(shape_x, dtype=input_data_type, name="data_x")
+    data_y = tvm.placeholder(shape_y, dtype=input_data_type, name="data_y")
 
     result = bitwise_xor_compute(data_x, data_y, y, kernel_name)
 

@@ -30,7 +30,7 @@ from impl.constant_util import DATA_TYPE_UINT8
 from impl.common_util import get_data_size
 
 # A maximum of 25k can be calculated at a time.
-MAX_COMPUTE_SIZE = 15 * 1024
+MAX_COMPUTE_SIZE = 25 * 1024
 
 # const value 1
 VALUE_ONE = 1
@@ -91,6 +91,8 @@ class CumBase(object):
         self.each, self.each_tail = self.get_each(shape, axis)
         self.reserved = self.get_reserved()
         self.dtype = dtype
+        self.axis = axis
+        self.is_last_axis = True if (axis - len(shape)) == -1 else False
 
     def get_each(self, shape, axis):
         """
@@ -554,11 +556,11 @@ class CumComputer(CumTilingParam):
                 VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
         if self.ctype == LOGSUMEXP_TYPE:
             offset = VALUE_ONE if self.need_special \
-                                  and self.spe_position==position else VALUE_ZERO
+                            and self.spe_position == position else VALUE_ZERO
 
             self.tik_instance.data_move(last_ret, last_ori, VALUE_ZERO,
-                                        DEFAULT_BURST_LEN, burlen+offset, STRIDE_ZERO,
-                                        STRIDE_ZERO)
+                                        DEFAULT_BURST_LEN, burlen+offset, 
+                                        STRIDE_ZERO, STRIDE_ZERO)
 
     def t_dma_in(self, ub_in, ori, idx, burlen):
         """
@@ -628,7 +630,7 @@ class CumComputer(CumTilingParam):
         # to store last_ret and
         if self.ctype == LOGSUMEXP_TYPE:
             offset = VALUE_ONE if self.need_special \
-                                  and self.spe_position==position else VALUE_ZERO
+                                  and self.spe_position == position else VALUE_ZERO
             self.tik_instance.data_move(last_ori, last_ret, VALUE_ZERO,
                                         DEFAULT_BURST_LEN, burlen+offset, STRIDE_ZERO,
                                         STRIDE_ZERO)
@@ -708,13 +710,35 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        with self.tik_instance.for_range(0, self.block_num,
-                                         block_num=self.block_num) as block_i:
-            self.handle_out_loop(block_i, self.outer_loop)
+        if self.ctype in (SUM_TYPE, PROD_TYPE):
+            with self.tik_instance.for_range(0, self.block_num,
+                                             block_num=self.block_num) as block_i:
+                self.handle_out_loop(block_i, self.outer_loop)
 
-        # handle kernel tail
-        if self.outer_tail != VALUE_ZERO:
-            self.handle_out_loop(self.block_num, self.outer_tail)
+            # handle kernel tail
+            if self.outer_tail != VALUE_ZERO:
+                self.handle_out_loop(self.block_num, self.outer_tail)
+        else:
+            if self.total_loop > 65535 or self.is_last_axis or self.each*self.dsize < BLOCK_SIZE:
+                with self.tik_instance.for_range(0, self.block_num,
+                                                 block_num=self.block_num) as block_i:
+                    self.handle_out_loop(block_i, self.outer_loop)
+
+                # handle kernel tail
+                if self.outer_tail != VALUE_ZERO:
+                    self.handle_out_loop(self.block_num, self.outer_tail)
+            else:
+                with self.tik_instance.for_range(0, self.total_loop,
+                                                 block_num=self.total_loop) as block_i:
+                    self.handle_every_loop(block_i)
+
+    def handle_every_loop(self, block_i):
+        o_idx = block_i
+
+        if self.mov_tail != VALUE_ZERO:
+            self.handle_mov_tail(o_idx)
+
+        self.handle_mov_loop(o_idx)
 
     def handle_out_loop(self, block_i, loop_num):
         """
@@ -773,16 +797,17 @@ class CumComputer(CumTilingParam):
                        (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                        name="last_ori",
                        scope=tik.scope_ubuf)
-            max_v = self.tik_instance. \
-                Tensor(self.dtype,
-                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
-                       name="max_v",
-                       scope=tik.scope_ubuf)
-            min_v = self.tik_instance. \
-                Tensor(self.dtype,
-                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
-                       name="min_v",
-                       scope=tik.scope_ubuf)
+            if self.ctype == LOGSUMEXP_TYPE:
+                max_v = self.tik_instance. \
+                    Tensor(self.dtype,
+                           (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                           name="max_v",
+                           scope=tik.scope_ubuf)
+                min_v = self.tik_instance. \
+                    Tensor(self.dtype,
+                           (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                           name="min_v",
+                           scope=tik.scope_ubuf)
 
             burstlen = self.get_burlen_by_mlen(self.mov_len)
             repeat = self.get_repeat(self.mov_len)
@@ -927,16 +952,17 @@ class CumComputer(CumTilingParam):
                    (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                    name="last_ori",
                    scope=tik.scope_ubuf)
-        max_v = self.tik_instance. \
-            Tensor(self.dtype,
-                   (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
-                   name="max_v",
-                   scope=tik.scope_ubuf)
-        min_v = self.tik_instance. \
-            Tensor(self.dtype,
-                   (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
-                   name="min_v",
-                   scope=tik.scope_ubuf)
+        if self.ctype == LOGSUMEXP_TYPE:
+            max_v = self.tik_instance. \
+                Tensor(self.dtype,
+                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                       name="max_v",
+                       scope=tik.scope_ubuf)
+            min_v = self.tik_instance. \
+                Tensor(self.dtype,
+                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                       name="min_v",
+                       scope=tik.scope_ubuf)
 
         burstlen = self.get_burlen_by_mlen(self.mov_tail)
         repeat = self.get_repeat(self.mov_tail)
@@ -1067,5 +1093,8 @@ def get_computer_by_ctype(input_x, axis, kernel_name, ctype):
     the instance of computer template
 
     """
-
+    if ctype == LOGSUMEXP_TYPE:
+        global MAX_COMPUTE_SIZE
+        MAX_COMPUTE_SIZE = 15 * 1024
+    
     return CumComputer(input_x, axis, kernel_name, ctype)

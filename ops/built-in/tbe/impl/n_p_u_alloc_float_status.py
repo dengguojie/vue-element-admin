@@ -19,12 +19,13 @@ NPUAllocFloatStatus
 from te import platform as tbe_platform
 from topi.cce import util
 from te import tik
+from te.utils.op_utils import *
 
 #constant 8
 NUM_EIGHT = 8
 
 # pylint: disable=invalid-name, too-many-locals, unused-argument
-@util.check_input_type(dict, str)
+@check_op_params(REQUIRED_OUTPUT, KERNEL_NAME)
 def n_p_u_alloc_float_status(data, kernel_name="n_p_u_alloc_float_status"):
     """
     the main function of n_p_u_alloc_float_status

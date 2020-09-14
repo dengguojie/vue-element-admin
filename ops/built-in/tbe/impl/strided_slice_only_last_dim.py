@@ -18,9 +18,11 @@ NPUClearFloatStatus
 from te import tik
 from te import platform as tbe_platform
 
+
 def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_name):
     tik_instance = tik.Tik()
     aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+
     def _get_ub_block_num():
         """
         get the ub_size for dtype, get the block_size for dtype
@@ -33,7 +35,7 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
 
         return ub_number, block_number
 
-    ub_number,type_block_number = _get_ub_block_num()
+    ub_number, type_block_number = _get_ub_block_num()
 
     input_size = 1
     for i in input_shape:
@@ -89,17 +91,17 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
         return False
 
     input_data = tik_instance.Tensor(dtype, (input_size, ),
-                                     name="input_data", scope = tik.scope_gm)
+                                     name="input_data", scope=tik.scope_gm)
     output_data = tik_instance.Tensor(dtype, (output_size, ),
-                                      name="output_data", scope = tik.scope_gm)
+                                      name="output_data", scope=tik.scope_gm)
     input_ub_data = tik_instance.Tensor(dtype, (input_ub_size, ),
-                                        name="input_ub_data", scope = tik.scope_ubuf)
+                                        name="input_ub_data", scope=tik.scope_ubuf)
     output_ub_data = tik_instance.Tensor(dtype, (output_ub_size, ),
                                          name="output_ub_data", scope=tik.scope_ubuf)
 
     if dtype == "float32":
         with tik_instance.for_range(0, core_num, block_num=core_num) as total_cycle:
-            with tik_instance.if_scope(total_cycle < core_num -1):
+            with tik_instance.if_scope(total_cycle < core_num - 1):
                 with tik_instance.for_range(0, input_len_stride) as group:
                     tik_instance.data_move(input_ub_data[group * expect_last_dim],
                                            input_data[(total_cycle * tail_len_burst_one)
@@ -109,7 +111,7 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
                 tik_instance.data_move(output_data[total_cycle * output_ub_size],
                                        output_ub_data, 0, 1, output_length_stride, 0, 0)
 
-        with tik_instance.if_scope(total_cycle == core_num -1):
+        with tik_instance.if_scope(total_cycle == core_num - 1):
             with tik_instance.for_range(0, input_tail_stride) as group1:
                 tik_instance.data_move(input_ub_data[group1 * expect_last_dim],
                                       input_data[(core_num-1) * tail_len_burst_one
@@ -121,7 +123,7 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
 
     if dtype == "float16":
         with tik_instance.for_range(0, core_num, block_num=core_num) as total_cycle:
-            with tik_instance.if_scope(total_cycle < core_num -1):
+            with tik_instance.if_scope(total_cycle < core_num - 1):
                 with tik_instance.for_range(0, input_len_stride) as group:
                     tik_instance.data_move(input_ub_data[group * expect_last_dim],
                                            input_data[(total_cycle * tail_len_burst_one)
@@ -130,7 +132,7 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
                 tik_instance.data_move(output_data[total_cycle * output_ub_size],
                                        output_ub_data, 0, 1, output_length_stride, 0, 0)
 
-        with tik_instance.if_scope(total_cycle == core_num -1):
+        with tik_instance.if_scope(total_cycle == core_num - 1):
             with tik_instance.for_range(0, input_tail_stride) as group1:
                 tik_instance.data_move(input_ub_data[group1 * expect_last_dim],
                                        input_data[(core_num - 1) * tail_len_burst_one

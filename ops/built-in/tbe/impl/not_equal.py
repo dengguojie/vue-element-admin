@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2**(-126)
@@ -63,7 +64,9 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     dtype_x = input_x.dtype
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_x, shape_y, shape_broadcast = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
+                                                         param_name_input1="input_x",
+                                                         param_name_input2="input_y")
 
     if dtype_x == "float32":
         tensor_min = te.lang.cce.broadcast(tvm.const(SCALAR_MIN_FP32,
@@ -104,7 +107,7 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     """
     Returns the truth value of (x != y) element-wise
@@ -128,21 +131,19 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     dtype_x = input_x.get("dtype")
     shape_y = input_y.get("shape")
     dtype_y = input_y.get("dtype")
-    shape_x, shape_y, shape_broadcast = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
+                                                         param_name_input1="input_x",
+                                                         param_name_input2="input_y")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x, max_shape_num=MAX_SHAPE_NUM)
-    util.check_shape_rule(shape_y, max_shape_num=MAX_SHAPE_NUM)
-    util.check_shape_rule(shape_broadcast, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
-    util.check_tensor_shape_size(shape_broadcast)
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
+    check_shape(shape_broadcast, param_name="shape_broadcast")
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     dtype_x = dtype_x.lower()
-    util.check_dtype_rule(dtype_x, check_list)
+    check_dtype(dtype_x, check_list, param_name="input_x")
     dtype_y = dtype_y.lower()
-    util.check_dtype_rule(dtype_y, check_list)
+    check_dtype(dtype_y, check_list, param_name="input_y")
     util.compare_tensor_dict_key(input_x, input_y, "dtype")
 
     shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)

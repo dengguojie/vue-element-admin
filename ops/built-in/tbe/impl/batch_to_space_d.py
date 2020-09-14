@@ -19,13 +19,15 @@ from impl.batch_to_space_nd_d import batch_to_space_nd_d_compute
 from te import tvm
 from te.platform.cce_build import build_config
 from topi.cce import util
+from te.utils.op_utils import *
 
 DIM_CNT = 5
 CROPS_LEN = 2
 
 
 # pylint: disable=locally-disabled,invalid-name
-@util.check_input_type(dict, dict, int, (list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
+                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_LIST_INT), KERNEL_NAME)
 def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
     """
     batch_to_space for tensor.
@@ -51,11 +53,9 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
     input_dtype = x.get("dtype").lower()
     if len(crops) == 4:
         crops = [[crops[0], crops[1]], [crops[2], crops[3]]]
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(input_shape, param_name="x")
     check_list = {"float16", "float32"}
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="x")
 
     if len([x for x in input_shape if isinstance(x, int) and x > 0])\
             != len(input_shape):
@@ -83,8 +83,7 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
                     input_shape[2] * block_size - crops[0][0] - crops[0][1],
                     input_shape[3] * block_size - crops[1][0] - crops[1][1],
                     input_shape[4])
-    util.check_shape_rule(output_shape)
-    util.check_tensor_shape_size(output_shape)
+    check_shape(output_shape, param_name="y")
 
     block_shape = [block_size, block_size]
     data = tvm.placeholder(input_shape, name="data", dtype=input_dtype)

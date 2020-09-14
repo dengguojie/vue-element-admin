@@ -21,6 +21,7 @@ from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("floor_mod")
@@ -49,7 +50,7 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     dtype = x1.dtype
     shape_x = te.lang.cce.util.shape_to_list(x1.shape)
     shape_y = te.lang.cce.util.shape_to_list(x2.shape)
-    shape_x, shape_y, shape = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape = broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
 
     has_improve_precision = False
     input_x_fp32 = x1
@@ -84,7 +85,7 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     """
     calculate the remainder of division, support fp16,fp32,int32
@@ -116,22 +117,18 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     shape_y = x2.get("shape")
 
     # check_kernel_name & shape
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
+    check_shape(shape_x, param_name="x1")
+    check_shape(shape_y, param_name="x2")
 
     # check input tensor data_type
     check_list = ("float16", "float32", "int32")
-    util.check_dtype_rule(dtype_x, check_list)
-    util.check_dtype_rule(dtype_y, check_list)
+    check_dtype(dtype_x, check_list, param_name="x1")
+    check_dtype(dtype_y, check_list, param_name="x2")
 
     if dtype_x != dtype_y:
         raise RuntimeError("the type of dtype in two dict is not the same")
 
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_max)
+    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
     shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
 
     input_data_x = tvm.placeholder(shape_x, name="input_data_x", dtype=dtype_x)

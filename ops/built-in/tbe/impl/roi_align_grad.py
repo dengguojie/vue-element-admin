@@ -21,6 +21,7 @@ from te import platform as cce
 from te.platform.fusion_manager import fusion_manager
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 
 # C0 size
@@ -1021,6 +1022,9 @@ def roi_align_grad_compute_multicore(
 
 
 # pylint: disable=unused-argument
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT,
+                 REQUIRED_ATTR_FLOAT, OPTION_ATTR_INT, KERNEL_NAME)
 def roi_align_grad(y_diff,
                    rois,
                    rois_n,
@@ -1067,11 +1071,10 @@ def roi_align_grad(y_diff,
     for input_data in input_list:
         input_shape = input_data.get("shape")
         input_dtype = input_data.get("dtype").lower()
-        util.check_shape_rule(input_shape)
-        util.check_kernel_name(kernel_name)
+        check_shape(input_shape, param_name="y_diff")
         check_list = ("float32",)
 
-        util.check_dtype_rule(input_dtype, check_list)
+        check_dtype(input_dtype, check_list, param_name="y_diff")
 
     grad_shape = y_diff.get("shape")
     if len(grad_shape) != 5:

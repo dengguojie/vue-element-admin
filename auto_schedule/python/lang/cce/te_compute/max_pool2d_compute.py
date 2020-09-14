@@ -19,15 +19,16 @@ pooling2d compute
 from te import tvm
 
 POOL2D_TAG = "pooling2d_"
+MAX_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
+MAX_KERNEL_SIZE = 20
 
 
-def max_pool2d(t_x, howo, pad, pooling_params):
+def max_pool2d(t_x, pooling_params, fusion_params):
     """
     Generic vector template
-    :param t_x:
-    :param howo:
-    :param pad:
-    :param pooling_params:
+    :param t_x: input tensor
+    :param pooling_params: pooling parameters
+    :param fusion_params:
     :return:
     """
     x_n, x_c1, _, _, x_c0 = t_x.shape
@@ -35,14 +36,24 @@ def max_pool2d(t_x, howo, pad, pooling_params):
     if pooling_mode in ["GMP"]:
         k_h, k_w = pooling_params["in_size_h"], pooling_params["in_size_w"]
     else:
-
         k_h, k_w = pooling_params["window_h"], pooling_params["window_w"]
+    # if window_h or window_w
+    is_support_kernel = (k_h * k_w <= MAX_KERNEL_SIZE_H_MUL_W) or \
+                        (k_h <= MAX_KERNEL_SIZE and k_w <= MAX_KERNEL_SIZE)
+    if not is_support_kernel:
+        raise RuntimeError("invalid window params, "
+                           "window_h or window_w is too big")
     s_h, s_w = pooling_params["stride_h"], pooling_params["stride_w"]
     dtype = t_x.dtype
-    o_h, o_w = howo
+    o_h, o_w = pooling_params["out_size_h"], pooling_params["out_size_w"]
+    p_t, p_b = pooling_params["pad_top"], pooling_params["pad_bottom"]
+    p_l, p_r = pooling_params["pad_left"], pooling_params["pad_right"]
     # h, w with pad
-    h_p, w_p = (o_h - 1)*s_h + k_h, (o_w - 1)*s_w + k_w
-    p_t, p_b, p_l, p_r = pad
+    if pooling_params["ceil_mode"] == 0:
+        h_p, w_p = (o_h - 1)*s_h + k_h, (o_w - 1)*s_w + k_w
+    elif pooling_params["ceil_mode"] == 1:
+        h_p, w_p = pooling_params["in_size_h"] + p_t + p_b, \
+                   pooling_params["in_size_w"] + p_l + p_r
 
     def _select(indices):
         i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]
@@ -92,14 +103,14 @@ def max_pool2d(t_x, howo, pad, pooling_params):
             )
             tx_rw = tx_rwx
     elif k_w == 1:
-        tx_rw1 = tvm.compute(
+        tx_rw0 = tvm.compute(
             shape,
             lambda *i: tvm.max(tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]],
                                tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]]),
-            name="tx_rw1",
+            name="tx_rw0",
             tag="reduce_max"
         )
-        tx_rw = tx_rw1
+        tx_rw = tx_rw0
 
     # reduce h
     shape = (x_n, x_c1, o_h, o_w, x_c0)
@@ -122,14 +133,14 @@ def max_pool2d(t_x, howo, pad, pooling_params):
             )
             tx_rh = tx_rhx
     elif k_h == 1:
-        tx_rh1 = tvm.compute(
+        tx_rh0 = tvm.compute(
             shape,
             lambda *i: tvm.max(tx_rw[i[0], i[1], i[2] * s_h, i[3], i[4]],
                                tx_rw[i[0], i[1], i[2] * s_h, i[3], i[4]]),
-            name="tx_rh1",
+            name="tx_rh0",
             tag="reduce_max"
         )
-        tx_rh = tx_rh1
+        tx_rh = tx_rh0
 
     # copy ub to gm
     shape = (x_n, x_c1, o_h, o_w, x_c0)
@@ -140,6 +151,7 @@ def max_pool2d(t_x, howo, pad, pooling_params):
         tag=POOL2D_TAG + "max",
         attrs={"pooling_params": pooling_params,
                "template": "max_pool2d_generic",
+               "fusion_params": fusion_params,
                }
     )
 

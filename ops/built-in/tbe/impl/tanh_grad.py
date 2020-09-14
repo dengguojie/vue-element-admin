@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from functools import reduce as reduceIns
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -66,7 +67,7 @@ def tanh_grad_compute(y, dy, z, kernel_name="tanh_grad"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def tanh_grad(y, dy, z, kernel_name="tanh_grad"):
     """
     do element-wise tanh_grad operation between two input tensors
@@ -88,14 +89,12 @@ def tanh_grad(y, dy, z, kernel_name="tanh_grad"):
     """
     shape_y = y.get("shape")
     shape_dy = dy.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_size(shape_y, SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(shape_y)
-    util.check_shape_rule(shape_dy)
+    check_shape(shape_y, param_name="y")
+    check_shape(shape_dy, param_name="dy")
 
     check_list = ("float16", "float32")
     dtype = y.get("dtype").lower()
-    util.check_dtype_rule(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="y")
     if list(shape_y) != list(shape_dy):
         raise RuntimeError(
             "tanh_grad only support input shape"

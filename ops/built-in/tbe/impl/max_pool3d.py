@@ -115,6 +115,26 @@ def max_pool3d_check_rule(input_shape, output_dtype, ksize, strides,
     check_padding(padding)
 
 
+# pylint: disable=too-many-arguments,unused-argument,invalid-name
+def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides):
+    """
+    :param input_dtype: dtype of input_data
+    :param output_dtype: dtype of output_data
+    :param ksize: the window of max_pool3d
+    :param strides: the strides of max_pool3d
+    :return: None
+    """
+    # since float32/64 transpose not support yet
+    # so check the dtyep here
+    check_dtype(input_dtype, ["float16"],  param_name="x")
+    check_dtype(output_dtype, ["float16"], param_name="y")
+    if len(ksize) == 5:
+        if ksize[0] != 1 or ksize[4] != 1:
+            raise RuntimeError("ksize N and C must be 1")
+    if len(strides) == 5:
+        if strides[0] != 1 or strides[4] != 1:
+            raise RuntimeError("strides N and C must be 1")
+
 # pylint: disable=too-many-locals,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
 @fusion_manager.register("max_pool3d")
@@ -166,7 +186,8 @@ def max_pool3d_tiling(shape):
     max_pool3d tiling strategy
     """
     ub_size = CceProductParams().getParams("Unified_Buffer")
-
+    #pass memory allocating policy changed, reserve some memory to avoid UB problem
+    ub_size = ub_size - 20 * 1024
     # each core process 2*d
     per_d = 2
     input_h = shape[2].value
@@ -283,6 +304,7 @@ def max_pool3d(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
                                 dtype=input_dtype)
 
     if len(input_shape) == 6:  # len("NDC1HWC0") = 6
+        max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides)
         max_pool3d_generic(tensor_in, ksize, strides,
                            padding, pads,
                            dilation, ceil_mode, data_format,
@@ -353,11 +375,26 @@ def max_pool3d_generic(tensor_in, ksize, strides,
     te.lang.cce.cce_build_code(sch, config)
 
 
-def _is_covid_19(ksize, strides, data_format):
+def _is_covid_19(shape, ksize, strides, data_format):
     window_d, window_h, window_w = get_ksize(ksize, data_format)
     stride_d, stride_h, stride_w = get_stride(strides, data_format)
-    return window_d == 2 and window_h == 2 and window_w == 2 and \
-           stride_d == 2 and stride_h == 2 and stride_w == 2
+
+    if len(shape) != 5:
+        return False
+    if window_d != 2 or window_h != 2 or window_w != 2:
+        return False
+    if stride_d != 2 or stride_h != 2 or stride_w != 2:
+        return False
+    if shape[0] == 1 and shape[1] == 32 and shape[2] == 240 and shape[3] == 352 and shape[4] == 16:
+        return True
+    if shape[0] == 1 and shape[1] == 16 and shape[2] == 120 and shape[3] == 176 and shape[4] == 32:
+        return True
+    if shape[0] == 1 and shape[1] == 8 and shape[2] == 60 and shape[3] == 88 and shape[4] == 64:
+        return True
+    if shape[0] == 1 and shape[1] == 4 and shape[2] == 30 and shape[3] == 44 and shape[4] == 128:
+        return True
+
+    return False
 
 
 def op_select_format(x, y, ksize, strides, padding="SAME",
@@ -370,7 +407,7 @@ def op_select_format(x, y, ksize, strides, padding="SAME",
     when performance optimazation is done, delete this function
     """
 
-    if _is_covid_19(ksize, strides, data_format):
+    if _is_covid_19(x.get("ori_shape"), ksize, strides, data_format):
         input0_r = gen_param(classify="input0",
                              name="x",
                              datatype="float16",

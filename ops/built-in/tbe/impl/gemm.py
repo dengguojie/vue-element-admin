@@ -50,7 +50,7 @@ def op_select_format(input_x1, input_x2, # pylint: disable=too-many-arguments
         format_b = input_x2.get("format")
         format_c = bias.get("format")
         need_transdata = False
-        if set([format_a, format_b, format_c])&\
+        if set([format_a, format_b, format_c]) & \
                 set(["FRACTAL_NZ", "FRACTAL_Z"]):
             need_transdata = True
         else:
@@ -130,6 +130,7 @@ def op_select_format(input_x1, input_x2, # pylint: disable=too-many-arguments
     param_list = _select_format(params)
     return get_dynamic_param_in_json(param_list)
 
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
 def _shape_check(
         shape_a, shape_b, shape_bias, src_dtype,
@@ -160,9 +161,9 @@ def _shape_check(
         args_dict = {
             "errCode": "E60002",
             "attr_name": "dtype",
-            "param1_name": "alpha_dtype",
+            "param1_name": "alpha",
             "param1_value": "{}".format(alpha_dtype),
-            "param2_name": "beta_dtype",
+            "param2_name": "beta",
             "param2_value": "{}".format(beta_dtype)
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
@@ -170,9 +171,9 @@ def _shape_check(
         args_dict = {
             "errCode": "E60002",
             "attr_name": "dtype",
-            "param1_name": "alpha_dtype",
+            "param1_name": "alpha",
             "param1_value": "{}".format(alpha_dtype),
-            "param2_name": "dst_dtype",
+            "param2_name": "y",
             "param2_value": "{}".format(dst_dtype)
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
@@ -180,19 +181,19 @@ def _shape_check(
     if src_dtype == "int8":
         if dst_dtype not in ["int32", "float32"]:
             args_dict = {
-                "errCode": "E60005",
-                "param_name": "dst_dtype",
+                "errCode": "E60003",
+                "a_dtype": src_dtype,
                 "expected_dtype_list": "int32,float32",
-                "dtype": "{}".format(dst_dtype)
+                "out_dtype": "{}".format(dst_dtype)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     elif src_dtype == "float16":
         if dst_dtype not in ["float16", "float32"]:
             args_dict = {
-                "errCode": "E60005",
-                "param_name": "dst_dtype",
+                "errCode": "E60003",
+                "a_dtype": src_dtype,
                 "expected_dtype_list": "float16,float32",
-                "dtype": "{}".format(dst_dtype)
+                "out_dtype": "{}".format(dst_dtype)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
@@ -203,7 +204,7 @@ def _shape_check(
     if src_dtype not in check_list:
         args_dict = {
             "errCode": "E60005",
-            "param_name": "src_dtype",
+            "param_name": "a",
             "expected_dtype_list": "{}".format(check_list),
             "dtype": "{}".format(src_dtype)
         }
@@ -212,7 +213,7 @@ def _shape_check(
     if len(shape_a) != 2 and len(shape_a) != 4:
         args_dict = {
             "errCode": "E60006",
-            "param_name": "length of shape a",
+            "param_name": "a",
             "expected_length": "2 or 4",
             "length": "{}".format(len(shape_a))
         }
@@ -221,7 +222,7 @@ def _shape_check(
     if len(shape_b) != 2 and len(shape_b) != 4:
         args_dict = {
             "errCode": "E60006",
-            "param_name": "length of shape b",
+            "param_name": "b",
             "expected_length": "2 or 4",
             "length": "{}".format(len(shape_b))
         }
@@ -240,12 +241,9 @@ def _shape_check(
 
         if km_shape != kn_shape:
             args_dict = {
-                "errCode": "E60002",
-                "attr_name": "shape",
-                "param1_name": "km_shape",
-                "param1_value": "{}".format(km_shape),
-                "param2_name": "kn_shape",
-                "param2_value": "{}".format(kn_shape)
+                "errCode": "E60009",
+                "a_1d": km_shape,
+                "b_0d": kn_shape
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
@@ -295,36 +293,6 @@ def _get_input_shape_b(shape_x, dtype):
     res.append(ceil(dim_b/block_out)*block_out)
     return res
 
-# pylint: disable=unused-argument, too-many-return-statements
-def check_supported(input_x1, input_x2, alpha, beta, bias=None, output_y=None,
-                    trans_a=False, trans_b=False, kernel_name="gemm"):
-    """check support"""
-    shape_a = input_x1.get("shape")
-    shape_b = input_x2.get("shape")
-    src_dtype = input_x1.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_a)
-    util.check_shape_rule(shape_b)
-
-    if src_dtype == "float16":
-        if len(shape_a) != 2 or len(shape_b) != 2:
-            return True
-
-        if trans_a:
-            k_shape = shape_a[0]
-        else:
-            k_shape = shape_a[1]
-
-        if trans_b:
-            k_b_shape = shape_b[1]
-        else:
-            k_b_shape = shape_b[0]
-
-        if k_shape != k_b_shape:
-            return False
-
-    return True
-
 
 def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
     if input_x1["ori_format"] == "ND" and input_x2["ori_format"] == \
@@ -345,7 +313,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
         if shape_bias != [a_m, b_n]:
             args_dict = {
                 "errCode": "E60000",
-                "param_name": "shape_bias",
+                "param_name": "c shape",
                 "expected_value": str([a_m, b_n]),
                 "input_value": "{}".format(shape_bias)
             }
@@ -361,7 +329,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
         if input_x2["dtype"] == "int8" and shape_bias != [shape_b[1], shape_a[1]]:
             args_dict = {
                 "errCode": "E60000",
-                "param_name": "shape_bias",
+                "param_name": "c shape",
                 "expected_value": str([shape_a[1], shape_b[1]]),
                 "input_value": "{}".format(shape_bias)
             }
@@ -369,7 +337,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
         if input_x2["dtype"] == "float16" and shape_bias != [shape_b[0], shape_a[1]]:
             args_dict = {
                 "errCode": "E60000",
-                "param_name": "shape_bias",
+                "param_name": "c shape",
                 "expected_value": str([shape_a[1], shape_b[0]]),
                 "input_value": "{}".format(shape_bias)
             }
@@ -441,9 +409,9 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
         args_dict = {
             "errCode": "E60002",
             "attr_name": "dtype",
-            "param1_name": "a_dtype",
+            "param1_name": "a",
             "param1_value": "{}".format(src_dtype),
-            "param2_name": "b_dtype",
+            "param2_name": "b",
             "param2_value": "{}".format(b_dtype)
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
@@ -480,7 +448,7 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
     if bias is None or not bool(bias):
         args_dict = {
             "errCode": "E60108",
-            "reason": "unsupport bias is None"
+            "reason": "unsupport c is None"
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
@@ -595,16 +563,6 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
             return True
         return False
 
-    is_larger_than_int32 = False
-    if (_is_larger_than_int32(input_x1) or
-        _is_larger_than_int32(input_x2) or
-        _is_larger_than_int32(bias)):
-        is_larger_than_int32 = True
-
-    if is_larger_than_int32:
-        with tvm.api_config.bit_width_64():
-            _gemm_local_compute()
-    else:
-        _gemm_local_compute()
+    _gemm_local_compute()
 
 

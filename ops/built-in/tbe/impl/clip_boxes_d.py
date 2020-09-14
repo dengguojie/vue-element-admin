@@ -29,7 +29,8 @@ CONFIG_DATA_TRANS = 64
 CONFIG_MASK = 128
 MATRIX = 256
 CONFIG_UB_LIMITED = 4096
-IF_USE_V200 = ("Ascend610", "Ascend620")
+IF_USE_V200 = ("Ascend610", "Ascend710")
+
 
 class InitConst:
     """
@@ -170,7 +171,7 @@ class InitMiddleTensor:
 
     def __init__(self, tik_instance, const_num, num_of_trans):
         # the size of image, construct a vector for computing
-        if not tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) in IF_USE_V200:
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
             self.width_ub = tik_instance.Tensor("float16",
                                                 (const_num.num_one_vecop*const_num.num_one_blk,
                                                  CONFIG_ONE),
@@ -212,7 +213,7 @@ class InitMiddleTensor:
         set the image height vector
         return: None
         """
-        if not tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) in IF_USE_V200:
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
             tik_instance.vector_dup(const_num.mask,
                                     self.height_ub[0],
                                     float(img_h),
@@ -225,7 +226,7 @@ class InitMiddleTensor:
         set the image width vector
         return: None
         """
-        if not tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) in IF_USE_V200:
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
             tik_instance.vector_dup(const_num.mask,
                                     self.width_ub[0],
                                     float(img_w),
@@ -266,7 +267,7 @@ def processing_one_loop(tik_instance, data_gm, tiling_para, img_size, offset):
                 for i in range(const_num.num_one_blk)]
     src_list = [data_tensor.anchors_ub[const_num.num_one_blk * i]
                 for i in range(const_num.num_one_blk)]
-    # with tik_instance.if_scope(tiling_para.num_of_trans == CONFIG_ONE):
+
     if tiling_para.num_of_trans == CONFIG_ONE:
         tik_instance.vnchwconv(True, False, dst_list, src_list,
                                tiling_para.num_of_trans, 0, 0)
@@ -287,7 +288,7 @@ def processing_one_loop(tik_instance, data_gm, tiling_para, img_size, offset):
                        const_num.dstorsrc_rep_stride1)
 
     # do the comparing
-    if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) in IF_USE_V200:
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:
         tik_instance.vmins(const_num.mask,
                            data_tensor.res_temp2_ub[0],
                            data_tensor.res_temp1_ub[0],
@@ -389,7 +390,7 @@ def processing_tail(tik_instance, data_gm, tiling_para, img_size):
                 for i in range(const_num.num_one_blk)]
     src_list = [data_tensor.anchors_ub[const_num.num_one_blk * i]
                 for i in range(const_num.num_one_blk)]
-    # with tik_instance.if_scope(tiling_para.num_of_trans == CONFIG_ONE):
+
     if tiling_para.num_of_trans == CONFIG_ONE:
         tik_instance.vnchwconv(True, False, dst_list, src_list,
                                tiling_para.num_of_trans, 0, 0)
@@ -410,7 +411,7 @@ def processing_tail(tik_instance, data_gm, tiling_para, img_size):
                        const_num.dstorsrc_rep_stride1)
 
     # do the comparing
-    if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) in IF_USE_V200:
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:    
         tik_instance.vmins(const_num.mask,
                            data_tensor.res_temp2_ub[0],
                            data_tensor.res_temp1_ub[0],

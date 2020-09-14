@@ -333,6 +333,29 @@ class Fz3d2DhwcnCompute:
             else:
                 return "not_align_splitn"
 
+    def check_branch_fp32(self):
+        """
+        check which branch of fz3d_2_dhwcn fp32 compute
+        """
+        c_d = self.dst_shape[3]
+        n_d = self.dst_shape[4]
+        c0n_ele = n_d * self.c_0 * 2 * 8
+
+        if n_d * c_d < self.cp_align_len:
+            n_o = self.src_shape[1]
+            n_align = n_o * self.n_i
+            dim_align_ele = n_align * self.c_0 * 16
+            num_dim_one_core = self.ub_ele // dim_align_ele
+            if num_dim_one_core * c_d * n_d < self.cp_align_len:
+                return "little_mm_fp32"
+            else:
+                return "little_align_fp32"
+
+        elif c0n_ele <= self.ub_ele:
+            return "c0n_ele_fp32"
+        else:
+            return "split_n_fp32"
+
     def calc_c1(self):
         """
         function of calculating c_1
@@ -2260,12 +2283,779 @@ class Fz3d2DhwcnCompute:
 
         return tik_instance
 
+    def func_little_align_fp32(self, args):
+        """
+        function of moving data for little align fp32 scene
+        """
+        tik_instance, ub_ori, ub_trans, ub_tail, dim_before, dim_cur = args
+
+        c_d = self.dst_shape[3]
+        n_d = self.dst_shape[4]
+        n_o = self.src_shape[1]
+        n_align = n_o * self.n_i
+
+        src_offset = dim_before * n_align * self.c_0
+        burst_len = dim_cur * n_align * self.c_0
+        tik_instance.data_move(ub_ori,
+                               self.src_gm[src_offset],
+                               0, 1, burst_len, 0, 0)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        in_ele = dim_cur * n_align * self.c_0
+        dim_ele = in_ele * 2
+        dim_zu = _ceil_div(dim_ele, 16)
+
+        if dim_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, dim_zu, 0, 0)
+        else:
+            src_rep_stride = 1
+            dst_rep_stride = 16
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   dim_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        with tik_instance.for_range(0, c_d) as num_c:
+            with tik_instance.for_range(0, n_d) as num_n:
+                src_offset = (num_n * self.c_0 + num_c) * 2 * 16
+                dst_offset = (num_c * n_d + num_n) * 2 * 16
+                n_burst = dim_cur
+                burst_len = 2
+                src_stride = (n_align * self.c_0 - 1) * 2
+                dst_stride = (n_d * c_d - 1) * 2
+                tik_instance.data_move(ub_ori[dst_offset],
+                                       ub_trans[src_offset],
+                                       0, n_burst, burst_len,
+                                       src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        mid_ele = dim_cur * c_d * n_d * 2
+        mid_zu = _ceil_div(mid_ele, 16)
+
+        if mid_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, mid_zu, 0, 0)
+        else:
+            src_rep_stride = 16
+            dst_rep_stride = 1
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   mid_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        out_ele = dim_cur * c_d * n_d
+        if out_ele % self.cp_align_len > 0:
+            with tik_instance.if_scope(out_ele > self.cp_align_len):
+                sub_ele = out_ele - self.cp_align_len
+                if sub_ele > 0:
+                    dst_offset = dim_before * c_d * n_d
+                    burst_len = _ceil_div(sub_ele, self.cp_align_len)
+                    tik_instance.data_move(self.dst_gm[dst_offset],
+                                           ub_trans,
+                                           0, 1, burst_len, 0, 0)
+
+                    for k in range(16):
+                        ub_tail[k] = ub_trans[sub_ele * 2 + k]
+
+                    tik_instance.data_move(self.dst_gm[dst_offset + sub_ele],
+                                           ub_tail,
+                                           0, 1, 1, 0, 0)
+            with tik_instance.else_scope():
+                dst_offset = dim_before * c_d * n_d
+
+                tik_instance.data_move(self.dst_gm[dst_offset],
+                                       ub_trans,
+                                       0, 1, 1, 0, 0)
+
+        else:
+            dst_offset = dim_before * c_d * n_d
+            burst_len = out_ele // self.cp_align_len
+            tik_instance.data_move(self.dst_gm[dst_offset],
+                                   ub_trans,
+                                   0, 1, burst_len, 0, 0)
+
+    def little_align_fp32(self, tik_instance):
+        """
+        n_o * n_i * c_0 * 16 <= ub_ele
+        n_d * c_d < cp_align_len
+        """
+        d_d, h_d, w_d, _, _ = self.dst_shape
+
+        n_o = self.src_shape[1]
+        n_align = n_o * self.n_i
+        dim_ele = n_align * self.c_0 * 16
+        num_dim_one_core = self.ub_ele // dim_ele
+        dhw_d = d_d * h_d * w_d
+        all_core = _ceil_div(dhw_d, num_dim_one_core)
+        ac_num = _set_core_num(all_core)
+
+        with tik_instance.for_range(0, ac_num, block_num=ac_num) as num_core:
+            ub_ori = tik_instance.Tensor("float16",
+                                         (self.ub_ele * 2,),
+                                         name="ub_ori",
+                                         scope=tik.scope_ubuf)
+            ub_trans = tik_instance.Tensor("float16",
+                                           (self.ub_ele * 2,),
+                                           name="ub_trans",
+                                           scope=tik.scope_ubuf)
+            ub_tail = tik_instance.Tensor("float16",
+                                          (16,),
+                                          name="ub_tail",
+                                          scope=tik.scope_ubuf)
+
+            ub_loop = _set_loop(tik_instance, num_core,
+                                ac_num, all_core)
+
+            with tik_instance.for_range(0, ub_loop) as num_u:
+                core_index = num_u * ac_num + num_core
+                with tik_instance.if_scope(core_index < all_core - 1):
+                    dim_before = core_index * num_dim_one_core
+                    dim_cur = num_dim_one_core
+                    args = tik_instance, ub_ori, ub_trans, ub_tail,\
+                           dim_before, dim_cur
+                    self.func_little_align_fp32(args)
+
+                with tik_instance.else_scope():
+                    dim_before = (all_core - 1) * num_dim_one_core
+                    dim_cur = dhw_d - dim_before
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                           dim_before, dim_cur
+                    self.func_little_align_fp32(args)
+
+        return tik_instance
+
+    def func_little_mm_fp32(self, args):
+        """
+        function of moving data for little mm fp32 scene
+        """
+        tik_instance, ub_ori, ub_trans, ub_tail, dim_before, dim_cur = args
+
+        c_d = self.dst_shape[3]
+        n_d = self.dst_shape[4]
+        n_o = self.src_shape[1]
+        n_align = n_o * self.n_i
+
+        src_offset = dim_before * n_align * self.c_0
+        n_burst = dim_cur
+        burst_len = n_d * self.c_0 // self.cp_align_len
+        src_stride = (n_align - n_d) * self.c_0 // self.cp_align_len
+        dst_stride = 0
+        tik_instance.data_move(ub_ori,
+                               self.src_gm[src_offset],
+                               0, n_burst, burst_len, src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        in_ele = dim_cur * n_d * self.c_0
+        dim_ele = in_ele * 2
+        dim_zu = _ceil_div(dim_ele, 16)
+
+        if dim_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, dim_zu, 0, 0)
+        else:
+            src_rep_stride = 1
+            dst_rep_stride = 16
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   dim_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        with tik_instance.for_range(0, c_d) as num_c:
+            with tik_instance.for_range(0, n_d) as num_n:
+                src_offset = (num_n * self.c_0 + num_c) * 2 * 16
+                dst_offset = (num_c * n_d + num_n) * 2 * 16
+                n_burst = dim_cur
+                burst_len = 2
+                src_stride = (n_d * self.c_0 - 1) * 2
+                dst_stride = (n_d * c_d - 1) * 2
+                tik_instance.data_move(ub_ori[dst_offset],
+                                       ub_trans[src_offset],
+                                       0, n_burst, burst_len,
+                                       src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        mid_ele = dim_cur * c_d * n_d * 2
+        mid_zu = _ceil_div(mid_ele, 16)
+
+        if mid_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, mid_zu, 0, 0)
+        else:
+            src_rep_stride = 16
+            dst_rep_stride = 1
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   mid_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        out_ele = dim_cur * c_d * n_d
+        if out_ele % self.cp_align_len > 0:
+            with tik_instance.if_scope(out_ele > self.cp_align_len):
+                sub_ele = out_ele - self.cp_align_len
+                if sub_ele > 0:
+                    dst_offset = dim_before * c_d * n_d
+                    burst_len = _ceil_div(sub_ele, self.cp_align_len)
+                    tik_instance.data_move(self.dst_gm[dst_offset],
+                                           ub_trans,
+                                           0, 1, burst_len, 0, 0)
+
+                    for k in range(16):
+                        ub_tail[k] = ub_trans[sub_ele * 2 + k]
+
+                    tik_instance.data_move(self.dst_gm[dst_offset + sub_ele],
+                                           ub_tail,
+                                           0, 1, 1, 0, 0)
+            with tik_instance.else_scope():
+                dst_offset = dim_before * c_d * n_d
+
+                tik_instance.data_move(self.dst_gm[dst_offset],
+                                       ub_trans,
+                                       0, 1, 1, 0, 0)
+
+        else:
+            dst_offset = dim_before * c_d * n_d
+            burst_len = out_ele // self.cp_align_len
+            tik_instance.data_move(self.dst_gm[dst_offset],
+                                   ub_trans,
+                                   0, 1, burst_len, 0, 0)
+
+    def little_mm_fp32(self, tik_instance):
+        """
+        n_d * c_0 * 16 <= ub_ele
+        n_d * c_d < cp_align_len
+        """
+        d_d, h_d, w_d, _, n_d = self.dst_shape
+        dim_ele = n_d * self.c_0 * 16
+        num_dim_one_core = self.ub_ele // dim_ele
+        dhw_d = d_d * h_d * w_d
+        all_core = _ceil_div(dhw_d, num_dim_one_core)
+        ac_num = _set_core_num(all_core)
+
+        with tik_instance.for_range(0, ac_num, block_num=ac_num) as num_core:
+            ub_ori = tik_instance.Tensor("float16",
+                                         (self.ub_ele * 2,),
+                                         name="ub_ori",
+                                         scope=tik.scope_ubuf)
+            ub_trans = tik_instance.Tensor("float16",
+                                           (self.ub_ele * 2,),
+                                           name="ub_trans",
+                                           scope=tik.scope_ubuf)
+            ub_tail = tik_instance.Tensor("float16",
+                                          (16,),
+                                          name="ub_tail",
+                                          scope=tik.scope_ubuf)
+
+            ub_loop = _set_loop(tik_instance, num_core,
+                                ac_num, all_core)
+
+            with tik_instance.for_range(0, ub_loop) as num_u:
+                core_index = num_u * ac_num + num_core
+                with tik_instance.if_scope(core_index < all_core - 1):
+                    dim_before = core_index * num_dim_one_core
+                    dim_cur = num_dim_one_core
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                           dim_before, dim_cur
+                    self.func_little_mm_fp32(args)
+
+                with tik_instance.else_scope():
+                    dim_before = (all_core - 1) * num_dim_one_core
+                    dim_cur = dhw_d - dim_before
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                           dim_before, dim_cur
+                    self.func_little_mm_fp32(args)
+
+        return tik_instance
+
+    def func_c0n_core(self, args):
+        """
+        function of moving data for c0n_core scene
+        """
+        tik_instance, ub_ori, ub_trans, ub_tail, d_index, \
+        c1_index, hw_index, c_before, c_now = args
+
+        _, h_d, w_d, c_d, n_d = self.dst_shape
+        hw_d = h_d * w_d
+        n_o = self.src_shape[1]
+
+        src_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index) \
+                     * n_o * self.n_i * self.c_0
+        burst_len = n_d * self.c_0 // self.cp_align_len
+        tik_instance.data_move(ub_ori,
+                               self.src_gm[src_offset],
+                               0, 1, burst_len, 0, 0)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        in_ele = n_d * self.c_0
+        dim_ele = in_ele * 2
+        dim_zu = _ceil_div(dim_ele, 16)
+
+        if dim_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, dim_zu, 0, 0)
+        else:
+            src_rep_stride = 1
+            dst_rep_stride = 16
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   dim_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        with tik_instance.for_range(0, c_now) as num_c:
+            src_offset = num_c * 2 * 16
+            dst_offset = num_c * n_d * 2 * 16
+            n_burst = n_d
+            burst_len = 2
+            src_stride = (self.c_0 - 1) * 2
+            dst_stride = 0
+            tik_instance.data_move(ub_ori[dst_offset],
+                                   ub_trans[src_offset],
+                                   0, n_burst, burst_len,
+                                   src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        mid_ele = c_now * n_d * 2
+        mid_zu = _ceil_div(mid_ele, 16)
+
+        if mid_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, mid_zu, 0, 0)
+        else:
+            src_rep_stride = 16
+            dst_rep_stride = 1
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   mid_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        out_ele = c_now * n_d
+        with tik_instance.if_scope(out_ele % self.cp_align_len > 0):
+            sub_ele = out_ele - self.cp_align_len
+            if sub_ele > 0:
+                dst_offset = (d_index * hw_d + hw_index) * c_d * n_d\
+                             + c_before * n_d
+                burst_len = _ceil_div(sub_ele, self.cp_align_len)
+                tik_instance.data_move(self.dst_gm[dst_offset],
+                                       ub_trans,
+                                       0, 1, burst_len, 0, 0)
+
+                for k in range(16):
+                    ub_tail[k] = ub_trans[sub_ele * 2 + k]
+
+                tik_instance.data_move(self.dst_gm[dst_offset + sub_ele],
+                                       ub_tail,
+                                       0, 1, 1, 0, 0)
+
+        with tik_instance.else_scope():
+            dst_offset = (d_index * hw_d + hw_index) * c_d * n_d\
+                         + c_before * n_d
+            burst_len = out_ele // self.cp_align_len
+            tik_instance.data_move(self.dst_gm[dst_offset],
+                                   ub_trans,
+                                   0, 1, burst_len, 0, 0)
+
+    def func_c0n_core_tail(self, args):
+        """
+        function of moving data for tail of c0n_core scene
+        """
+        tik_instance, ub_ori, ub_trans, ub_tail, d_index, \
+        c1_index, hw_index, c_before, c_now = args
+
+        _, h_d, w_d, c_d, n_d = self.dst_shape
+        hw_d = h_d * w_d
+        n_o = self.src_shape[1]
+
+        src_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index)\
+                     * n_o * self.n_i * self.c_0
+        burst_len = n_d * self.c_0 // self.cp_align_len
+        tik_instance.data_move(ub_ori,
+                               self.src_gm[src_offset],
+                               0, 1, burst_len, 0, 0)
+
+        c1_before = c1_index + 1
+        src_offset = (d_index * self.c_1 * hw_d + c1_before * hw_d + hw_index)\
+                     * n_o * self.n_i * self.c_0
+        ub_offset = n_d * self.c_0 * 2
+        burst_len = n_d * self.c_0 // self.cp_align_len
+        tik_instance.data_move(ub_ori[ub_offset],
+                               self.src_gm[src_offset],
+                               0, 1, burst_len, 0, 0)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        in_ele = n_d * self.c_0 * 2
+        dim_ele = in_ele * 2
+        dim_zu = _ceil_div(dim_ele, 16)
+
+        if dim_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, dim_zu, 0, 0)
+        else:
+            src_rep_stride = 1
+            dst_rep_stride = 16
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   dim_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        c_one = self.c_0
+        c_two = c_now - c_one
+        with tik_instance.for_range(0, c_one) as num_c:
+            src_offset = num_c * 2 * 16
+            dst_offset = num_c * n_d * 2 * 16
+            n_burst = n_d
+            burst_len = 2
+            src_stride = (self.c_0 - 1) * 2
+            dst_stride = 0
+            tik_instance.data_move(ub_ori[dst_offset],
+                                   ub_trans[src_offset],
+                                   0, n_burst, burst_len,
+                                   src_stride, dst_stride)
+
+        with tik_instance.for_range(0, c_two) as num_c:
+            src_offset = (c_one * n_d + num_c) * 2 * 16
+            dst_offset = (c_one * n_d + num_c * n_d) * 2 * 16
+            n_burst = n_d
+            burst_len = 2
+            src_stride = (self.c_0 - 1) * 2
+            dst_stride = 0
+            tik_instance.data_move(ub_ori[dst_offset],
+                                   ub_trans[src_offset],
+                                   0, n_burst, burst_len,
+                                   src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        mid_ele = c_now * n_d * 2
+        mid_zu = _ceil_div(mid_ele, 16)
+
+        if mid_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, mid_zu, 0, 0)
+        else:
+            src_rep_stride = 16
+            dst_rep_stride = 1
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   mid_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        out_ele = c_now * n_d
+        with tik_instance.if_scope(out_ele % self.cp_align_len > 0):
+            sub_ele = out_ele - self.cp_align_len
+            if sub_ele > 0:
+                dst_offset = (d_index * hw_d + hw_index) * c_d * n_d\
+                             + c_before * n_d
+                burst_len = _ceil_div(sub_ele, self.cp_align_len)
+                tik_instance.data_move(self.dst_gm[dst_offset],
+                                       ub_trans,
+                                       0, 1, burst_len, 0, 0)
+
+                for k in range(16):
+                    ub_tail[k] = ub_trans[sub_ele * 2 + k]
+
+                tik_instance.data_move(self.dst_gm[dst_offset + sub_ele],
+                                       ub_tail,
+                                       0, 1, 1, 0, 0)
+
+        with tik_instance.else_scope():
+            dst_offset = (d_index * hw_d + hw_index) * c_d * n_d\
+                         + c_before * n_d
+            burst_len = out_ele // self.cp_align_len
+            tik_instance.data_move(self.dst_gm[dst_offset],
+                                   ub_trans,
+                                   0, 1, burst_len, 0, 0)
+
+    def c0n_ele_fp32(self, tik_instance):
+        """
+        n_d * self.c_0 * 16 <= ub_ele
+        """
+        d_d, h_d, w_d, c_d, n_d = self.dst_shape
+        hw_d = h_d * w_d
+
+        all_core = d_d * self.c_1 * hw_d
+        ac_num = _set_core_num(all_core)
+
+        with tik_instance.for_range(0, ac_num, block_num=ac_num) as num_core:
+            ub_ori = tik_instance.Tensor("float16",
+                                         (self.ub_ele * 2,),
+                                         name="ub_ori",
+                                         scope=tik.scope_ubuf)
+            ub_trans = tik_instance.Tensor("float16",
+                                           (self.ub_ele * 2,),
+                                           name="ub_trans",
+                                           scope=tik.scope_ubuf)
+            ub_tail = tik_instance.Tensor("float16",
+                                          (16,),
+                                          name="ub_tail",
+                                          scope=tik.scope_ubuf)
+
+            ub_loop = _set_loop(tik_instance, num_core,
+                                ac_num, all_core)
+
+            with tik_instance.for_range(0, ub_loop) as num_u:
+                core_index = num_u * ac_num + num_core
+                c1hw_d = self.c_1 * hw_d
+                d_index = core_index // c1hw_d
+                c1hw_index = core_index % c1hw_d
+                c1_index = c1hw_index // hw_d
+                hw_index = c1hw_index % hw_d
+
+                with tik_instance.if_scope(c1_index < self.c_1 - 1):
+                    c_before = c1_index * self.c_0
+                    c_now = self.c_0
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, d_index, \
+                           c1_index, hw_index, c_before, c_now
+                    self.func_c0n_core(args)
+
+                with tik_instance.else_scope():
+                    c_before = (self.c_1 - 1) * self.c_0
+                    c_now = c_d - c_before
+                    if c_now * n_d >= self.cp_align_len:
+                        args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                               d_index, c1_index, hw_index, c_before, c_now
+                        self.func_c0n_core(args)
+                    else:
+                        c1_index = self.c_1 - 2
+                        c_before = (self.c_1 - 2) * self.c_0
+                        c_now = c_d - c_before
+                        args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                               d_index, c1_index, hw_index, c_before, c_now
+                        self.func_c0n_core_tail(args)
+
+        return tik_instance
+
+    def func_split_n(self, args):
+        """
+        function of moving data for split_n scene
+        """
+        tik_instance, ub_ori, ub_trans, \
+        d_index, c1_index, hw_index, c_before, c_now, \
+        n_before, n_now = args
+
+        _, h_d, w_d, c_d, n_d = self.dst_shape
+        hw_d = h_d * w_d
+        n_o = self.src_shape[1]
+        data_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index)\
+                      * n_o * self.n_i * self.c_0 + n_before * self.c_0
+        burst_len = n_now * self.c_0 // self.cp_align_len
+        tik_instance.data_move(ub_ori,
+                               self.src_gm[data_offset],
+                               0, 1, burst_len, 0, 0)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        in_ele = n_now * self.c_0
+        dim_ele = in_ele * 2
+        dim_zu = _ceil_div(dim_ele, 16)
+
+        if dim_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, dim_zu, 0, 0)
+        else:
+            src_rep_stride = 1
+            dst_rep_stride = 16
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   dim_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        with tik_instance.for_range(0, c_now) as num_c:
+            src_offset = num_c * 2 * 16
+            dst_offset = num_c * n_now * 2 * 16
+            n_burst = n_now
+            burst_len = 2
+            src_stride = (self.c_0 - 1) * 2
+            dst_stride = 0
+            tik_instance.data_move(ub_ori[dst_offset],
+                                   ub_trans[src_offset],
+                                   0, n_burst, burst_len,
+                                   src_stride, dst_stride)
+
+        ori_begin = 0
+        trans_begin = 0
+        src_list = [ub_ori[ori_begin + 16 * i]
+                    for i in range(16)]
+        dst_list = [ub_trans[trans_begin + 16 * i]
+                    for i in range(16)]
+        mid_ele = c_now * n_now * 2
+        mid_zu = _ceil_div(mid_ele, 16)
+
+        if mid_zu == 1:
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list, mid_zu, 0, 0)
+        else:
+            src_rep_stride = 16
+            dst_rep_stride = 1
+            tik_instance.vnchwconv(False, False, dst_list,
+                                   src_list,
+                                   mid_zu,
+                                   dst_rep_stride,
+                                   src_rep_stride)
+
+        with tik_instance.if_scope(n_d % self.cp_align_len > 0):
+            with tik_instance.for_range(0, c_now) as num_c:
+                dst_offset = (d_index * hw_d + hw_index) * c_d * n_d \
+                             + (c_before + num_c) * n_d + n_before
+                ub_offset = num_c * n_now * 2
+                burst_len = n_now // self.cp_align_len
+                tik_instance.data_move(self.dst_gm[dst_offset],
+                                       ub_trans[ub_offset],
+                                       0, 1, burst_len, 0, 0)
+
+        with tik_instance.else_scope():
+            dst_offset = (d_index * hw_d + hw_index) * c_d * n_d\
+                         + c_before * n_d + n_before
+            n_burst = c_now
+            burst_len = n_now // self.cp_align_len
+            src_stride = 0
+            dst_stride = (n_d - n_now) // self.cp_align_len
+            tik_instance.data_move(self.dst_gm[dst_offset],
+                                   ub_trans,
+                                   0, n_burst, burst_len,
+                                   src_stride, dst_stride)
+
+    def split_n_fp32(self, tik_instance):
+        """
+        n_d * self.c_0 * 16 > ub_ele
+        """
+        d_d, h_d, w_d, c_d, n_d = self.dst_shape
+        hw_d = h_d * w_d
+        n_ub = self.ub_ele // 16 // self.c_0 \
+               // self.cp_align_len * self.cp_align_len
+        n_zu = _ceil_div(n_d, n_ub)
+
+        all_core = d_d * self.c_1 * hw_d * n_zu
+        ac_num = _set_core_num(all_core)
+
+        with tik_instance.for_range(0, ac_num, block_num=ac_num) as num_core:
+            ub_ori = tik_instance.Tensor("float16",
+                                         (self.ub_ele * 2,),
+                                         name="ub_ori",
+                                         scope=tik.scope_ubuf)
+            ub_trans = tik_instance.Tensor("float16",
+                                           (self.ub_ele * 2,),
+                                           name="ub_trans",
+                                           scope=tik.scope_ubuf)
+
+            ub_loop = _set_loop(tik_instance, num_core,
+                                ac_num, all_core)
+
+            with tik_instance.for_range(0, ub_loop) as num_u:
+                core_index = num_u * ac_num + num_core
+                c1hwn_d = self.c_1 * hw_d * n_zu
+                d_index = core_index // c1hwn_d
+                c1hwn_index = core_index % c1hwn_d
+                hwn_d = hw_d * n_zu
+                c1_index = c1hwn_index // hwn_d
+                hwn_index = c1hwn_index % hwn_d
+                hw_index = hwn_index // n_zu
+                nzu_index = hwn_index % n_zu
+
+                with tik_instance.if_scope(c1_index < self.c_1 - 1):
+                    c_before = c1_index * self.c_0
+                    c_now = self.c_0
+
+                    with tik_instance.if_scope(nzu_index < n_zu - 1):
+                        n_before = nzu_index * n_ub
+                        n_now = n_ub
+                        args = tik_instance, ub_ori, ub_trans, \
+                               d_index, c1_index, hw_index, c_before, c_now, \
+                               n_before, n_now
+                        self.func_split_n(args)
+
+                    with tik_instance.else_scope():
+                        n_now_temp = n_d - (n_zu - 1) * n_ub
+                        n_now = _ceil_fill(n_now_temp, self.cp_align_len)
+                        n_before = n_d - n_now
+                        args = tik_instance, ub_ori, ub_trans, \
+                               d_index, c1_index, hw_index, c_before, c_now, \
+                               n_before, n_now
+                        self.func_split_n(args)
+
+                with tik_instance.else_scope():
+                    c_before = (self.c_1 - 1) * self.c_0
+                    c_now = c_d - c_before
+
+                    with tik_instance.if_scope(nzu_index < n_zu - 1):
+                        n_before = nzu_index * n_ub
+                        n_now = n_ub
+                        args = tik_instance, ub_ori, ub_trans, \
+                               d_index, c1_index, hw_index, c_before, c_now, \
+                               n_before, n_now
+                        self.func_split_n(args)
+
+                    with tik_instance.else_scope():
+                        n_now_temp = n_d - (n_zu - 1) * n_ub
+                        n_now = _ceil_fill(n_now_temp, self.cp_align_len)
+                        n_before = n_d - n_now
+                        args = tik_instance, ub_ori, ub_trans, \
+                               d_index, c1_index, hw_index, c_before, c_now, \
+                               n_before, n_now
+                        self.func_split_n(args)
+
+        return tik_instance
+
     def fz3d_2_dhwcn_compute(self):
         """
         the overall data move process
         """
         tik_instance = self.set_tik_instance()
-        branch = self.check_branch()
+        if self.dtype == "float32":
+            branch = self.check_branch_fp32()
+        else:
+            branch = self.check_branch()
 
         if branch == "n_align_small":
             tik_instance = self.n_align_small(tik_instance)
@@ -2297,6 +3087,14 @@ class Fz3d2DhwcnCompute:
             tik_instance = self.not_align_splitn_fencore(tik_instance)
         elif branch == "not_align_splitn":
             tik_instance = self.not_align_splitn(tik_instance)
+        elif branch == "little_mm_fp32":
+            tik_instance = self.little_mm_fp32(tik_instance)
+        elif branch == "little_align_fp32":
+            tik_instance = self.little_align_fp32(tik_instance)
+        elif branch == "c0n_ele_fp32":
+            tik_instance = self.c0n_ele_fp32(tik_instance)
+        elif branch == "split_n_fp32":
+            tik_instance = self.split_n_fp32(tik_instance)
 
         return tik_instance
 
@@ -2338,6 +3136,18 @@ class Fz3d2DhwcnCompute:
         return tik_instance
 
 
+def _error_log(param, value, reason):
+    error_info = {
+        'ErrCode': 'E10001',
+        'parameter': param,
+        'value': value,
+        'reason': reason
+    }
+    raise RuntimeError(error_info,
+                       "Invalid value for {parameter}[{value}], "
+                       "{reason}.".format(**error_info))
+
+
 def _check_parameters(src, dst, src_format, dst_format):
     """
     check the parameters including src_shape, dst_shape,
@@ -2350,26 +3160,29 @@ def _check_parameters(src, dst, src_format, dst_format):
     dtype_dst = dst.get("dtype")
 
     if src_format.lower() != "fractal_z_3d":
-        raise RuntimeError("src_format must be FRACTAL_Z_3D !")
+        reason = "src_format must be FRACTAL_Z_3D !"
+        _error_log("src_format", src_format, reason)
 
     if dst_format.lower() != "dhwcn":
-        raise RuntimeError("dst_format must be DHWCN!")
+        reason = "dst_format must be DHWCN !"
+        _error_log("dst_format", dst_format, reason)
 
-    check_list = ("float16",)
+    check_list = ("float16", "float32")
     check_dtype(dtype, check_list)
     if dtype != dtype_dst:
-        raise RuntimeError("dtype of src and dst are different !")
+        reason = "dtype of src and dst are different !"
+        _error_log("dst_dtype", dtype_dst, reason)
 
     check_shape(src_shape, min_rank=4, max_rank=4)
     check_shape(dst_shape, min_rank=5, max_rank=5)
 
     if src_shape[2] != 16:
-        raise RuntimeError(
-            "the 3rd dimension of src_shape is not 16, Ni must be 16 !")
+        reason = "the 3rd dimension of src_shape is not 16, Ni must be 16 !"
+        _error_log("Ni", src_shape[2], reason)
 
     if src_shape[3] != 16:
-        raise RuntimeError(
-            "the 4th dimension of src_shape is not 16, C0 must be 16 !")
+        reason = "the 4th dimension of src_shape is not 16, C0 must be 16 !"
+        _error_log("C0", src_shape[3], reason)
 
     d_d, h_d, w_d, c_d, n_d = dst_shape
 
@@ -2378,9 +3191,9 @@ def _check_parameters(src, dst, src_format, dst_format):
     n_o = (n_d + n_s) // n_i
 
     if src_shape[1] != n_o:
-        raise RuntimeError(
-            "the 2nd dimension of src_shape is wrong, "
-            "No must be (N + 15)//16 !")
+        reason = "the 2nd dimension of src_shape is wrong, " \
+                 "No must be (N + 15)//16 !"
+        _error_log("No", src_shape[1], reason)
 
     c_0 = 16
     c_s = c_0 - 1
@@ -2388,9 +3201,9 @@ def _check_parameters(src, dst, src_format, dst_format):
     one_dim = d_d * c_1 * h_d * w_d
 
     if src_shape[0] != one_dim:
-        raise RuntimeError(
-            "the 1st dimension of src_shape is wrong, "
-            "it must be D*C1*H*W !")
+        reason = "the 1st dimension of src_shape is wrong, " \
+                 "it must be D*C1*H*W !"
+        _error_log("DC1HW", src_shape[0], reason)
 
 
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, REQUIRED_ATTR_STR, KERNEL_NAME)

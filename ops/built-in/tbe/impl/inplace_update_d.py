@@ -21,6 +21,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable = locally-disabled,invalid-name,too-many-locals
@@ -52,7 +53,8 @@ def inplace_update_d_compute(x, v, y, indices, kernel_name="inplace_update_d"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, (tuple, list), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+                 KERNEL_NAME)
 def inplace_update_d(x, v, y, indices, kernel_name="inplace_update_d"):
     """
     calculating data
@@ -81,17 +83,14 @@ def inplace_update_d(x, v, y, indices, kernel_name="inplace_update_d"):
     dtype_x = x.get("dtype")
     dtype_v = v.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_v)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_v)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_v, param_name="v")
 
     check_tuple = ("float16", "float32", "int32")
     input_data_type_x = dtype_x.lower()
     input_data_type_v = dtype_v.lower()
-    util.check_dtype_rule(input_data_type_x, check_tuple)
-    util.check_dtype_rule(input_data_type_v, check_tuple)
+    check_dtype(input_data_type_x, check_tuple, param_name="x")
+    check_dtype(input_data_type_v, check_tuple, param_name="v")
     indices = list(indices)
 
     if len(shape_x) != len(shape_v):

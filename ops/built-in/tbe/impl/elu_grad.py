@@ -43,6 +43,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 from te.utils.op_utils import refine_shape_axes
+from te.utils.op_utils import *
 import topi
 from topi.cce import util
 
@@ -94,7 +95,7 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     return res
 
 # pylint: disable=invalid-name
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     """
     do element-wise elu_grad operation
@@ -119,18 +120,17 @@ def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     dtype_gradient = grads.get("dtype")
     dtype_activation = activations.get("dtype")
 
-    util.check_kernel_name(kernel_name)
 
-    check_shape(shape_gradient)
-    check_shape(shape_activation)
+    check_shape(shape_gradient, param_name="grads")
+    check_shape(shape_activation, param_name="activations")
     if not operator.eq(shape_gradient, shape_activation):
         raise RuntimeError("all input shape must be equal")
     shape_gradient, _ = refine_shape_axes(shape_gradient, [])
     shape_activation, _ = refine_shape_axes(shape_activation, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_gradient, check_list)
-    check_dtype(dtype_activation, check_list)
+    check_dtype(dtype_gradient, check_list, param_name="grads")
+    check_dtype(dtype_activation, check_list, param_name="activations")
     if dtype_gradient.lower() != dtype_activation.lower():
         raise RuntimeError("all input dtype must be same")
 

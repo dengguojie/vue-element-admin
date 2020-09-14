@@ -21,6 +21,7 @@ from functools import reduce
 from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
+from te.platform.cce_conf import CceProductParams as pver
 from . import util
 from .vector_schedule import VectorSchedule
 from .cce_schedule_mappings import OpSubPatterns
@@ -240,7 +241,7 @@ class ElewiseSchedule(VectorSchedule):
         Returns
         -------
         """
-        if cceconf.get_soc_spec("SOC_VERSION") != "Ascend310":
+        if not pver().is_mini_version():
             return
 
         if self._is_contain_broadcast_tensor():
@@ -293,7 +294,12 @@ class ElewiseSchedule(VectorSchedule):
         visited_list : list
             record tensors which has been visited.
         """
+        # get output tensor L1 fusion params
+        self.get_l1_fusion_params(tensor)
+
         for in_tensor in list(tensor.op.input_tensors):
+            # get other tensor L1 fusion params
+            self.get_l1_fusion_params(in_tensor)
 
             if not (in_tensor in self._spec_node_list \
                     or isinstance(in_tensor.op, tvm.tensor.PlaceholderOp)):
@@ -334,6 +340,30 @@ class ElewiseSchedule(VectorSchedule):
                                               visited_list)
             tensor_list.append(in_tensor)
 
+    def get_l1_fusion_params(self, in_tensor):
+        """get L1 fusion params"""
+        if "ele_fusion_params" in in_tensor.op.attrs:
+            fusion_params_map = in_tensor.op.attrs["ele_fusion_params"]
+            if fusion_params_map:
+                for key, value in fusion_params_map.items():
+                    if hasattr(value, "value"):
+                        self._fusion_params[key] = value.value
+                    else:
+                        self._fusion_params[key] = value
+
+        # fused_op: l1 fusion info should get from fused_op output
+        # so need to update out_l1_flag
+        is_fused_compute = self._fusion_params.get("is_fused_compute", False)
+        if is_fused_compute:
+            res = self._last_output_tensor
+            revise_out_l1_flag = res.op.attrs["addr_type"].value == 1 \
+                    if "addr_type" in res.op.attrs else False
+            self._fusion_params["out_l1_flag"] = revise_out_l1_flag
+
+        # read_select+eltwise fusion: compute_inline this tensor
+        if in_tensor.op.name.find("output_ub_5d") >= 0:
+            self._cache_write_exclude_tensors.append(in_tensor)
+
     def apply_broadcast_not_last_axis_tensors(self, in_tensor):
         """Apply broadcast not last axis tensors"""
         is_cmpsel = self._op_subpattern == OpSubPatterns.CMPSEL_PATTERN
@@ -366,6 +396,10 @@ class ElewiseSchedule(VectorSchedule):
             self._map_apend(self._cache_read_tensors_and_readers_map, i,
                             self._input_tensor_dst_tensor_map[i])
 
+        # L1 fusion
+        self._l1_fusion_cache_read_tensors_and_readers_map = \
+            self._cache_read_tensors_and_readers_map
+
         for i in self._mid_output_tensors:
             self._map_apend(self._cache_read_tensors_and_readers_map, i,
                             self._mid_output_tensors_dst_tensor_map[i])
@@ -382,6 +416,12 @@ class ElewiseSchedule(VectorSchedule):
         -------
         list : read buffers
         """
+        # eltwise+write_select fusion: compute_inline this tensor
+        # write_select is one input one output, so select input_tensors[0]
+        if self._last_output_tensor.op.name.find("write_select") >= 0:
+            self._cache_write_exclude_tensors.append(
+                self._last_output_tensor.op.input_tensors[0])
+
         for i in self._mid_tensors:
             if i not in self._cache_write_exclude_tensors:
                 self._cache_write_tensors.append(i)
@@ -431,6 +471,9 @@ class ElewiseSchedule(VectorSchedule):
 
         shape = self._shape_to_list(self._last_output_tensor.shape)
         dtype = self._last_output_tensor.dtype.lower()
+
+        # L1 fusion will not bind multi core
+        self._need_multi_core = not self._is_l1fusion
 
         if self._need_multi_core:
             multi_core_threshold = self._get_multi_core_threshold(shape, dtype)
@@ -1263,6 +1306,7 @@ class ElewiseSchedule(VectorSchedule):
         # and there may be a risk of ub cross-border, so the db is not enabled.
         if self._special_broadcast_with_transpose:
             return
+
         shape = self._shape_to_list(self._last_output_tensor.shape)
 
         block_tiling_para = self._tiling_para["block_tiling"]
@@ -1659,8 +1703,7 @@ class ElewiseSchedule(VectorSchedule):
         -------
         True or False
         """
-        if cceconf.get_soc_spec("SOC_VERSION") not in \
-            ["Ascend910", "Ascend610"]:
+        if not (pver().is_cloud_version() or pver().is_1951_version()):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1809,9 +1852,8 @@ class ElewiseSchedule(VectorSchedule):
     def _is_special_broadcast_sence(self, block_split_axis,
                                     block_split_inner_size):
         def __check_support_version():
-            product_version = cceconf.get_soc_spec("SOC_VERSION")
-            if product_version != "Ascend910":
-                if product_version == "Ascend310":
+            if not pver().is_cloud_version():
+                if pver().is_mini_version():
                     if self._op_type == OpSpecTypes.NORMALIZE_SCALE:
                         return True
                 return False
@@ -1831,7 +1873,7 @@ class ElewiseSchedule(VectorSchedule):
 
     def _is_less_32_core_middle_broadcast_out_scene(self, block_split_axis,
                                                     block_split_inner_size):
-        if cceconf.get_soc_spec("SOC_VERSION") != "Ascend910":
+        if not pver().is_cloud_version():
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1889,7 +1931,7 @@ class ElewiseSchedule(VectorSchedule):
         return is_out
 
     def _is_mix_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if cceconf.get_soc_spec("SOC_VERSION") != "Ascend910":
+        if not pver().is_cloud_version():
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1999,7 +2041,7 @@ class ElewiseSchedule(VectorSchedule):
     def _is_non_32align_broadcast_out_scene(self, block_split_axis,
                                             block_split_inner_size,
                                             shape, max_ub_count):
-        if cceconf.get_soc_spec("SOC_VERSION") != "Ascend910":
+        if not pver().is_cloud_version():
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2107,7 +2149,7 @@ class ElewiseSchedule(VectorSchedule):
         return True
 
     def _is_32align_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if cceconf.get_soc_spec("SOC_VERSION") != "Ascend910":
+        if not pver().is_cloud_version():
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2189,8 +2231,7 @@ class ElewiseSchedule(VectorSchedule):
         """
         Get the specail broadcast pattern optimize threshold value
         """
-        product_version = cceconf.get_soc_spec("SOC_VERSION")
-        if product_version == "Ascend910":
+        if pver().is_cloud_version():
             return 64
         return 32
 

@@ -16,17 +16,15 @@ sparse_apply_adagrad
 """
 
 from impl.sparse_apply_common import SparseApply
-from topi.cce import util
+from te.utils import op_utils
 
-SHAPE_SIZE_LIMIT = (2**29 - 1)
 
 class SparseApplyAdagrad(SparseApply):
     """
     Sub class inherited form SparseApply for sparse_apply_adagrad op
     """
-
-    def __init__(self, var, accum, grad, indices,
-                 lr, epsilon, update_slot, kernel_name):
+    def __init__(self, var, accum, grad, indices, lr, epsilon, update_slot,
+                 kernel_name):
         """
         init sparse_apply_adagrad  base parameters
 
@@ -66,14 +64,12 @@ class SparseApplyAdagrad(SparseApply):
         -------
         None
         """
-        util.check_shape_rule(self.var_shape)
-        util.check_shape_rule(self.accum_shape)
-        util.check_shape_size(self.var_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.accum_shape, SHAPE_SIZE_LIMIT)
+        op_utils.check_shape(self.var_shape, param_name="var")
+        op_utils.check_shape(self.accum_shape, param_name="accum")
 
-        check_list_var_dtype = ("float32")
-        util.check_dtype_rule(self.var_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.accum_dtype, check_list_var_dtype)
+        op_utils.check_dtype(self.var_dtype, ("float32", ), param_name="var")
+        op_utils.check_dtype(self.accum_dtype, ("float32", ),
+                             param_name="accum")
 
         if self.accum_shape != self.var_shape:
             raise RuntimeError("accum's shape must be the same as var's shape")
@@ -105,31 +101,41 @@ class SparseApplyAdagrad(SparseApply):
             accum_ub = self.get_ub("accum_ub")[offset]
 
         if self.update_slot:
-            self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat,
-                                   1, 1, 1, 8, 8, 8)
-            self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub, repeat,
-                                   1, 1, 1, 8, 8, 8)
-        self.tik_instance.vsqrt(mask, tmp_ub, accum_ub, repeat,
-                                1, 1, 8, 8)
+            self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat, 1,
+                                   1, 1, 8, 8, 8)
+            self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub, repeat, 1,
+                                   1, 1, 8, 8, 8)
+        self.tik_instance.vsqrt(mask, tmp_ub, accum_ub, repeat, 1, 1, 8, 8)
 
         if self.epsilon != 0:
             self.tik_instance.vadds(mask, tmp_ub, tmp_ub, self.epsilon, repeat,
                                     1, 1, 8, 8)
 
-        self.tik_instance.vdiv(mask, tmp_ub, grad_ub, tmp_ub, repeat,
-                               1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr, repeat,
-                                1, 1, 8, 8)
-        self.tik_instance.vsub(mask, var_ub, var_ub, tmp_ub, repeat,
-                               1, 1, 1, 8, 8, 8)
-
+        self.tik_instance.vdiv(mask, tmp_ub, grad_ub, tmp_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
+        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr, repeat, 1, 1, 8,
+                                8)
+        self.tik_instance.vsub(mask, var_ub, var_ub, tmp_ub, repeat, 1, 1, 1,
+                               8, 8, 8)
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@util.check_input_type(dict, dict, dict, dict, dict, dict, (float, int),
-                       (float, int), bool, bool, str)
-def sparse_apply_adagrad_v2_d(var, accum, grad, indices, var_out, accum_out,
-                              lr, epsilon, use_locking=False,
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_OUTPUT,
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    (op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_INT),
+    op_utils.OPTION_ATTR_BOOL, op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+def sparse_apply_adagrad_v2_d(var,
+                              accum,
+                              grad,
+                              indices,
+                              var_out,
+                              accum_out,
+                              lr,
+                              epsilon,
+                              use_locking=False,
                               update_slots=True,
                               kernel_name="sparse_apply_adagrad_v2_d"):
     """
@@ -160,8 +166,8 @@ def sparse_apply_adagrad_v2_d(var, accum, grad, indices, var_out, accum_out,
     Returns:
     None
     """
-    apply_adagrad = SparseApplyAdagrad(var, accum, grad, indices,
-                                       lr, epsilon, update_slots, kernel_name)
+    apply_adagrad = SparseApplyAdagrad(var, accum, grad, indices, lr, epsilon,
+                                       update_slots, kernel_name)
     var_shape = var.get('shape')
 
     apply_adagrad.add_input("var_in_gm", "float32", var_shape)

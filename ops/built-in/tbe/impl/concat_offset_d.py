@@ -18,6 +18,7 @@ concat_offset_d
 from te import platform as tbe_platform
 from topi.cce import util
 from te import tik
+from te.utils.op_utils import *
 
 # 256B can store up to 64 numbers when the data is int32 type
 NUM64 = 64
@@ -29,7 +30,7 @@ VALUE_TWO = 2
 MAX_MASK8 = 255
 
 # pylint: disable=locally-disabled,unused-argument, invalid-name
-@util.check_input_type((list, tuple), (list, tuple), int, str)
+@check_op_params(DYNAMIC_INPUT, DYNAMIC_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
 def concat_offset_d(x, y, concat_dim, kernel_name="concat_offset_d"):
     """
     Compute the concat offset of the input tensor along `concat_dim`.
@@ -75,7 +76,6 @@ def concat_offset_d_check(x, concat_dim, input0_rank, dict_num, kernel_name):
     None
     """
 
-    util.check_kernel_name(kernel_name)
     if dict_num < 2:
         raise RuntimeError("The number of elements in the list "
                            "should be no less than two")
@@ -97,9 +97,8 @@ def concat_offset_d_check(x, concat_dim, input0_rank, dict_num, kernel_name):
             raise RuntimeError("Concat dim is not less than zero,"
                                "the concat_dim is %d, the input0_rank is %d"
                                % (concat_dim, input0_rank))
-        util.check_shape_rule(shape_input, max_dim=1)
-        util.check_tensor_shape_size(shape_input)
-        util.check_dtype_rule(x[i].get("dtype").lower(), ("int32",))
+        check_shape(shape_input, max_rank=1, param_name="x")
+        check_dtype(x[i].get("dtype").lower(), ("int32",), param_name="x")
 
 
 class ConcatOffsetDCompute(object):

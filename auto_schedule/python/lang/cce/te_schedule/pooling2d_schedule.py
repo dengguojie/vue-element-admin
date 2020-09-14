@@ -10,12 +10,12 @@ from te import tvm
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.platform import cce_emitinsn_params as cce_params
-from te.platform.cce_conf import CceProductParams
+from te.platform.cce_conf import CceProductParams as pver
 from te.lang.cce import ConvParam # pylint: disable=C0412
 from te.platform.cce_policy import get_L1_info
-from .max_pool2d_3_3_2_2_schedule import schedule as schedule_max_pool_3_3_2_2
-from .max_pool2d_3_3_1_1_schedule import schedule as schedule_max_pool_3_3_1_1
 from .max_pool2d_schedule import schedule as schedule_max_pool
+from .avg_pool2d_schedule import schedule as schedule_avg_pool
+from . import util
 
 # define the quantize tensor name
 CAST_F16_NAME = "cast_f16_ub"
@@ -35,7 +35,12 @@ L1FUSION_MAX_VALUE_OF_L1 = 999999999
 ASCEND_QUANT_TAG = "quant"
 POOLING2D_TAG_PREFIX = "pooling2d_"
 ASCEND_ANTI_QUANT_TAG = "anti_quant"
+STRIDED_WRITE_TAG = "strided_write"
 
+# define the type of L1 fusion
+DEFAULT_VALUE = -1
+L1_DEPTH_FUSION = 0
+L1_BREADTH_FUSION = 1
 
 def _get_l1fusion_device_core_num(is_l1fusion):
     """
@@ -96,19 +101,18 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
 
     if fusion_params:
         in_l1_flag = fusion_params.get("in_l1_flag", False)
-        out_l1_flag = fusion_params.get("out_l1_flag", False)
-        l1_fusion_type = fusion_params.get("l1_fusion_type", -1)
+        l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     else:
         in_l1_flag = False
-        out_l1_flag = False
-        l1_fusion_type = -1
-    is_l1fusion = l1_fusion_type in (0, 1)
+        l1_fusion_type = DEFAULT_VALUE
+    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
 
     # ddb pass control l1 space, will guarantee whole fmap could put l1,
-    # regrad l1 size as infinite
-    is_set_l1_size_infinite = is_l1fusion and (in_l1_flag or out_l1_flag)
-    if is_set_l1_size_infinite:
-        l1_size = L1FUSION_MAX_VALUE_OF_L1
+    # regard l1 size as infinite
+    if is_l1fusion:
+        l1_valid_size = fusion_params.get("L1_valid_size", DEFAULT_VALUE)
+        l1_size = l1_valid_size if l1_valid_size > 0  \
+            else L1FUSION_MAX_VALUE_OF_L1
 
     can_enable_double_buffer = False
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
@@ -822,10 +826,10 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     pooling_mode = pooling_params["pooling_mode"]
 
     if fusion_params:
-        l1_fusion_type = fusion_params.get("l1_fusion_type", -1)
+        l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     else:
-        l1_fusion_type = -1
-    is_l1fusion = l1_fusion_type in (0, 1)
+        l1_fusion_type = DEFAULT_VALUE
+    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
 
     # get available ub size
     ub_size = get_soc_spec("UB_SIZE")
@@ -842,12 +846,12 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
     vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
     vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
-    use_fp16 = get_soc_spec("SOC_VERSION") in ("Ascend310",) and \
-                            (impl_mode == "high_performance")
+    use_fp16 = pver().is_mini_version() and \
+               (impl_mode == "high_performance")
     fp32_ability = vconv_ability and \
                    vadd_ability and \
                    vmul_ability and \
-                   (bool(1 - use_fp16))
+                   (not use_fp16)
 
     # pylint: disable=too-many-nested-blocks
     def _try_tiling(ub_size):
@@ -1163,7 +1167,7 @@ def set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if get_soc_spec("SOC_VERSION") == "Ascend310":
+    if pver().is_mini_version():
         # mini
         emit_insn_str = "vector_conv"
     else:
@@ -1252,16 +1256,20 @@ def pooling2d_schedule(res, sch_list):
     """
     sch = sch_list[0]
     pooling_params = {}
+    is_split_hw = False
 
     def _preprocess_fusion():
         fused_select_write = res.op.name.find("write_select") >= 0
         pooling_params["fused_select_write"] = fused_select_write
+        # fused strided_write
+        fused_strided_write = res.op.tag == STRIDED_WRITE_TAG
+        pooling_params["fused_strided_write"] = fused_strided_write
 
         res_quant = None
         ascend_tensor = None
         ascend_attr = None
 
-        if fused_select_write:
+        if fused_select_write or fused_strided_write:
             before_res = res.op.input_tensors[0]
             fused_ascend_quant = before_res.op.tag == ASCEND_QUANT_TAG
             pooling_params["fused_ascend_quant"] = fused_ascend_quant
@@ -1275,6 +1283,7 @@ def pooling2d_schedule(res, sch_list):
             fused_anti_quant = anti_res is not None
             pooling_params["fused_anti_quant"] = fused_anti_quant
 
+        # L1/L2 fusion
         if fused_select_write and fused_ascend_quant:
             res_select_write = res
             res_quant = res_select_write.op.input_tensors[0]
@@ -1290,6 +1299,13 @@ def pooling2d_schedule(res, sch_list):
         elif fused_select_write:
             res_select_write = res
             pooling2d_res = res_select_write.op.input_tensors[0]
+        # fusion operation: max_pooling+quant(optional)+_strided_write
+        # return pooling2d_res to select template
+        elif fused_strided_write and fused_ascend_quant:
+            ascend_tensor = build_ascend_tensor(res)
+            pooling2d_res = ascend_tensor["input_ub"].op.input_tensors[0]
+        elif fused_strided_write:
+            pooling2d_res = res.op.input_tensors[0]
         elif fused_ascend_quant:
             ascend_tensor = build_ascend_tensor(res)
             pooling2d_res = ascend_tensor["input_ub"].op.input_tensors[0]
@@ -1313,12 +1329,10 @@ def pooling2d_schedule(res, sch_list):
         _preprocess_fusion()
 
     template = _get_from_attr(pooling2d_res.op.attrs, "template")
-    if template == "max_3_3_2_2":
-        return schedule_max_pool_3_3_2_2(res, sch_list)
-    elif template == "max_3_3_1_1":
-        return schedule_max_pool_3_3_1_1(res, sch_list)
-    elif template == "max_pool2d_generic":
+    if template == "max_pool2d_generic":
         return schedule_max_pool(res, sch_list)
+    elif template == "avg_pool2d_generic":
+        return schedule_avg_pool(res, sch_list)
 
     anti_tensor = _build_anti_tensor(anti_res)
 
@@ -1331,6 +1345,14 @@ def pooling2d_schedule(res, sch_list):
                     fusion_params[key] = value.value
                 else:
                     fusion_params[key] = value
+
+        # fused_op, l1 fusion info should get from fused_op output
+        is_fused_compute = fusion_params.get("is_fused_compute")
+        if is_fused_compute:
+            out_l1_flag = res.op.attrs["addr_type"].value == 1 \
+                if "addr_type" in res.op.attrs else False
+            fusion_params["out_l1_flag"] = out_l1_flag
+
         return fusion_params
 
     fusion_params = _get_l1_fusion_params(pooling2d_res)
@@ -1339,8 +1361,8 @@ def pooling2d_schedule(res, sch_list):
     in_select_read_flag = fusion_params.get("in_select_read_flag")
     cce_params.cceEmitParamsIns.insert_params(fusion_params)
 
-    l1_fusion_type = fusion_params.get("l1_fusion_type")
-    is_l1fusion = l1_fusion_type in (0, 1)
+    l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
+    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
     is_l2fusion = get_L1_info("L2_fusion_enabled")
 
     setfmatrix_map = pooling2d_res.op.attrs['setfmatrix_dict']
@@ -1366,15 +1388,21 @@ def pooling2d_schedule(res, sch_list):
     batch_size = pooling_params["batch_size"]
     c1_value = pooling_params["c1_value"]
 
+    def check_antiquant_gmp():
+        if fused_anti_quant and pooling_mode == "GMP":
+            raise RuntimeError("Pool antiquant cannot support GMP mode now!")
+
+    check_antiquant_gmp()
+
     def _set_fp32_ability():
         if pooling_mode == "GAP":
             impl_mode = pooling2d_res.op.attrs['impl_mode']
-            use_fp16 = get_soc_spec("SOC_VERSION") in ("Ascend310",) and \
-                                    (impl_mode == "high_performance")
+            use_fp16 = pver().is_mini_version() and \
+                       (impl_mode == "high_performance")
             fp32_ability = vconv_ability and \
                         vadd_ability and \
                         vmul_ability and \
-                        (bool(1 - use_fp16))
+                        (not use_fp16)
         else:
             fp32_ability = vconv_ability and \
                         vadd_ability and \
@@ -1421,18 +1449,11 @@ def pooling2d_schedule(res, sch_list):
 
         def _set_scope():
             if is_l1fusion:
-                ConvParam.l1_fusion_workspace_tensor_list = []
                 if in_l1_flag:
                     sch[fmap_l1].set_scope(cce.scope_cbuf_fusion)
                     sch[tensor_in].set_scope(cce.scope_cbuf_fusion)
-                    if l1_fusion_type == 1:
-                        # regard ddrin_l1out as l1_width_fusion_tensor_in +
-                        # l1in_l1out, fmap_l1 will emit phony insn
-                        ConvParam.l1_fusion_workspace_tensor_list.\
-                            append(tensor_in)
                 else:
                     sch[fmap_l1].set_scope(cce.scope_cbuf_fusion)
-                    ConvParam.l1_fusion_workspace_tensor_list.append(fmap_l1)
             else:
                 sch[fmap_l1].set_scope(cce.scope_cbuf)
             sch[fmap_img2col].set_scope(cce.scope_cbuf)
@@ -1464,6 +1485,66 @@ def pooling2d_schedule(res, sch_list):
                 sch[res].set_scope(cce.scope_cbuf_fusion)
 
         _set_scope()
+
+        def _check_l1_fusion_params(fusion_params):
+            input_l1_flag = fusion_params.get("L1_addr_flag", DEFAULT_VALUE)
+            l1_valid_size = fusion_params.get("L1_valid_size", DEFAULT_VALUE)
+            l1_addr_offset = fusion_params.get("L1_addr_offset", DEFAULT_VALUE)
+            in_l1 = fusion_params.get("in_l1_flag", DEFAULT_VALUE)
+            has_necessary_para = (input_l1_flag != DEFAULT_VALUE) and \
+                                 (l1_valid_size != DEFAULT_VALUE) and \
+                                 (l1_addr_offset != DEFAULT_VALUE)
+            invalid_ddr_in_l1_fusion = (l1_fusion_type == L1_DEPTH_FUSION) and \
+                                       (not in_l1) and (not has_necessary_para)
+            if invalid_ddr_in_l1_fusion:
+                raise RuntimeError("The fmap come in from ddr, "
+                                   "but lack of necessary pass parameters")
+
+            invalid_l1_para = ((input_l1_flag == 1) and (l1_valid_size <= 0))
+            if invalid_l1_para:
+                raise RuntimeError("L1 flag is one, but l1 valid size "
+                                   "less than or equal zero")
+
+            # invalid combination of parameter as follows:
+            # in_l1_flag  input_l1_flag  l1_fusion_type
+            #    0            0             0
+            #    0            0             1
+            #    1            0             1
+            invalid_comb_para = ((input_l1_flag == 0) and
+                                 ((not in_l1_flag) or
+                                  (in_l1_flag and
+                                   l1_fusion_type == L1_BREADTH_FUSION)))
+            if invalid_comb_para:
+                raise RuntimeError("Invalid combinations of parameter.")
+
+        def _put_tensor_into_l1_fusion_list():
+            if not is_l1fusion:
+                return
+
+            _check_l1_fusion_params(fusion_params)
+            input_l1_flag = fusion_params.get("L1_addr_flag", DEFAULT_VALUE)
+            l1_valid_size = fusion_params.get("L1_valid_size", DEFAULT_VALUE)
+            l1_tensor_to_be_map = fmap_l1
+            input_tensor = tensor_in
+
+            if l1_fusion_type == L1_BREADTH_FUSION and not in_select_read_flag:
+                input_tensor = tensor_in.op.input_tensors[0]
+                l1_tensor_to_be_map = tensor_in
+
+            if in_select_read_flag:
+                input_tensor = tensor_in.op.input_tensors[0]
+
+            if input_l1_flag == 1:
+                util.L1CommonParam.l1_fusion_tensors_map = {}
+                util.L1CommonParam.l1_fusion_tensors_map[input_tensor] = \
+                    l1_tensor_to_be_map
+                sch[l1_tensor_to_be_map].set_storage_bound(l1_valid_size)
+            elif input_l1_flag == 0:
+                util.L1CommonParam.l1_fusion_tensors_map = {}
+                util.L1CommonParam.l1_fusion_tensors_map[input_tensor] = \
+                    tvm.var("dummy")
+
+        _put_tensor_into_l1_fusion_list()
 
         def _enable_double_buffer():
             if can_enable_double_buffer:
@@ -1634,7 +1715,7 @@ def pooling2d_schedule(res, sch_list):
 
                 def _emit_insn_ddr_l1():
                     if is_l1fusion:
-                        if l1_fusion_type == 1:
+                        if l1_fusion_type == 1 and not in_select_read_flag:
                             sch[tensor_in].emit_insn(tensor_in.op.axis[0],
                                                      'dma_copy')
                             sch[fmap_l1].emit_insn(fmap_l1.op.axis[0],
@@ -1820,7 +1901,9 @@ def pooling2d_schedule(res, sch_list):
                     sch[fmap_l1].compute_at(sch[pooling2d_res],
                                             c1_or_res_outer)
                 if is_l1fusion:
-                    if l1_fusion_type == 1:
+                    only_l1_breadth_fusion = (l1_fusion_type == 1) and \
+                                             not in_select_read_flag
+                    if only_l1_breadth_fusion:
                         sch[tensor_in].emit_insn(tensor_in.op.axis[0],
                                                  'dma_copy')
                         sch[fmap_l1].emit_insn(fmap_l1.op.axis[0],
@@ -1904,11 +1987,14 @@ def pooling2d_schedule(res, sch_list):
 
             _process_emit_insn()
 
-        if is_cut_l1_to_ub:
-            schedule_cuth_cut_l1_to_ub()
-        else:
-            schedule_cuth()
+        def check_is_cut_l1(is_cut_l1_to_ub):
+            if is_cut_l1_to_ub:
+                schedule_cuth_cut_l1_to_ub()
+            else:
+                schedule_cuth()
 
+        check_is_cut_l1(is_cut_l1_to_ub)
+        is_split_hw = is_ddr_l1_cut_h_flag
     # global avg pooling or global max pooling
     elif pooling_mode in ["GAP", "GMP"]:
         impl_mode = pooling2d_res.op.attrs['impl_mode']
@@ -2033,7 +2119,8 @@ def pooling2d_schedule(res, sch_list):
         # Wi is devided to main part and rest part, so reduce_wi_outer should be
         # outside of reduce_hi_outer, the same like
         # reduce_hi_outer is outside of pooling_out_ub_ci_outer
-        if block_tag == "c1":
+        block_tag_flag = block_tag is not None and block_tag == "c1"
+        if block_tag_flag:
             sch[pooling_out_ub].reorder(pooling_out_ub_ci_outer,
                                         pooling_out_ub.op.axis[0],
                                         reduce_wi_outer,
@@ -2061,7 +2148,7 @@ def pooling2d_schedule(res, sch_list):
             sch[tensor_in_ub_f32].compute_at(
                 sch[pooling_out_ub], reduce_hi_outer)
 
-        if block_tag == "c1":
+        if block_tag is not None and block_tag == "c1":
             compute_at_axis = batch_outer
         else:
             compute_at_axis = ci_outer
@@ -2110,7 +2197,56 @@ def pooling2d_schedule(res, sch_list):
 
         sch[pooling2d_res].emit_insn(ci_inner, 'dma_copy')
 
+        is_split_hw = ("loop_cut_hi" in tiling_params and
+                       (tiling_params["loop_cut_hi"] > 1)) or \
+                      ("loop_cut_hw" in tiling_params and
+                       (tiling_params["loop_cut_hw"] > 1))
+    is_overload = check_overload_status(pooling_params, is_split_hw)
+    set_pragma_for_cache_read_mode(is_overload, sch[res], batch_inner)
     return True
+
+
+def check_overload_status(pooling_params, is_split_hw):
+    """
+    check whether overload
+
+    Parameters
+    ----------
+    pooling_params: inputs for tiling
+
+    is_split_hw: split h or/and w flag. True is split.
+
+    Returns
+    -------
+    true for overload, false for not overload
+    """
+    window_h = pooling_params["window_h"]
+    window_w = pooling_params["window_w"]
+    stride_h = pooling_params["stride_h"]
+    stride_w = pooling_params["stride_w"]
+
+    if (stride_h < window_h or stride_w < window_w) and is_split_hw:
+        return True
+    return False
+
+
+def set_pragma_for_cache_read_mode(is_overload, stage, first_axis):
+    """
+    set pragma on the first axis for cache read mode
+
+    Parameters
+    ----------
+    is_overload: True means overload
+
+    stage: a Stage represents schedule for one operation
+
+    first_axis: axis to set flag
+
+    Returns
+    -------
+    """
+    cache_read_mode = 0 if is_overload else 1
+    stage.pragma(first_axis, "json_info_cache_read_mode", cache_read_mode)
 
 
 def pooling_global_quant_schedule(
@@ -2121,10 +2257,10 @@ def pooling_global_quant_schedule(
     do schedule for global quant pooling
     """
     # pylint: too-many-arguments
-    l1_fusion_type = fusion_params.get("l1_fusion_type", -1)
+    l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     in_l1_flag = fusion_params.get("in_l1_flag", False)
     out_l1_flag = fusion_params.get("out_l1_flag", False)
-    is_l1fusion = l1_fusion_type in (0, 1)
+    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
 
     sch = sch_list[0]
 
@@ -2348,5 +2484,12 @@ def pooling_global_quant_schedule(
         "round_mode": res.op.attrs['round_mode'],
     }
     set_quant_emit_insn(sch, quant_tensor_map, c1_value, attr_dic)
+
+    is_split_hw = ("loop_cut_hi" in tiling_params and
+                   (tiling_params["loop_cut_hi"] > 1)) or \
+                  ("loop_cut_hw" in tiling_params and
+                   (tiling_params["loop_cut_hw"] > 1))
+    is_overload = check_overload_status(pooling_params, is_split_hw)
+    set_pragma_for_cache_read_mode(is_overload, sch[res], batch_inner)
 
     return True

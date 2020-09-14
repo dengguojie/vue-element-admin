@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define selu oprator's required constants
 ALPHA = 1.67326324235
@@ -91,7 +92,7 @@ def selu_compute(input_x, y, kernel_name="selu"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def selu(x, y, kernel_name="selu"):
     """
     Generate selu_cce operator use selu_compute
@@ -117,12 +118,10 @@ def selu(x, y, kernel_name="selu"):
     shape = x.get("shape")
     # check_kernel_name & shape
     input_dtype = dtype.lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
+    check_shape(shape, param_name="x")
     # check input tensor data_type
     check_list = ("float16", "float32", "int8", "int32")
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="x")
 
     reshape_input = (functools_reduce(lambda x, y: x * y, shape[:]),)
     input_data = tvm.placeholder(reshape_input, name="input_data",

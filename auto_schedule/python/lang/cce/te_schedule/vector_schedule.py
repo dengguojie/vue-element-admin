@@ -20,9 +20,11 @@ import math
 import copy
 from te import platform as cceconf
 from te import tvm
+from te.platform import log
 from te.platform import cce_emitinsn_params
 from .cce_schedule_declarations import OpSpecTypes
 from .util import get_align_factor
+from .util import dfs_tensor_graph
 
 # the bit of dtype/16 map
 DTYPE_WIDTH_MAP = {"float16": 1,
@@ -40,6 +42,11 @@ BLOCK_DIM_MULTIPLE = 4  # Bytes
 ENABLE_MULTI_CORE_THRESHOLD = 1024  # Bytes
 # For non-divisible multi-core splitting, select factor lower bound threshold
 BLOCK_DIM_LOWER_BOUND_THRESHOLD = 0.85
+
+# l1 fusion
+GET_DEFAULT_VALUE = -1
+L1_DEPTH_FUSION = 0
+L1_BREADTH_FUSION = 1
 
 
 # pylint: disable=no-self-use, too-many-instance-attributes, too-few-public-methods, redefined-builtin, useless-object-inheritance
@@ -70,6 +77,11 @@ class VectorSchedule(object):
         self._input_tensors = []
         self._out_tensors = []
         self._buffer_tile_out = []
+        self._temp_out_tensors = {}
+
+        # L1 fusion params
+        self._fusion_params = {}
+        self._is_l1fusion = False
 
         # for super kernel, when only bind the batch axis, the axis is True
         self._batch_bind_only = False
@@ -81,6 +93,8 @@ class VectorSchedule(object):
         # cache read result map, e.g. buffer = schedule.cache_read(read_tensor,
         # scope, readers), {reader_tensor: buffer}
         self._cache_read_tensors_and_buffer_map = {}
+        # L1 fusion cache read result map
+        self._l1_fusion_cache_read_tensors_and_readers_map = {}
 
         # cache write para list, e.g. schedule.cache_write(write_tensor, scope),
         # Example: write_tensor,...
@@ -147,7 +161,7 @@ class VectorSchedule(object):
         self._mem_unique_enable = False
 
         self._scope = "local.UB"
-
+        self._l1_fusion_scope = "local.L1_Fusion"
         self._op_type = None
         self._op_subpattern = None
 
@@ -177,6 +191,7 @@ class VectorSchedule(object):
         Bool, now is true
 
         """
+        log.debug("start vector_schedule")
 
         self._spec_node_list = spec_node_list
         self._out_tensors = copy.copy(out_tensors)
@@ -187,6 +202,8 @@ class VectorSchedule(object):
         is_success = self._construct_compute_graph(out_tensors, spec_node_list)
         if not is_success:
             return False
+
+        self._get_l1fuison_flag()
 
         self._calculate_cache_read()
         self._do_cache_read()
@@ -221,7 +238,21 @@ class VectorSchedule(object):
         for i in self._out_tensors:
             out_tensors.append(i)
 
+        log.debug("end vector_schedule")
         return self._schedule_valid
+
+    def _get_l1fuison_flag(self):
+        """
+        l1 fusion flag
+        L1 fusion only support depth fusion
+        """
+
+        l1_fusion_type = self._fusion_params.get("l1_fusion_type",
+                                                 GET_DEFAULT_VALUE)
+        if l1_fusion_type == L1_BREADTH_FUSION:
+            raise RuntimeError("L1 fusion only support depth fusion!")
+
+        self._is_l1fusion = l1_fusion_type == L1_DEPTH_FUSION
 
     def _do_cache_read(self):
         """
@@ -256,6 +287,14 @@ class VectorSchedule(object):
             if self._mem_unique_enable:
                 self._schedule[read_buffer].mem_unique()
 
+        # L1 fusion: tensor_in set scope "L1 fusion"
+        if self._is_l1fusion:
+            for i in self._l1_fusion_cache_read_tensors_and_readers_map:
+                in_l1_flag = i.op.attrs["addr_type"].value == 1 \
+                    if "addr_type" in i.op.attrs else False
+                if in_l1_flag:
+                    self._schedule[i].set_scope(self._l1_fusion_scope)
+
     def _do_cache_write(self):
         """
         cache write operations
@@ -271,6 +310,32 @@ class VectorSchedule(object):
         for i in self._cache_write_tensors:
             write_buffer = self._schedule.cache_write(i, self._scope)
             self._cache_write_tensors_and_buffer_map[i] = write_buffer
+
+        # L1 fusion: out tensors set scope "L1fusion"
+        out_l1_flag = self._fusion_params.get("out_l1_flag", False)
+        if self._is_l1fusion and out_l1_flag:
+            for i in self._out_tensors:
+                out_select_write_flag = i.op.name.find("write_select") >= 0
+                # write_select scope: ub->gm
+                if not out_select_write_flag:
+                    self._schedule[i].set_scope(self._l1_fusion_scope)
+
+        if self._out_tensors:
+            visited, input_tensors, mid_tensors, tensor_map = dfs_tensor_graph(
+                self._out_tensors[0])
+            for tensor in self._out_tensors[1:]:
+                dfs_tensor_graph(tensor, True, visited, input_tensors,
+                                 mid_tensors, tensor_map)
+            kernel_name = input_tensors[0].name.split("__")[-1]
+            reuse_dict = cce_emitinsn_params.cceEmitParamsIns.get_param(
+                "InputReuseDict_" +
+                kernel_name)
+            if reuse_dict is not None:
+                for i, j in reuse_dict.items():
+                    out_tensor = j
+                    if j in self._temp_out_tensors:
+                        out_tensor = self._temp_out_tensors[j]
+                    self._schedule[i].reused_by(out_tensor)
 
     def calculate_need_cancel_ub_tiling(self):
         """
@@ -422,6 +487,18 @@ class VectorSchedule(object):
         self._recursive_double_buffer(temp_write_buffer)
 
     def _do_emit_insn(self):
+        # do bind_buffer if need to select write
+        # only support 5hd to select write
+        for out_tensor in self._out_tensors:
+            fused_select_write = out_tensor.op.name.find("write_select") >= 0
+            if fused_select_write:
+                if len(out_tensor.shape) == 5:
+                    hwc0 = out_tensor.op.attrs["HWC0"].value
+                    self._schedule[out_tensor].bind_buffer(
+                        out_tensor.op.axis[1], hwc0, 0)
+                else:
+                    raise RuntimeError("select write only support 5HD!")
+
         for stage in self._emit_insn_map:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]
@@ -785,11 +862,13 @@ class VectorSchedule(object):
     def _get_emit_insn_map(self):
         self._insn_map = {"elewise_single_cast": "vector_conv",
                           "elewise_single_round_d": "vector_conv_round",
+                          "elewise_single_trunc": "vector_conv_trunc",
                           "elewise_single_VS_max": "vector_maxs",
                           "elewise_single_VS_min": "vector_mins",
                           "elewise_single_log": "vector_ln",
                           "elewise_single_exp": "vector_exp",
                           "elewise_single_relu": "vector_relu",
+                          "elewise_single_lrelu": "vector_lrelu",
                           "elewise_single_abs": "vector_abs",
                           "elewise_single_not": "vector_not",
                           "elewise_single_sqrt": "vector_sqrt",
@@ -807,11 +886,20 @@ class VectorSchedule(object):
                           "elewise_binary_vcmpv_le": "vector_le",
                           "elewise_binary_vcmpv_eq": "vector_eq",
                           "elewise_binary_vcmpv_ne": "vector_ne",
+                          "elewise_binary_cmpsel_gt": "vector_select_gt",
+                          "elewise_binary_cmpsel_ge": "vector_select_ge",
+                          "elewise_binary_cmpsel_lt": "vector_select_lt",
+                          "elewise_binary_cmpsel_le": "vector_select_le",
+                          "elewise_binary_cmpsel_eq": "vector_select_eq",
+                          "elewise_binary_cmpsel_ne": "vector_select_ne",
                           "elewise_binary_or": "vector_or",
                           "elewise_binary_and": "vector_and",
+                          "elewise_binary_addrelu": "vector_addrelu",
+                          "elewise_binary_subrelu": "vector_subrelu",
                           "elewise_multiple_mla": "vector_multiple",
                           "elewise_multiple_madd": "vector_multiple",
                           "elewise_multiple_maddrelu": "vector_multiple",
+                          "elewise_multiple_sel": "vector_select_bool",
                           "elewise_binary_sub": "vector_sub",
                           "elewise_binary_phony": "elewise_binary_phony"}
 
@@ -827,13 +915,12 @@ class VectorSchedule(object):
             "elewise_single_VS_cond": "elewise_single_VS_cond",
             "elewise_binary_logic": "elewise_binary_logic",
             "broadcast": "broadcast",
-            "elewise_single_round": "elewise_single_round",
+            "elewise_single_round": "vector_conv_rint",
             "elewise_single_rec": "vector_rec",
             "elewise_binary_sub": "elewise_binary_sub",
             "elewise_single_cast": "elewise_single_cast",
-            "elewise_single_floor": "elewise_single_floor",
+            "elewise_single_floor": "vector_conv_floor",
             "elewise_single_ceil": "elewise_single_ceil",
-            "elewise_single_trunc": "elewise_single_trunc",
             "elewise_binary_compare_lt":
                 "elewise_binary_compare_lt",
             "elewise_binary_compare_gt":
@@ -849,5 +936,7 @@ class VectorSchedule(object):
             "elewise_single_VS_add_with_reg":
                 "elewise_single_VS_add_with_reg",
             "elewise_single_diagonal":
-                "elewise_single_diagonal"}
+                "elewise_single_diagonal",
+            "read_select": "dma_copy",
+            "write_select": "dma_copy"}
 

@@ -16,12 +16,12 @@ http://www.apache.org/licenses/LICENSE-2.0
 xlogy_grad
 """
 import te.lang.cce
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
+from te.utils import op_utils
 from topi import generic
 from topi.cce import util
-SHAPE_SIZE_LIMIT = 2**30
 
 
 # pylint: disable=too-many-arguments,unused-argument,
@@ -77,7 +77,8 @@ def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     x2_ori = placeholders[1]
     grad_ori = placeholders[2]
 
-    fp32_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32")
+    fp32_support = tbe_platform.cce_conf.api_check_support(
+        "te.lang.cce.vdiv", "float32")
     if dtype == "float32" and not fp32_support:
         raise RuntimeError("Don't support float32 in the platform.")
 
@@ -115,7 +116,9 @@ def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     return output_y1, output_y2
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.KERNEL_NAME)
 def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
     """
     calculating data
@@ -148,16 +151,13 @@ def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
     if dtype_x1 != dtype_x2 or dtype_x2 != dtype_grad or dtype_grad != dtype_x1:
         raise RuntimeError("the type of x1, x2 and grad must be same")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x1)
-    util.check_shape_rule(shape_x2)
-    util.check_shape_rule(shape_grad)
-    util.check_shape_size(shape_x1, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_x2, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_grad, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(shape_x1, param_name="x1")
+    op_utils.check_shape(shape_x2, param_name="x2")
+    op_utils.check_shape(shape_grad, param_name="grad")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype_x1, check_list)
-    shape_x1, shape_x2, shape_max_x1x2 = util.produce_shapes(shape_x1, shape_x2)
+    op_utils.check_dtype(dtype_x1, check_list, param_name="x1")
+    shape_x1, shape_x2, shape_max_x1x2 = util.produce_shapes(
+        shape_x1, shape_x2)
     if len(shape_max_x1x2) < len(shape_grad):
         raise RuntimeError(
             "the length of shape_grad can not be longer than the"
@@ -169,7 +169,7 @@ def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
         if x < y:
             raise RuntimeError("input shapes are not supported")
 
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(shape_max)
     rx, ry = broadcast_gradient_args(shape_x1, shape_x2)
 
     x1 = tvm.placeholder(shape_x1, name="x", dtype=dtype_x1)
@@ -182,7 +182,9 @@ def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
     with tvm.target.cce():
         sch = generic.auto_schedule([output_y1, output_y2])
 
-    config = {"name": kernel_name,
-              "tensor_list": [x1, x2, grad, output_y1, output_y2]}
+    config = {
+        "name": kernel_name,
+        "tensor_list": [x1, x2, grad, output_y1, output_y2]
+    }
 
     te.lang.cce.cce_build_code(sch, config)

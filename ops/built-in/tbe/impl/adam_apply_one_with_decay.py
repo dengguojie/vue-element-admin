@@ -346,7 +346,7 @@ def adam_apply_one_with_decay_compute(input0, input1, input2, input3, input4,
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
                  REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
                  REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT,REQUIRED_OUTPUT, KERNEL_NAME)
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def adam_apply_one_with_decay(input0,
                               input1,
                               input2,

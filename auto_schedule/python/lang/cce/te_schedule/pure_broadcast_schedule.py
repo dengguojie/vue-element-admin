@@ -19,11 +19,13 @@ import math
 import te
 
 from te import tvm
+from te.platform import log
 
 from te.tvm.tensor import Tensor
 from te.tvm.schedule import Schedule
 from te.platform.cce_util import get_align_factor, get_buffer, apply_for_new_alloc
 from te.platform.cce_params import scope_ubuf
+from te.platform.cce_conf import CceProductParams as pver
 from .pure_broadcast_intrin import last_axis_broadcast, mid_axis_broadcast
 from .pure_broadcast_intrin import full_aligned_broadcast_selection
 from .pure_broadcast_intrin import VECTOR_ENHANCED_MODE
@@ -36,7 +38,6 @@ MULTI_BROADCAST_ENHANCEMENT_FOR_FACTOR = 32
 class PureBroadcastSchedule:  # pylint: disable=R0902
     """Pure Broadcast Schedule"""
     def __init__(self):
-        self.debug = False
         # Tensor information containers
         self.schedule = None
         self.all_tensors = []
@@ -141,6 +142,11 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                 mid_broadcast_size *= self.broadcast_target_shape[idx]
         if mid_broadcast_size < MULTI_BROADCAST_ENHANCEMENT_FOR_FACTOR:
             self.apply_multi_broadcast_optimization()
+            self.print_debug("Now applying", "Multi broadcast optimization")
+            self.print_debug("UB Tiling axis", self.ub_tiling_axis)
+            self.print_debug("UB Tiling factor", self.ub_tiling_factor)
+            self.print_debug("Block Tiling axis", self.block_tiling_axis)
+            self.print_debug("Block Tiling factor", self.block_tiling_nparts)
         self.data_flow_control()
         self.do_tiling()
         self.do_compute_at()
@@ -187,8 +193,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
 
     def print_debug(self, info_name, info):
         """Debug info print"""
-        if self.debug:
-            print("[PureBroadcastSchedule]", str(info_name) + ":", str(info))
+        log.debug("[PureBroadcastSchedule] {} : {}".format(
+            str(info_name), str(info)))
 
     def calculate_tiling_on_broadcast(self):
         """Get tiling strategy based on the only broadcast tensor"""
@@ -356,8 +362,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                     block_split_nparts = i
                     block_split_axis = axis
                     break
-                hdw_tsch = ["Ascend910", "Ascend610", "Ascend620"]
-                if te.platform.cce_conf.get_soc_spec("SOC_VERSION") not in hdw_tsch:
+                hdw_tsch = pver().is_cloud_version() or pver().is_1951_version()
+                if not hdw_tsch:
                     if core_num >= self.device_core_num:
                         break
         needed = self.device_core_num // core_num
@@ -412,13 +418,11 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                 _ = self.get_current_calculation_unit_size()
             available_free_axis, ideal_factor = self.rule_2_get_tiling_info(
                 current_calcunit_byte_size)
-            if available_free_axis <= self.device_core_num:
+            if available_free_axis <= self.device_core_num * 2:
                 self.print_debug("UB Tiling info:", "Block tiling exhausted")
                 return
-            if available_free_axis < self.device_core_num * 2:
-                available_free_axis //= 2
-            else:
-                available_free_axis = int(available_free_axis) // self.device_core_num // 2
+            available_free_axis = available_free_axis / self.device_core_num
+            available_free_axis = round(available_free_axis)
             if ideal_factor > 1:
                 rule_3_finished = self.apply_rule_3(available_free_axis, ideal_factor)
                 if not rule_3_finished:
@@ -459,6 +463,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                 self.ub_tiling_factor = self.broadcast_target_shape[self.ub_tiling_axis]
                 return self.apply_multi_broadcast_optimization(do_reconstruct=True)
         if do_reconstruct:
+            self.no_broadcast = False
             self._do_reconstruct()
 
     def _do_reconstruct(self):
@@ -668,6 +673,13 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
 def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-statements
     """Universal broadcast operation"""
 
+    # Get workspace scope if there is one, use local.UB as default value
+    # This procedure is crucial if there exists workspace, failed to apply this procedure
+    # may result in memory allocation failure
+    if isinstance(stmt_op, tvm.stmt.AttrStmt):
+        scope = str(stmt_op.value).replace("\"", "")
+    else:
+        scope = scope_ubuf
     # Get original shape and target shape
     original_shape = []
     original_layout = []
@@ -753,14 +765,14 @@ def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-sta
     _, dtype_byte_size = get_align_factor(input_buffer.dtype)
     # Do Broadcast
     loop_broadcast(align_factor, broadcast_schedule, dtype_byte_size, input_buffer, ir_builder,
-                   list_product, output_buffer, target_shape)
+                   list_product, output_buffer, target_shape, scope)
     return ir_builder.get()
 
 
 def loop_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
     """Extracted from unified_broadcast for static check"""
     align_factor, broadcast_schedule, dtype_byte_size, input_buffer, ir_builder, \
-        list_product, output_buffer, target_shape = args
+        list_product, output_buffer, target_shape, scope = args
     last_buffer = input_buffer
     for index, broadcast in enumerate(broadcast_schedule[:-1]):
         original_output_buffer = None
@@ -774,21 +786,22 @@ def loop_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statemen
                                                         (tmp[0]
                                                          * tmp[1]
                                                          * tmp[2],),
-                                                        scope_ubuf)
-        last_buffer = do_broadcast(ir_builder, index, last_buffer, output_buffer, *broadcast)
+                                                        scope)
+        last_buffer = do_broadcast(ir_builder, index, last_buffer, output_buffer, *broadcast, scope)
         if original_output_buffer is not None:
             output_buffer = original_output_buffer
     if broadcast_schedule:
-        do_broadcast(ir_builder, -1, last_buffer, output_buffer, *broadcast_schedule[-1])
+        do_broadcast(ir_builder, -1, last_buffer, output_buffer, *broadcast_schedule[-1], scope)
     else:
         do_broadcast(ir_builder, -1, last_buffer, output_buffer, *(1,
                                                                    list_product(target_shape),
-                                                                   1))
+                                                                   1),
+                     scope)
 
 
 def do_broadcast(ir_builder,  # pylint: disable=too-many-locals, too-many-arguments
                  index, input_buffer, output_buffer,
-                 broadcast_src, broadcast_unit, broadcast_factor):
+                 broadcast_src, broadcast_unit, broadcast_factor, scope):
     """Pick broadcast algorithm"""
     # Determine broadcast algorithm
     # There are currently two kinds of broadcast
@@ -796,9 +809,9 @@ def do_broadcast(ir_builder,  # pylint: disable=too-many-locals, too-many-argume
     # Broadcasting x, 1, z to x, y, z which is "Mid axis Broadcast"
     if broadcast_unit == 1:
         output_buffer = last_axis_broadcast(ir_builder, index, input_buffer, output_buffer,
-                                            broadcast_src, broadcast_factor)
+                                            broadcast_src, broadcast_factor, scope)
     else:
         # It is possible for mid_axis_broadcast to switch output_buffer
         output_buffer = mid_axis_broadcast(ir_builder, index, input_buffer, output_buffer,
-                                           broadcast_src, broadcast_unit, broadcast_factor)
+                                           broadcast_src, broadcast_unit, broadcast_factor, scope)
     return output_buffer

@@ -44,9 +44,10 @@ def positive_compute(base, power, version, input_dtype):
 
     base_cast = base
 
-    if version in ("Ascend910", "Ascend610", "Ascend620"):
-        if input_dtype == "float16":
-            base_cast = te.lang.cce.cast_to(base, "float32")
+    if input_dtype == "float16" and \
+       tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
+       tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+        base_cast = te.lang.cce.cast_to(base, "float32")
 
     log_val = te.lang.cce.vlog(base_cast)
     mul_val = te.lang.cce.vmuls(log_val, power)
@@ -78,9 +79,10 @@ def negtive_compute(base, power, nan_values, version, input_dtype):
     if float(power).is_integer():
         base_cast = base
 
-        if version in ("Ascend910", "Ascend610", "Ascend620"):
-            if input_dtype == "float16":
-                base_cast = te.lang.cce.cast_to(base, "float32")
+        if input_dtype == "float16" and \
+           tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
+           tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+            base_cast = te.lang.cce.cast_to(base, "float32")
 
         sign_value = math.pow(-1, power)
         abs_base_value = te.lang.cce.vabs(base_cast)
@@ -183,9 +185,10 @@ def zero_diff_scale_compute(input_x, shift, power):
 
     return res
 
-
+# pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("power")
-def power_compute(input_x, power, scale, shift):
+def power_compute(input_x, output_y, power=1.0, scale=1.0,
+          shift=0.0, kernel_name="power"):
     """
     calculate power according to different cases
 
@@ -285,12 +288,20 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
-            raise RuntimeError(
-                "Input dtype only support float16 while input dtype is float32")
+            error_info = {}
+            error_info['errCode'] = 'E80008'
+            error_info['param_name'] = 'input_x'
+            error_info['op_name'] = 'power'
+            error_info['expect_value'] = "float16"
+            error_info['real_value'] = input_dtype
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype " 
+                                           "should be [%s], but actually is [%s]."
+                               % (error_info['op_name'], error_info['param_name'],
+                                  error_info['expect_value'], error_info['real_value']))
 
-        res = power_compute(data_input, power, scale, shift)
+        res = power_compute(data_input, output_y, power, scale, shift, kernel_name)
     else:
-        res = power_compute(data_input, power, scale, shift)
+        res = power_compute(data_input, output_y, power, scale, shift, kernel_name)
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

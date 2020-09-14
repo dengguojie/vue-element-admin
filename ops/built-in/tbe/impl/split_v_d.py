@@ -22,7 +22,7 @@ import te.lang.cce
 from te import tvm
 from te.platform.cce_build import build_config
 from topi.cce import util
-from impl.copy_only import copy_only
+from te.utils.op_utils import *
 from impl.split_last_dim import split_last_dim
 from impl.split_last_dim import check_use_last_dim_branch
 from impl.split_last_dim import SplitWith5HD
@@ -30,11 +30,10 @@ from impl.split_d import SplitMov
 from impl.split_d import SplitLastDimVnv
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.copy_only import copy_only
 
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256
-from impl.copy_only import copy_only
-from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
@@ -141,7 +140,8 @@ def op_select_format(input_value,
             break
 
     is_support_nz = False
-    if input_ori_format[0] == "N" and split_dim == 0:
+    if input_ori_format[0] == "N" and split_dim == 0 and \
+            len(input_ori_shape) > 2:
         is_support_nz = True
 
     split_with_5hd_not_align = \

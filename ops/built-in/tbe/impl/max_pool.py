@@ -25,7 +25,38 @@ from topi.cce import util
 from te.utils.op_utils import *
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
+def get_fusion_params(input_data, output_data, is_fused_compute=True):
+    """
+    :param input_data: tensor of input_data
+    :param output_data: dict of output_data
+    :return: dict fusion_params
+    """
+    # l1 fusion params assign
+    # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
+    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
+        if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
+        if "addr_type" in input_data.op.attrs else False
+    in_valid_shape = input_data.op.attrs["valid_shape"] \
+        if "valid_shape" in input_data.op.attrs else []
+    in_slice_offset = input_data.op.attrs["slice_offset"] \
+        if "slice_offset" in input_data.op.attrs else []
+    in_select_read_flag = bool(in_valid_shape)
+    in_split_index = input_data.op.attrs["split_index"].value \
+        if "split_index" in input_data.op.attrs else 0
+    out_l1_flag = output_data.get("addr_type") == 1
+    fusion_params = {"is_fused_compute": is_fused_compute,
+                     "l1_fusion_type": l1_fusion_type,
+                     "in_l1_flag": in_l1_flag,
+                     "out_l1_flag": out_l1_flag,
+                     "in_select_read_flag": in_select_read_flag,
+                     "in_split_index": in_split_index,
+                     "in_slice_offset": in_slice_offset}
+
+    return fusion_params
+
+
+# pylint: disable=unnecessary-lambda
 @fusion_manager.register("max_pool")
 def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                           data_format="NC1HWC0", kernel_name="max_pool_fuse"):
@@ -78,10 +109,50 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                                            (stride_h, stride_w), padding,
                                            data_mode=1)
     else:
-        # call pooling2d for max(pooling)&gmp
-        res = te.lang.cce.pooling2d(input_data, (window_h, window_w), (stride_h, stride_w),
-                                    "MAX", padding, pad=(0, 0, 0, 0))
+        # l1 fusion and l2 fusion
+        l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
+            if "L1_fusion_type" in input_data.op.attrs else -1
 
+        # l1 fusion params assign
+        fusion_params = get_fusion_params(input_data, output_data, True)
+        in_select_read_flag = fusion_params.get("in_select_read_flag")
+        in_valid_shape = fusion_params.get("in_valid_shape")
+        in_slice_offset = fusion_params.get("in_slice_offset")
+
+        if in_select_read_flag:
+            select_tensor_in = \
+                tvm.compute(in_valid_shape,
+                            lambda n, c1, h, w, c0:
+                            input_data(n, c1, h + in_slice_offset[2],
+                                       w, c0),
+                            name="tensor_read_select",
+                            attrs=input_data.op.attrs)
+            res = te.lang.cce.pooling2d(select_tensor_in,
+                                        (window_h, window_w),
+                                        (stride_h, stride_w),
+                                        "MAX", padding, pad=(0, 0, 0, 0),
+                                        fusion_params=fusion_params)
+        elif l1_fusion_type == 1:
+            input_data.op.attrs["addr_type"].value = 1
+            in_l1_flag = True
+            fusion_params["in_l1_flag"] = in_l1_flag
+
+            l1_width_fusion_in = \
+                tvm.compute(input_data.shape,
+                            lambda n, c1, h, w, c0:
+                            input_data(n, c1, h, w, c0),
+                            name="l1_width_fusion_tensor_in",
+                            attrs=input_data.op.attrs)
+            res = te.lang.cce.pooling2d(l1_width_fusion_in,
+                                        (window_h, window_w),
+                                        (stride_h, stride_w),
+                                        "MAX", padding, pad=(0, 0, 0, 0),
+                                        fusion_params=fusion_params)
+        else:
+            res = te.lang.cce.pooling2d(input_data, (window_h, window_w),
+                                        (stride_h, stride_w),
+                                        "MAX", padding, pad=(0, 0, 0, 0),
+                                        fusion_params=fusion_params)
     return res
 
 
@@ -123,35 +194,13 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding,
         window_h, window_w = ksize[2], ksize[3]
         stride_h, stride_w = strides[2], strides[3]
 
-    # l1 fusion params assign
-    # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
+    # l1 fusion and l2 fusion
     l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
         if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in input_data.op.attrs else False
-    in_valid_shape = input_data.op.attrs["valid_shape"] \
-        if "valid_shape" in input_data.op.attrs else []
-    in_slice_offset = input_data.op.attrs["slice_offset"] \
-        if "slice_offset" in input_data.op.attrs else []
-    in_select_read_flag = bool(in_valid_shape)
-    in_split_index = input_data.op.attrs["split_index"].value \
-        if "split_index" in input_data.op.attrs else 0
-    out_l1_flag = output_data.get("addr_type") == 1
-    out_valid_shape = output_data.get("valid_shape", [])
-    out_select_write_flag = bool(out_valid_shape)
-    out_shape = output_data.get("shape")
-    out_total_shape = output_data.get("valid_shape") \
-        if out_select_write_flag else output_data.get("shape")
-    out_slice_offset = output_data.get("slice_offset", [0, 0, 0, 0, 0])
-    fusion_params = {"l1_fusion_type": l1_fusion_type,
-                     "in_l1_flag": in_l1_flag,
-                     "out_l1_flag": out_l1_flag,
-                     "in_select_read_flag": in_select_read_flag,
-                     "in_split_index": in_split_index,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_total_shape": out_total_shape,
-                     "out_shape": out_shape,
-                     "out_slice_offset": out_slice_offset}
+    fusion_params = get_fusion_params(input_data, output_data, False)
+    in_select_read_flag = fusion_params.get("in_select_read_flag")
+    in_valid_shape = fusion_params.get("in_valid_shape")
+    in_slice_offset = fusion_params.get("in_slice_offset")
 
     if in_select_read_flag:
         select_tensor_in = tvm.compute(in_valid_shape,

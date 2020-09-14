@@ -84,6 +84,10 @@ def maximum(x1, x2, y, kernel_name="maximum"):
     shape1 = util.scalar2tensor_one(x1.get("shape"))
     shape2 = util.scalar2tensor_one(x2.get("shape"))
 
+    if shape1 == shape2:
+        shape1, _ = refine_shape_axes(shape1, [])
+        shape2, _ = refine_shape_axes(shape2, [])
+
     check_shape(shape1, param_name="x1")
     check_shape(shape2, param_name="x2")
 

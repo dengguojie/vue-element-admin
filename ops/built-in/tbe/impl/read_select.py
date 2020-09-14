@@ -42,7 +42,7 @@ def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
 @fusion_manager.register("read_select")
 def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
-                        kernel_name="read_select"):
+                        output_tensor_dim=4, kernel_name="read_select"):
     """
     calculating data
 
@@ -54,6 +54,8 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
         dict of output_x, include keys(shape and dtype)
     stride_list : list
         list of stride for 5HD shape
+    output_tensor_dim: int
+        output tensor 4d or 5d
     kernel_name : str
         kernel name, default value is "read_select"
 
@@ -80,26 +82,32 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
 
     n_valid, c1_valid, h_valid, w_valid, c0_valid = valid_shape
 
+    input_tensor.op.attrs["dma_copy"] = True
     output_shape = valid_shape
     output_ub_5d = \
         tvm.compute(output_shape,
                     lambda n, c1, h, w, c0:
                     input_tensor(n, c1, slice_offset[2] + h*stride_list[2],
                                  w*stride_list[3], c0),
-                    name="output_ub_5d", attrs={"dma_copy":True})
+                    name="output_ub_5d", attrs=input_tensor.op.attrs)
+
+    if output_tensor_dim == 5:
+        return output_ub_5d
 
     output_shape_4d = (n_valid, c1_valid, h_valid*w_valid, c0_valid)
     output_ub_4d = \
         tvm.compute(output_shape_4d,
-                    lambda n, c1, hw, c0: output_ub_5d(n, c1, hw // w_valid, hw % w_valid, c0),
+                    lambda n, c1, hw, c0: output_ub_5d(n, c1,
+                    hw // w_valid, hw % w_valid, c0),
                     name="output_ub_4d")
 
     return output_ub_4d
 
 
 # pylint: disable=locally-disabled,unexpected-keyword-arg,unnecessary-lambda
-@util.check_input_type(dict, dict, (tuple, list), str)
-def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1], kernel_name="read_select"):
+@util.check_input_type(dict, dict, (tuple, list), int, str)
+def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
+                output_tensor_dim=4, kernel_name="read_select"):
     """
     Read data with offset and stride
 
@@ -111,6 +119,8 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1], kernel_name="rea
         dict of output_x, include keys(shape and dtype)
     stride_list : list
         list of stride for 5HD shape
+    output_tensor_dim: int
+        output tensor 4d or 5d
     kernel_name : str
         kernel name, default value is "read_select"
 
@@ -148,10 +158,13 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1], kernel_name="rea
                                           "slice_offset": slice_offset,
                                           "src_in_flag": src_in_flag})
 
-    output_4d = read_select_compute(input_tensor, output_x, stride_list,
-                                    kernel_name=kernel_name)
-    output_5d = output_4d.op.input_tensors
-    output_5d_tensor = output_5d[0]
+    output_tensor = read_select_compute(input_tensor, output_x, stride_list,
+                                        output_tensor_dim, kernel_name=kernel_name)
+    if output_tensor_dim == 5:
+        output_5d_tensor = output_tensor
+    else:
+        output_5d = output_tensor.op.input_tensors
+        output_5d_tensor = output_5d[0]
 
     res = tvm.compute(output_5d_tensor.shape, lambda *indice: output_5d_tensor(*indice),
                       name="res", tag=READ_SELECT_TAG)

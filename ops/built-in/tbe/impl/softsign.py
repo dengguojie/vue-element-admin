@@ -25,6 +25,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -69,7 +70,7 @@ def softsign_compute(input_x, y, kernel_name="softsign"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def softsign(x, y, kernel_name="softsign"):
     """
     Computes for softsign.
@@ -91,12 +92,10 @@ def softsign(x, y, kernel_name="softsign"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input)
-    util.check_tensor_shape_size(shape_input)
+    check_shape(shape_input, param_name="x")
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype_input.lower(), check_list)
+    check_dtype(dtype_input.lower(), check_list, param_name="x")
 
     shape = util.shape_refine(shape_input)
     shape_x = (functools_reduce(lambda x, y: x*y, shape[:]),)

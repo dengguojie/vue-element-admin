@@ -25,6 +25,7 @@ from topi import generic
 from topi.cce import util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
@@ -145,20 +146,15 @@ def _check_shape(shape_x, shape_sum, shape_square_sum,
     -------
     None
     """
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="x")
 
-    util.check_shape_rule(shape_sum)
-    util.check_tensor_shape_size(shape_sum)
+    check_shape(shape_sum, param_name="sum")
 
-    util.check_shape_rule(shape_square_sum)
-    util.check_tensor_shape_size(shape_square_sum)
+    check_shape(shape_square_sum, param_name="square_sum")
 
-    util.check_shape_rule(shape_scale)
-    util.check_tensor_shape_size(shape_scale)
+    check_shape(shape_scale, param_name="scale")
 
-    util.check_shape_rule(shape_offset)
-    util.check_tensor_shape_size(shape_offset)
+    check_shape(shape_offset, param_name="offset")
 
     if len(shape_x) != 5 or len(shape_sum) != 5 \
             or len(shape_square_sum) != 5 or len(shape_scale) != 5 \
@@ -207,11 +203,11 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     -------
     None
     """
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
-    util.check_dtype_rule(dtype_sum.lower(), ("float32",))
-    util.check_dtype_rule(dtype_square_sum.lower(), ("float32",))
-    util.check_dtype_rule(dtype_scale.lower(), ("float32",))
-    util.check_dtype_rule(dtype_offset.lower(), ("float32",))
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
+    check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
+    check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
+    check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
@@ -307,8 +303,9 @@ def bn_training_update_v2_compute(x, sum, square_sum, scale, offset,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, dict,
-                       dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def bn_training_update_v2(x, sum, square_sum, scale, offset,
                           y, batch_mean, batch_variance, epsilon,
                           kernel_name="bn_training_update_v2"):

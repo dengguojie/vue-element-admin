@@ -70,6 +70,7 @@ def filte_device_core(batch):
 
     return device_core_num, batch_factor, batch_factor_tail
 
+
 def call_topk_sort(tik_instance, input_data, output):
     """
     :param tik_instance:
@@ -104,6 +105,7 @@ def call_topk_sort(tik_instance, input_data, output):
 
     topk.tik_topk(tik_instance, topk_input, topk_out)
 
+
 class InitProposalProcess:
     """
     Init Proposal Process
@@ -132,6 +134,7 @@ class InitProposalProcess:
         num_anchor = channel//4
         num = (num_anchor*height*width + 127) // 128
         self.num = num
+
 
 class ProposalProcess(InitProposalProcess):
     """
@@ -347,16 +350,11 @@ def check_datatype(tik_name, dtype):
     :param dtype:
     :return:
     """
-    if tik_name in ("Ascend310",):
+    if not tbe_platform.cce_conf.api_check_support("tik.vrelu", "float32"):
         check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
-    elif tik_name in ("Ascend910",):
-        check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
-    elif tik_name in ("Hi3796CV300ES",):
-        check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
-    elif tik_name in ("Hi3796CV300CS",):
-        check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
-    elif tik_name in ("Ascend610", "Ascend620"):
+    else:
         check_dtype(dtype.lower(), ["float16", "float32"], param_name="rpn_bbox_dic")
+
 
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
                  REQUIRED_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT,
@@ -382,7 +380,7 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
     input_shape = rpn_bbox_dic.get('shape')
     channel = input_shape[1]
 
-    feature_dic = {"shape" : input_shape, "dtype" : input_dtype}
+    feature_dic = {"shape": input_shape, "dtype": input_dtype}
 
     tik_instance = tik.Tik(tik.Dprofile())
     tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")

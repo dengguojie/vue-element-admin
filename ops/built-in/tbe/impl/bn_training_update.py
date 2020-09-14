@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
@@ -52,26 +53,19 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
     -------
     None
     """
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="x")
 
-    util.check_shape_rule(shape_sum)
-    util.check_tensor_shape_size(shape_sum)
+    check_shape(shape_sum, param_name="sum")
 
-    util.check_shape_rule(shape_square_sum)
-    util.check_tensor_shape_size(shape_square_sum)
+    check_shape(shape_square_sum, param_name="square_sum")
 
-    util.check_shape_rule(shape_scale)
-    util.check_tensor_shape_size(shape_scale)
+    check_shape(shape_scale, param_name="scale")
 
-    util.check_shape_rule(shape_offset)
-    util.check_tensor_shape_size(shape_offset)
+    check_shape(shape_offset, param_name="offset")
 
-    util.check_shape_rule(shape_mean)
-    util.check_tensor_shape_size(shape_mean)
+    check_shape(shape_mean, param_name="mean")
 
-    util.check_shape_rule(shape_variance)
-    util.check_tensor_shape_size(shape_variance)
+    check_shape(shape_variance, param_name="variance")
 
     if len(shape_x) != 5 or len(shape_sum) != 5 \
             or len(shape_square_sum) != 5 or len(shape_scale) != 5:
@@ -133,13 +127,13 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
     -------
     None
     """
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
-    util.check_dtype_rule(dtype_sum.lower(), ("float32",))
-    util.check_dtype_rule(dtype_square_sum.lower(), ("float32",))
-    util.check_dtype_rule(dtype_scale.lower(), ("float32",))
-    util.check_dtype_rule(dtype_offset.lower(), ("float32",))
-    util.check_dtype_rule(dtype_mean.lower(), ("float32",))
-    util.check_dtype_rule(dtype_variance.lower(), ("float32",))
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
+    check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
+    check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
+    check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
+    check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
+    check_dtype(dtype_variance.lower(), ("float32",), param_name="variance")
 
 
 @fusion_manager.register("bn_training_update")
@@ -246,8 +240,10 @@ def bn_training_update_compute(x, sum, square_sum,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict,
-                       dict, dict, dict, dict, float, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def bn_training_update(x, sum, square_sum,
                        scale, offset, mean,
                        variance, y, mean_out,

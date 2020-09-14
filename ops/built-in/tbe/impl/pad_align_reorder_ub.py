@@ -575,7 +575,7 @@ class PadCompute(object):
         """
         tik_instance = self.set_tik_instance()
         self.ubuf = tik_instance.Tensor(self.dtype,
-                                        [self.ub_maxsize,],
+                                        [self.ub_maxsize, ],
                                         name="in_ubuf",
                                         scope=tik.scope_ubuf)
 

@@ -21,6 +21,7 @@ from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
 
+
 def _apply_mem(tik_instance, dtype, shape, name, scope=tik.scope_ubuf):
     """apply mem fuc
 

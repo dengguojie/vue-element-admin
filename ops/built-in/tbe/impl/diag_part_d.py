@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a VALUE, value = 2
 VALUE_TWO = 2
@@ -69,7 +70,7 @@ def diag_part_d_compute(x, assist, y, kernel_name="diag_part_d"):
     return res
 
 # pylint: disable=too-many-locals
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
     """
     Returns the batched diagonal part of a batched tensor
@@ -95,11 +96,8 @@ def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
     dtype_assist = assist.get("dtype")
     shape_y = y.get("shape")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_assist)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_assist)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_assist, param_name="assist")
 
     if len(shape_x) not in (2, 4, 6, 8):
         raise RuntimeError("Input tensors of rank 2,4,6,8 are supported!")
@@ -116,9 +114,9 @@ def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
 
     check_list = ("float16", "float32", "int32")
     dtype_x = dtype_x.lower()
-    util.check_dtype_rule(dtype_x, check_list)
+    check_dtype(dtype_x, check_list, param_name="x")
     dtype_assist = dtype_assist.lower()
-    util.check_dtype_rule(dtype_assist, check_list)
+    check_dtype(dtype_assist, check_list, param_name="assist")
     if dtype_assist != dtype_x:
         raise RuntimeError("the dtype of data must be equal!")
 

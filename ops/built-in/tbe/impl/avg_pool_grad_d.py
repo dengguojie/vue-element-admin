@@ -14,20 +14,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+avg_pool_grad
 """
 import te.lang.cce
-from topi import generic
-from te import tvm
 import te.platform.cce_params as cce_params
 from te import platform as tbe_platform
-from topi.cce import util
+from te import tvm
 from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
+from te.utils import op_utils
+from topi import generic
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
-SHAPE_SIZE_LIMIT = 100000000
+
 SHAPE_SIZE = 4
-NONETYPE = type(None)
 
 # shape's dim of input must be 5
 INPUT_DIM = 5
@@ -49,22 +50,15 @@ def _ceil(x):
     """
     Return the least multiple of 16 integer number
     """
-    return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE)*BLOCK_SIZE
+    return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
 
-def parameter_check(shape_in,
-                    shape_k,
-                    shape_out,
-                    dtype,
-                    strides,
-                    padding,
+def parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding,
                     kernel_name):
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_in, INPUT_DIM, INPUT_DIM)
-    util.check_shape_rule(shape_k, FILTER_DIM, FILTER_DIM)
-    util.check_shape_rule(shape_out, OUTPUT_DIM, OUTPUT_DIM)
-    util.check_shape_rule(strides, STRIDES_DIM, STRIDES_DIM)
-
+    op_utils.check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
+    op_utils.check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
+    op_utils.check_shape(shape_out, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
+    op_utils.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM)
     # stride's shape is (stride_h, stride_w)
     # shape_in and shape_out is "NCHW"
     # shape_k is "HWC1"
@@ -74,43 +68,38 @@ def parameter_check(shape_in,
     DIM_W_C1, DIM_W_H, DIM_W_W, _, DIM_W_Co, DIM_W_C0 = 0, 1, 2, 3, 4, 5
 
     if shape_in[DIM_N] != shape_out[DIM_N]:
-        raise RuntimeError(
-            "input N-dim must be equal to out N-dim.")
+        raise RuntimeError("input N-dim must be equal to out N-dim.")
     if shape_in[DIM_C1] != shape_k[DIM_W_C1]:
-        raise RuntimeError(
-            "input C-dim must be equal to kernel C-dim..")
+        raise RuntimeError("input C-dim must be equal to kernel C-dim..")
     if shape_k[DIM_W_H] > 255 or shape_k[DIM_W_W] > 255:
         raise RuntimeError(
             "chip ISA limit kernel_h or kernel_w must less than 255")
     if shape_in[DIM_C1] != shape_out[DIM_C1]:
-        raise RuntimeError(
-            "input C-dim must be equal to out C-dim.")
+        raise RuntimeError("input C-dim must be equal to out C-dim.")
 
-    check_list = ["float16"]
     inp_dtype = dtype.lower()
-    util.check_dtype_rule(inp_dtype, check_list)
+    op_utils.check_dtype(inp_dtype, ('float16', ))
 
     if strides[DIM_S_H] != strides[DIM_S_W]:
         raise RuntimeError(
             "only supports equal length strides in W and H dim.")
 
-    pad_is_valided = (padding.lower() == "same") or (padding.lower() == "valid")
-    if not pad_is_valided:
-        raise RuntimeError(
-            "only supported padding mode of "
-            "\"same\" and \"valid\".")
+    if padding.lower() not in ("same", "valid"):
+        raise RuntimeError("only supported padding mode of "
+                           "\"same\" and \"valid\".")
 
     _, _, hi, wi, _ = shape_in
     _, hk, wk, _, _, _ = shape_k
     _, _, ho, wo, _ = shape_out
     stride_h, stride_w = strides
     l1_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
-    l0a_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L0A_SIZE)
+    l0a_size = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.L0A_SIZE)
     ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
     data_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    dilated_w = wo*strides[1] - (strides[1] - 1)
-    max_dh_in_l1 = (l1_size//2 - hk*wk*BLOCK_SIZE*BLOCK_SIZE*data_size) // (
-            data_size*dilated_w*BLOCK_SIZE)
+    dilated_w = wo * strides[1] - (strides[1] - 1)
+    max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE *
+                    data_size) // (data_size * dilated_w * BLOCK_SIZE)
     if max_dh_in_l1 < BLOCK_SIZE:
         raise RuntimeError("L1's memory space is not enough to support "
                            "dilated_h tiling with 16!")
@@ -132,21 +121,14 @@ def parameter_check(shape_in,
     out_w, _, _ = common.tf_get_windowed_output_size_verbose(
         wi, wk, stride_w, padding)
     if out_h != ho:
-        raise RuntimeError(
-            "ho and hi relation is wrong by formula!"
-        )
+        raise RuntimeError("ho and hi relation is wrong by formula!")
     if out_w != wo:
-        raise RuntimeError(
-            "wo and wi relation is wrong by formula!!"
-        )
+        raise RuntimeError("wo and wi relation is wrong by formula!!")
 
     return
 
 
-def calculation_dilation(input_shape,
-                         weight_sizes,
-                         strides,
-                         padding="SAME"):
+def calculation_dilation(input_shape, weight_sizes, strides, padding="SAME"):
 
     input_n, input_cg, input_ci1, input_h, input_w, input_block = input_shape
 
@@ -162,11 +144,11 @@ def calculation_dilation(input_shape,
     dilated_padded_h = input_h + weight_height - 1
     dilated_padded_w = input_w + weight_width - 1
 
-    dilated_h = out_h*stride_h - (stride_h - 1)
-    dilated_w = out_w*stride_w - (stride_w - 1)
+    dilated_h = out_h * stride_h - (stride_h - 1)
+    dilated_w = out_w * stride_w - (stride_w - 1)
 
-    dilated_shape = (input_n, input_cg, input_ci1, dilated_h,
-                     dilated_w, input_block)
+    dilated_shape = (input_n, input_cg, input_ci1, dilated_h, dilated_w,
+                     input_block)
 
     dilated_pad_top = weight_height - 1 - pad_top
     dilated_pad_bottom = dilated_padded_h - dilated_pad_top - dilated_h
@@ -179,13 +161,8 @@ def calculation_dilation(input_shape,
     return dilated_shape, dilated_pad
 
 
-def avg_pool_grad_compute(input_shape,
-                          weight,
-                          out,
-                          vealuemean,
-                          k_sizes,
-                          strides,
-                          padding):
+def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes,
+                          strides, padding):
     """
     Computes the gradients of avg pool, insert input.
 
@@ -214,13 +191,12 @@ def avg_pool_grad_compute(input_shape,
     out_shape = (int(i.value) for i in out.shape)
     out_n, out_cgroup, out_c1, out_h, out_w, out_c0 = out_shape
     out_mul_shape = out_n, out_cgroup, out_c1, out_h, out_w, out_c0
-    out_mul = tvm.compute(out_mul_shape, lambda *i:
-            out(*i) * vealuemean(*i), name='out_mul')
+    out_mul = tvm.compute(out_mul_shape,
+                          lambda *i: out(*i) * vealuemean(*i),
+                          name='out_mul')
 
-    dilated_shape, dilated_pad = calculation_dilation(input_shape,
-                                                      k_sizes,
-                                                      strides,
-                                                      padding)
+    dilated_shape, dilated_pad = calculation_dilation(input_shape, k_sizes,
+                                                      strides, padding)
     dilated_strides = (1, 1)
 
     # compute of out_backprop dilation
@@ -234,24 +210,20 @@ def avg_pool_grad_compute(input_shape,
         name='out_dilated')
 
     # image to column of dilated out_backprop
-    out_im2col_row_major_shape = (out_n, out_cgroup, input_h*input_w,
-                                  out_c1, k_height, k_width,
-                                  BLOCK_SIZE)
+    out_im2col_row_major_shape = (out_n, out_cgroup, input_h * input_w, out_c1,
+                                  k_height, k_width, BLOCK_SIZE)
     out_col = common.im2col_6d(out_dilated, out_im2col_row_major_shape,
-                               k_height, k_width, dilated_pad,
-                               dilated_strides)
-    hiwi_mad = (input_h*input_w + BLOCK_SIZE - 1) // BLOCK_SIZE*BLOCK_SIZE
+                               k_height, k_width, dilated_pad, dilated_strides)
+    hiwi_mad = (input_h * input_w + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
 
     dout_im2col_fractal_shape = (out_n, out_cgroup, hiwi_mad // BLOCK_SIZE,
-                                 out_c1*k_height*k_width,
-                                 BLOCK_SIZE, BLOCK_SIZE)
-    dout_col_pad = common.im2col_fractal_6d(dout_im2col_fractal_shape,
-                                            out_col)
+                                 out_c1 * k_height * k_width, BLOCK_SIZE,
+                                 BLOCK_SIZE)
+    dout_col_pad = common.im2col_fractal_6d(dout_im2col_fractal_shape, out_col)
     # unuse , waiting for delect
-    weight_unuse = tvm.compute(
-        weight.shape,
-        lambda *index: weight(*index),
-        name='weight_rotated')
+    weight_unuse = tvm.compute(weight.shape,
+                               lambda *index: weight(*index),
+                               name='weight_rotated')
 
     res_dtype = "float32"
 
@@ -260,28 +232,26 @@ def avg_pool_grad_compute(input_shape,
     mad_res = common.mad(mad_shape, dout_col_pad, weight_unuse, res_dtype)
 
     # cast dX from float32 to float16
-    dx_cast = tvm.compute(
-        mad_res.shape,
-        lambda *index: mad_res(*index).astype(out_type),
-        name='dx_cast')
+    dx_cast = tvm.compute(mad_res.shape,
+                          lambda *index: mad_res(*index).astype(out_type),
+                          name='dx_cast')
 
     # remove the padding of dX
-    res_shape = (out_n, out_cgroup, out_c1, input_h*input_w, out_c0)
-    dx_res = tvm.compute(
-        res_shape,
-        lambda *index: dx_cast(*index).astype(out_type),
-        name='dx_res',
-        attrs={
-            'weight_height': k_height,
-            'weight_width': k_width,
-            'dilated_pad': dilated_pad,
-            'dilated_strides': dilated_strides
-        })
+    res_shape = (out_n, out_cgroup, out_c1, input_h * input_w, out_c0)
+    dx_res = tvm.compute(res_shape,
+                         lambda *index: dx_cast(*index).astype(out_type),
+                         name='dx_res',
+                         attrs={
+                             'weight_height': k_height,
+                             'weight_width': k_width,
+                             'dilated_pad': dilated_pad,
+                             'dilated_strides': dilated_strides
+                         })
     return dx_res
 
 
-def avg_pool_grad_tiling(input_w, input_h,
-                         kernel_shape, out_shape, res, stride):
+def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
+                         stride):
     """
     tiling plan, cut of batch and ci;
                  cut of output height and weight;
@@ -294,18 +264,19 @@ def avg_pool_grad_tiling(input_w, input_h,
     """
     # float16
     data_size = 2
-    l0a_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L0A_SIZE)
+    l0a_size = tbe_platform.cce_conf.get_soc_spec(
+        tbe_platform.cce_conf.L0A_SIZE)
     ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
     hk_wk = kernel_shape[1]
     out_h = out_shape[3]
     out_w = out_shape[4]
     # compute dilation shape
-    dila_h = out_h*stride - (stride - 1)
-    dila_w = out_w*stride - (stride - 1)
+    dila_h = out_h * stride - (stride - 1)
+    dila_w = out_w * stride - (stride - 1)
 
     # 2 is for double buffer
-    max_l0a_m = l0a_size // (data_size*BLOCK_SIZE*2)
+    max_l0a_m = l0a_size // (data_size * BLOCK_SIZE * 2)
     dilated_pad_top = res.op.attrs['dilated_pad'][0].value
     dilated_pad_bottom = res.op.attrs['dilated_pad'][1].value
     k_height = res.op.attrs['weight_height'].value
@@ -335,25 +306,26 @@ def avg_pool_grad_tiling(input_w, input_h,
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
 
-    max_h_in_ub = ((ub_size // data_size - (max_l0a_m*BLOCK_SIZE))
-                   // BLOCK_SIZE + (stride - 1)*dila_w) \
-                  // (3*out_w + stride*dila_w)
-    tile_dile_h_ub = max_h_in_ub*stride - (stride - 1)
+    max_h_in_ub = ((ub_size // data_size -
+                    (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
+                   (stride - 1) * dila_w) // (3 * out_w + stride * dila_w)
+    tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
     tile_hd = tile_dile_h_ub
     tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
     # if tile_input_h > input_h, input_h no tiling
     if tile_input_h >= input_h:
         tile_input_h = input_h
-        tile_hd = tile_input_h -1 + k_height - \
-                  dilated_pad_top - dilated_pad_bottom
+        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top -\
+             dilated_pad_bottom
         tile_dile_h_ub = tile_hd
     # tiling in L0;
-    tile_m = min(max_l0a_m, _ceil(tile_input_h*input_w))
+    tile_m = min(max_l0a_m, _ceil(tile_input_h * input_w))
     tile_k = 1
     tile_n = 1
-    res_l1 = tile_input_h*input_w
+    res_l1 = tile_input_h * input_w
     # when res_l1 > 16, return a rounded integer down to a multiple of BLOCK_SIZE
-    res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
+    if res_l1 < input_h * input_w:
+        res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
 
     return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n
 
@@ -377,11 +349,13 @@ def avg_pool_grad_schedule(res):
     dvealuemean = dout_mul.op.input_tensors[1]
 
     dout_ubuf = s.cache_read(dout, tbe_platform.scope_ubuf, [dout_mul])
-    dvealuemean_ubuf = s.cache_read(dvealuemean, tbe_platform.scope_ubuf, [dout_mul])
+    dvealuemean_ubuf = s.cache_read(dvealuemean, tbe_platform.scope_ubuf,
+                                    [dout_mul])
 
     dout_mul_ubuf = s.cache_write(dout_mul, tbe_platform.scope_ubuf)
     dout_cbuf_nc1hwc0 = s.cache_write(dout_dilated, tbe_platform.scope_cbuf)
-    dout_dilated_ubuf = s.cache_write(dout_cbuf_nc1hwc0, tbe_platform.scope_ubuf)
+    dout_dilated_ubuf = s.cache_write(dout_cbuf_nc1hwc0,
+                                      tbe_platform.scope_ubuf)
     dout_cbuf_row_major = s.cache_write(dout_col, tbe_platform.scope_cbuf)
     dout_ca = s.cache_write(dout_col_pad, tbe_platform.scope_ca)
     s[dout_mul].compute_inline()
@@ -389,7 +363,8 @@ def avg_pool_grad_schedule(res):
     s[dout_col].compute_inline()
     s[dout_col_pad].compute_inline()
 
-    weight_cbuf = s.cache_read(weight, tbe_platform.scope_cbuf, [weight_rotated])
+    weight_cbuf = s.cache_read(weight, tbe_platform.scope_cbuf,
+                               [weight_rotated])
     weight_cb = s.cache_write(weight_rotated, tbe_platform.scope_cb)
     s[weight_rotated].compute_inline()
 
@@ -427,12 +402,12 @@ def avg_pool_grad_schedule(res):
         input_w, input_h, weight_shape, dout_shape, res, stride)
 
     mad_cc_Ncut_o, mad_cc_Ncut_i = s[mad_cc].split(mad_cc_axis_n, factor=1)
-    mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(
-        mad_cc_axis_howomad, factor=tile_m)
-    mad_cc_kcut_o, mad_cc_kcut_i = s[mad_cc].split(
-        mad_cc.op.reduce_axis[0], factor=tile_k)
-    mad_cc_ncut_o, mad_cc_ncut_i = s[mad_cc].split(
-        mad_cc_axis_co1, factor=tile_n)
+    mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(mad_cc_axis_howomad,
+                                                   factor=tile_m)
+    mad_cc_kcut_o, mad_cc_kcut_i = s[mad_cc].split(mad_cc.op.reduce_axis[0],
+                                                   factor=tile_k)
+    mad_cc_ncut_o, mad_cc_ncut_i = s[mad_cc].split(mad_cc_axis_co1,
+                                                   factor=tile_n)
     s[mad_cc].reorder(mad_cc_Ncut_o, mad_cc_axis_cg, mad_cc_ncut_o,
                       mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_Ncut_i,
                       mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0,
@@ -440,35 +415,31 @@ def avg_pool_grad_schedule(res):
     s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o)
     s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o)
 
-    mad_ubuf_Ncut_o, mad_ubuf_Ncut_i = s[mad_ubuf].split(
-        mad_ubuf_axis_n, factor=1)
-    mad_ubuf_mcut_o, mad_ubuf_mcut_i = s[mad_ubuf].split(
-        mad_ubuf_axis_howomad, factor=tile_m)
-    mad_ubuf_ncut_o, mad_ubuf_ncut_i = s[mad_ubuf].split(
-        mad_ubuf_axis_co1, factor=tile_n)
+    mad_ubuf_Ncut_o, mad_ubuf_Ncut_i = s[mad_ubuf].split(mad_ubuf_axis_n,
+                                                         factor=1)
+    mad_ubuf_mcut_o, mad_ubuf_mcut_i = s[mad_ubuf].split(mad_ubuf_axis_howomad,
+                                                         factor=tile_m)
+    mad_ubuf_ncut_o, mad_ubuf_ncut_i = s[mad_ubuf].split(mad_ubuf_axis_co1,
+                                                         factor=tile_n)
     s[mad_ubuf].reorder(mad_ubuf_Ncut_o, mad_ubuf_axis_cg, mad_ubuf_ncut_o,
                         mad_ubuf_mcut_o, mad_ubuf_Ncut_i, mad_ubuf_ncut_i,
                         mad_ubuf_mcut_i, mad_ubuf_axis_co0)
     s[mad_cc].compute_at(s[mad_ubuf], mad_ubuf_mcut_o)
 
     conv_Ncut_o, conv_Ncut_i = s[res].split(res.op.axis[0], factor=1)
-    conv_hcut_o, conv_hcut_i = s[res].split(
-        res.op.axis[3], factor=(res_l1))
+    conv_hcut_o, conv_hcut_i = s[res].split(res.op.axis[3], factor=(res_l1))
     conv_mcut_o, conv_mcut_i = s[res].split(conv_hcut_i, factor=tile_m)
     s[res].reorder(conv_Ncut_o, res.op.axis[1], conv_hcut_o, conv_mcut_o,
-                   conv_Ncut_i, res.op.axis[2], conv_mcut_i,
-                   res.op.axis[4])
+                   conv_Ncut_i, res.op.axis[2], conv_mcut_i, res.op.axis[4])
     s[mad_ubuf].buffer_align((1, 1), (1, 1), (1, 1), (1, block_size),
                              (1, block_size))
     s[mad_ubuf].compute_at(s[res], conv_mcut_o)
-    s[dout_cbuf_row_major].buffer_align((1, 1), (1, 1),
-                                        (input_w, input_w), (1, 1),
-                                        (1, 1), (1, 1), (1, block_size))
+    s[dout_cbuf_row_major].buffer_align((1, 1), (1, 1), (input_w, input_w),
+                                        (1, 1), (1, 1), (1, 1),
+                                        (1, block_size))
     s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
     s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
     s[weight_cbuf].compute_at(s[res], conv_hcut_o)
-
-
 
     dout_dilated_w = dout_dilated_shape[4]
     ub_l1hcut_o, ub_l1hcut_i = s[dout_cbuf_nc1hwc0].split(
@@ -494,10 +465,8 @@ def avg_pool_grad_schedule(res):
     s[dout_ubuf].emit_insn(dout_ubuf.op.axis[0], insn_cmd.DMA_COPY)
     s[dvealuemean_ubuf].emit_insn(dvealuemean_ubuf.op.axis[0],
                                   insn_cmd.DMA_COPY)
-    s[dout_mul_ubuf].emit_insn(dout_mul_ubuf.op.axis[0],
-                               insn_cmd.MUL)
-    s[dout_cbuf_nc1hwc0].emit_insn(ub_l1hcut_i,
-                                   insn_cmd.DMA_COPY)
+    s[dout_mul_ubuf].emit_insn(dout_mul_ubuf.op.axis[0], insn_cmd.MUL)
+    s[dout_cbuf_nc1hwc0].emit_insn(ub_l1hcut_i, insn_cmd.DMA_COPY)
 
     # emit convolution params.
     setfmatrix_dict = {
@@ -509,7 +478,7 @@ def avg_pool_grad_schedule(res):
         "conv_padding_right": res.op.attrs['dilated_pad'][3],
         "conv_stride_h": res.op.attrs['dilated_strides'][0],
         "conv_stride_w": res.op.attrs['dilated_strides'][1],
-        "conv_fm_c": dout_dilated.shape[2]*dout_dilated.shape[5],
+        "conv_fm_c": dout_dilated.shape[2] * dout_dilated.shape[5],
         "conv_fm_h": dout_dilated.shape[3],
         "conv_fm_w": dout_dilated.shape[4]
     }
@@ -535,11 +504,11 @@ def avg_pool_grad_schedule(res):
         res_NNCut_o, res_NNCut_i = s[res].split(conv_Ncut_o,
                                                 nparts=res_block_n)
         res_ccCut_o, res_ccCut_i = s[res].split(res.op.axis[1],
-                                            nparts=res_block_cgroup)
+                                                nparts=res_block_cgroup)
         s[res].reorder(res_NNCut_o, res_ccCut_o, res_NNCut_i, res_ccCut_i)
         out_fused = s[res].fuse(res_NNCut_o, res_ccCut_o)
         out_fused_out, _ = s[res].split(out_fused,
-                                    nparts=res_block_n*res_block_cgroup)
+                                        nparts=res_block_n * res_block_cgroup)
         bind_out, _ = s[res].split(out_fused_out, 1)
         blockidx = tvm.thread_axis("blockIdx.x")
         s[res].bind(bind_out, blockidx)
@@ -550,22 +519,21 @@ def avg_pool_grad_schedule(res):
     return s
 
 
-@util.check_input_type(dict, (NONETYPE, dict), (NONETYPE, dict),
-                       dict, (list, tuple), (list, tuple),
-                       (list, tuple), str, str, (NONETYPE, str))
-
-def avg_pool_grad_d(
-        input_grad,
-        mean_matrix,
-        kernel_matrix,
-        out_grad,
-        orig_input_shape,
-        ksize,
-        strides,
-        padding,
-        data_format='NHWC',
-        kernel_name="cce_avg_pool_grad_dilation"):
-
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.OPTION_INPUT, op_utils.OPTION_INPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_LIST_INT,
+    op_utils.REQUIRED_ATTR_LIST_INT, op_utils.REQUIRED_ATTR_LIST_INT,
+    op_utils.REQUIRED_ATTR_STR, op_utils.OPTION_ATTR_STR, op_utils.KERNEL_NAME)
+def avg_pool_grad_d(input_grad,
+                    mean_matrix,
+                    kernel_matrix,
+                    out_grad,
+                    orig_input_shape,
+                    ksize,
+                    strides,
+                    padding,
+                    data_format='NHWC',
+                    kernel_name="cce_avg_pool_grad_dilation"):
     """
     computes average pooling backwards gradients.
 
@@ -630,24 +598,22 @@ def avg_pool_grad_d(
     out_grad_shape = out_grad.get("shape")
     dtype = input_grad.get("dtype").lower()
 
-    util.check_shape_rule(input_grad_shape, INPUT_DIM, INPUT_DIM)
-    util.check_shape_rule(orig_input_shape, INPUT_DIM, INPUT_DIM)
-    util.check_shape_rule(strides, SHAPE_SIZE, SHAPE_SIZE)
-    util.check_shape_rule(ksize, SHAPE_SIZE, SHAPE_SIZE)
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_grad_shape)
-    util.check_shape_rule(orig_input_shape)
-    util.check_shape_size(strides, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(ksize, SHAPE_SIZE_LIMIT)
+    op_utils.check_shape(input_grad_shape,
+                         min_rank=INPUT_DIM,
+                         max_rank=INPUT_DIM)
+    op_utils.check_shape(orig_input_shape,
+                         min_rank=INPUT_DIM,
+                         max_rank=INPUT_DIM)
+    op_utils.check_shape(strides, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
+    op_utils.check_shape(ksize, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
 
-    if out_grad_shape != orig_input_shape:
+    if list(out_grad_shape) != list(orig_input_shape):
         raise RuntimeError("out_grad_shape must equal input_grad_shape")
     if stride_h < 1 or stride_w < 1:
         raise RuntimeError("stride should >= 1")
 
     data_dtype = dtype.lower()
-    check_list = ["float16"]
-    util.check_dtype_rule(data_dtype, check_list)
+    op_utils.check_dtype(data_dtype, ('float16', ))
 
     _, _, HH, WW, _ = orig_input_shape
 
@@ -655,13 +621,13 @@ def avg_pool_grad_d(
             and input_grad_shape[3] == 1 and padding == 'VALID'):
         # for mobileV2 net, only support VALID padding.
         if padding != 'VALID':
-            raise RuntimeError(
-                "gobla model ,padding only support VALID ")
+            raise RuntimeError("gobla model ,padding only support VALID ")
         else:
             pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
 
-        input_grad = tvm.placeholder(
-            input_grad_shape, name="input_grad", dtype=data_dtype)
+        input_grad = tvm.placeholder(input_grad_shape,
+                                     name="input_grad",
+                                     dtype=data_dtype)
 
         # input_grad is overlapped result
         filter_num_h = (HH - kernel_h + pad_top + pad_bottom) // stride_h + 1
@@ -669,11 +635,10 @@ def avg_pool_grad_d(
 
         # global_avgpool, input FMAP size equals kernel size, kernel number=1
         if not (filter_num_h == 1 and filter_num_w == 1):
-            raise RuntimeError(
-                "global average pooling, input_grad_h"
-                "and input_grad_w must equel 1")
+            raise RuntimeError("global average pooling, input_grad_h"
+                               "and input_grad_w must equel 1")
 
-        kernel_size_reciprocal = 1.0 / (kernel_h*kernel_w)
+        kernel_size_reciprocal = 1.0 / (kernel_h * kernel_w)
 
         with tvm.target.cce():
             input_grad_fp32 = te.lang.cce.cast_to(input_grad, "float32")
@@ -683,10 +648,7 @@ def avg_pool_grad_d(
                 grad_tmp = te.lang.cce.cast_to(grad_tmp, "float16")
             res = te.lang.cce.broadcast(grad_tmp, orig_input_shape)
             sch = generic.auto_schedule(res)
-        config = {
-            "name": kernel_name,
-            "tensor_list": [input_grad, res]
-        }
+        config = {"name": kernel_name, "tensor_list": [input_grad, res]}
         te.lang.cce.cce_build_code(sch, config)
     else:
         shape_in = orig_input_shape
@@ -698,31 +660,33 @@ def avg_pool_grad_d(
         # strides dim is two
         strides = stride_h, stride_w
 
-        parameter_check(shape_in, shape_k, shape_out, dtype, strides,
-                        padding, kernel_name)
+        parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding,
+                        kernel_name)
 
         shape_in = shape_in_n, shape_in_c1, 1, \
                    shape_in_h, shape_in_w, shape_in_c0
-        shape_k = (shape_out_c1, kernel_h*kernel_w, 1, BLOCK_SIZE, BLOCK_SIZE)
+        shape_k = (shape_out_c1, kernel_h * kernel_w, 1, BLOCK_SIZE,
+                   BLOCK_SIZE)
         shape_out = shape_out_n, shape_out_c1, 1, \
                     shape_out_h, shape_out_w, shape_out_c0
         kernel_placeholder = tvm.placeholder(shape_k,
-                                             dtype=dtype, name='kernel')
+                                             dtype=dtype,
+                                             name='kernel')
         dout_placeholder = tvm.placeholder(shape_out, dtype=dtype, name='dout')
 
         vealuemean_placeholder = tvm.placeholder(shape_out,
                                                  dtype=dtype,
                                                  name='dvealuemean')
-        res = avg_pool_grad_compute(
-            shape_in, kernel_placeholder, dout_placeholder,
-            vealuemean_placeholder, [kernel_h, kernel_w], strides,
-            padding)
+        res = avg_pool_grad_compute(shape_in, kernel_placeholder,
+                                    dout_placeholder, vealuemean_placeholder,
+                                    [kernel_h, kernel_w], strides, padding)
 
         s = avg_pool_grad_schedule(res)
 
         with tbe_platform.build_config:
-            tvm.build(
-                s, [dout_placeholder, vealuemean_placeholder,
-                    kernel_placeholder, res],
-                "cce",
-                name=kernel_name)
+            tvm.build(s, [
+                dout_placeholder, vealuemean_placeholder, kernel_placeholder,
+                res
+            ],
+                      "cce",
+                      name=kernel_name)

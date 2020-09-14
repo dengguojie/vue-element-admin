@@ -236,27 +236,30 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
         y = te.lang.cce.cast_to(y, "float32")
         x = te.lang.cce.cast_to(x, "float32")
 
-    tensor_zero = te.lang.cce.broadcast(tvm.const(CONST_ZERO, "float32"),
-                                        shape_broadcast)
     mask = _init_atan2_mask(y, x)
 
     # caculate the atan(y/x) when x > 0
     res = te.lang.cce.vdiv(y, x)
     res = _atan_compute(res)
 
-    x_equal_zero = te.lang.cce.vcmp(x, tensor_zero, 'eq')
     y_cmp_zero = te.lang.cce.vmuls(mask[CONST_ONE],
                                    tvm.const(CONST_PI_BY_TWO, y.dtype))
     res_x_lt_zero = te.lang.cce.vmuls(mask[CONST_ZERO],
                                       tvm.const(CONST_PI, y.dtype))
 
-    res = te.lang.cce.vsel(x_equal_zero, y_cmp_zero, res)
+    if x.dtype == res.dtype and api_check_support("te.lang.cce.vcmpsel", x.dtype):
+        res = te.lang.cce.vcmpsel(x, tvm.const(CONST_ZERO, x.dtype), 'eq', y_cmp_zero, res)
+    else:
+        tensor_zero = te.lang.cce.broadcast(tvm.const(CONST_ZERO, x.dtype), shape_broadcast)
+        x_equal_zero = te.lang.cce.vcmp(x, tensor_zero, 'eq')
+        res = te.lang.cce.vsel(x_equal_zero, y_cmp_zero, res)
 
     res = te.lang.cce.vadd(res, res_x_lt_zero)
 
     if dtype_y == "float16":
         res = te.lang.cce.cast_to(res, "float16")
     return res
+
 
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def atan2(x1, x2, y, kernel_name="atan2"):

@@ -17,6 +17,8 @@ add_subdirectory(framework)
 
 add_subdirectory(fusion_pass)
 
+add_subdirectory(fusion_rules)
+
 add_subdirectory(op_proto)
 
 add_subdirectory(tbe)

@@ -16,7 +16,9 @@ decode_bbox
 
 from functools import reduce
 from te import tik
+from te import platform as tbe_platform
 from topi.cce import util
+
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -55,7 +57,7 @@ class InitTikParam:
     None
     """
     def __init__(self):
-        self.product_name = tik.Dprofile().get_product_name()
+        self.product_name = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
         self.available_ub_size = (self.total_ub - RESERVED_UB) // CONFIG_TWO
         self.aicore_num = tik.Dprofile().get_aicore_num()
@@ -76,7 +78,7 @@ class InitTikParam:
         -------
         product name
         """
-        self.product_name = tik.Dprofile().get_product_name()
+        self.product_name = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
     def set_ub_buf(self):
         """
@@ -147,9 +149,9 @@ class InitEightCoreShape(InitShape):
         super(InitEightCoreShape, self).__init__(shape)
         # the formula is (N*C1*H*W*C0//4) // (16*16*4)
         self.core_mul_loop = self.proposal_shape // self.one_buf_count
-        if self.product_name == "cloud":
+        if self.product_name == "Ascend910":
             self.aicore_num = CONFIG_EIGHT
-        if self.product_name == "aic":
+        if self.product_name == "Ascend610":
             self.aicore_num = CONFIG_EIGHT
         if self.core_mul_loop >= (self.aicore_num):
             self.core_number = self.aicore_num

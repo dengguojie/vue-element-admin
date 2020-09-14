@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
@@ -21,7 +21,8 @@ import math
 from functools import reduce as functools_reduce
 from functools import wraps
 from te.platform.fusion_manager import fusion_manager
-
+from te.platform import operation
+from te import tvm
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 SHAPE_SIZE_ZERO = 0
@@ -31,6 +32,8 @@ DIM_LIMIT = 2 ** 31 - 1
 ZERO_DIM = 0
 # the max len of kernel_name
 MAX_KERNEL_NAEM_LEN = 200
+MIN_UNKOWN_SHAPE_RANK = 0
+MAX_UNKOWN_SHAPE_NUM = 2 ** 31 - 1
 
 REQUIRED_INPUT = "required_input"
 OPTION_INPUT = "option_input"
@@ -84,7 +87,13 @@ OP_ERROR_CODE_017 = 'E80017'
 OP_ERROR_CODE_018 = 'E80018'
 OP_ERROR_CODE_019 = 'E80019'
 OP_ERROR_CODE_020 = 'E80020'
-
+OP_ERROR_CODE_021 = 'E80021'
+OP_ERROR_CODE_022 = 'E80022'
+OP_ERROR_CODE_023 = 'E80023'
+OP_ERROR_CODE_024 = 'E80024'
+OP_ERROR_CODE_025 = 'E80025'
+OP_ERROR_CODE_026 = 'E80026'
+OP_ERROR_CODE_027 = 'E80027'
 
 class OpParamInfoKey:  # pylint: disable=too-few-public-methods
     """
@@ -98,6 +107,7 @@ class OpParamInfoKey:  # pylint: disable=too-few-public-methods
     ORI_SHAPE = "ori_shape"
     ORI_FORMAT = "ori_format"
     D_TYPE = "dtype"
+    RANGE = "range"
 
 
 class TensorFormat:  # pylint: disable=too-few-public-methods
@@ -211,11 +221,23 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['key'] = OpParamInfoKey.D_TYPE
             raise RuntimeError(error_info,
                                "In op[%s], the input[%s] does not contain the item[%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['key']))
+                               % (error_info['op_name'], error_info['param_name'], error_info['key']))
+
+        if operation.in_dynamic():
+            if OpParamInfoKey.RANGE not in op_param.keys():
+                error_info = {}
+                error_info['errCode'] = OP_ERROR_CODE_004
+                error_info['op_name'] = op_name
+                error_info['param_name'] = param_name
+                error_info['key'] = OpParamInfoKey.RANGE
+                raise RuntimeError(error_info,
+                                   "In op[%s], the input[%s] does not contain the item[%s]."
+                                   % (error_info['op_name'], error_info['param_name'], error_info['key']))
+
     def _check_input_output_dict(op_param, param_name, op_name=OP_NAME):
         _check_input_output_key(op_param, param_name, op_name)
-
+        if operation.in_dynamic():
+            check_range(op_param[OpParamInfoKey.SHAPE], op_param[OpParamInfoKey.RANGE], param_name=param_name)
         check_shape(op_param[OpParamInfoKey.SHAPE], param_name=param_name)
         check_shape(op_param[OpParamInfoKey.ORI_SHAPE], param_name=param_name)
 
@@ -466,7 +488,6 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
 
         if param_type in [REQUIRED_ATTR_TYPE, OPTION_ATTR_TYPE]:
             if op_param not in ALL_DTYPE_LIST:
-
                 error_info = {}
                 error_info['errCode'] = OP_ERROR_CODE_003
                 error_info['op_name'] = op_name
@@ -545,6 +566,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 op_name = func.__name__
                 _check_one_op_param(one_args, formal_parameter_list[i][0],
                                     formal_parameter_list[i][1], op_name)
+
             for arg_key in kwargs:
                 op_name = func.__name__
                 for name_type in formal_parameter_list:
@@ -558,6 +580,122 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
 
     return _out_wrapper
 
+
+def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-arguments
+                max_dim=RANK_LIMIT, max_shape_num=MAX_UNKOWN_SHAPE_NUM, # pylint: disable=too-many-arguments
+                param_name=PARAM_NAME): # pylint: disable=too-many-arguments
+
+    """
+    check rule for tensor shape
+    """
+    if not isinstance(shape_range, (tuple, list)):
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_003
+        error_info['op_name'] = OP_NAME
+        error_info['param_name'] = param_name
+        error_info['param_type'] = "list tuple"
+        error_info['actual_type'] = shape_range.__class__.__name__
+        raise RuntimeError(error_info,
+                           "In op, the parameter[%s]'s type should be [%s],"
+                           "but actually is [%s]." %
+                           (error_info['param_name'],
+                            error_info['param_type'], error_info['actual_type']))
+    if len(shape) != len(shape_range):
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_021
+        error_info['op_name'] = OP_NAME
+        error_info['param_name'] = param_name
+        error_info['shape_len'] = len(shape)
+        error_info['range_len'] = len(shape_range)
+        raise RuntimeError(error_info,
+                           "In op, the length of shape[%s] and"
+                           "the length of range[%s] must be the same." %
+                           (error_info['shape_len'], error_info['range_len']))
+
+    for range_i in shape_range:
+        if len(range_i) == 2 and (range_i[1] is None) \
+                and isinstance(range_i[0], int) \
+                and 0 < range_i[0] <= max_shape_num:
+            continue
+        if not isinstance(range_i[0], int):
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_003
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            error_info['param_type'] = 'int'
+            error_info['actual_type'] = range_i[0].__class__.__name__
+            raise RuntimeError(error_info,
+                               "In op, the parameter[%s]'s type should be [%s],"
+                               "but actually is [%s]." %
+                               (error_info['param_name'], error_info['param_type'],
+                                error_info['actual_type']))
+        if not isinstance(range_i[1], int):
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_003
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            error_info['param_type'] = 'int'
+            error_info['actual_type'] = range_i[1].__class__.__name__
+            raise RuntimeError(error_info,
+                               "In op, the parameter[%s]'s type should be [%s],"
+                               "but actually is [%s]." %
+                               (error_info['param_name'], error_info['param_type'],
+                                error_info['actual_type']))
+        valid_type = isinstance(range_i[0], int) and \
+                     isinstance(range_i[1], int)
+        if len(range_i) != 2:
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_023
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            raise RuntimeError(error_info,
+                               "In op[%s],the length of each element"
+                               "in the range must be two" %
+                               (error_info['op_name']))
+        valid_range = len(range_i) == 2 and 0 < range_i[0] <= range_i[1] <= max_shape_num
+        if valid_type and valid_range:
+            continue
+        else:
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_022
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            error_info['first_real_value'] = range_i[0]
+            error_info['second_real_value'] = range_i[1]
+            error_info['min_range_value'] = 0
+            error_info['max_range_value'] = max_shape_num
+            raise RuntimeError(error_info,
+                               "In op, the ndim of first range input[%s] is less than that of the second range input[%s],"
+                               "and the ndim of range should be in the range of [%s, %s]."
+                               % (error_info['first_real_value'], error_info['second_real_value'], 0, max_shape_num))
+
+def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_name=PARAM_NAME):
+    if len(shape) < MIN_UNKOWN_SHAPE_RANK or len(shape) > max_rank:
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_012
+        error_info['op_name'] = OP_NAME
+        error_info['param_name'] = param_name
+        error_info['min_value'] = MIN_UNKOWN_SHAPE_RANK
+        error_info['max_value'] = max_rank
+        error_info['real_value'] = len(shape)
+        raise RuntimeError(error_info,
+                           "In op, the num of dimensions of input[%s] should be in"
+                           "the range of [%s, %s], but actually is [%s]." \
+                           % (error_info['param_name'], MIN_UNKOWN_SHAPE_RANK, max_rank, len(shape)))
+    for _, dim in enumerate(shape):
+        valid_dim = -1 <= dim <= max_dim and dim != 0
+        if not valid_dim:
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_002
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            error_info['min_value'] = "-1"
+            error_info['max_value'] = max_dim
+            error_info['real_value'] = dim
+            raise RuntimeError(error_info,
+                               "In op, the parameter[%s] should be in the range of [%s, %s] and cannot be zero,"
+                               "but actually is [%s]." \
+                               % (error_info['param_name'], -1, max_dim, dim))
 
 def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many-arguments
                 min_rank=0, max_rank=RANK_LIMIT,  # pylint: disable=too-many-arguments
@@ -593,47 +731,50 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many
                                (error_info['param_name'], error_info['param_type'],
                                 error_info['actual_type']))
 
-    if len(shape) < min_rank or len(shape) > max_rank:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_012
-        error_info['op_name'] = OP_NAME
-        error_info['param_name'] = param_name
-        error_info['min_value'] = min_rank
-        error_info['max_value'] = max_rank
-        error_info['real_value'] = len(shape)
-        raise RuntimeError(error_info,
-                           "In op, the num of dimensions of input[%s] should be in"
-                           " the range of [%s, %s], but actually is [%s]."\
-                           % (error_info['param_name'], min_rank, max_rank, len(shape)))
-
-    for _, dim in enumerate(shape):
-        if dim < min_dim or dim > max_dim:
+    if operation.in_dynamic():
+        check_dynamic_shape(shape, max_dim, max_rank, param_name)
+    else:
+        if len(shape) < min_rank or len(shape) > max_rank:
             error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_002
+            error_info['errCode'] = OP_ERROR_CODE_012
             error_info['op_name'] = OP_NAME
             error_info['param_name'] = param_name
-            error_info['min_value'] = min_dim
-            error_info['max_value'] = max_dim
-            error_info['real_value'] = dim
+            error_info['min_value'] = min_rank
+            error_info['max_value'] = max_rank
+            error_info['real_value'] = len(shape)
             raise RuntimeError(error_info,
-                               "In op, the parameter[%s] should be in the range of [%s, %s],"
-                               "but actually is [%s]." % (error_info['param_name'], min_dim, max_dim, dim))
-    if shape:
-        shape_size = functools_reduce(lambda x, y: x * y, shape[:])
-    else:
-        shape_size = 1
-    if shape_size < min_size:
+                               "In op, the num of dimensions of input[%s] should be in"
+                               "the range of [%s, %s], but actually is [%s]."\
+                               % (error_info['param_name'], min_rank, max_rank, len(shape)))
 
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_011
-        error_info['op_name'] = OP_NAME
-        error_info['param_name'] = param_name
-        error_info['min_value'] = min_size
-        error_info['real_value'] = shape_size
-        raise RuntimeError(error_info,
-                           "In op, the shape size(product of all dimensions) of "
-                           "input[%s] should more than [%s], but actually is [%s]."\
-                           % (error_info['min_value'], min_size, shape_size))
+        for _, dim in enumerate(shape):
+            if dim < min_dim or dim > max_dim:
+                error_info = {}
+                error_info['errCode'] = OP_ERROR_CODE_002
+                error_info['op_name'] = OP_NAME
+                error_info['param_name'] = param_name
+                error_info['min_value'] = min_dim
+                error_info['max_value'] = max_dim
+                error_info['real_value'] = dim
+                raise RuntimeError(error_info,
+                                   "In op, the parameter[%s] should be in the range of [%s, %s],"
+                                   "but actually is [%s]."\
+                                   % (error_info['param_name'], min_dim, max_dim, dim))
+        if shape:
+            shape_size = functools_reduce(lambda x, y: x * y, shape[:])
+        else:
+            shape_size = 1
+        if shape_size < min_size:
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_011
+            error_info['op_name'] = OP_NAME
+            error_info['param_name'] = param_name
+            error_info['min_value'] = min_size
+            error_info['real_value'] = shape_size
+            raise RuntimeError(error_info,
+                               "In op, the shape size(product of all dimensions) of "
+                               "input[%s] should more than [%s], but actually is [%s]." \
+                               % (error_info['min_value'], min_size, shape_size))
 
 
 def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
@@ -664,7 +805,7 @@ def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
         error_info['errCode'] = OP_ERROR_CODE_008
         error_info['op_name'] = OP_NAME
         error_info['param_name'] = param_name
-        error_info['excepted_dtype_list'] = ",".join(check_list)
+        error_info['excepted_dtype_list'] = check_list
         error_info['dtype'] = dtype.lower()
         raise RuntimeError(error_info, "In op, the parameter[%s]'s dtype should be one of [%s]"
                                        ", but actually is [%s]."\
@@ -698,6 +839,86 @@ def check_format(data_format, check_list=ALL_FORMAT_LIST, param_name=PARAM_NAME)
                               error_info['excepted_format_list'], error_info['format']))
 
 
+def check_elewise_shape_range(inputs: list, support_broadcast=False):
+    """
+    :param inputs: list, all inputs of operator
+    :return:
+    """
+    def _has_intersection(range0, range1):
+        _range0 = list(range0)
+        _range1 = list(range1)
+        if _range0[1] is None:
+            _range0[1] = MAX_UNKOWN_SHAPE_NUM
+        if _range1[1] is None:
+            _range1[1] = MAX_UNKOWN_SHAPE_NUM
+        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
+
+    def _check_range_relu(shape_x, shape_y, range_x, range_y):
+        size_x = len(shape_x)
+        size_y = len(shape_y)
+        min_size = min(size_x, size_y)
+        for i in range(1, min_size + 1):
+            if len(range_x[-i]) != 2 or len(range_y[-i]) != 2:
+                error_info = {}
+                error_info['errCode'] = OP_ERROR_CODE_023
+                error_info['op_name'] = operation.get_context().get_op_type()
+                error_info['param_name'] = PARAM_NAME
+                raise RuntimeError(error_info,
+                                   "In op[%s],the range of each element must be two" % (error_info['op_name']))
+            if support_broadcast:
+                if (shape_x[-i] != 1 and shape_y[-i] != 1) and \
+                        not (_has_intersection(range_x[-i], range_y[-i])
+                             or range_x[-i][0] <= 1 or range_y[-i][0] <= 1):
+                    error_info = {}
+                    error_info['errCode'] = OP_ERROR_CODE_024
+                    error_info['op_name'] = operation.get_context().get_op_type()
+                    error_info['param_name'] = PARAM_NAME
+                    raise RuntimeError(error_info,
+                                       "In op[%s],the range at the same location must have intersections" % (error_info['op_name']))
+            else:
+                if not _has_intersection(range_x[-i], range_y[-i]):
+                    error_info = {}
+                    error_info['errCode'] = OP_ERROR_CODE_024
+                    error_info['op_name'] = operation.get_context().get_op_type()
+                    error_info['param_name'] = PARAM_NAME
+                    raise RuntimeError(error_info,
+                                       "In op[%s],the range at the same location must have intersections" % (error_info['op_name']))
+
+    if len(inputs) <= 1:
+        return
+    last_shape = None
+    last_range = None
+    inputs_keys = (OpParamInfoKey.SHAPE, OpParamInfoKey.RANGE)
+    for index, _input in enumerate(inputs):
+        if not isinstance(_input, dict):
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_003
+            error_info['op_name'] = operation.get_context().get_op_type()
+            error_info['param_name'] = PARAM_NAME
+            error_info['param_type'] = 'dict'
+            error_info['actual_type'] = _input.__class__.__name__
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s type should be [%s],  "
+                                           "but actually is [%s]." % (error_info['op_name'], \
+                                                                      error_info['param_name'], error_info['param_type'] \
+                                                                          , error_info['actual_type']))
+        for key in inputs_keys:
+            if key not in _input.keys():
+                error_info = {}
+                error_info['errCode'] = OP_ERROR_CODE_004
+                error_info['op_name'] = operation.get_context().get_op_type()
+                error_info['param_name'] = PARAM_NAME
+                error_info['key'] = OpParamInfoKey.RANGE
+                raise RuntimeError(error_info,
+                                   "In op[%s], the input[%s] does not contain the item[%s]."
+                                   % (error_info['op_name'], error_info['param_name'], error_info['key']))
+        shape = _input.get("shape")
+        _range = _input.get("range")
+        if index > 0:
+            _check_range_relu(shape, last_shape, _range, last_range)
+        last_shape = shape
+        last_range = _range
+
+
 def squeeze_shape(shape):
     """
     squeeze shape
@@ -707,6 +928,7 @@ def squeeze_shape(shape):
         squeezed_shape = [1]
 
     return squeezed_shape
+
 
 def wrap_axes_to_positive(axes, rank):
     """
@@ -786,21 +1008,48 @@ def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', para
     """
     two input shapes produce three output shape
     """
+    def _generate_dynamic_output(_shape1_i, _shape2_i, out_shape, index):
+        if not _equal(_shape1_i, _shape2_i):
+            if isinstance(_shape1_i, int):
+                if _shape1_i == 1:
+                    out_shape.append(_shape2_i)
+                else:
+                    out_shape.append(_shape1_i)
+            elif isinstance(_shape2_i, int):
+                if _shape2_i == 1:
+                    out_shape.append(_shape1_i)
+                else:
+                    out_shape.append(_shape2_i)
+            else:
+                var_name = "dim_" + str(index) + "_2"
+                _var = operation.get_te_var(var_name)
+                if _var is None:
+                    bound_x = operation.get_te_var(_shape1_i.name).get_bound()
+                    bound_y = operation.get_te_var(_shape2_i.name).get_bound()
+                    bound = (min(bound_x[0], bound_y[0]),
+                             max(bound_x[1], bound_y[1]))
+                    _var = operation.var(var_name, bound)
+                else:
+                    _var = _var.tvm_var
+                out_shape.append(_var)
+        else:
+            out_shape.append(_shape1_i)
+
     shape1 = list(shape1)
     shape2 = list(shape2)
-    flag = 0
+    swapped = False
     if len(shape1) < len(shape2):
         shape1, shape2 = shape2, shape1
-        flag = 1
+        swapped = True
 
-    output_shape_len = len(shape1)
-    dec = output_shape_len - len(shape2)
-    for i in range(dec):
-        shape2 = [1] + shape2
+    _dv = len(shape1) - len(shape2)
+    shape2 = [1] * _dv + shape2
 
     out_shape = []
-    for i in range(output_shape_len):
-        if (shape1[i] != shape2[i]) and (shape1[i] != 1) and (shape2[i] != 1):
+    for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
+        if not _equal(shape1_i, shape2_i) and \
+                (isinstance(shape1_i, int) and shape1_i != 1) \
+                and (isinstance(shape2_i, int) and shape2_i != 1):
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_013
             error_info['op_name'] = op_name
@@ -812,9 +1061,12 @@ def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', para
                                            "not be broadcast together with shapes[%s][%s]."
                                % (op_name, param_name_input1, param_name_input2,\
                                   error_info['input1_shape'], error_info['input2_shape']))
-        out_shape.append(shape1[i] if shape1[i] > shape2[i] else shape2[i])
+        if operation.in_dynamic():
+            _generate_dynamic_output(shape1_i, shape2_i, out_shape, i)
+        else:
+            out_shape.append(shape1_i if _equal(shape2_i, 1) else shape2_i)
 
-    if flag == 1:
+    if swapped:
         shape1, shape2 = shape2, shape1
 
     return shape1, shape2, out_shape
@@ -824,60 +1076,298 @@ def refine_shapes_for_broadcast(shape1, shape2):
     """
     Fusing the axes for the input shapes
     """
-    def _delete_one(shape1, shape2):
-        # delete 1 when both 1
-        shape1_new = []
-        shape2_new = []
+    def _dynamic_refine_shapes_for_broadcast(shape1, shape2):
+        """
+        Fusing the axes for the input shapes
+        """
+        def _equals_one(_x):
+            if isinstance(_x, tvm.expr.ConstExpr):
+                return _x.value == 1
+            if isinstance(_x, int):
+                return _x == 1
+            return False
+
+        def _get_state(_a, _b):
+            if _equal(_a, _b):
+                return 1
+            if _equals_one(_a):
+                return 2
+            if _equals_one(_b):
+                return 3
+            return 4
+
+        fused_shape1 = [1]
+        fused_shape2 = [1]
+        fusion_index = []
+        current_index = []
+        state = None
+        for index, (i_a, i_b) in enumerate(zip(shape1, shape2)):
+            if _equals_one(i_a) and _equals_one(i_b):
+                pass
+            elif state is None:
+                fused_shape1[-1] *= i_a
+                fused_shape2[-1] *= i_b
+                state = _get_state(i_a, i_b)
+                current_index.append(index)
+            elif _get_state(i_a, i_b) == 4:
+                fused_shape1.append(i_a)
+                fused_shape2.append(i_b)
+                state = _get_state(i_a, i_b)
+                fusion_index.append(current_index)
+                current_index = [index]
+            elif state == _get_state(i_a, i_b):
+                fused_shape1[-1] *= i_a
+                fused_shape2[-1] *= i_b
+                current_index.append(index)
+            else:
+                fused_shape1.append(i_a)
+                fused_shape2.append(i_b)
+                state = _get_state(i_a, i_b)
+                fusion_index.append(current_index)
+                current_index = [index]
+
+        fusion_index.append(current_index)
+        operation.add_compile_info("_fusion_index", fusion_index)
+
+        return fused_shape1, fused_shape2
+
+    def _const_refine_shapes_for_broadcast(shape1, shape2):
+        def _delete_one(shape1, shape2):
+            # delete 1 when both 1
+            shape1_new = []
+            shape2_new = []
+            for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
+                if (shape1_i != shape2_i) or \
+                        (shape1_i == shape2_i and shape1_i != 1):
+                    shape1_new.append(shape1[i])
+                    shape2_new.append(shape2[i])
+            if shape1_new == [] and shape2_new == []:
+                shape1_new = [1]
+                shape2_new = [1]
+            return shape1_new, shape2_new
+
+        shape1, shape2 = _delete_one(shape1, shape2)
+
+        fused_shape1 = []
+        fused_shape2 = []
+        fused_shape1.append(shape1[0])
+        fused_shape2.append(shape2[0])
+        j = 0
         for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-            if (shape1_i != shape2_i) or \
-                    (shape1_i == shape2_i and shape1_i != 1):
-                shape1_new.append(shape1[i])
-                shape2_new.append(shape2[i])
-        if shape1_new == [] and shape2_new == []:
-            shape1_new = [1]
-            shape2_new = [1]
-        return shape1_new, shape2_new
+            if i == 0:
+                pass
+            elif shape1_i == shape2_i and shape1[i - 1] == shape2[i - 1]:
+                fused_shape1[j] *= shape1[i]
+                fused_shape2[j] *= shape2[i]
+            elif shape1_i != shape2_i and shape1[i - 1] != shape2[i - 1] \
+                    and (shape1_i == shape1[i - 1] or shape2_i == shape2[i - 1]):
+                fused_shape1[j] *= shape1[i]
+                fused_shape2[j] *= shape2[i]
+            else:
+                j += 1
+                if i != 0:
+                    fused_shape1.append(shape1[i])
+                    fused_shape2.append(shape2[i])
+
+        return fused_shape1, fused_shape2
 
     if fusion_manager.get_build_cfg() == "disable":
         return shape1, shape2
 
-    shape1 = list(shape1)
-    shape2 = list(shape2)
-    flag = 0
+    shape1, shape2 = list(shape1), list(shape2)
+    swapped = False
     if len(shape1) < len(shape2):
         shape1, shape2 = shape2, shape1
-        flag = 1
+        swapped = True
 
-    output_shape_len = len(shape1)
-    dec = output_shape_len - len(shape2)
-    for i in range(dec):
-        shape2 = [1] + shape2
+    _dv = len(shape1) - len(shape2)
+    shape2 = [1] * _dv + shape2
 
-    shape1, shape2 = _delete_one(shape1, shape2)
+    if operation.in_dynamic():
+        fused_shape1, fused_shape2 = \
+            _dynamic_refine_shapes_for_broadcast(shape1, shape2)
+    else:
+        fused_shape1, fused_shape2 = \
+            _const_refine_shapes_for_broadcast(shape1, shape2)
 
-    fused_shape1 = []
-    fused_shape2 = []
-    fused_shape1.append(shape1[0])
-    fused_shape2.append(shape2[0])
-    j = 0
-
-    for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-        if i == 0:
-            pass
-        elif shape1_i == shape2_i and shape1[i - 1] == shape2[i - 1]:
-            fused_shape1[j] *= shape1[i]
-            fused_shape2[j] *= shape2[i]
-        elif shape1_i != shape2_i and shape1[i - 1] != shape2[i - 1] \
-                and (shape1_i == shape1[i - 1] or shape2_i == shape2[i - 1]):
-            fused_shape1[j] *= shape1[i]
-            fused_shape2[j] *= shape2[i]
-        else:
-            j += 1
-            if i != 0:
-                fused_shape1.append(shape1[i])
-                fused_shape2.append(shape2[i])
-
-    if flag == 1:
+    if swapped:
         fused_shape1, fused_shape2 = fused_shape2, fused_shape1
 
     return fused_shape1, fused_shape2
+
+
+def _equal(expr_a, expr_b):
+    """
+    :param expr_a:
+    :param expr_b:
+    :return:
+    """
+    elements1 = {}
+    elements2 = {}
+
+    single_types = (int, float, tvm.expr.Var)
+    const_types = (tvm.expr.IntImm,)
+    for expr, elements in zip((expr_a, expr_b), (elements1, elements2)):
+        if isinstance(expr, single_types):
+            elements[expr] = elements.get(expr, 0) + 1
+        elif isinstance(expr, const_types):
+            elements[expr.value] = elements.get(expr.value, 0) + 1
+        elif isinstance(expr, tvm.expr.Expr):
+            _parse_expr(expr, elements)
+        else:
+            error_info = {}
+            error_info['errCode'] = OP_ERROR_CODE_025
+            error_info['op_name'] = operation.get_context().get_op_type()
+            error_info['param_expr'] = expr
+            raise RuntimeError(error_info,
+                               "In op[%s], unsupported expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+
+    return elements1 == elements2
+
+
+def _parse_expr(expr, elements: dict):
+    if isinstance(expr, tvm.expr.Mul):
+        _parse_mul(expr, elements)
+    else:
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_025
+        error_info['op_name'] = operation.get_context().get_op_type()
+        error_info['param_expr'] = expr
+        raise RuntimeError(error_info,
+                           "In op[%s], unsupported expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+
+
+def _parse_mul(expr, elements: dict):
+    if not isinstance(expr, tvm.expr.Mul):
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_026
+        error_info['op_name'] = operation.get_context().get_op_type()
+        error_info['param_expr'] = expr
+        raise RuntimeError(error_info,
+                           "In op[%s], it is not mul expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+
+    const_types = (tvm.expr.IntImm,)
+    var_types = (tvm.expr.Var,)
+    for _x in (expr.a, expr.b):
+        if isinstance(_x, const_types):
+            elements[_x.value] = elements.get(_x.value, 0) + 1
+        elif isinstance(_x, var_types):
+            elements[_x] = elements.get(_x, 0) + 1
+        else:
+            _parse_mul(_x, elements)
+
+
+def variable_shape(inputs: list, support_broadcast=False):
+    """
+    :param inputs: all inputs
+    :param support_broadcast: whether to support broadcast
+    :return:
+    """
+    def _has_intersection(range0, range1):
+        _range0 = list(range0)
+        _range1 = list(range1)
+        if _range0[1] is None:
+            _range0[1] = MAX_UNKOWN_SHAPE_NUM
+        if _range1[1] is None:
+            _range1[1] = MAX_UNKOWN_SHAPE_NUM
+        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
+
+    def _select(cond, then_case, else_case):
+        if cond:
+            return then_case
+        else:
+            return else_case
+
+    def _update_range(shape0, range0, shape1, range1):
+        for index in range(len(range0)):
+            verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
+                           shape0[index] == 1 or shape1[index] == 1
+            if verify_shape:
+                continue
+            range_x = list(range0[index])
+            range_y = list(range1[index])
+            for j, (_rx, _ry) in enumerate(zip(range_x, range_y)):
+                if _rx is None:
+                    range_x[j] = MAX_UNKOWN_SHAPE_NUM
+                if _ry is None:
+                    range_y[j] = MAX_UNKOWN_SHAPE_NUM
+            x_const = shape0[index] != -1 and shape1[index] == -1
+            y_const = shape0[index] == -1 and shape1[index] != -1
+            variable_intersection = _has_intersection(range_x, range_y) and \
+                                    range_x[0] > 1 and range_y[0] > 1
+            if x_const:
+                range_y = (_select(range_y[0] <= 1, range_y[0], shape0[index]),
+                           _select(range_y[1] >= shape0[index], shape0[index], 1))
+            elif y_const:
+                range_y = (_select(range_x[0] <= 1, range_x[0], shape1[index]),
+                           _select(range_x[1] >= shape1[index], shape1[index], 1))
+            elif variable_intersection:
+                range_x = (max(range_x[0], range_y[0]),
+                           min(range_x[1], range_y[1]))
+                range_y = range_x
+            elif not _has_intersection(range_x, range_y):
+                if range_x[0] <= 1:
+                    range_x = (1, 1)
+                if range_y[0] <= 1:
+                    range_y = (1, 1)
+            range0[index] = tuple(range_x)
+            range1[index] = tuple(range_y)
+            if range_x[0] == range_x[1]:
+                shape0[index] = range_x[0]
+            if range_y[0] == range_y[1]:
+                shape1[index] = range_y[0]
+
+    def _fill(_inputs):
+        if support_broadcast:
+            if len(inputs) != 2:
+                error_info = {}
+                error_info['errCode'] = OP_ERROR_CODE_027
+                error_info['op_name'] = operation.get_context().get_op_type()
+                error_info['param_name'] = PARAM_NAME
+                raise RuntimeError(error_info,
+                                   "In op[%s], only support two inputs for broadcast" % (error_info['op_name']))
+            x_0, x_1 = _inputs
+            shape0, range0 = list(x_0["shape"]), list(x_0["range"])
+            shape1, range1 = list(x_1["shape"]), list(x_1["range"])
+            swapped = False
+            if len(shape0) < len(shape1):
+                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
+                swapped = True
+            d_v = len(shape0) - len(shape1)
+            shape1 = [1] * d_v + shape1
+            range1 = [(1, 1)] * d_v + range1
+            if swapped:
+                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
+            _update_range(shape0, range0, shape1, range1)
+            return [shape0, shape1], [range0, range1]
+
+        _shapes, _ranges = [], []
+        for _input in inputs:
+            _shapes.append(_input["shape"])
+            _ranges.append(_input["range"])
+        return _shapes, _ranges
+
+    def _maybe_broadcast():
+        if support_broadcast:
+            for _r in ranges:
+                if _r[i][0] <= 1:
+                    return True
+        return False
+
+    shapes, ranges = _fill(inputs)
+    d_shapes = [[] for _ in shapes]
+    for i in range(len(shapes[0])):
+        _var = None
+        need_two_vars = _maybe_broadcast()
+        _suffix = 0
+        for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
+            if shape[i] == -1:
+                if _var is None or need_two_vars:
+                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                                         _range[i])
+                d_shape.append(_var)
+            else:
+                d_shape.append(shape[i])
+            _suffix += 1
+
+    return d_shapes

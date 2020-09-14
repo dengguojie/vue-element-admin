@@ -307,15 +307,9 @@ def _split_tasks_by_strategy_two(num_core, num_task):
     the size of outer and inner axes
     """
 
-    num = num_task
-    if num <= num_core:
-        return num, 1
-    inner = 2
-    while num > num_core:
-        outer = math.ceil(num / inner)
-        if outer <= num_core:
-            return outer, inner
-        inner += 1
+    inner = math.ceil(num_task / num_core)
+    outer = math.ceil(num_task / inner)
+    return outer, inner
 
 
 def _split_core_strategy(num_core, num_task):

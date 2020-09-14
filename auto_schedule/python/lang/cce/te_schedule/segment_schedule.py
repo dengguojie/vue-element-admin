@@ -20,6 +20,7 @@ from functools import reduce as functools_reduce
 
 from te import platform as cceconf
 from te import tvm
+from te.platform import log
 
 
 class CceSegmentOp:
@@ -82,7 +83,7 @@ class CceSegmentOp:
         dtype = self._write_buffer[0].dtype
         if self._check_ids_tensor:
             dtype_byte = 2
-            if dtype == "float16":
+            if dtype in ("float16", "int16"):
                 dtype_byte = 2
             elif dtype == "float32":
                 dtype_byte = 4
@@ -90,7 +91,7 @@ class CceSegmentOp:
                 dtype_byte = 4
         else:
             dtype_byte = 4
-            if dtype == "float16":
+            if dtype in ("float16", "int16"):
                 dtype_byte = 4
             elif dtype == "float32":
                 dtype_byte = 8
@@ -106,7 +107,7 @@ class CceSegmentOp:
         align_factor = 16
         if dtype in ("int8", "uint8"):
             align_factor = 32
-        elif dtype == "float16":
+        elif dtype in ("float16", "int16"):
             align_factor = 16
         else:
             align_factor = 8
@@ -117,6 +118,7 @@ class CceSegmentOp:
         """
         int8/uint8 goes to CPU schedule in current version
         """
+        log.debug("start segment_schedule")
 
         self._schedule = sch_list[0]
         self._spec_node_list = spec_node_list
@@ -216,6 +218,7 @@ class CceSegmentOp:
             if self._need_double_buffer:
                 self.local_double_buffer(read_cache_list)
 
+        log.debug("end segment_schedule")
         sch_list[0] = self._schedule
         return True
 
@@ -363,6 +366,8 @@ class CceSegmentOp:
 
         if op_name == "segmentensor_min":
             op_name_emit = "vector_min"
+        elif op_name == "segmentensor_max":
+            op_name_emit = "vector_max"
         elif op_name == "segmentensor_prod":
             op_name_emit = "vector_mul"
         else:

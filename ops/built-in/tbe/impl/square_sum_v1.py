@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 MIN_FP32 = 2**(-126)
 # min float16 value
@@ -127,6 +128,7 @@ def square_sum_v1_compute(input_x,
     return sum0
 
 
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def square_sum_v1(input_x,
                   output1,
                   attr1,
@@ -148,9 +150,7 @@ def square_sum_v1(input_x,
 
     input_dtype = dtype.lower()
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="input_x")
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
 

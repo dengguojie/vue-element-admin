@@ -129,7 +129,8 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
         errorInfo['param_name'] = 'inputs'
         errorInfo['excepted_value'] = '1'
         errorInfo['actual_value'] = input_num
-        raise RuntimeError(errorInfo, "the parameter[%s] should be more than [%s], but actually is [%s]."%(errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
+        raise RuntimeError(errorInfo, "the parameter[%s] should be more than [%s], but actually is [%s]."
+                           % (errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
 
     if input_num != tensor_num:
         errorInfo = {}
@@ -137,7 +138,8 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
         errorInfo['param_name'] = 'inputs'
         errorInfo['excepted_value'] = tensor_num
         errorInfo['actual_value'] = input_num
-        raise RuntimeError(errorInfo, "the parameter[%s] should be [%s], but actually is [%s]."%(errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
+        raise RuntimeError(errorInfo, "the parameter[%s] should be [%s], but actually is [%s]."
+                           % (errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
 
     shape_0 = inputs[0].get("shape")
     fuseshape = [1]
@@ -153,7 +155,8 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
             errorInfo['param_name'] = 'shape_input'
             errorInfo['excepted_value'] = list(shape_input)
             errorInfo['actual_value'] = list(shape_0)
-            raise RuntimeError(errorInfo, "the num of dimensions of input[%s] should be [%s], but actually is [%s]."%(errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
+            raise RuntimeError(errorInfo, "the num of dimensions of input[%s] should be [%s], but actually is [%s]."
+                               % (errorInfo['param_name'], errorInfo['excepted_value'], errorInfo['actual_value']))
         check_shape(shape_input, param_name="inputs")
         dtype_input = input_dict.get("dtype").lower()
         check_dtype(dtype_input, check_list, param_name="inputs")

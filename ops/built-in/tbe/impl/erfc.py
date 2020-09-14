@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # define a scaler, value = 1
 SCALER_ONE = 1
@@ -114,7 +115,7 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
     return erfc_result
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def erfc(input_x, output_y, kernel_name="erfc"):
     """
     algorithm: erfc
@@ -136,13 +137,11 @@ def erfc(input_x, output_y, kernel_name="erfc"):
     shape_input = input_x.get("shape")
     dtype_input = input_x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input)
-    util.check_tensor_shape_size(shape_input)
+    check_shape(shape_input, param_name="input_x")
 
     dtype_input = dtype_input.lower()
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype_input, check_list)
+    check_dtype(dtype_input, check_list, param_name="input_x")
 
     shape_input = util.shape_refine(shape_input)
     reshape_input = (functools_reduce(lambda x, y: x * y, shape_input[:]),)

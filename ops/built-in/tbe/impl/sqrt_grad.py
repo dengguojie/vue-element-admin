@@ -23,11 +23,8 @@ import te.lang.cce
 from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
-
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_LIMIT = 1 << 30
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -61,7 +58,8 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.KERNEL_NAME)
 def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     """
     algorithm: sqrt_grad_cce
@@ -81,7 +79,7 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     None
 
     """
-    util.check_kernel_name(kernel_name)
+
     shape_x = x.get("shape")
     shape_dx = dx.get("shape")
     dtype_x = x.get("dtype").lower()
@@ -90,9 +88,9 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
         raise RuntimeError("Input shapes must be equal")
     if not dtype_x == dtype_dx:
         raise RuntimeError("Input dtype must be same")
-    util.check_shape_rule(shape_x)
-    util.check_shape_size(shape_x, SHAPE_LIMIT)
-    util.check_dtype_rule(dtype_x, ("float16", "float32"))
+
+    op_utils.check_shape(shape_x, param_name="x")
+    op_utils.check_dtype(dtype_x, ("float16", "float32"), param_name="x")
 
     shape_x = [reduce_ins(lambda x, y: x * y, shape_x[:])]
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)

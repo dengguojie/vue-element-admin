@@ -13,13 +13,12 @@ http://www.apache.org/licenses/LICENSE-2.0
 maxpool_grad
 """
 
-from __future__ import absolute_import
 import math
-from te import tik
-from topi.cce import util
-from te.platform.cce_conf import CceProductParams
+
 from te import platform as tbe_platform
-from te import platform as cce
+from te import tik
+from te.platform.cce_conf import CceProductParams
+from te.utils import op_utils
 
 
 def ceil_div(num, divisor):
@@ -123,6 +122,7 @@ C0 = 16
 # BLOCK NUMS
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
+
 # pylint: disable = too-many-arguments
 def check_param(ori_input, ori_output, grad, ksize, strides, padding,
                 kernel_name):
@@ -153,10 +153,9 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding,
     ori_input_dtype = ori_input.get("dtype").lower()
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(ori_input_shape)
-    util.check_tensor_shape_size(ori_input_shape)
-    util.check_dtype_rule(ori_input_dtype, ("float16",))
+    op_utils.check_shape(ori_input_shape, param_name="ori_input")
+    op_utils.check_dtype(ori_input_dtype, ("float16",), param_name="ori_input")
+
     # the format of input_x must be NC1HWC0
     if len(ori_input_shape) != 5:
         raise RuntimeError("invalid shape params, input feature map must be "
@@ -203,8 +202,12 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding,
 
 
 # pylint: disable = too-many-arguments,,unused-argument,invalid-name
-@util.check_input_type(dict, dict, dict, dict,
-                       (tuple, list), (tuple, list), str, str, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_LIST_INT,
+                          op_utils.REQUIRED_ATTR_STR, op_utils.OPTION_ATTR_STR,
+                          op_utils.KERNEL_NAME)
 def max_pool_grad(ori_input,
                   ori_output,
                   grad,

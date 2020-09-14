@@ -49,6 +49,8 @@ OP_PATTERN_RULES = {
         OpPatterns.SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_PATTERN,
     OpPatternRules.l2_normalize_pattern_rule: OpPatterns.L2_NORMALIZE_PATTERN,
     OpPatternRules.l2_loss_pattern_rule: OpPatterns.L2_LOSS_PATTERN,
+    OpPatternRules.cosine_embedding_loss_pattern_rule:
+        OpPatterns.COSINE_EMBEDDING_LOSS_PATTERN,
     OpPatternRules.bn_update_grad_pattern_rule: OpPatterns.BN_UPDATE_GRAD_PATTERN,
     OpPatternRules.bn_grad_reduce_pattern_rule: OpPatterns.BN_GRAD_REDUCE_PATTERN,
     OpPatternRules.layer_norm_grad_pattern_rule: OpPatterns.LAYER_NORM_GRAD_PATTERN,
@@ -62,6 +64,11 @@ OP_PATTERN_RULES = {
      OpPatterns.CONV2D_BACKPROP_INPUT_PATTERN,
      OpPatterns.CONV2D_BACKPROP_FILTER_PATTERN,
      OpPatterns.DEPTHWISECONV_PATTERN),
+
+    OpPatternRules.pure_broadcast_pattern_rule:
+        (OpPatterns.PURE_BROADCAST_PATTERN,),
+    OpPatternRules.elewise_pattern_rule: OpPatterns.ELEMWISE_PATTERN,
+
     # Normal schedules
     OpPatternRules.simple_pattern_rule: (OpPatterns.MATMUL_V2_PATTERN,
                                          OpPatterns.MATMUL_PATTERN,
@@ -73,10 +80,8 @@ OP_PATTERN_RULES = {
                                          OpPatterns.STRIDED_READ_PATTERN,
                                          OpPatterns.STRIDED_WRITE_PATTERN),
     OpPatternRules.single_only_pattern_rule: (OpPatterns.SEGMENT_PATTERN,
-                                              OpPatterns.INPLACE_PATTERN,
-                                              OpPatterns.PURE_BROADCAST_PATTERN),
+                                              OpPatterns.INPLACE_PATTERN),
     OpPatternRules.reduce_pattern_rule: OpPatterns.REDUCE_PATTERN,
-    OpPatternRules.elewise_pattern_rule: OpPatterns.ELEMWISE_PATTERN,
 
     OpPatternRules.simple_pattern_rule_quant_phase: (OpPatterns.ASCEND_ANTI_QUANT_PATTERN,
                                                      OpPatterns.ASCEND_REQUANT_S16_PATTERN,

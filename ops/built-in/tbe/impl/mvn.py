@@ -65,18 +65,19 @@ def _check_dtype(input_dtype):
     None
     """
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",):
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            "Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
-            error_Info = {}
-            error_Info['errCode'] = 'E81006'
-            error_Info['param_name'] = 'dtype'
-            error_Info['op_name'] = 'mvn'
-            error_Info['real_value'] = input_dtype
+            error_info = {}
+            error_info['errCode'] = 'E81006'
+            error_info['param_name'] = 'dtype'
+            error_info['op_name'] = 'mvn'
+            error_info['real_value'] = input_dtype
             raise RuntimeError("In op[%s], Hi3796CV300ES is not supported while the [%s] of input is [%s]."
-                               %(error_Info['op_name'],error_Info['param_name'],error_Info['real_value']))
-        check_dtype(input_dtype, ("float16",),param_name="x")
+                               % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        check_dtype(input_dtype, ("float16",), param_name="x")
     else:
-        check_dtype(input_dtype, ("float16", "float32",),param_name="x")
+        check_dtype(input_dtype, ("float16", "float32",), param_name="x")
 
 
 # pylint: disable=too-many-arguments,too-many-locals,protected-access
@@ -111,7 +112,7 @@ def mvn_compute(x, y, normalize_variance, across_channels,
     dtype_x = x.dtype
     is_cast = False
 
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls","float32"):
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32"):
         if dtype_x == "float16":
             is_cast = True
             x = te.lang.cce.cast_to(x, 'float32')
@@ -140,19 +141,16 @@ def mvn_compute(x, y, normalize_variance, across_channels,
         var_muls = te.lang.cce.vmuls(var_sum, num_rec)
         var = te.lang.cce.broadcast(var_muls, shape_x)   # var
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910"):
+        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
             y_sqrt = te.lang.cce.vsqrt(var)
             y_add = te.lang.cce.vadds(y_sqrt, eps)
             res = te.lang.cce.vdiv(mean_sub, y_add)
-        elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
-                hasattr(te.lang.cce, "te_compute") and \
-                hasattr(te.lang.cce.te_compute, "elewise_compute") and \
-                hasattr(te.lang.cce.te_compute.elewise_compute, "__binary_elewise_op"):
+        elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+                "Hi3796CV300ES", "Hi3796CV300CS"):
             y_sqrt = te.lang.cce.vsqrt(var, priority_flag=1)
             y_add = te.lang.cce.vadds(y_sqrt, eps)
-            res = te.lang.cce.te_compute.elewise_compute. \
-                __binary_elewise_op(mean_sub, y_add, "elewise_binary_div")
-        elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310","Ascend610","Ascend620"):
+            res = te.lang.cce.vdiv(mean_sub, y_add)
+        else:
             y_sqrt = te.lang.cce.vsqrt(var)
 
             for _ in range(CONST_SQRT_ITER):
@@ -161,10 +159,6 @@ def mvn_compute(x, y, normalize_variance, across_channels,
                 data_sqrt = te.lang.cce.vmuls(data_sqrt, tvm.const(CONST_HALF, var.dtype))
                 y_sqrt = data_sqrt
 
-            y_add = te.lang.cce.vadds(y_sqrt, eps)
-            res = te.lang.cce.vdiv(mean_sub, y_add)
-        else:
-            y_sqrt = te.lang.cce.vsqrt(var, priority_flag=1)  # calculate_by_newton
             y_add = te.lang.cce.vadds(y_sqrt, eps)
             res = te.lang.cce.vdiv(mean_sub, y_add)
     else:

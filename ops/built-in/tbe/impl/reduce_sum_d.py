@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 # define the type of None
 NONETYPE = type(None)
 # define the limit of shape dim
@@ -77,8 +78,7 @@ def reduce_sum_d_compute(x,
 
 
 # pylint: disable=locally-disabled,too-many-locals
-@util.check_input_type(dict, dict, (int, list, tuple, NONETYPE),
-                       (bool, NONETYPE), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     """reduce a tensor on a certain axis based on sum.
 
@@ -104,10 +104,8 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
 
-    util.check_shape_rule(shape, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape)
-    util.check_dtype_rule(dtype_lower, check_list)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="x")
+    check_dtype(dtype_lower, check_list, param_name="x")
 
     axis_d = []
     shape_len = len(shape)
@@ -121,9 +119,12 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     data_input = tvm.placeholder(shape, name="data_input_" + kernel_name,
                                  dtype=dtype_lower)
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axis, kernel_name)
+    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axis)
     res = reduce_sum_d_compute(data_input, y, axis_d, keepdims,
                                is_5hdc=is_5hdc)
+    if is_5hdc:
+        res.ori_shape = x["ori_shape"]
+        res.ori_format = x["ori_format"]
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

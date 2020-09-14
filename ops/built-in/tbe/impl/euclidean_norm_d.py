@@ -72,9 +72,6 @@ def refine_shape_axes_custom(shape, axes):
     reduce_flag = -1
     refined_shape = []
     for idx, dim in enumerate(shape):
-        if dim == 1:
-            # dim is one, not need reduce skip
-            continue
         tmp_flag = 1 if idx in wrapped_axes else 0
         if reduce_flag == 1 and tmp_flag == 1:
             # continues reduce
@@ -87,11 +84,6 @@ def refine_shape_axes_custom(shape, axes):
             if tmp_flag == 1:
                 refined_axes.append(len(refined_shape) - 1)
             reduce_flag = tmp_flag
-
-    if not refined_shape:
-        refined_shape.append(1)
-        if wrapped_axes:
-            refined_axes.append(0)
 
     return refined_shape, refined_axes
 
@@ -135,10 +127,9 @@ def euclidean_norm_d(input_data,
     if hasattr(axes, 'index'):
         axes = list(axes)
 
-    check_shape(axes, min_dim = -shape_len, max_dim = shape_len - 1)
+    axes = wrap_axes_to_positive(axes, len(shape))
+    check_shape(axes, min_dim=-shape_len, max_dim=shape_len - 1)
     refined_shape, refined_axes = refine_shape_axes_custom(shape, axes)
-    if not refined_axes:
-        refined_axes.append(0)
 
     data_input = tvm.placeholder(refined_shape, name="data_input", dtype=input_dtype)
     res = euclidean_norm_d_compute(data_input, input_dtype, output_data,

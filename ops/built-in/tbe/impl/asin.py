@@ -124,11 +124,6 @@ def asin_compute(x, y, kernel_name="asin"):
     if dtype == "float16" and \
        api_check_support("te.lang.cce.vadd", "float32"):
         x = te.lang.cce.cast_to(x, "float32")
-        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, \
-                                               "float32"), shape)
-    else:
-        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, \
-                                               "float16"), shape)
 
     # Sign mask
     sign = util_compute.sign(x)
@@ -137,8 +132,18 @@ def asin_compute(x, y, kernel_name="asin"):
     x = te.lang.cce.vmul(x, sign)
 
     # x belongs to (0, 2^(-0.5))
-    choice_1 = te.lang.cce.vmin(x, boundary_mask1)
-    choice_1 = te.lang.cce.vsub(choice_1, boundary_mask1)
+    if api_check_support("te.lang.cce.vmins", x.dtype):
+        choice_1 = te.lang.cce.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
+    else:
+        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
+        choice_1 = te.lang.cce.vmin(x, boundary_mask1)
+
+    if api_check_support("te.lang.cce.vsubs", choice_1.dtype):
+        choice_1 = te.lang.cce.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
+    else:
+        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)
+        choice_1 = te.lang.cce.vsub(choice_1, boundary_mask1)
+
     choice_1 = te.lang.cce.vmuls(te.lang.cce.floor(choice_1), NEG_NUM_ONE)
 
     res_1 = _taylor_compute(x)

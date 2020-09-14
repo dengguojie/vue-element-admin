@@ -23,13 +23,12 @@ from te import platform as tbe_platform
 
 # pylint: disable=too-many-instance-attributes,unused-argument
 # pylint: disable=too-many-statements,too-many-lines,too-many-locals
-# pylint: disable=too-many-branches,too-many-return-statements
+# pylint: disable=too-many-branches,too-many-return-statements,too-many-public-methods
 class ConcatSchedule:
     """
         Function: use to store concat base parameters
         Modify : 2020-3-25
     """
-
     def __init__(self,
                  input_data,
                  output_data,
@@ -184,8 +183,7 @@ class ConcatSchedule:
         if len(self.input_shapes) == 2 and len(self.input_shapes[1]) == 2 \
                 and not use_vector_branch \
                 and self.max_input_dim_size < self.ub_half_size:
-            if [self.input_shapes[0][1] % self.ele_each_block,
-                self.input_shapes[1][1]] \
+            if [self.input_shapes[0][1] % self.ele_each_block, self.input_shapes[1][1]] \
                     == [0, 1]:
                 self.is_special_shape = True
                 self.is_data_move_first_dim = True
@@ -355,6 +353,37 @@ class ConcatSchedule:
         use_core_num = get_ceil_int(total_ele_num, ele_num_each_loop)
 
         return use_core_num, ele_num_each_loop, ele_last
+
+    def concat_ping_pang_flag(self, ele_num):
+        """concat_ping_pang_flag
+        """
+        if ele_num < self.ub_half_size:
+            loop_num = 0
+            last_ele = ele_num
+        else:
+            if ele_num % self.ub_half_size < self.ele_each_block:
+                ub_size = self.ub_half_size - self.ele_each_block
+            else:
+                ub_size = self.ub_half_size
+            last_ele = ele_num % ub_size
+            if last_ele == 0:
+                loop_num = ele_num // ub_size
+            else:
+                loop_num, ele_each_loop = cal_loop(ele_num, ub_size, self.ele_each_block)
+                last_ele = ele_num % ele_each_loop
+        loop_burst_len = last_ele // self.ele_each_block
+        ping_pang_flag = 0
+        if loop_num % 2 != 0:
+            ping_pang_flag = ping_pang_flag + 1
+        if loop_burst_len != 0:
+            ping_pang_flag = ping_pang_flag + 1
+        if last_ele % self.ele_each_block != 0:
+            ping_pang_flag = ping_pang_flag + 1
+
+        if ping_pang_flag % 2 == 0:
+            return False
+
+        return True
 
     # pylint: disable=too-many-locals,too-many-statements
     def concat_compute_for_each_tensor(self, tensor_list, input_tensor_info,
@@ -541,7 +570,8 @@ class ConcatSchedule:
                                       ele_num_each_loop, ele_num,
                                       tensor_index)
                     one_core_idx = loop_index*2 + 1
-                    ub_list.reverse()
+                    if self.concat_ping_pang_flag(ele_num):
+                        ub_list.reverse()
                     if one_core_flag:
                         _run_one_core(one_core_idx, out_offset,
                                       0, ele_num,
@@ -550,7 +580,8 @@ class ConcatSchedule:
                         _run_one_core(one_core_idx, out_offset,
                                       ele_num_each_loop, ele_num,
                                       tensor_index)
-                    ub_list.reverse()
+                    if self.concat_ping_pang_flag(ele_num):
+                        ub_list.reverse()
                 if out_loop % 2 == 1:
                     one_core_idx = out_loop - 1
                     if one_core_flag:
@@ -561,7 +592,8 @@ class ConcatSchedule:
                         _run_one_core(one_core_idx, out_offset,
                                       ele_num_each_loop, ele_num,
                                       tensor_index)
-                    ub_list.reverse()
+                    if self.concat_ping_pang_flag(ele_num):
+                        ub_list.reverse()
 
             if ele_last == 0:
                 _run_one_input_double_buff(ele_num_each_loop)
@@ -971,11 +1003,11 @@ class ConcatSchedule:
         loop_num_list, start_offset_all, mask_value_all = \
             get_offset_and_mask(self.concat_axis, self.input_shapes,
                                 self.output_shape, self.ele_each_block)
+        ub_tiling_list = [ub_tensor, ub_tensor_1]
 
         def run_one_input(input_idx,):
             list_mask_value = mask_value_all[input_idx]
             loop_num = loop_num_list[input_idx]
-
             input_len = self.input_shapes[input_idx][1] * dims_len
             input_offset = dims_offset * self.input_shapes[input_idx][1]
 
@@ -1015,10 +1047,10 @@ class ConcatSchedule:
                             0, 1, dst_m0, src_m0, 8, 8)
 
             for i in range(loop_num):
-                if (i + input_idx) % 2 == 0:
-                    ub_use = ub_tensor
+                if i % 2 == 0:
+                    ub_use = ub_tiling_list[0]
                 else:
-                    ub_use = ub_tensor_1
+                    ub_use = ub_tiling_list[1]
 
                 copy_offset = \
                     (self.ele_each_block - list_mask_value[i][0]) \
@@ -1047,8 +1079,10 @@ class ConcatSchedule:
                             input_offset - copy_offset],
                         0, nbust, burst_len, src_sttide, des_stride)
                 else:
+                    copy_tail = (self.ele_each_block - list_mask_value[i][0]) \
+                                % self.ele_each_block
                     burst_len = \
-                        get_ceil_int(input_len + self.ele_each_block
+                        get_ceil_int(input_len + copy_tail
                                      - self.input_shapes[input_idx][1]*i,
                                      self.ele_each_block)
                     if burst_len <= 0:
@@ -1108,7 +1142,8 @@ class ConcatSchedule:
                         self.post_mask_scalar_list[list_mask_value[i][2]]
                     vadds_proc(out_offset, ub_use, offset,
                                [_mask_scalar, _mask_scalar])
-
+            if loop_num % 2 == 1:
+                ub_tiling_list.reverse()
         # concat input one by one
         input_num = len(self.input_shapes)
         tensor_offset = 0
@@ -1200,7 +1235,7 @@ class ConcatSchedule:
         """proc_data_scedule
         """
         output_gm_offset = []
-        for idx, input_shape in enumerate(self.input_shapes):
+        for idx, _ in enumerate(self.input_shapes):
             if idx == 0:
                 output_gm_offset.append(0)
                 continue

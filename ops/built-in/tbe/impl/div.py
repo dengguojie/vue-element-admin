@@ -23,6 +23,7 @@ from te.utils.op_utils import refine_shapes_for_broadcast
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
@@ -50,8 +51,9 @@ def div_compute(input_x, input_y, output_div, kernel_name="div"):
     """
     input_data1 = te.lang.cce.util.shape_to_list(input_x.shape)
     input_data2 = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_list = util.produce_shapes(input_data1, input_data2)
-    util.check_tensor_shape_size(shape_list[2])
+    shape_list = broadcast_shapes(input_data1, input_data2,
+                                  param_name_input1="input_x",
+                                  param_name_input2="input_y")
     dtype = input_x.dtype
     int_list = ("int8", "uint8", "int32")
     int_flag = dtype in int_list
@@ -70,7 +72,7 @@ def div_compute(input_x, input_y, output_div, kernel_name="div"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def div(input_x, input_y, output_div, kernel_name="div"):
     """
     algorithm: div
@@ -95,16 +97,13 @@ def div(input_x, input_y, output_div, kernel_name="div"):
     dtype = input_x.get("dtype")
     shape_y = input_y.get("shape")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
-    shape_list = util.produce_shapes(shape_x, shape_y)
-    util.check_tensor_shape_size(shape_list[2])
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
+    shape_list = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                  param_name_input2="input_y")
     input_dtype = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8", "int32")
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
 
     reshape_x, reshape_y = refine_shapes_for_broadcast(shape_list[0],
                                                        shape_list[1])

@@ -31,7 +31,33 @@ def modify_except_msg(evalue):
         evalue.strerror = 'No space left on disk'
 
 
-def get_py_exception_str(etype, value, tback):
+def get_py_exception_dict(etype, value, tback):
+    """
+    return python exception dict, calling from C for error log uploading
+    """
+    exc_list = traceback.format_exception(etype, value, tback)
+    err_msg = value.args
+    err_dict = dict()
+    if isinstance(err_msg, tuple) and isinstance(err_msg[0], dict):
+        for dict_key, dict_value in err_msg[0].items():
+            err_dict[dict_key] = str(dict_value)
+        return err_dict
+    elif isinstance(err_msg, tuple):
+        message_list = list()
+        for tuple_element in err_msg:
+            if not isinstance(tuple_element, str):
+                message_list.append(str(tuple_element))
+            else:
+                message_list.append(tuple_element)
+        err_dict['errCode'] = 'E90000'
+        err_dict['message'] = "".join(message_list)
+        err_dict['traceback'] = "".join(traceback.format_tb(tback))
+        return err_dict
+    else:
+        return {}
+
+
+def get_py_exception_str(etype, value, tback, eprint=False):
     """
     return python exception string, calling from C for error log printing
     """
@@ -40,6 +66,10 @@ def get_py_exception_str(etype, value, tback):
     msg = "".join(exc_list)
     if msg.find('#Conv2DBackpropInput only support#') != -1:
         msg = "".join(value.args)
+
+    if eprint:
+        traceback.print_exception(etype, value, tback)
+
     return msg
 
 
@@ -48,4 +78,6 @@ def except_msg():
     Return exception msg.
     """
     etype, evalue, tback = sys.exc_info()
-    return get_py_exception_str(etype, evalue, tback)
+    err_msg = get_py_exception_str(etype, evalue, tback)
+    err_dict = get_py_exception_dict(etype, evalue, tback)
+    return err_msg, err_dict

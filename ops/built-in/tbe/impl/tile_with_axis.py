@@ -16,12 +16,14 @@ tile_with_axis
 
 # pylint: disable=import-error
 import te.lang.cce
-from te import tvm, platform as tbe_platform
+from te import tvm
+from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils import op_utils
-from impl.util.util_select_op_base import gen_param, get_dynamic_param_in_json
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
 @fusion_manager.register("tile_with_axis")
@@ -116,6 +118,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
+
 @op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
                           op_utils.REQUIRED_ATTR_INT, op_utils.OPTION_ATTR_INT,
                           op_utils.KERNEL_NAME)
@@ -166,6 +169,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
 
     te.lang.cce.cce_build_code(sch, config)
 
+
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def check_param_range(param_name, min_value, max_value, real_value, op_name='tile_with_axis'):
 
@@ -177,8 +181,8 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='til
     error_info['max_value'] = str(max_value)
     error_info['real_value'] = str(real_value)
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                         error_info['max_value'], error_info['real_value']))
+                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                          error_info['max_value'], error_info['real_value']))
     
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -228,8 +232,8 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         error_info['input2_dtype'] = str(dtype_y)
         raise RuntimeError(
             "In op[%s], the shape of input[%s] and input[%s] should be the same, but actually are [%s] and [%s]."
-            %(error_info[op_name], error_info['input1_name'], error_info['input2_name'], 
-            error_info['input1_dtype'], error_info['input2_dtype']))
+            % (error_info[op_name], error_info['input1_name'], error_info['input2_name'],
+               error_info['input1_dtype'], error_info['input2_dtype']))
 
     if tiles <= 0:
         check_param_range('tiles', 1, 'inf', tiles)
@@ -272,7 +276,7 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         error_info['expect_value'] = str(shape_y_expected)
         error_info['real_value'] = str(shape_y)
         raise RuntimeError("In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-            %(error_info['op_name'], error_info['attr_name'], error_info['expect_value'], error_info['real_value']))
+                           % (error_info['op_name'], error_info['attr_name'], error_info['expect_value'], error_info['real_value']))
 
     shape_x_adapt = []
     shape_y_adapt = []

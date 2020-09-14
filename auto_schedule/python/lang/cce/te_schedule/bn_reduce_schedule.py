@@ -25,8 +25,11 @@ import te.platform.cce_params as cce
 from te import platform as cceconf
 from te.platform import cce_util
 from .reduce_atomic_schedule import ReduceAtomicSchedule
+from .group_norm_reduce_schedule import gn_reduce_schedule
 from .util import get_nearest_factor
 from .util import DTYPE_WIDTH_MAP
+from .util import get_reduce_axis_num
+from te.platform import log
 
 MAX_SHAPE_NUM = 10000000
 
@@ -198,10 +201,76 @@ def get_ub_tiling(shape, block_tiling_axis,
     return ub_split_axis, ub_split_inner
 
 
+def _schedule_cut_h_twice_do_reorder(is_in_reduce, is_keep_dim,
+                                     sch, sum_x_global, sum_x_ub_rf):
+    if is_in_reduce:
+        if is_keep_dim:
+            sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
+                                      sum_x_global.op.axis[0],
+                                      sum_x_global.op.axis[1],  # C1 axis
+                                      sum_x_global.op.axis[2],
+                                      sum_x_global.op.axis[3],
+                                      sum_x_global.op.axis[4])  # C0 axis
+
+            sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
+                                     sum_x_ub_rf.op.axis[1],  # N axis
+                                     sum_x_ub_rf.op.axis[2],  # C1 axis
+                                     sum_x_ub_rf.op.axis[3],
+                                     sum_x_ub_rf.op.axis[4],
+                                     sum_x_ub_rf.op.reduce_axis[1],
+                                     sum_x_ub_rf.op.reduce_axis[2],
+                                     sum_x_ub_rf.op.reduce_axis[0],
+                                     sum_x_ub_rf.op.axis[5])  # C0 axis
+        else:
+            sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
+                                      sum_x_global.op.axis[0],  # N axis
+                                      sum_x_global.op.axis[1],  # C1 axis
+                                      sum_x_global.op.axis[2])  # C0 axis
+
+            sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
+                                     sum_x_ub_rf.op.axis[1],  # N axis
+                                     sum_x_ub_rf.op.axis[2],  # C1 axis
+                                     sum_x_ub_rf.op.reduce_axis[1],
+                                     sum_x_ub_rf.op.reduce_axis[2],
+                                     sum_x_ub_rf.op.reduce_axis[0],
+                                     sum_x_ub_rf.op.axis[3])  # C0 axis
+    else:
+        if is_keep_dim:
+            sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
+                                      sum_x_global.op.axis[0],
+                                      sum_x_global.op.axis[1],  # C1 axis
+                                      sum_x_global.op.axis[2],
+                                      sum_x_global.op.axis[3],
+                                      sum_x_global.op.axis[4])  # C0 axis
+
+            sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
+                                     sum_x_ub_rf.op.axis[1],  # N axis
+                                     sum_x_ub_rf.op.axis[2],  # C1 axis
+                                     sum_x_ub_rf.op.axis[3],
+                                     sum_x_ub_rf.op.axis[4],
+                                     sum_x_ub_rf.op.reduce_axis[0],
+                                     sum_x_ub_rf.op.reduce_axis[2],
+                                     sum_x_ub_rf.op.reduce_axis[3],
+                                     sum_x_ub_rf.op.reduce_axis[1],
+                                     sum_x_ub_rf.op.axis[5])  # C0 axis
+        else:
+            sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
+                                      sum_x_global.op.axis[0],  # C1 axis
+                                      sum_x_global.op.axis[1])  # C0 axis
+
+            sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
+                                     sum_x_ub_rf.op.axis[1],  # C1 axis
+                                     sum_x_ub_rf.op.reduce_axis[0],
+                                     sum_x_ub_rf.op.reduce_axis[2],
+                                     sum_x_ub_rf.op.reduce_axis[3],
+                                     sum_x_ub_rf.op.reduce_axis[1],
+                                     sum_x_ub_rf.op.axis[2])  # C0 axis
+
+
 # pylint: disable=too-many-locals, too-many-statements, too-many-arguments
 def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
                          data_ub, cast_0_ub, data_mul_ub,
-                         split_factor, is_keep_dim):
+                         split_factor, is_keep_dim, is_in_reduce):
     """
     cut h twice
     """
@@ -210,8 +279,14 @@ def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
 
     core_num = cceconf.get_soc_spec("CORE_NUM")
 
+    if is_in_reduce:
+        reduce_axis_loc = [0, 1, 2]
+    else:
+        reduce_axis_loc = [1, 2, 3]
+
     sum_x_block_outer, sum_x_block_inner =\
-        sch[sum_x].split(sum_x.op.reduce_axis[1], nparts=core_num)
+        sch[sum_x].split(sum_x.op.reduce_axis[reduce_axis_loc[0]],
+                         nparts=core_num)
     inner_loop = shape_input[2] // core_num
 
     factors = _get_factors_of_positive_integer(inner_loop)
@@ -231,47 +306,22 @@ def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
 
     sch[sum_x_ub_rf].set_scope(cce.scope_ubuf)
 
-    if is_keep_dim:
-        sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
-                                  sum_x_global.op.axis[0],
-                                  sum_x_global.op.axis[1], # C1 axis
-                                  sum_x_global.op.axis[2],
-                                  sum_x_global.op.axis[3],
-                                  sum_x_global.op.axis[4]) # C0 axis
-
-        sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
-                                 sum_x_ub_rf.op.axis[1], # N axis
-                                 sum_x_ub_rf.op.axis[2], # C1 axis
-                                 sum_x_ub_rf.op.axis[3],
-                                 sum_x_ub_rf.op.axis[4],
-                                 sum_x_ub_rf.op.reduce_axis[0],
-                                 sum_x_ub_rf.op.reduce_axis[2],
-                                 sum_x_ub_rf.op.reduce_axis[3],
-                                 sum_x_ub_rf.op.reduce_axis[1],
-                                 sum_x_ub_rf.op.axis[5]) # C0 axis
-    else:
-        sch[sum_x_global].reorder(sum_x_global.op.reduce_axis[0],
-                                  sum_x_global.op.axis[0], # C1 axis
-                                  sum_x_global.op.axis[1]) # C0 axis
-
-        sch[sum_x_ub_rf].reorder(sum_x_ub_rf.op.axis[0],
-                                 sum_x_ub_rf.op.axis[1], # C1 axis
-                                 sum_x_ub_rf.op.reduce_axis[0],
-                                 sum_x_ub_rf.op.reduce_axis[2],
-                                 sum_x_ub_rf.op.reduce_axis[3],
-                                 sum_x_ub_rf.op.reduce_axis[1],
-                                 sum_x_ub_rf.op.axis[2]) # C0 axis
+    _schedule_cut_h_twice_do_reorder(is_in_reduce, is_keep_dim,
+                                     sch, sum_x_global, sum_x_ub_rf)
 
     if is_keep_dim:
         sch[sum_x_ub_rf].compute_at(sch[sum_x_global], sum_x_global.op.axis[1])
     else:
         sch[sum_x_ub_rf].compute_at(sch[sum_x_global], sum_x_global.op.axis[0])
 
-    sch[data_ub].compute_at(sch[sum_x_ub_rf], sum_x_ub_rf.op.reduce_axis[2])
+    sch[data_ub].compute_at(sch[sum_x_ub_rf],
+                            sum_x_ub_rf.op.reduce_axis[reduce_axis_loc[1]])
     if cast_0_ub is not None:
-        sch[cast_0_ub].compute_at(sch[sum_x_ub_rf], sum_x_ub_rf.op.reduce_axis[2])
-    sch[data_mul_ub].compute_at(sch[sum_x_ub_rf], sum_x_ub_rf.op.reduce_axis[2])
-    #
+        sch[cast_0_ub].compute_at(
+            sch[sum_x_ub_rf], sum_x_ub_rf.op.reduce_axis[reduce_axis_loc[1]])
+    sch[data_mul_ub].compute_at(sch[sum_x_ub_rf],
+                                sum_x_ub_rf.op.reduce_axis[reduce_axis_loc[1]])
+
     block = tvm.thread_axis("blockIdx.x")
     sch[sum_x_global].bind(sum_x_global.op.reduce_axis[0], block)
 
@@ -286,11 +336,13 @@ def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
     loop_tail_size = size - outer_factor * loop_size
 
     if _need_dichotomy_add(loop_size, loop_tail_size, dtype):
-        sch[sum_x_ub_rf].emit_insn(sum_x_ub_rf.op.reduce_axis[3],
-                                   "vector_dichotomy_add_for_bn_reduce")
+        sch[sum_x_ub_rf].emit_insn(
+            sum_x_ub_rf.op.reduce_axis[reduce_axis_loc[2]],
+            "vector_dichotomy_add_for_bn_reduce")
     else:
-        sch[sum_x_ub_rf].emit_insn(sum_x_ub_rf.op.reduce_axis[3],
-                                   "vector_reduce_sum")
+        sch[sum_x_ub_rf].emit_insn(
+            sum_x_ub_rf.op.reduce_axis[reduce_axis_loc[2]],
+            "vector_reduce_sum")
 
     sch[data_ub].emit_insn(data_ub.op.axis[0], "dma_copy")
     if cast_0_ub is not None:
@@ -304,7 +356,6 @@ def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
     sch[sum_x].emit_insn(sch[sum_x].op.axis[0], "phony_insn")
 
     sch_list[0] = sch
-
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def schedule_fuse_h_n(sch_list, res_list, sum_x, square_sum_x,
@@ -414,59 +465,16 @@ def schedule_fuse_h_n(sch_list, res_list, sum_x, square_sum_x,
     sch_list[0] = sch
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
-def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
-                    data_ub, cast_0_ub, data_mul_ub, ub_split_reduce_axis,
-                    split_factor, is_keep_dim):
-    '''
-    bn_reduce schedule for cut c1
-    '''
-    sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
-    res_list[0] = sum_x
-    res_list[1] = square_sum_x
-
-    _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
-                                  cce.scope_ubuf)
-
-    if is_keep_dim:
-        sum_x_c1_axis = sum_x.op.axis[1]
-        sum_x_c0_axis = sum_x.op.axis[4]
-        sum_x_ub_n_axis = sum_x_ub.op.axis[0]
-        sum_x_ub_c1_axis = sum_x_ub.op.axis[1]
-        sum_x_ub_h_axis = sum_x_ub.op.axis[2]
-        sum_x_ub_w_axis = sum_x_ub.op.axis[3]
-        sum_x_ub_c0_axis = sum_x_ub.op.axis[4]
-    else:
-        sum_x_c1_axis = sum_x.op.axis[0]
-        sum_x_c0_axis = sum_x.op.axis[1]
-        sum_x_ub_c1_axis = sum_x_ub.op.axis[0]
-        sum_x_ub_c0_axis = sum_x_ub.op.axis[1]
-
-    sum_x_ub_n_reduce_axis = sum_x_ub.op.reduce_axis[0]
-    sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[1]
-    sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[2]
-
-    core_num = cceconf.get_soc_spec("CORE_NUM")
-
-    sum_x_block_outer, sum_x_block_inner = sch[sum_x].split(sum_x_c1_axis,
-                                                            nparts=core_num)
-
+def _in_get_ub_split_axis_outer_loop(ub_split_reduce_axis,
+                                    shape_input, split_factor):
     if ub_split_reduce_axis == 0:
-        sum_x_block_inner_outer, sum_x_block_inner_inner =\
-            sch[sum_x].split(sum_x_block_inner, nparts=1)
-
-    sum_x_ub_outer, sum_x_ub_inner = \
-        sch[sum_x_ub].split(sum_x_ub.op.reduce_axis[ub_split_reduce_axis],
-                            factor=split_factor)
-    if ub_split_reduce_axis == 1:
         ub_split_axis = 2
-    elif ub_split_reduce_axis == 2:
+    elif ub_split_reduce_axis == 1:
         ub_split_axis = 3
-    elif ub_split_reduce_axis == 0:
-        ub_split_axis = 0
     else:
-        raise RuntimeError("Batch normalization only support 5D format.")
+        raise RuntimeError("Batch normalization only support"
+                           " 5D format, ub_split_axis is %d."
+                           % (ub_split_axis))
 
     outer_loop = shape_input[ub_split_axis] // split_factor
 
@@ -474,51 +482,193 @@ def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
         outer_loop = outer_loop * shape_input[0]
     elif ub_split_axis == 3:
         outer_loop = outer_loop * shape_input[2]
+    return ub_split_axis, outer_loop
 
-    if ub_split_reduce_axis == 0:
-        if is_keep_dim:
-            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                                  sum_x_ub_h_axis, sum_x_ub_w_axis,
-                                  sum_x_ub_outer, sum_x_ub_inner,
-                                  sum_x_ub_h_reduce_axis,
-                                  sum_x_ub_w_reduce_axis,
-                                  sum_x_ub_c0_axis)
+# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
+                    data_ub, cast_0_ub, data_mul_ub, ub_split_reduce_axis,
+                    split_factor, is_keep_dim, is_in_reduce):
+    '''
+    bn_reduce schedule for cut c1
+    '''
+    sch = sch_list[0]
+    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    res_list[0] = sum_x
+    res_list[1] = square_sum_x
+    _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
+                                  cce.scope_ubuf)
+    if is_in_reduce:
+        if is_keep_dim:  # N C0 C1
+            sum_x_n_axis = sum_x.op.axis[0]
+            sum_x_c1_axis = sum_x.op.axis[1]
+            sum_x_c0_axis = sum_x.op.axis[4]
+            sum_x_ub_n_axis = sum_x_ub.op.axis[0]
+            sum_x_ub_c1_axis = sum_x_ub.op.axis[1]
+            sum_x_ub_h_axis = sum_x_ub.op.axis[2]
+            sum_x_ub_w_axis = sum_x_ub.op.axis[3]
+            sum_x_ub_c0_axis = sum_x_ub.op.axis[4]
         else:
-            sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_outer,
-                                  sum_x_ub_inner, sum_x_ub_h_reduce_axis,
-                                  sum_x_ub_w_reduce_axis, sum_x_ub_c0_axis)
-    elif ub_split_reduce_axis == 1:
-        if is_keep_dim:
-            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                                  sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
-                                  sum_x_ub_outer, sum_x_ub_inner,
-                                  sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
-                                  sum_x_ub_c0_axis)
+            sum_x_n_axis = sum_x.op.axis[0]
+            sum_x_c1_axis = sum_x.op.axis[1]
+            sum_x_c0_axis = sum_x.op.axis[2]
+            sum_x_ub_n_axis = sum_x_ub.op.axis[0]
+            sum_x_ub_c1_axis = sum_x_ub.op.axis[1]
+            sum_x_ub_c0_axis = sum_x_ub.op.axis[2]
+        sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[0]
+        sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[1]
+
+        core_num = cceconf.get_soc_spec("CORE_NUM")
+
+        sum_x_block_outer, sum_x_block_inner =\
+            sch[sum_x].split(sum_x_c1_axis, nparts=core_num)
+
+        sum_x_ub_outer, sum_x_ub_inner = \
+            sch[sum_x_ub].split(sum_x_ub.op.reduce_axis[ub_split_reduce_axis],
+                                factor=split_factor)
+
+        ub_split_axis, outer_loop = _in_get_ub_split_axis_outer_loop(
+            ub_split_reduce_axis, shape_input, split_factor)
+
+        if ub_split_reduce_axis == 0:
+            if is_keep_dim:
+                sch[sum_x_ub].reorder(sum_x_ub_n_axis,
+                                      sum_x_ub_c1_axis,
+                                      sum_x_ub_h_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
+                                      sum_x_ub_c0_axis)
+            else:
+                sch[sum_x_ub].reorder(sum_x_ub_c1_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_w_reduce_axis, sum_x_ub_c0_axis)
         else:
-            sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_n_reduce_axis,
-                                  sum_x_ub_outer, sum_x_ub_inner,
-                                  sum_x_ub_w_reduce_axis, sum_x_ub_c0_axis)
+            if is_keep_dim:
+                sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                      sum_x_ub_h_axis,
+                                      sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_w_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_c0_axis)
+            else:
+                sch[sum_x_ub].reorder(sum_x_ub_c1_axis,
+                                      sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_c0_axis)
+
+        sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        if cast_0_ub is not None:
+            sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_outer)
     else:
         if is_keep_dim:
-            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                                  sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
-                                  sum_x_ub_h_reduce_axis, sum_x_ub_w_axis,
-                                  sum_x_ub_outer, sum_x_ub_inner,
-                                  sum_x_ub_c0_axis)
+            sum_x_c1_axis = sum_x.op.axis[1]
+            sum_x_c0_axis = sum_x.op.axis[4]
+            sum_x_ub_n_axis = sum_x_ub.op.axis[0]
+            sum_x_ub_c1_axis = sum_x_ub.op.axis[1]
+            sum_x_ub_h_axis = sum_x_ub.op.axis[2]
+            sum_x_ub_w_axis = sum_x_ub.op.axis[3]
+            sum_x_ub_c0_axis = sum_x_ub.op.axis[4]
         else:
-            sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_n_reduce_axis,
-                                  sum_x_ub_h_reduce_axis, sum_x_ub_outer,
-                                  sum_x_ub_inner, sum_x_ub_c0_axis)
+            sum_x_c1_axis = sum_x.op.axis[0]
+            sum_x_c0_axis = sum_x.op.axis[1]
+            sum_x_ub_c1_axis = sum_x_ub.op.axis[0]
+            sum_x_ub_c0_axis = sum_x_ub.op.axis[1]
 
-    sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
-    if cast_0_ub is not None:
-        sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
-    sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        sum_x_ub_n_reduce_axis = sum_x_ub.op.reduce_axis[0]
+        sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[1]
+        sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[2]
 
-    if ub_split_reduce_axis == 0:
-        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner_outer)
-    else:
-        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner)
+        core_num = cceconf.get_soc_spec("CORE_NUM")
+
+        sum_x_block_outer, sum_x_block_inner = \
+            sch[sum_x].split(sum_x_c1_axis, nparts=core_num)
+
+        sum_x_block_inner_outer = None
+        sum_x_block_inner_inner = None
+        if ub_split_reduce_axis == 0:
+            sum_x_block_inner_outer, sum_x_block_inner_inner = \
+                sch[sum_x].split(sum_x_block_inner, nparts=1)
+
+        sum_x_ub_outer, sum_x_ub_inner = \
+            sch[sum_x_ub].split(sum_x_ub.op.reduce_axis[ub_split_reduce_axis],
+                                factor=split_factor)
+
+        def get_ub_split_axis_outer_loop(ub_split_reduce_axis,
+                                         shape_input, split_factor):
+            if ub_split_reduce_axis == 1:
+                ub_split_axis = 2
+            elif ub_split_reduce_axis == 2:
+                ub_split_axis = 3
+            elif ub_split_reduce_axis == 0:
+                ub_split_axis = 0
+            else:
+                raise RuntimeError("Batch normalization"
+                                   " only support 5D format.")
+
+            outer_loop = shape_input[ub_split_axis] // split_factor
+
+            if ub_split_axis == 2:
+                outer_loop = outer_loop * shape_input[0]
+            elif ub_split_axis == 3:
+                outer_loop = outer_loop * shape_input[2]
+
+            return ub_split_axis, outer_loop
+        ub_split_axis, outer_loop = get_ub_split_axis_outer_loop(
+            ub_split_reduce_axis, shape_input, split_factor)
+
+        if ub_split_reduce_axis == 0:
+            if is_keep_dim:
+                sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                      sum_x_ub_h_axis, sum_x_ub_w_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_w_reduce_axis,
+                                      sum_x_ub_c0_axis)
+            else:
+                sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_outer,
+                                      sum_x_ub_inner, sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_w_reduce_axis, sum_x_ub_c0_axis)
+        elif ub_split_reduce_axis == 1:
+            if is_keep_dim:
+                sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                      sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
+                                      sum_x_ub_c0_axis)
+            else:
+                sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_n_reduce_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_w_reduce_axis, sum_x_ub_c0_axis)
+        else:
+            if is_keep_dim:
+                sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                      sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
+                                      sum_x_ub_h_reduce_axis, sum_x_ub_w_axis,
+                                      sum_x_ub_outer, sum_x_ub_inner,
+                                      sum_x_ub_c0_axis)
+            else:
+                sch[sum_x_ub].reorder(sum_x_ub_c1_axis, sum_x_ub_n_reduce_axis,
+                                      sum_x_ub_h_reduce_axis, sum_x_ub_outer,
+                                      sum_x_ub_inner, sum_x_ub_c0_axis)
+
+        def do_compute_at(sch, data_ub, sum_x, sum_x_ub, sum_x_ub_outer,
+                          cast_0_ub, data_mul_ub, ub_split_reduce_axis,
+                          sum_x_block_inner_outer, sum_x_block_inner):
+            sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+            if cast_0_ub is not None:
+                sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+            sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+
+            if ub_split_reduce_axis == 0:
+                sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner_outer)
+            else:
+                sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner)
+
+        do_compute_at(sch, data_ub, sum_x, sum_x_ub, sum_x_ub_outer,
+                      cast_0_ub, data_mul_ub, ub_split_reduce_axis,
+                      sum_x_block_inner_outer, sum_x_block_inner)
 
     block = tvm.thread_axis("blockIdx.x")
     sch[sum_x].bind(sum_x_block_outer, block)
@@ -536,28 +686,32 @@ def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
         size = size * shape_input[3]
     loop_tail_size = size - outer_factor * loop_size
 
-    if _need_dichotomy_add(loop_size, loop_tail_size, dtype):
+    def do_emit_insn(sch, sum_x, sum_x_ub, sum_x_ub_inner, sum_x_c0_axis,
+                     data_ub, cast_0_ub, data_mul_ub, is_in_reduce):
         sch[sum_x_ub].emit_insn(sum_x_ub_inner, "vector_dichotomy_add_for_bn_reduce")
-    else:
-        sch[sum_x_ub].emit_insn(sum_x_ub_inner, "vector_reduce_sum")
 
-    sch[data_ub].emit_insn(data_ub.op.axis[0], "dma_copy")
-    if cast_0_ub is not None:
-        sch[cast_0_ub].emit_insn(cast_0_ub.op.axis[0], "vector_conv")
-    sch[data_mul_ub].emit_insn(data_mul_ub.op.axis[0], "vector_mul")
+        sch[data_ub].emit_insn(data_ub.op.axis[0], "dma_copy")
+        if cast_0_ub is not None:
+            sch[cast_0_ub].emit_insn(cast_0_ub.op.axis[0], "vector_conv")
+        sch[data_mul_ub].emit_insn(data_mul_ub.op.axis[0], "vector_mul")
 
-    if ub_split_reduce_axis == 0:
-        sch[sum_x].emit_insn(sum_x_block_inner_inner, "dma_copy")
-    else:
-        sch[sum_x].emit_insn(sum_x_c0_axis, "dma_copy")
+        if is_in_reduce:
+            sch[sum_x].emit_insn(sum_x_c0_axis, "dma_copy")
+        else:
+            if ub_split_reduce_axis == 0:
+                sch[sum_x].emit_insn(sum_x_block_inner_inner, "dma_copy")
+            else:
+                sch[sum_x].emit_insn(sum_x_c0_axis, "dma_copy")
+
+    do_emit_insn(sch, sum_x, sum_x_ub, sum_x_ub_inner, sum_x_c0_axis,
+                     data_ub, cast_0_ub, data_mul_ub, is_in_reduce)
 
     sch_list[0] = sch
-
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def schedule_cut_general(sch_list, res_list, sum_x, square_sum_x,
                          data_ub, cast_0_ub, data_mul_ub, ub_split_reduce_axis,
-                         split_factor, is_keep_dim):
+                         split_factor, is_keep_dim, is_in_reduce):
     """
     cut general
     """
@@ -572,17 +726,6 @@ def schedule_cut_general(sch_list, res_list, sum_x, square_sum_x,
     _, sum_x_ub = sch.cache_write([square_sum_x, sum_x], cce.scope_ubuf)
     sum_x_ub_outer, sum_x_ub_inner = sch[sum_x_ub].split(
         sum_x_ub.op.reduce_axis[ub_split_reduce_axis], factor=split_factor)
-    if ub_split_reduce_axis == 0:
-        ub_split_axis = 0
-    elif ub_split_reduce_axis == 1:
-        ub_split_axis = 2
-    elif ub_split_reduce_axis == 2:
-        ub_split_axis = 3
-    else:
-        raise RuntimeError("Batch normalization only support 5D format.")
-    outer_loop = shape_input[ub_split_axis] // split_factor
-    if ub_split_axis == 3:
-        outer_loop = outer_loop * shape_input[2]
 
     sum_x_c1_axis = sum_x.op.axis[1]
     sum_x_c0_axis = sum_x.op.axis[4]
@@ -592,41 +735,102 @@ def schedule_cut_general(sch_list, res_list, sum_x, square_sum_x,
     sum_x_ub_w_axis = sum_x_ub.op.axis[3]
     sum_x_ub_c0_axis = sum_x_ub.op.axis[4]
 
-    sum_x_ub_n_reduce_axis = sum_x_ub.op.reduce_axis[0]
-    sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[1]
-    sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[2]
+    def get_ub_split_axis_in(ub_split_reduce_axis):
+        if ub_split_reduce_axis == 0:
+            ub_split_axis = 2
+        elif ub_split_reduce_axis == 1:
+            ub_split_axis = 3
+        else:
+            raise RuntimeError("Batch normalization "
+                               "only support 5D format.")
+        return ub_split_axis
 
-    if ub_split_reduce_axis == 0:
-        sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                              sum_x_ub_outer, sum_x_ub_inner,
-                              sum_x_ub_h_axis, sum_x_ub_w_axis,
-                              sum_x_ub_h_reduce_axis, sum_x_ub_w_reduce_axis,
-                              sum_x_ub_c0_axis)
-    elif ub_split_reduce_axis == 1:
-        sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                              sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
-                              sum_x_ub_outer, sum_x_ub_inner,
-                              sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
-                              sum_x_ub_c0_axis)
+    def get_ub_split_axis(ub_split_reduce_axis):
+        if ub_split_reduce_axis == 0:
+            ub_split_axis = 0
+        elif ub_split_reduce_axis == 1:
+            ub_split_axis = 2
+        elif ub_split_reduce_axis == 2:
+            ub_split_axis = 3
+        else:
+            raise RuntimeError("Batch normalization"
+                               " only support 5D format.")
+        return ub_split_axis
+
+    if is_in_reduce:
+        ub_split_axis = get_ub_split_axis_in(ub_split_reduce_axis)
+
+        sum_x_n_axis = sum_x.op.axis[0]
+        sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[0]
+        sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[1]
+
+        if ub_split_reduce_axis == 0:
+            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                  sum_x_ub_h_axis,
+                                  sum_x_ub_outer, sum_x_ub_inner,
+                                  sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
+                                  sum_x_ub_c0_axis)
+        else:
+            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                  sum_x_ub_h_axis,
+                                  sum_x_ub_h_reduce_axis, sum_x_ub_w_axis,
+                                  sum_x_ub_outer, sum_x_ub_inner,
+                                  sum_x_ub_c0_axis)
+
+        sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        if cast_0_ub is not None:
+            sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_n_axis)
+
+        block = tvm.thread_axis("blockIdx.x")
+        sch[sum_x].bind(sum_x_n_axis, block)
     else:
-        sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
-                              sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
-                              sum_x_ub_h_reduce_axis, sum_x_ub_w_axis,
-                              sum_x_ub_outer, sum_x_ub_inner,
-                              sum_x_ub_c0_axis)
+        ub_split_axis = get_ub_split_axis(ub_split_reduce_axis)
 
-    sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
-    if cast_0_ub is not None:
-        sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
-    sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        sum_x_ub_n_reduce_axis = sum_x_ub.op.reduce_axis[0]
+        sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[1]
+        sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[2]
 
-    sch[sum_x_ub].compute_at(sch[sum_x], sum_x_c1_axis)
+        if ub_split_reduce_axis == 0:
+            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                  sum_x_ub_outer, sum_x_ub_inner,
+                                  sum_x_ub_h_axis, sum_x_ub_w_axis,
+                                  sum_x_ub_h_reduce_axis,
+                                  sum_x_ub_w_reduce_axis,
+                                  sum_x_ub_c0_axis)
+        elif ub_split_reduce_axis == 1:
+            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                  sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
+                                  sum_x_ub_outer, sum_x_ub_inner,
+                                  sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
+                                  sum_x_ub_c0_axis)
+        else:
+            sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                                  sum_x_ub_n_reduce_axis, sum_x_ub_h_axis,
+                                  sum_x_ub_h_reduce_axis, sum_x_ub_w_axis,
+                                  sum_x_ub_outer, sum_x_ub_inner,
+                                  sum_x_ub_c0_axis)
 
-    block = tvm.thread_axis("blockIdx.x")
-    sch[sum_x].bind(sum_x_c1_axis, block)
+        sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        if cast_0_ub is not None:
+            sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+        sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
 
-    if outer_loop > 2:
-        sch[data_ub].double_buffer()
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_c1_axis)
+
+        block = tvm.thread_axis("blockIdx.x")
+        sch[sum_x].bind(sum_x_c1_axis, block)
+
+    def do_double_buffer(sch, shape_input, ub_split_axis, split_factor):
+        outer_loop = shape_input[ub_split_axis] // split_factor
+        if ub_split_axis == 3:
+            outer_loop = outer_loop * shape_input[2]
+
+        if outer_loop > 2:
+            sch[data_ub].double_buffer()
+    do_double_buffer(sch, shape_input, ub_split_axis, split_factor)
 
     sch[data_ub].emit_insn(data_ub.op.axis[0], "dma_copy")
     if cast_0_ub is not None:
@@ -636,7 +840,6 @@ def schedule_cut_general(sch_list, res_list, sum_x, square_sum_x,
     sch[sum_x].emit_insn(sum_x_c0_axis, "dma_copy")
 
     sch_list[0] = sch
-
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def schedule_cut_batch_model_parallerl(
@@ -952,6 +1155,122 @@ def schedule_cut_batch(sch_list, res_list, sum_x,
     sch_list[0] = sch
 
 
+def in_schedule_cut_batch(sch_list, res_list, sum_x,
+                         square_sum_x, data_ub, cast_0_ub,
+                         data_mul_ub, ub_split_reduce_axis,
+                         split_factor, is_keep_dim, max_ub_count):
+    '''
+    in_reduce schedule for cut batch
+    '''
+
+    print("in_schedule_cut_batch start")
+    sch = sch_list[0]
+    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+
+    res_list[0] = sum_x
+    res_list[1] = square_sum_x
+
+    _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
+                                  cce.scope_ubuf)
+
+    sum_x_n_axis = sum_x.op.axis[0]
+    sum_x_c1_axis = sum_x.op.axis[1]
+    sum_x_c0_axis = sum_x.op.axis[4]
+    sum_x_ub_n_axis = sum_x_ub.op.axis[0]
+    sum_x_ub_c1_axis = sum_x_ub.op.axis[1]
+    sum_x_ub_h_axis = sum_x_ub.op.axis[2]
+    sum_x_ub_w_axis = sum_x_ub.op.axis[3]
+    sum_x_ub_c0_axis = sum_x_ub.op.axis[4]
+
+    sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[0]
+    sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[1]
+
+    core_num = cceconf.get_soc_spec("CORE_NUM")
+    sum_x_block_outer, sum_x_block_inner = sch[sum_x].split(sum_x_n_axis,
+                                                            nparts=core_num)
+    sum_x_ub_outer, sum_x_ub_inner = \
+        sch[sum_x_ub].split(sum_x_ub.op.reduce_axis[ub_split_reduce_axis],
+                            factor=split_factor)
+
+    def get_ub_split_axis(ub_split_reduce_axis):
+        if ub_split_reduce_axis == 0:
+            ub_split_axis = 2
+        elif ub_split_reduce_axis == 1:
+            ub_split_axis = 3
+        else:
+            raise RuntimeError("Batch normalization only support "
+                               "5D format, ub_split_axis is %d."
+                               % (ub_split_reduce_axis))
+        return ub_split_axis
+
+    ub_split_axis = get_ub_split_axis(ub_split_reduce_axis)
+
+    if ub_split_reduce_axis == 0:
+        sch[sum_x_ub].reorder(sum_x_ub_n_axis,
+                              sum_x_ub_c1_axis,
+                              sum_x_ub_h_axis,
+                              sum_x_ub_outer, sum_x_ub_inner,
+                              sum_x_ub_w_axis, sum_x_ub_w_reduce_axis,
+                              sum_x_ub_c0_axis)
+    else:
+        sch[sum_x_ub].reorder(sum_x_ub_n_axis, sum_x_ub_c1_axis,
+                              sum_x_ub_h_axis,
+                              sum_x_ub_h_reduce_axis,
+                              sum_x_ub_w_axis,
+                              sum_x_ub_outer, sum_x_ub_inner,
+                              sum_x_ub_c0_axis)
+
+    sch[data_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+    if cast_0_ub is not None:
+        sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+    sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
+
+    c0_size = 16
+    block_max_count = (shape_input[0] // core_num) * shape_input[1] * c0_size
+    if block_max_count > max_ub_count:
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner)
+    else:
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_outer)
+
+    block = tvm.thread_axis("blockIdx.x")
+    sch[sum_x].bind(sum_x_block_outer, block)
+
+    def do_double_buffer(sch, shape_input, ub_split_axis,
+                         split_factor, data_ub):
+        outer_loop = shape_input[ub_split_axis] // split_factor
+        if ub_split_axis == 2:
+            outer_loop = outer_loop * shape_input[0]
+        elif ub_split_axis == 3:
+            outer_loop = outer_loop * shape_input[2]
+
+        if outer_loop >= 2:
+            sch[data_ub].double_buffer()
+    do_double_buffer(sch, shape_input, ub_split_axis, split_factor, data_ub)
+
+    dtype = sum_x.dtype.lower()
+    loop_size = split_factor * c0_size
+    outer_factor = shape_input[ub_split_axis] // split_factor
+    size = shape_input[ub_split_axis] * c0_size
+    if ub_split_axis == 2:
+        loop_size = loop_size * shape_input[3]
+        size = size * shape_input[3]
+    loop_tail_size = size - outer_factor * loop_size
+
+    if _need_dichotomy_add(loop_size, loop_tail_size, dtype):
+        sch[sum_x_ub].emit_insn(sum_x_ub_inner,
+                                "vector_dichotomy_add_for_bn_reduce")
+    else:
+        sch[sum_x_ub].emit_insn(sum_x_ub_inner, "vector_reduce_sum")
+
+    sch[data_ub].emit_insn(data_ub.op.axis[0], "dma_copy")
+    if cast_0_ub is not None:
+        sch[cast_0_ub].emit_insn(cast_0_ub.op.axis[0], "vector_conv")
+    sch[data_mul_ub].emit_insn(data_mul_ub.op.axis[0], "vector_mul")
+
+    sch[sum_x].emit_insn(sum_x_c1_axis, "dma_copy")
+
+    sch_list[0] = sch
+
 # pylint: disable=too-many-statements
 def _is_in_shape_white_list(shape):
     shape_white_list = (
@@ -961,7 +1280,50 @@ def _is_in_shape_white_list(shape):
     for i in shape_white_list:
         if shape == i:
             return True
+
     return False
+
+
+def _check_is_gn_reduce(sum_x):
+    """
+    check is gn reduce
+    :param sum_x:
+    :return:
+    """
+
+    reduce_axis_index = get_reduce_axis_num(sum_x)
+    if reduce_axis_index in ([1, 2, 4], [2, 3, 4]):
+        return True, reduce_axis_index
+    return False, reduce_axis_index
+
+
+def _get_ub_split_ub_info(is_in_reduce, shape_input, max_ub_count):
+    # For in_reduce
+    if is_in_reduce:
+        ub_split_axis, ub_split_inner = in_get_ub_tiling(shape_input,
+                                                         2, shape_input[2],
+                                                         max_ub_count)
+        if ub_split_axis == 3:
+            ub_split_reduce_axis = 1
+        elif ub_split_axis == 2:
+            ub_split_reduce_axis = 0
+        else:
+            raise RuntimeError("Batch normalization only support 5D"
+                               " format, ub_split_axis is %d."
+                               % (ub_split_axis))
+    else:
+        ub_split_axis, ub_split_inner = get_ub_tiling(shape_input,
+                                                      2, shape_input[2],
+                                                      max_ub_count)
+        if ub_split_axis == 3:
+            ub_split_reduce_axis = 2
+        elif ub_split_axis == 2:
+            ub_split_reduce_axis = 1
+        elif ub_split_axis == 0:
+            ub_split_reduce_axis = 0
+        else:
+            raise RuntimeError("Batch normalization only support 5D format.")
+    return ub_split_axis, ub_split_inner, ub_split_reduce_axis
 
 
 def bn_reduce_schedule(res, input_tensors):
@@ -981,6 +1343,28 @@ def bn_reduce_schedule(res, input_tensors):
     if len(shape_input) != 5:
         raise RuntimeError("Batch normalization only support 5D format.")
 
+    is_gn_reduce_pattern, reduce_axis_index = _check_is_gn_reduce(sum_x)
+
+    def gn_reduce_schedule_proc(res, input_tensors, reduce_axis_index):
+        sch = gn_reduce_schedule(res, input_tensors)
+        if sch is None:
+            for i, _ in enumerate(res):
+                if res[i].op.tag != "tuple_reduce_sum":
+                    continue
+
+                input_tensor = res[i].op.input_tensors[i]
+                res[i] = te.lang.cce.sum(input_tensor, reduce_axis_index,
+                                         keepdims=True)
+            return None
+        return sch
+
+    if is_gn_reduce_pattern:
+        log.debug("is_gn_reduce_pattern is True")
+        return gn_reduce_schedule_proc(res, input_tensors, reduce_axis_index)
+
+    is_in_reduce = len(res[0].op.reduce_axis) == \
+                   2 and len(res[1].op.reduce_axis) == 2
+    log.debug("is_in_reduce_pattern is %d", is_in_reduce)
     shape_res = te.lang.cce.util.shape_to_list(sum_x.shape)
 
     is_keep_dim = True
@@ -989,17 +1373,9 @@ def bn_reduce_schedule(res, input_tensors):
 
     dtype = input_tensor.dtype.lower()
     max_ub_count = get_max_ub_count(dtype)
-    ub_split_axis, ub_split_inner = get_ub_tiling(shape_input,
-                                                  2, shape_input[2],
-                                                  max_ub_count)
-    if ub_split_axis == 3:
-        ub_split_reduce_axis = 2
-    elif ub_split_axis == 2:
-        ub_split_reduce_axis = 1
-    elif ub_split_axis == 0:
-        ub_split_reduce_axis = 0
-    else:
-        raise RuntimeError("Batch normalization only support 5D format.")
+
+    ub_split_axis, ub_split_inner, ub_split_reduce_axis = \
+        _get_ub_split_ub_info(is_in_reduce, shape_input, max_ub_count)
 
     split_factor = ub_split_inner
     outer_loop = shape_input[ub_split_axis] // ub_split_inner
@@ -1059,30 +1435,104 @@ def bn_reduce_schedule(res, input_tensors):
     if c1_size >= core_num and shape_input[2] * shape_input[3] > threshold:
         schedule_cut_c1(sch_list, res, sum_x, square_sum_x,
                         data_ub, cast_0_ub, data_mul_ub,
-                        ub_split_reduce_axis, split_factor, is_keep_dim)
+                        ub_split_reduce_axis, split_factor,
+                        is_keep_dim, is_in_reduce)
+        sch = sch_list[0]
+        return sch
     elif ub_split_axis == 2 and \
             outer_loop >= core_num and \
             shape_input[ub_split_axis] % core_num == 0:
         schedule_cut_h_twice(sch_list, res, sum_x,
                              square_sum_x, data_ub, cast_0_ub,
-                             data_mul_ub, split_factor, is_keep_dim)
-    elif ub_split_axis == 2 and \
-            shape_input[ub_split_axis] >= half_core_num and \
-            shape_input[ub_split_axis] % half_core_num == 0 and \
-            shape_input[0] < core_num and shape_input[0] == 2:
-        schedule_fuse_h_n(sch_list, res, sum_x, square_sum_x,
-                          data_ub, cast_0_ub, data_mul_ub,
-                          split_factor, is_keep_dim)
-    elif batch >= core_num:
-        schedule_cut_batch(sch_list, res, sum_x,
-                           square_sum_x, data_ub, cast_0_ub,
-                           data_mul_ub, ub_split_axis,
-                           split_factor, is_keep_dim)
+                             data_mul_ub, split_factor, is_keep_dim,
+                             is_in_reduce)
+        sch = sch_list[0]
+        return sch
+
+    if is_in_reduce:
+        if batch >= core_num:
+            in_schedule_cut_batch(sch_list, res, sum_x,
+                                  square_sum_x, data_ub, cast_0_ub,
+                                  data_mul_ub, ub_split_reduce_axis,
+                                  split_factor, is_keep_dim, max_ub_count)
+        else:
+            schedule_cut_general(sch_list, res, sum_x, square_sum_x,
+                                 data_ub, cast_0_ub, data_mul_ub,
+                                 ub_split_reduce_axis, split_factor,
+                                 is_keep_dim, is_in_reduce)
     else:
-        schedule_cut_general(sch_list, res, sum_x, square_sum_x,
-                             data_ub, cast_0_ub, data_mul_ub,
-                             ub_split_reduce_axis, split_factor, is_keep_dim)
-
+        if ub_split_axis == 2 and \
+                shape_input[ub_split_axis] >= half_core_num and \
+                shape_input[ub_split_axis] % half_core_num == 0 and \
+                shape_input[0] < core_num and shape_input[0] == 2:
+            schedule_fuse_h_n(sch_list, res, sum_x, square_sum_x,
+                              data_ub, cast_0_ub, data_mul_ub,
+                              split_factor, is_keep_dim)
+        elif batch >= core_num:
+            schedule_cut_batch(sch_list, res, sum_x,
+                               square_sum_x, data_ub, cast_0_ub,
+                               data_mul_ub, ub_split_axis,
+                               split_factor, is_keep_dim)
+        else:
+            schedule_cut_general(sch_list, res, sum_x, square_sum_x,
+                                 data_ub, cast_0_ub, data_mul_ub,
+                                 ub_split_reduce_axis, split_factor,
+                                 is_keep_dim, is_in_reduce)
     sch = sch_list[0]
-
     return sch
+
+
+# pylint: disable=too-many-branches,too-many-locals
+def in_get_ub_tiling(shape, block_tiling_axis,
+                  block_tiling_inner_loop, max_ub_count):
+    '''
+    do ub tiling, find ub tiling axis
+    '''
+    last_axis = len(shape) - 1
+    ub_split_inner = 1
+    ub_split_axis = 0
+    if block_tiling_axis < 0 or block_tiling_axis > last_axis:
+        return ub_split_axis, ub_split_inner
+
+    core_num = cceconf.get_soc_spec("CORE_NUM")
+
+    n_size = shape[0]
+    c1_size = shape[1]
+    h_size = shape[2]
+    w_size = shape[3]
+    c0_size = shape[4]
+
+    bound_size = max_ub_count
+    split_axis = block_tiling_axis
+    step = -1
+    temp_size = 1
+    need_split = False
+    for i in range(last_axis, block_tiling_axis + step, step):
+        temp_size = temp_size * shape[i]
+        if temp_size >= bound_size:
+            split_axis = i
+            temp_size = temp_size / shape[i]
+            need_split = True
+            break
+
+    split_size = 1
+    # split the split axis
+    if need_split:
+        for i in range(1, shape[split_axis] + 1, 1):
+            if (temp_size * i) == bound_size:
+                split_size = i
+                break
+            if (temp_size * i) > bound_size:
+                split_size = i - 1
+                split_size = get_nearest_factor(shape[split_axis], split_size)
+                break
+    else:
+        split_size = block_tiling_inner_loop
+
+    if split_axis == block_tiling_axis and split_size > block_tiling_inner_loop:
+        split_size = block_tiling_inner_loop
+
+    ub_split_inner = split_size
+    ub_split_axis = split_axis
+
+    return ub_split_axis, ub_split_inner

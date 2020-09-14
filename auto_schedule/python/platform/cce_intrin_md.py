@@ -20,15 +20,17 @@ Runtime function related hooks
 # pylint: disable=import-error
 from __future__ import absolute_import as _abs
 import math
+import os
 from functools import reduce
 from functools import cmp_to_key
 from te import tvm
-from te.tik.tik_lib.tik_check_util import get_context_msg
 from . import cce_conf
 from . import cce_emitinsn_params
 from . import cce_params as cce
 from . import cce_util
 from . import conv_buffer_ex
+from .cce_conf import CceProductParams as pver
+
 
 # max repeat time
 MAX_CAL_TIMES = 254
@@ -6620,12 +6622,12 @@ def pooling2d_global_process(op_expr):
                                                     "float32")
     vmul_ability = cce_conf.intrinsic_check_support("Intrinsic_vmul",
                                                     "float32")
-    use_fp16 = cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",) and \
-                             (impl_mode == "high_performance")
+    use_fp16 = pver().is_mini_version() and \
+               (impl_mode == "high_performance")
     fp32_ability = vconv_ability and\
                    vadd_ability and\
                    vmul_ability and \
-                   (bool(1 - use_fp16))
+                   (not use_fp16)
     if ins:
         src = ins[1]
         src_buffer = tvm.decl_buffer(src.shape, src.dtype, name=src.name,
@@ -6683,8 +6685,8 @@ def pooling2d_global_process(op_expr):
         dump_value = tvm.const(0.0, dtype="float16")
         pooling_intrin = 'vadd'
 
-    is_mini_or_lhisi = (cce_conf.get_soc_spec("SOC_VERSION") in \
-                        ["Ascend310", "Hi3796CV300ES"])
+    is_mini_or_lhisi = (pver().is_mini_version() or \
+                        pver().is_lhisi_version())
 
     if is_reg_mov:
         if isinstance(is_reg_mov[0], tvm.expr.StringImm) and\
@@ -6848,18 +6850,21 @@ def pooling2d_global_process(op_expr):
                 src1_addr = process_tensor.access_ptr('r',
                                                       offset=src1_offset)
 
-                if pooling_mode == "GAP" and fp32_ability:
+                num_per_repeat = 128
+                high_precise_mode = ((pooling_mode == "GAP") and fp32_ability)
+                if high_precise_mode:
                     num_per_repeat = 64
-                    repeat_data_size = cut_hi_factor *\
-                                       cut_wi_factor * c_block_size
-                    repeat = (repeat_data_size + 64 - 1) // 64
-                    tail_repeat_data = repeat_data_size % 64
-                else:
-                    num_per_repeat = 128
-                    repeat_data_size = cut_hi_factor *\
-                                       cut_wi_factor * c_block_size
-                    repeat = (repeat_data_size + 128 - 1) // 128
-                    tail_repeat_data = repeat_data_size % 128
+
+                repeat_data_size = cut_hi_factor *\
+                                   cut_wi_factor * c_block_size
+
+                if cut_flag == "cutCiHiWi":
+                    repeat_data_size = var_extent_mul[0]
+
+                repeat = (repeat_data_size + num_per_repeat - 1) \
+                         // num_per_repeat
+                tail_repeat_data = repeat_data_size % num_per_repeat
+
 
                 if tail_repeat_data != 0:
                     process_bits = tail_repeat_data
@@ -7450,7 +7455,6 @@ def vector_broadcast_transpose(tensor_op):
     tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[1],
                                 dst_buffer.access_ptr("w", offset=0),
                                 dst_buffer.access_ptr("r", offset=0)))
-    # print(tvm_ib.get())
     return tvm_ib.get()
 
 
@@ -10841,18 +10845,60 @@ def elewise_get_L1_workspace(stmt_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.tik_exception_process")
-def tik_exception_process(loc, msg):
+class TIKCallbackManager():
+    """
+       TIK callback manager class
+    """
+    func_map = {}
+
+    @classmethod
+    def register(func, name):
+        """
+          register the function.
+
+        """
+        def func_wrapper(func):
+            TIKCallbackManager.func_map[name] = func
+            return func
+
+        return func_wrapper
+
+    @classmethod
+    def call_method1(cls, name=None, *args):
+        """
+       call the fuction.
+        """
+        func = cls.func_map.get(name, None)
+        if func is None:
+            return
+        return func(*args)
+
+    @classmethod
+    def call_method(cls, name=None):
+        """
+       call the fuction.
+        """
+        func = cls.func_map.get(name, None)
+        if func is None:
+            return None
+        return func()
+
+
+def tik_exception_process(loc):
     """when there is an exception in Tik calling TVM, first print tik error msg
 
     :param loc: node location including file and column
     :param msg: error message
     :return: None
     """
-    if loc is None:
-        print("Error: {}\n".format(msg.rstrip("\n")))
-        return
-    print("\n".join(get_context_msg(loc.file, int(loc.column), msg)))
+    tik_error_traceback1 = TIKCallbackManager.call_method(
+        "get_traceback_inspect_msg")
+    tik_error_traceback = tik_error_traceback1[1]
+    tik_error_context = ""
+    if loc is not None:
+        tik_error_context = "\n".join(TIKCallbackManager.call_method1(
+            "get_context_msg", loc.file, int(loc.column)))
+    return tik_error_context, tik_error_traceback
 
 
 @tvm.register_func("tvm.intrin.cce.vector_reduce_sum_last_axis_opt")

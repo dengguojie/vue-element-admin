@@ -20,6 +20,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("ones_like")
@@ -43,27 +44,27 @@ def ones_like_compute(input_x, output_y, kernel_name="ones_like"):
         the result of ones_like_compute
     """
     src_dtype = input_x.dtype.lower()
-    ones_type = src_dtype
-
-    zero = tvm.const(0, dtype=src_dtype)
-    one = tvm.const(1, dtype=src_dtype)
-    src_type_list = ("int8", "uint8", "int32")
+    dst_type = src_dtype
+    src_type_list = ("int8", "uint8")
     dst_type_list = ("int8", "uint8")
     if src_dtype in src_type_list:
-        input_x = te.lang.cce.cast_to(input_x, "float16")
-
-    zero_src = te.lang.cce.vmuls(input_x, zero)
-    one_src = te.lang.cce.vadds(zero_src, one)
-
-    res = te.lang.cce.cast_to(one_src, ones_type)
-    dtype = src_dtype
-    if src_dtype in dst_type_list and dtype != "float16":
-        res = te.lang.cce.cast_to(one_src, ones_type, f1628IntegerFlag=True)
+        src_dtype = "float16"
+    one = tvm.const(1, dtype=src_dtype)
+    one_src = te.lang.cce.broadcast(one, input_x.shape)
+    if src_dtype in dst_type_list:
+        one_src = te.lang.cce.cast_to(one_src, dst_type,
+                                       f1628IntegerFlag=True)
+    else:
+        one_src = te.lang.cce.cast_to(one_src, dst_type)
+    with tvm.tag_scope("elewise_binary_phony"):
+        res = te.tvm.compute(input_x.shape,
+                             lambda *indices: one_src[indices] + input_x[indices],
+                             name="elewise_binary_phony_output")
 
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def ones_like(x, y, kernel_name="ones_like"):
     """
     output a tensor of all one, shape and dtype is same of input
@@ -84,12 +85,10 @@ def ones_like(x, y, kernel_name="ones_like"):
     """
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input)
-    util.check_tensor_shape_size(shape_input)
+    check_shape(shape_input, param_name="x")
     check_list_src = ("float16", "float32", "int32", "int8", "uint8")
     src_dtype = dtype_input.lower()
-    util.check_dtype_rule(src_dtype, check_list_src)
+    check_dtype(src_dtype, check_list_src, param_name="x")
     shape_input = (functools_reduce(lambda x, y: x * y, shape_input[:]),)
     input_x = tvm.placeholder(shape_input, name="input_x", dtype=src_dtype)
     res = ones_like_compute(input_x, y,

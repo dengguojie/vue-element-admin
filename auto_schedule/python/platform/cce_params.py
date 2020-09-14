@@ -127,15 +127,20 @@ class conv_buffer_ex(object):
 # represent 5 soc, currently contains in tik
 ASCEND_310 = "Ascend310"
 ASCEND_910 = "Ascend910"
+ASCEND_910H = "Ascend910Lite"
+ASCEND_910M = "Ascend910"
+ASCEND_910P = "Ascend910Pro"
 HI3796CV300ES = "Hi3796CV300ES"
 HI3796CV300CS = "Hi3796CV300CS"
 ASCEND_610 = "Ascend610"
-ASCEND_620 = "Ascend620"
+ASCEND_710 = "Ascend710"
 _AIC_ENGINE = "AiCore"
 _VEC_ENGINE = "VectorCore"
 
-AIC = ASCEND_610 + _AIC_ENGINE
-VEC = ASCEND_620 + _VEC_ENGINE
+AIC_710 = ASCEND_710 + _AIC_ENGINE
+VEC_710 = ASCEND_710 + _VEC_ENGINE
+AIC_610 = ASCEND_610 + _AIC_ENGINE
+VEC_610 = ASCEND_610 + _VEC_ENGINE
 HI3796CV300ESAIC = HI3796CV300ES + _AIC_ENGINE
 HI3796CV300CSAIC = HI3796CV300CS + _AIC_ENGINE
 ASCEND_310AIC = ASCEND_310 + _AIC_ENGINE
@@ -149,202 +154,246 @@ ONLY_TIK_API_MAP = {
         ASCEND_310AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
         ASCEND_910AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
         HI3796CV300ESAIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
-        AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
-        VEC: ["uint16", "int16", "float16", "uint32", "int32", "float32"]
+        HI3796CV300CSAIC: ["uint16", "int16", "float16", "uint32", "int32",
+                           "float32"],
+        AIC_710: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        AIC_610: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_610: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_710: ["uint16", "int16", "float16", "uint32", "int32", "float32"]
     },
     "vector_dup": {
         ASCEND_310AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
         ASCEND_910AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
         HI3796CV300ESAIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
-        AIC: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
-        VEC: ["uint16", "int16", "float16", "uint32", "int32", "float32"]
-    },
-    "vci": {
-        VEC: ["uint16", "int16", "float16", "uint32", "int32", "float32"]
-    },
-    "scatter_vnchwconv": {
-        ASCEND_310AIC: ["int8", "uint8", "uint16", "int16", "float16"],
-        ASCEND_910AIC: ["int8", "uint8", "uint16", "int16", "float16"],
-        HI3796CV300ESAIC: ["int8", "uint8", "uint16", "int16", "float16",
-                           "uint32", "int32", "float32"],
-        AIC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
-        VEC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"]
-    },
-    "vnchwconv": {
-        ASCEND_310AIC: ["int8", "uint8", "uint16", "int16", "float16"],
-        ASCEND_910AIC: ["int8", "uint8", "uint16", "int16", "float16"],
-        HI3796CV300ESAIC: ["int8", "uint8", "uint16", "int16",
-                           "float16", "uint32", "int32", "float32"],
-        AIC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
-        VEC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"]
+        HI3796CV300CSAIC: ["uint16", "int16", "float16", "uint32", "int32",
+                           "float32"],
+        AIC_710: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        AIC_610: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_710: ["uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_610: ["uint16", "int16", "float16", "uint32", "int32", "float32"]
     },
     "vec_trans_scatter": {
         ASCEND_310AIC: ["int8", "uint8", "uint16", "int16", "float16"],
         ASCEND_910AIC: ["int8", "uint8", "uint16", "int16", "float16"],
         HI3796CV300ESAIC: ["int8", "uint8", "uint16", "int16", "float16",
                            "uint32", "int32", "float32"],
-        AIC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
-        VEC: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"]
+        HI3796CV300CSAIC: ["int8", "uint8", "uint16", "int16", "float16",
+                           "uint32", "int32", "float32"],
+        AIC_710: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
+        AIC_610: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_710: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"],
+        VEC_610: ["int8", "uint8", "uint16", "int16", "float16", "uint32", "int32", "float32"]
     },
     "data_move_v1": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        VEC_710: [],
+        AIC_610: [],
+        VEC_610: []
     },
     "vnchwtrans": {
         ASCEND_310AIC: ["uint16", "int16", "float16"],
         ASCEND_910AIC: ["uint16", "int16", "float16"],
         HI3796CV300ESAIC: ["uint16", "int16", "float16"],
-        AIC: ["uint16", "int16", "float16"],
-        VEC: ["uint16", "int16", "float16"]
+        HI3796CV300CSAIC: ["uint16", "int16", "float16"],
+        AIC_710: ["uint16", "int16", "float16"],
+        AIC_610: ["uint16", "int16", "float16"],
+        VEC_710: ["uint16", "int16", "float16"],
+        VEC_610: ["uint16", "int16", "float16"]
     },
     "vreduceadd": {
         ASCEND_310AIC: ["float16", "float32"],
         ASCEND_910AIC: ["float16", "float32"],
         HI3796CV300ESAIC: ["float16", "float32"],
-        AIC: ["float16", "float32"],
-        VEC: ["float16", "float32"]
+        HI3796CV300CSAIC: ["float16", "float32"],
+        AIC_710: ["float16", "float32"],
+        AIC_610: ["float16", "float32"],
+        VEC_710: ["float16", "float32"],
+        VEC_610: ["float16", "float32"]
     },
     "scalar_conv": {
         ASCEND_910AIC: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
                         'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
         HI3796CV300ESAIC: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
                            'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
-        AIC: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
+        HI3796CV300CSAIC: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f',
+                           'f322s32c',
+                           'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
+        AIC_710: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
               'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
-        VEC: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
+        AIC_610: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
+              'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
+        VEC_710: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
+              'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
+        VEC_610: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
               'f322s32z', 'f162f32', 'f322f16', 'f322f16o']
     },
     "mov_rpn_cor_ir_to_scalar": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "load2dv1": {
         ASCEND_310AIC: ["int8", "uint8", "uint16", "int16", "float16"],
         ASCEND_910AIC: ["int8", "uint8", "uint16", "int16", "float16"],
         HI3796CV300ESAIC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
-        AIC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
-        VEC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"]
+        HI3796CV300CSAIC: ["uint4", "int4", "int8", "uint8", "uint16",
+                           "int16", "float16"],
+        AIC_710: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        AIC_610: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        VEC_710: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        VEC_610: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"]
     },
     "load2dv2": {
         HI3796CV300ESAIC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
-        AIC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
-        VEC: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"]
+        HI3796CV300CSAIC: ["uint4", "int4", "int8", "uint8", "uint16",
+                           "int16", "float16"],
+        AIC_710: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        AIC_610: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        VEC_710: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"],
+        VEC_610: ["uint4", "int4", "int8", "uint8", "uint16", "int16", "float16"]
     },
     "assign": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "set_l0_set_value": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "load3dv1": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: []
     },
     "col2img": {
         ASCEND_910AIC: ["float16", "float32"],
-        AIC: ["float16", "float32"]
+        AIC_710: ["float16", "float32"],
+        AIC_610: ["float16", "float32"]
     },
     "mmad_broadcast": {
         ASCEND_310AIC: ['f16f16', 'f32f32', 's32s32', 'f32f16'],
         ASCEND_910AIC: ['f16f16', 'f32f32', 's32s32', 'f32f16'],
         HI3796CV300ESAIC: ['f32f32', 's32s32'],
-        AIC: ['f16f16', 'f32f32', 's32s32', 'f32f16'],
+        HI3796CV300CSAIC: ['f32f32', 's32s32'],
+        AIC_710: ['f16f16', 'f32f32', 's32s32', 'f32f16'],
+        AIC_610: ['f16f16', 'f32f32', 's32s32', 'f32f16'],
     },
     "tensor_padding_with_matrix": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: []
     },
     "data_move": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "data_move_quant": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "tensor_mov": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "load3dv2": {
         HI3796CV300ESAIC: ["int8", "uint8", "float16"],
-        AIC: ["int8", "uint8", "float16"],
-        VEC: ["int8", "uint8", "float16"]
+        HI3796CV300CSAIC: ["int8", "uint8", "float16"],
+        AIC_710: ["int8", "uint8", "float16"],
+        AIC_610: ["int8", "uint8", "float16"],
+        VEC_710: ["int8", "uint8", "float16"],
+        VEC_610: ["int8", "uint8", "float16"]
     },
     "load_smask": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "load_image": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: []
+        AIC_710: [],
+        AIC_610: [],
     },
     "mov_vmrgsort4_sr_to_scalar": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "set_rpn_cor_ir": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "set_rpn_offset": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
-    },
-    "rpn_cor": {
-        ASCEND_310AIC: [],
-        ASCEND_910AIC: [],
-        HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
-    },
-    "rpn_cor_diag": {
-        ASCEND_310AIC: [],
-        ASCEND_910AIC: [],
-        HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "mov_atomic_add_to_scalar": {
         ASCEND_910AIC: []
@@ -360,8 +409,10 @@ ONLY_TIK_API_MAP = {
     },
     "set_atomic_add": {
         ASCEND_910AIC: [],
-        AIC: [],
-        VEC: []
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "set_small_channel": {
         ASCEND_910AIC: []
@@ -375,8 +426,11 @@ ONLY_TIK_API_MAP = {
     "instr_preload": {
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "get_overflow_status": {
         ASCEND_910AIC: []
@@ -388,15 +442,21 @@ ONLY_TIK_API_MAP = {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "mov_tensor_to_cmpmask": {
         ASCEND_310AIC: [],
         ASCEND_910AIC: [],
         HI3796CV300ESAIC: [],
-        AIC: [],
-        VEC: []
+        HI3796CV300CSAIC: [],
+        AIC_710: [],
+        AIC_610: [],
+        VEC_710: [],
+        VEC_610: []
     },
     "scatter_vmulva": {
         ASCEND_310AIC: [],
@@ -428,13 +488,15 @@ ONLY_TIK_API_MAP = {
     "fixpipe": {
         ASCEND_310AIC: ["f32f16", "f32f32", "s32s32", "s32f16"],
         ASCEND_910AIC: ["f32f16", "f32f32", "s32s32", "s32f16"],
-        AIC: ["f32f16", "f32f32", "s32s32", "s32f16"]
+        AIC_710: ["f32f16", "f32f32", "s32s32", "s32f16"],
+        AIC_610: ["f32f16", "f32f32", "s32s32", "s32f16"]
     },
     "matmul": {
         ASCEND_310AIC: ["s8s8s32", "u8s8s32", "f16f16f32"],
         ASCEND_910AIC: ["s8s8s32", "u8s8s32", "f16f16f32"],
-        AIC: ["s8s8s32", "u8s8s32", "f16f16f32"]
-    }
+        AIC_710: ["s8s8s32", "u8s8s32", "f16f16f32"],
+        AIC_610: ["s8s8s32", "u8s8s32", "f16f16f32"]
+    },
 }
 
 TRANS_TIK_API_TO_INSTR_MAP = {
@@ -488,3 +550,4 @@ TRANS_TIK_API_TO_INSTR_MAP = {
     "vreducemax": "vcmax",
     "vreducemin": "vcmin"
 }
+

@@ -152,7 +152,7 @@ def prior_box_check(feature, img, data_h, data_w, min_size, max_size,
     feature_format = feature.get("format")
 
     product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if product in ("Hi3796CV300ES",):
+    if product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]
@@ -715,7 +715,7 @@ def multicore_factor_calculate(shape, element):
 
     total_npart = npart_0 * npart_1 * npart_2 * npart_3 * npart_4
     fuse_num = -1
-    if out_size % total_npart != element:
+    if out_size % total_npart != 0 and out_size % total_npart != element:
         if shape_1 * shape_5 % element == 0:
             fuse_num = 3
             npart_0 = 1
@@ -952,6 +952,7 @@ def tiling_factor_calculate(shape, split_axis_0, split_size, dtype, UB_SIZE_LIMI
 
     return split_flag, split_axis, split_factor
 
+
 def align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
     """
     determine if aligning needs to be enabled
@@ -1019,8 +1020,8 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
     rec_img_w = 1.0 / img_w
 
     if step_h == 0 or step_w == 0:
-        step_h = 1.0 * shape_img[INDEX_H] / shape_feature[INDEX_H]
-        step_w = 1.0 * shape_img[INDEX_W] / shape_feature[INDEX_W]
+        step_h = 1.0 * img_h / shape_feature[INDEX_H]
+        step_w = 1.0 * img_w / shape_feature[INDEX_W]
     scale = 0.5
 
     op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, \

@@ -483,8 +483,8 @@ class NHWC2FRACTAL4Compute:
                                      row_index * self.src_shape[3]
                         with tik_instance.for_range(0, self.src_shape[3])\
                                 as num_c:
-                            ub_trans[trans_offset + num_c].set_as \
-                                (ub_ori[ori_offset + num_c])
+                            ub_trans[trans_offset + num_c].set_as(
+                                ub_ori[ori_offset + num_c])
 
                 if hwc % CUBE_SIZE != 0:
                     with tik_instance.for_range(0, (hwc % CUBE_SIZE) // 4) \
@@ -499,8 +499,8 @@ class NHWC2FRACTAL4Compute:
                                      row_index * self.src_shape[3]
                         with tik_instance.for_range(0, self.src_shape[3])\
                                 as num_c:
-                            ub_trans[trans_offset + num_c].set_as \
-                                (ub_ori[ori_offset + num_c])
+                            ub_trans[trans_offset + num_c].set_as(
+                                ub_ori[ori_offset + num_c])
 
         else:
             self.data_rearrange_c_four(tik_instance, ub_ori, ub_trans,

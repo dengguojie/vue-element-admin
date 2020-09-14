@@ -38,6 +38,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 from te.utils.op_utils import refine_shape_axes
+from te.utils.op_utils import *
 import topi
 from topi.cce import util
 
@@ -125,7 +126,7 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     return after_res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     """
     Computes the Bessel i0e function of x element-wise.
@@ -146,12 +147,11 @@ def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    check_shape(shape_input)
+    check_shape(shape_input, param_name="x")
     shape_input, _ = refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list)
+    check_dtype(dtype_input, check_list, param_name="x")
 
     input_dtype = dtype_input.lower()
     data = tvm.placeholder(shape_input, dtype=input_dtype, name="data_input")

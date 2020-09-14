@@ -24,6 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1
@@ -78,7 +79,7 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """
     algorithm: inv_grad
@@ -105,11 +106,8 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     dtype_input_y = input_y.get("dtype")
     dtype_input_dy = input_dy.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_input_y)
-    util.check_shape_rule(shape_input_dy)
-    util.check_tensor_shape_size(shape_input_y)
-    util.check_tensor_shape_size(shape_input_dy)
+    check_shape(shape_input_y, param_name="input_y")
+    check_shape(shape_input_dy, param_name="input_dy")
 
     shape_input_y = util.shape_refine(shape_input_y)
     shape_input_dy = util.shape_refine(shape_input_dy)
@@ -124,7 +122,7 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
         raise RuntimeError("the dtype of input must be equal!")
 
     check_list = ("float16", "float32", "int32", "int8")
-    util.check_dtype_rule(dtype_input_y, check_list)
+    check_dtype(dtype_input_y, check_list, param_name="input_y")
 
     shape_input_dy, shape_input_y = refine_shapes_for_broadcast(shape_input_dy,
                                                                 shape_input_y)

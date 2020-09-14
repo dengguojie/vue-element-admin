@@ -1,0 +1,241 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+"""
+Copyright 2018 Huawei Technologies Co., Ltd
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+schedule util
+"""
+
+from functools import reduce
+from operator import mul
+
+from te import platform as cce
+from te import tvm
+from te.platform import operation
+
+from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
+    NEED_TEMP_SPACE_INSNS
+
+VAR_BOUND_LIMIT = 2147483647
+
+
+def shape_to_list(shape):
+    """
+    :param shape:
+    :return:
+    """
+    shape0 = []
+    for i in shape:
+        if isinstance(i, tvm.expr.ConstExpr):
+            shape0.append(i.value)
+        else:
+            shape0.append(i)
+    return shape0
+
+
+def get_dsl_insn(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    tag = tensor.op.tag
+    if tensor.op.tag.find("|") != -1:
+        insn = tag.split("|")[0]
+    else:
+        insn = tag
+    return insn
+
+
+def support_scalar(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in SUPPORT_SCALAR_INSNS
+
+
+def need_temp_space(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in NEED_TEMP_SPACE_INSNS
+
+
+def get_tensor_size(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    shape = shape_to_list(tensor.shape)
+    if all(isinstance(i, int) for i in shape):
+        return reduce(mul, shape_to_list(tensor.shape), 1)
+    return -1
+
+
+def is_broadcast(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in BROADCAST_INSNS
+
+
+def is_placeholder(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return isinstance(tensor.op, tvm.tensor.PlaceholderOp)
+
+
+def merge_value(map_: dict, key, value):
+    """
+    :param map_:
+    :param key:
+    :param value: value container is set
+    :return:
+    """
+    if key not in map_:
+        map_[key] = set()
+    if isinstance(value, list):
+        map_[key].update(value)
+    else:
+        map_[key].add(value)
+
+
+def get_bound(expr):
+    """
+    :param expr:
+    :return:
+    """
+    valid_types = (int, tvm.expr.Expr)
+    if not isinstance(expr, valid_types):
+        raise RuntimeError(
+            "Only accept (int, expr), but now is{}.".format(expr))
+
+    if isinstance(expr, int):
+        return expr, expr
+    if isinstance(expr, tvm.expr.IntImm):
+        return expr.value, expr.value
+    if isinstance(expr, tvm.expr.Var):
+        return operation.get_te_var(expr.name).get_bound()
+
+    def _parse(expr_, elements_: list):
+        if not isinstance(expr_, tvm.expr.Mul):
+            raise RuntimeError("Only support mul, but no is {}.".format(expr))
+
+        single_types = (tvm.expr.IntImm, tvm.expr.Var)
+        for _x in (expr_.a, expr_.b):
+            if isinstance(_x, single_types):
+                elements_.append(_x)
+            else:
+                _parse(_x, elements_)
+
+    def _mul(_a, _b):
+        if _a is None or _b is None:
+            return None
+        _bound = _a * _b
+        return None if _bound > VAR_BOUND_LIMIT else _bound
+
+    lower, upper = 1, 1
+    elements = []
+    _parse(expr, elements)
+    for _e in elements:
+        if isinstance(_e, tvm.expr.IntImm):
+            lower, upper = _mul(lower, _e.value), _mul(upper, _e.value)
+        elif isinstance(_e, tvm.expr.Var):
+            bound = operation.get_te_var(_e.name).get_bound()
+            lower, upper = _mul(lower, bound[0]), _mul(upper, bound[1])
+        else:
+            raise RuntimeError(
+                "Only support (IntImm, Var), but no is {}.".format(_e))
+
+    return lower, upper
+
+
+def get_ub_size():
+    """
+    :return:
+    """
+    return cce.get_soc_spec("UB_SIZE")
+
+
+def get_core_num():
+    """
+    :return:
+    """
+    return cce.get_soc_spec("CORE_NUM")
+
+
+def get_build_cfg():
+    """
+    :return:
+    """
+    f_m = cce.fusion_manager.fusion_manager
+    return f_m.get_build_cfg()
+
+
+def equals_one(_x):
+    """
+    :param _x:
+    :return:
+    """
+    if isinstance(_x, tvm.expr.ConstExpr):
+        return _x.value == 1
+    if isinstance(_x, int):
+        return _x == 1
+    return False
+
+
+def ceil_div(num, factor):
+    """
+    :param num:
+    :param factor:
+    :return:
+    """
+    return (num + factor - 1) // factor
+
+
+def ceil_align(num, factor):
+    """
+    :param num:
+    :param factor:
+    :return:
+    """
+    return ceil_div(num, factor) * factor
+
+
+def add_sch_additional_entry(sch, k, v):
+    """
+    :param sch:
+    :param k:
+    :param v:
+    :return:
+    """
+    if not hasattr(sch, "addition"):
+        sch.addition = {}
+    sch.addition[k] = v
+
+
+def get_sch_additional_entry(sch, k):
+    """
+    :param sch:
+    :param k:
+    :return:
+    """
+    if not hasattr(sch, "addition"):
+        return None
+    return sch.addition.get(k)

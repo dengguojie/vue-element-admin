@@ -15,14 +15,14 @@ kl_div
 """
 
 from functools import reduce as reduce_one_dim
-from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
 
-SHAPE_SIZE_LIMIT = 2**30  # shape limit
+import te.lang.cce
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
+from topi import generic
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @fusion_manager.register("kl_div")
@@ -55,15 +55,35 @@ def kl_div_compute(input_x,
     ------
     compute result of kl_div
     """
-    log_target = te.lang.cce.vlog(input_target, 1)
+    input_dtype = input_x.dtype
+    log_support_fp32 = tbe_platform.cce_conf.api_check_support(
+        "te.lang.cce.vlog", "float32")
+    if log_support_fp32 and input_dtype == "float32":
+        log_target = te.lang.cce.vlog(input_target, priority_flag=1)
+    else:
+        log_target = te.lang.cce.vlog(input_target)
+
     tmp_result = te.lang.cce.vsub(log_target, input_x)
     output_pos = te.lang.cce.vmul(input_target, tmp_result)
 
     # max(output_pos, 0)
     target_gt_zero = te.lang.cce.vmaxs(input_target, 0)
 
-    add_espmin = te.lang.cce.vadds(target_gt_zero, 1.18e-38)
-    y_espmin = te.lang.cce.vdiv(target_gt_zero, add_espmin)
+    if input_dtype == "float16":
+        # algrithm : Y = X*1024/(X*1024+ESP_MIN)
+        # for float16, add a small number which value is 1.18e-7, so that the
+        # divisor is not equal to 0, and for accuracy, multiply by a number
+        # which value is 1024.
+        mul_big = te.lang.cce.vmuls(target_gt_zero, 1024)
+        add_espmin = te.lang.cce.vadds(mul_big, 1.18e-7)
+        y_espmin = te.lang.cce.vdiv(mul_big, add_espmin)
+    if input_dtype == "float32":
+        # algrithm : Y = X/(X*+ESP_MIN)
+        # for float32, add a small number which value is 1.18e-38, so that
+        # the divisor is not equal to 0.
+        add_espmin = te.lang.cce.vadds(target_gt_zero, 1.18e-38)
+        y_espmin = te.lang.cce.vdiv(target_gt_zero, add_espmin)
+
     output_res = te.lang.cce.vmul(y_espmin, output_pos)
 
     if reduction == "batchmean":
@@ -72,10 +92,10 @@ def kl_div_compute(input_x,
     elif reduction == "sum":
         final_res = te.lang.cce.sum(output_res, axis=0)
     else:
-        raise RuntimeError(
-            "Reduction method only support batchmean and sum")
+        raise RuntimeError("Reduction method only support batchmean and sum")
 
     return final_res
+
 
 def _check_parameter(input_x, input_target):
     """
@@ -91,20 +111,19 @@ def _check_parameter(input_x, input_target):
     """
     shape_x = input_x.get("shape")
     shape_target = input_target.get("shape")
+    op_utils.check_shape(shape_x, param_name="input_x")
     if list(shape_x) != list(shape_target):
         raise RuntimeError("input_x and input_target must "
                            "have the same shape.")
-    util.check_shape_rule(shape_x)
-    util.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
 
-    # check input tensor data_type and kernel_name
-    check_list = ("float32")
+    # check input tensor data_type
     dtype_x = input_x.get("dtype").lower()
     dtype_target = input_target.get("dtype").lower()
+    check_list = ("float16", "float32")
+    op_utils.check_dtype(dtype_x, check_list, param_name="input_x")
     if dtype_x != dtype_target:
         raise RuntimeError("input_x and input_target must "
                            "have the same dtype.")
-    util.check_dtype_rule(dtype_x, check_list)
 
     if dtype_x == "float32" and not tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.vmul", "float32"):
@@ -112,17 +131,28 @@ def _check_parameter(input_x, input_target):
             "Instric only support float16 while input dtype is float32")
 
 
-@util.check_input_type(dict, dict, dict, str, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_STR,
+                          op_utils.KERNEL_NAME)
 def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     """
+    Calcuate Kullback-Leibler divergence.
+
+    output_pos = input_target * (log(input_target) - input_x)
+    output = where(input_target > 0, output_pos, zeros)
+    reduced = reduce_sum_all(output)
+    if reduction = "batchmean":
+        final_res = reduce / input.dim[0]
+    else:
+        final_res = reduced
     Parameters
     ----------
     input_x : dict
-        shape and dtype of input_x
+        shape and dtype of input_x, dtype only support fp16 and fp32.
     input_target : dict
         shape and dtype of input_target.Shape and dtype must be same as input_x
     output_y : dict
-        shape and dtype of output.Shape and dtype must be same as input_x
+        shape and dtype of output.Dtype must be same as input_x
     reduction: str
         Specifies the reduction to apply to the output:
         reduction="batchmean" or reduction="sum".
@@ -141,11 +171,8 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     shape_x = input_x.get("shape")
     dtype_x = input_x.get("dtype")
     batch_size = shape_x[0]
-    util.check_kernel_name(kernel_name)
     shape_one_dim = [reduce_one_dim(lambda x, y: x * y, shape_x[:])]
-    data_x = tvm.placeholder(shape_one_dim,
-                             name="data_x",
-                             dtype=dtype_x)
+    data_x = tvm.placeholder(shape_one_dim, name="data_x", dtype=dtype_x)
     data_target = tvm.placeholder(shape_one_dim,
                                   name="data_target",
                                   dtype=dtype_x)

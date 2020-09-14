@@ -40,6 +40,10 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     -------
     tik_instance: tik_instance
     """
+    vmul_support = \
+        tbe_platform.cce_conf.api_check_support("tik.vmul", "float32")
+    if not vmul_support:
+        return False
     tik_instance = tik.Tik()
     aicore_num = \
         tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)

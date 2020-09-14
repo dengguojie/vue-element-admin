@@ -94,7 +94,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
     Parameters
     ----------
     data_info: include TVM tensor,shape and dtype
-    product_verion: include mini("1.1"、"1.3"),cloud("1.6"),es("5.10"),1951("2.3")
+    product_verion: include mini("1.1"、"1.3"),cloud("1.6"),es("5.10"),DC("2.3")
     operation : can only be one of "1:SUM, 2:ASUM (sum of abs), 3:SUMSQ (sum of sqr), 4:MEAN"
     axis : the axis to reduce
     coeff : scale for output
@@ -144,7 +144,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
 
 # pylint: disable=redefined-outer-name, too-many-arguments, E1101
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
-                 OPTION_ATTR_INT,OPTION_ATTR_FLOAT, KERNEL_NAME)
+                 OPTION_ATTR_INT, OPTION_ATTR_FLOAT, KERNEL_NAME)
 def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):
     """
     Reduce a tensor on a certain axis, and scale output with coeff
@@ -172,40 +172,40 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     inp_dtype = input_x.get("dtype").lower()
     check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS") and inp_dtype == "float32":
-        error_Info = {}
-        error_Info['errCode'] = 'E81006'
-        error_Info['param_name'] = 'dtype'
-        error_Info['op_name'] = 'reduction'
-        error_Info['real_value'] = inp_dtype
+        error_info = {}
+        error_info['errCode'] = 'E81006'
+        error_info['param_name'] = 'dtype'
+        error_info['op_name'] = 'reduction'
+        error_info['real_value'] = inp_dtype
         raise RuntimeError("In op[%s], ES is not supported while the [%s] of input is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'],error_Info['real_value']))
+                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
 
     # axis parameter check
     if axis >= len(ori_shape) or axis < -len(ori_shape):
-        error_Info = {}
-        error_Info['errCode'] = OP_ERROR_CODE_002
-        error_Info['param_name'] = 'axis'
-        error_Info['op_name'] = 'reduction'
-        error_Info['min_value'] = -len(ori_shape)
-        error_Info['max_value'] = len(ori_shape)-1
-        error_Info['real_value'] = axis
-        raise RuntimeError(error_Info,"In op[%s], the parameter[%s] should be "
-                                      "in the range of (%s,%s), but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], \
-                             error_Info['min_value'],error_Info['max_value'],error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_002
+        error_info['param_name'] = 'axis'
+        error_info['op_name'] = 'reduction'
+        error_info['min_value'] = -len(ori_shape)
+        error_info['max_value'] = len(ori_shape)-1
+        error_info['real_value'] = axis
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be " 
+                                       "in the range of (%s,%s), but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['min_value'], error_info['max_value'], error_info['real_value']))
 
     # operation parameter check
     if operation not in (1, 2, 3, 4):
-        error_Info = {}
-        error_Info['errCode'] = 'E80002'
-        error_Info['param_name'] = 'operation'
-        error_Info['op_name'] = 'reduction'
-        error_Info['expect_value_list'] = (1, 2, 3, 4)
-        error_Info['real_value'] = operation
-        raise RuntimeError(error_Info,"In op[%s], the parameter[%s] should "
-                                      "only be one of [%s], but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], \
-                             error_Info['expect_value_list'],error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E80002'
+        error_info['param_name'] = 'operation'
+        error_info['op_name'] = 'reduction'
+        error_info['expect_value_list'] = (1, 2, 3, 4)
+        error_info['real_value'] = operation
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should "
+                                       "only be one of [%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'],
+                              error_info['expect_value_list'], error_info['real_value']))
 
     # Preprocess
     if axis < 0:

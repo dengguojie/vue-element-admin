@@ -17,7 +17,9 @@ generate the cheque from best result python file by rl search
 """
 import os
 import time
+import json
 import pickle
+from ast import literal_eval as make_tuple
 import te
 from te import tvm
 from te.platform import cce_emitinsn_params
@@ -26,6 +28,7 @@ from te.lang.cce.rl_bank.bank_cfg import SCOPE_DICT
 from te.lang.cce.rl_bank.bank_cfg import PRIMITIVE_DICT
 from te.lang.cce.rl_bank.bank_cfg import ScheduleTarget
 from te.lang.cce.rl_bank.bank_cfg import Axis
+from te.platform import log
 
 
 def get_stage_by_name(stage_name, sch_targets):
@@ -37,7 +40,9 @@ def get_stage_by_name(stage_name, sch_targets):
     '''
     stage_name = stage_name.strip()
     for stage_idx, sch_target in enumerate(sch_targets):
-        if sch_target.name == stage_name:
+        if (isinstance(sch_target.name, str)
+                and stage_name == sch_target.name) or (isinstance(sch_target.name, list)
+                                                       and stage_name in sch_target.name):
             return stage_idx, sch_target.obj.op.output(0)
     raise RuntimeError("no stage named by ", stage_name)
 
@@ -49,6 +54,9 @@ def get_axis_by_name(axis_name, axes):
     :param sch_targets:
     :return:
     '''
+    if isinstance(axis_name, list):
+        axis_name = axis_name[0]
+
     axis_name = axis_name.strip()
     for axis_idx, axis in enumerate(axes):
         if (isinstance(axis.name, str) and axis_name == axis.name) or (isinstance(axis.name, list)
@@ -118,6 +126,7 @@ def get_axis(sch, sch_targets, cheque_list, specify_axis_name_dict, split_stage_
         axis_name = '%s_axis_%d' % (split_stage_name, i)
         axis_obj = sch[split_stage_obj].op.axis[i]
         curr_axis = Axis(axis_name, axis_obj)
+        curr_axis.update_name("sch[%s].op.axis[%s]" % (split_stage_name, i))
         if axis_name in specify_axis_name_dict:
             curr_axis.update_name(specify_axis_name_dict[axis_name])
         sch_targets[split_stage_idx].axes.append(curr_axis)
@@ -132,11 +141,42 @@ def get_axis(sch, sch_targets, cheque_list, specify_axis_name_dict, split_stage_
             axis_name = '%s_reduce_axis_%d' % (split_stage_name, i)
             axis_obj = sch[split_stage_obj].op.reduce_axis[i]
             curr_axis = Axis(axis_name, axis_obj)
+            curr_axis.update_name("sch[%s].op.reduce_axis[%s]" % (split_stage_name, i))
             if axis_name in specify_axis_name_dict:
                 curr_axis.update_name(specify_axis_name_dict[axis_name])
             sch_targets[split_stage_idx].axes.append(curr_axis)
         cheque = [split_stage_idx, get_primitive_id("get_reduce_axis"), reduce_axis_num]
         cheque_list.append(cheque)
+
+
+def update_after_split(sch_targets, split_stage_idx, split_axis_name, sch, split_stage_obj, factor,
+                       code_line, cheque_list):  # pylint: disable=too-many-locals
+    """
+    update_after_split
+    :param sch_targets:
+    :param split_stage_idx:
+    :param split_axis_name:
+    :param sch:
+    :param split_stage_obj:
+    :param factor:
+    :param code_line:
+    :param cheque_list:
+    :return:
+    """
+    # get axis by name
+    split_axis_idx, axis_obj = get_axis_by_name(split_axis_name, sch_targets[split_stage_idx].axes)
+    # do split
+    split_outer, split_inner = sch[split_stage_obj].split(axis_obj, factor=factor)
+    # delete axis when axis is splited
+    sch_targets[split_stage_idx].axes.pop(split_axis_idx)
+    # get axis name after split from code line
+    split_outer_name, split_inner_name = code_line.split("=")[0].strip().split(",")
+    # inset inner then insert outer
+    sch_targets[split_stage_idx].axes.insert(split_axis_idx, Axis(split_inner_name, split_inner))
+    sch_targets[split_stage_idx].axes.insert(split_axis_idx, Axis(split_outer_name, split_outer))
+    # add cheque
+    cheque = [split_stage_idx, get_primitive_id("split"), split_axis_idx, factor]
+    cheque_list.append(cheque)
 
 
 def proc_cache_read(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
@@ -146,7 +186,7 @@ def proc_cache_read(sch, sch_targets, cheque_list, code_line):  # pylint: disabl
     :param sch_targets:
     :return:
     '''
-    if "cache_read" in code_line:
+    if ".cache_read(" in code_line:
         out_stage_name = code_line.split("=")[0].strip()
         read_stage_name = code_line.split("cache_read(")[1].split(",")[0]
         scope = code_line.split("cache_read(")[1].split(",")[1].replace("'", "").strip()
@@ -178,12 +218,13 @@ def proc_cache_write(sch, sch_targets, cheque_list, code_line):  # pylint: disab
     :param sch_targets:
     :return:
     '''
-    if "cache_write" in code_line:
+    if ".cache_write(" in code_line:
         written_name = code_line.split("=")[0].strip()
 
         if ',' not in written_name:
             # one tensor do cache_write
-            write_stage_name, scope = code_line.split("cache_write(")[1].replace(")", "").split(",")
+            write_stage_name, scope = code_line.split("cache_write(")[1].replace(")",
+                                                                                 "").split(",")
             scope = scope.replace("'", "").strip()
             write_stage_idx, write_stage_obj = get_stage_by_name(write_stage_name, sch_targets)
             written_tensor = sch.cache_write(write_stage_obj, scope)
@@ -199,21 +240,44 @@ def proc_cache_write(sch, sch_targets, cheque_list, code_line):  # pylint: disab
             write_tensor_names = write_tensor_names.lstrip('[').rstrip(']').split(', ')
             write_stage_name = write_tensor_names[0].split('_v')[0].strip()
             scope = scope.replace("'", "").strip()
-            write_stage_idx, write_stage_obj = get_stage_by_name(
-                write_stage_name, sch_targets)
+            write_stage_idx, write_stage_obj = get_stage_by_name(write_stage_name, sch_targets)
             write_tensor_objs = []
             for idx in range(len(write_tensor_names)):
                 write_tensor_objs.append(write_stage_obj.op.output(idx))
             written_tensors = sch.cache_write(write_tensor_objs, scope)
 
             written_name = '%s_l' % write_stage_name
-            sch_targets.insert(write_stage_idx,
-                               ScheduleTarget(written_name, written_tensors[0], []))
+            sch_targets.insert(write_stage_idx, ScheduleTarget(written_name, written_tensors[0],
+                                                               []))
 
             cheque = [[write_stage_idx, len(write_tensor_names)],
                       get_primitive_id("cache_write"),
                       get_scope_id(scope)]
             cheque_list.append(cheque)
+
+
+def proc_set_storage_bound(sch, sch_targets, cheque_list, code_line):
+    '''
+
+    :param sch:
+    :param sch_targets:
+    :param cheque_list:
+    :param code_line:
+    :return:
+    '''
+    if ".set_storage_bound(" in code_line:
+        stage_name = code_line.split(".set_storage_bound")[0].split("[")[1].split("]")[0]
+        stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
+        input_l1_size_str = code_line.split(".set_storage_bound(")[1].rstrip(')')
+        if '.' in input_l1_size_str:
+            input_l1_size = float(input_l1_size_str)
+        else:
+            input_l1_size = int(input_l1_size_str)
+
+        cheque = [stage_idx, get_primitive_id("set_storage_bound"), input_l1_size]
+        cheque_list.append(cheque)
+
+        sch[stage_obj].set_storage_bound(input_l1_size)
 
 
 def proc_preload(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
@@ -223,7 +287,7 @@ def proc_preload(sch, sch_targets, cheque_list, code_line):  # pylint: disable=t
     :param sch_targets:
     :return:
     '''
-    if "preload" in code_line:
+    if ".preload(" in code_line:
         stage_name = code_line.split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         sch[stage_obj].preload()
@@ -239,7 +303,7 @@ def proc_double_buffer(sch, sch_targets, cheque_list, code_line):  # pylint: dis
     :param sch_targets:
     :return:
     '''
-    if "double_buffer" in code_line:
+    if ".double_buffer(" in code_line:
         stage_name = code_line.split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         sch[stage_obj].double_buffer()
@@ -255,7 +319,7 @@ def proc_compute_inline(sch, sch_targets, cheque_list, code_line):  # pylint: di
     :param sch_targets:
     :return:
     '''
-    if "compute_inline" in code_line:
+    if ".compute_inline(" in code_line:
         stage_name = code_line.split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         sch[stage_obj].compute_inline()
@@ -272,7 +336,7 @@ def proc_reduce_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specif
     :param sch_targets:
     :return:
     '''
-    if "split" in code_line and "factor" in code_line and "reduce_axis" in code_line:
+    if ".split(" in code_line and "factor" in code_line and "reduce_axis" in code_line:
         split_stage_name = code_line.split("].split")[0].split("[")[1]
         split_stage_idx, split_stage_obj = get_stage_by_name(split_stage_name, sch_targets)
         factor = int(code_line.split("factor=")[1].split(")")[0])
@@ -280,34 +344,19 @@ def proc_reduce_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specif
         split_axis = code_line.split(".split(")[1].split(",")[0]
         if "[" in split_axis and "]" in split_axis:
             split_axis = int(split_axis.split("axis[")[1].split("]")[0])
-
         # might be int or specify_axis_name: ub_split_reduce_axis
         if isinstance(split_axis, int):
             split_axis_idx = split_axis
             # get axis
             if not stage_get_axis_dict.get(split_stage_name, False):
                 get_axis(sch, sch_targets, cheque_list, specify_axis_name_dict, split_stage_name)
-
                 stage_get_axis_dict[split_stage_name] = True
 
-            split_outer, split_inner = sch[split_stage_obj].split(
-                sch[split_stage_obj].op.reduce_axis[split_axis_idx], factor=factor)
-
-            # delete axis when axis is splited
             split_reduce_axis_name = '%s_reduce_axis_%d' % (split_stage_name, split_axis_idx)
-            split_reduce_axis_idx, _ = get_axis_by_name(split_reduce_axis_name,
-                                                        sch_targets[split_stage_idx].axes)
-            sch_targets[split_stage_idx].axes.pop(split_reduce_axis_idx)
+            update_after_split(sch_targets, split_stage_idx, split_reduce_axis_name, sch,
+                               split_stage_obj, factor, code_line, cheque_list)
 
-            # inset inner then insert outer
-            split_outer_name, split_inner_name = code_line.split("=")[0].strip().split(",")
-            sch_targets[split_stage_idx].axes.insert(split_reduce_axis_idx,
-                                                     Axis(split_inner_name, split_inner))
-            sch_targets[split_stage_idx].axes.insert(split_reduce_axis_idx,
-                                                     Axis(split_outer_name, split_outer))
-            # add cheque
-            cheque = [split_stage_idx, get_primitive_id("split"), split_reduce_axis_idx, factor]
-            cheque_list.append(cheque)
+
         elif split_stage_name.endswith('_rfactor') and \
             split_axis in specify_axis_name_dict.values():
             # split_axis is specify_axis_name: ub_split_reduce_axis
@@ -319,36 +368,20 @@ def proc_reduce_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specif
 
             # get real split axis obj
             ori_stage_name = split_stage_name.rstrip('_rfactor')
-            ori_stage_idx, _ = get_stage_by_name(
-                ori_stage_name, sch_targets)
-            _, ori_axis_obj = get_axis_by_name(split_axis,
-                                               sch_targets[
-                                                   ori_stage_idx].axes)
+            ori_stage_idx, _ = get_stage_by_name(ori_stage_name, sch_targets)
+            _, ori_axis_obj = get_axis_by_name(split_axis, sch_targets[ori_stage_idx].axes)
             for axis in sch_targets[split_stage_idx].axes:
                 if axis.obj == ori_axis_obj:
                     split_axis = axis.name
                     break
 
-            split_axis_idx, axis_obj = get_axis_by_name(split_axis,
-                                                        sch_targets[split_stage_idx].axes)
-            split_outer, split_inner = sch[split_stage_obj].split(axis_obj, factor=factor)
+            update_after_split(sch_targets, split_stage_idx, split_axis, sch, split_stage_obj,
+                               factor, code_line, cheque_list)
 
-            # delete axis when axis is splited
-            sch_targets[split_stage_idx].axes.pop(split_axis_idx)
-
-            # inset inner then insert outer
-            split_outer_name, split_inner_name = code_line.split("=")[
-                0].strip().split(",")
-            sch_targets[split_stage_idx].axes.insert(split_axis_idx,
-                                                     Axis(split_inner_name,
-                                                          split_inner))
-            sch_targets[split_stage_idx].axes.insert(split_axis_idx,
-                                                     Axis(split_outer_name,
-                                                          split_outer))
-            # add cheque
-            cheque = [split_stage_idx, get_primitive_id("split"),
-                      split_axis_idx, factor]
-            cheque_list.append(cheque)
+        # reduce axis split twice
+        else:
+            update_after_split(sch_targets, split_stage_idx, split_axis, sch, split_stage_obj,
+                               factor, code_line, cheque_list)
 
 
 def proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specify_axis_name_dict,
@@ -359,7 +392,7 @@ def proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specify_axis_
     :param sch_targets:
     :return:
     '''
-    if "split" in code_line and "factor" in code_line and "reduce_axis" not in code_line:
+    if ".split(" in code_line and "factor" in code_line and "reduce_axis" not in code_line:
         split_stage_name = code_line.split("].split")[0].split("[")[1]
         split_stage_idx, split_stage_obj = get_stage_by_name(split_stage_name, sch_targets)
         factor = int(code_line.split("factor=")[1].split(")")[0])
@@ -379,7 +412,8 @@ def proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specify_axis_
 
             # get axis index in current axes by axis_name
             split_axis_name = '%s_axis_%d' % (split_stage_name, split_axis)
-            split_axis_idx, _ = get_axis_by_name(split_axis_name, sch_targets[split_stage_idx].axes)
+            split_axis_idx, _ = get_axis_by_name(split_axis_name,
+                                                 sch_targets[split_stage_idx].axes)
             # delete split axis
             sch_targets[split_stage_idx].axes.pop(split_axis_idx)
             # inset inner then outer
@@ -408,8 +442,7 @@ def proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specify_axis_
 
                 # get real split axis obj
                 ori_stage_name = split_stage_name.rstrip('_rfactor')
-                ori_stage_idx, _ = get_stage_by_name(
-                    ori_stage_name, sch_targets)
+                ori_stage_idx, _ = get_stage_by_name(ori_stage_name, sch_targets)
                 _, ori_axis_obj = get_axis_by_name(split_axis_name,
                                                    sch_targets[ori_stage_idx].axes)
                 for axis in sch_targets[split_stage_idx].axes:
@@ -438,7 +471,7 @@ def proc_reorder(sch, sch_targets, cheque_list, code_line):  # pylint: disable=t
     :param sch_targets:
     :return:
     '''
-    if "reorder" in code_line:
+    if ".reorder(" in code_line:
         stage_name = code_line.split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         reorder_axis_name_list = code_line.split("reorder(")[1].split(")")[0].split(",")
@@ -484,18 +517,77 @@ def proc_reorder(sch, sch_targets, cheque_list, code_line):  # pylint: disable=t
         ]
 
 
-def proc_nparts(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
+def proc_allocate_at(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
+    """
+    proc_allocate_at
+    :param sch:
+    :param sch_targets:
+    :param cheque_list:
+    :param code_line:
+    :return:
+    """
+    if ".allocate_at(" in code_line:
+        stage_name = code_line.split("allocate_at")[0].split("[")[1].split("]")[0]
+        at_stage_name = \
+        code_line.split("allocate_at")[1].split("[")[1].split("]")[0]
+        at_axis_name = code_line.split(",")[1].split(")")[0]
+        run_once_axes_name = []
+        if code_line.count(",") > 1:
+            run_once_axes_name = code_line.split(",", 2)[-1].replace(
+                " ", "").split("[")[1].split("]")[0].split(",")
+
+        stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
+        at_stage_idx, at_stage_obj = get_stage_by_name(at_stage_name, sch_targets)
+        at_axis_idx, at_axis_obj = get_axis_by_name(at_axis_name, sch_targets[at_stage_idx].axes)
+        run_once_axes_idx_list = []
+        run_once_axes_obj_list = []
+        for axis_name in run_once_axes_name:
+            axis_idx, axis_obj = get_axis_by_name(axis_name, sch_targets[at_stage_idx].axes)
+            run_once_axes_idx_list.append(axis_idx)
+            run_once_axes_obj_list.append(axis_obj)
+
+        cheque = [
+            stage_idx,
+            get_primitive_id("allocate_at"), at_stage_idx, at_axis_idx, run_once_axes_idx_list
+        ]
+        cheque_list.append(cheque)
+
+        sch[stage_obj].allocate_at(sch[at_stage_obj], at_axis_obj, run_once_axes_obj_list)
+
+
+def proc_mem_unique(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
+    """
+    proc_mem_unique
+    :param sch:
+    :param sch_targets:
+    :param cheque_list:
+    :param code_line:
+    :return:
+    """
+    if ".mem_unique(" in code_line:
+        stage_name = code_line.split("[")[1].split("]")[0]
+        stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
+        sch[stage_obj].mem_unique()
+
+        cheque = [stage_idx, get_primitive_id("mem_unique")]
+        cheque_list.append(cheque)
+
+
+def proc_nparts(sch, sch_targets, cheque_list, code_line, specify_axis_name_dict):  # pylint: disable=too-many-locals
     '''
     get_stage_by_name
     :param stage_name:
     :param sch_targets:
     :return:
     '''
-    if "split" in code_line and "nparts" in code_line:
+    if ".split(" in code_line and "nparts" in code_line:
         split_stage_name = code_line.split("].split")[0].split("[")[1]
         split_stage_idx, split_stage_obj = get_stage_by_name(split_stage_name, sch_targets)
         nparts = int(code_line.split("nparts=")[1].split(")")[0])
         split_axis_name = code_line.split(".split(")[1].split(",")[0]
+        # get aixs if this stage has no axes
+        if not sch_targets[split_stage_idx].axes:
+            get_axis(sch, sch_targets, cheque_list, specify_axis_name_dict, split_stage_name)
 
         axis_idx, axis_obj = get_axis_by_name(split_axis_name, sch_targets[split_stage_idx].axes)
         cheque = [split_stage_idx, get_primitive_id("split_nparts"), axis_idx, nparts]
@@ -517,7 +609,7 @@ def proc_compute_at(sch, sch_targets, cheque_list, code_line):  # pylint: disabl
     :param sch_targets:
     :return:
     '''
-    if "compute_at" in code_line:
+    if ".compute_at(" in code_line:
         stage_name = code_line.split("compute_at")[0].split("[")[1].split("]")[0]
         at_stage_name = code_line.split("compute_at")[1].split("[")[1].split("]")[0]
         at_axis_name = code_line.split(",")[1].split(")")[0]
@@ -539,7 +631,7 @@ def proc_fuse(sch, sch_targets, cheque_list, specify_axis_name_dict, code_line):
     :param sch_targets:
     :return:
     '''
-    if "fuse(" in code_line:
+    if ".fuse(" in code_line:
         fused_axis_name = code_line.split("=")[0].strip()
         stage_name = code_line.split("[")[1].split("]")[0]
         stgae_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
@@ -577,7 +669,7 @@ def proc_rfactor(sch, sch_targets, cheque_list, code_line):  # pylint: disable=t
     :param sch_targets:
     :return:
     '''
-    if "rfactor(" in code_line:
+    if ".rfactor(" in code_line:
         out_tensor_name = code_line.split("=")[0].split(',')[0].strip()
         stage_name = code_line.split("rfactor(")[1].split(",")[0]
         rfactor_axis_name = code_line.split("rfactor(")[1].split(",")[1]
@@ -602,7 +694,7 @@ def proc_set_scope(sch, sch_targets, cheque_list, code_line):  # pylint: disable
     :param sch_targets:
     :return:
     '''
-    if "set_scope" in code_line:
+    if ".set_scope(" in code_line:
         stage_name = code_line.split(".set_scope")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         scope = code_line.split("'")[1]
@@ -620,7 +712,7 @@ def proc_bind(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-
     :param sch_targets:
     :return:
     '''
-    if 'bind' in code_line:
+    if '.bind(' in code_line:
         stage_name = code_line.split(".bind(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
 
@@ -638,7 +730,7 @@ def proc_pragma(sch, sch_targets, cheque_list, code_line):  # pylint: disable=to
     :param sch_targets:
     :return:
     '''
-    if 'pragma' in code_line:
+    if '.pragma(' in code_line:
         stage_name = code_line.split(".pragma(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         pragma_axis = code_line.split(".pragma(")[1].split(",")[0]
@@ -669,14 +761,40 @@ def proc_pragma(sch, sch_targets, cheque_list, code_line):  # pylint: disable=to
         cheque_list.append(cheque)
 
 
-def proc_emit_insn(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
+def proc_bind_buffer(sch, sch_targets, cheque_list, code_line):
+    '''
+
+    :param sch:
+    :param sch_targets:
+    :param cheque_list:
+    :param code_line:
+    :return:
+    '''
+    if '.bind_buffer(' in code_line:
+        stage_name = code_line.split(".bind_buffer(")[0].split("[")[1].split("]")[0]
+        stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
+        axis_idx = int(
+            code_line.split(".bind_buffer(")[1].split(",")[0].split("axis[")[1].split("]")[0])
+        stride = int(code_line.split(",")[1].strip())
+        offset = int(code_line.split(",")[2].split(")")[0].strip())
+
+        sch[stage_obj].bind_buffer(sch[stage_obj].op.axis[axis_idx], stride, offset)
+        bind_buffer_cheque = [stage_idx,
+                              get_primitive_id("bind_buffer"),
+                              axis_idx,
+                              stride,
+                              offset]
+        cheque_list.append(bind_buffer_cheque)
+
+
+def proc_emit_insn(sch, sch_targets, cheque_list, code_line, last_code_line):  # pylint: disable=too-many-locals
     '''
     get_stage_by_name
     :param stage_name:
     :param sch_targets:
     :return:
     '''
-    if 'emit_insn' in code_line:
+    if '.emit_insn(' in code_line:
         stage_name = code_line.split(".emit_insn(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         insn_axis = code_line.split(".emit_insn(")[1].split(",")[0]
@@ -700,8 +818,57 @@ def proc_emit_insn(sch, sch_targets, cheque_list, code_line):  # pylint: disable
                 get_primitive_id("emit_insn"), [-1, insn_axis_idx],
                 get_insn_id(insn_name)
             ]
-            sch[stage_obj].emit_insn(insn_axis_obj, insn_name)
+            if insn_name == "mad" and 'mad_dict' in last_code_line:
+                cheque.append([])
+                mad_pattern_value = int(
+                    last_code_line.split('mad_pattern":')[1].split(",")[0].strip("}"))
+                cheque[-1].append(mad_pattern_value)
+                # set default init_bias_value to 0 means that init_bias not in mad_dict
+                init_bias_value = 0
+                if "init_bias" in last_code_line:
+                    init_bias_value = int(
+                        last_code_line.split('init_bias":')[1].split(",")[0].strip("}"))
+                cheque[-1].append(init_bias_value)
 
+                k_outer_axis_name = last_code_line.split("[")[1].split("]")[0].split(",")
+                k_outer_axis_obj = []
+                for axis_name in k_outer_axis_name:
+                    axis_idx, axis_obj = get_axis_by_name(axis_name, sch_targets[stage_idx].axes)
+                    cheque[-1].append(axis_idx)
+                    k_outer_axis_obj.append(axis_obj)
+
+                mad_dict = {
+                    "mad_pattern": int(mad_pattern_value),
+                    "k_outer": k_outer_axis_obj,
+                }
+                if init_bias_value:
+                    mad_dict["init_bias"] = init_bias_value
+
+                sch[stage_obj].emit_insn(insn_axis_obj, insn_name, mad_dict)
+            else:
+                sch[stage_obj].emit_insn(insn_axis_obj, insn_name)
+
+        cheque_list.append(cheque)
+
+
+def proc_buffer_align(sch, sch_targets, cheque_list, code_line):
+    """
+    proc_buffer_align
+    :param sch:
+    :param sch_targets:
+    :param cheque_list:
+    :param code_line:
+    :return:
+    """
+    if ".buffer_align(" in code_line:
+        stage_name = code_line.split("[")[1].split("]")[0]
+        stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
+
+        buffer_align_args = code_line.split("buffer_align")[1]
+        buffer_align_args_obj = make_tuple(buffer_align_args)
+
+        sch[stage_obj].buffer_align(*buffer_align_args_obj)
+        cheque = [stage_idx, get_primitive_id("buffer_align"), buffer_align_args]
         cheque_list.append(cheque)
 
 
@@ -732,7 +899,7 @@ def proc_reused_by(sch, sch_targets, cheque_list, code_line):
     :param code_line:
     :return:
     """
-    if 'reused_by' in code_line:
+    if '.reused_by(' in code_line:
         # get stage_name
         stage_name = code_line.split(".reused_by(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
@@ -753,7 +920,7 @@ def proc_storage_align(sch, sch_targets, cheque_list, code_line):  # pylint: dis
     :param sch_targets:
     :return:
     '''
-    if 'storage_align' in code_line:
+    if '.storage_align(' in code_line:
         stage_name = code_line.split(".storage_align(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
         axis_idx = int(
@@ -773,7 +940,7 @@ def proc_cce_special(sch, sch_targets, cheque_list, code_line, cce_special_chequ
     :param sch_targets:
     :return:
     '''
-    if "cce_special" in code_line:
+    if ".cce_special" in code_line:
         if sch.cce_special is None:
             sch.cce_special = dict()
             cce_special_cheque.extend([-1, get_primitive_id("cce_special")])
@@ -904,14 +1071,18 @@ def get_cheque_non_cce_special(other_cheque_str_list):
             cheque_str2 = cheque_str.split('[')[1].split(']')[0]
             cheque_str3 = cheque_str.split('[')[1].split(']')[1]
             if cheque_str1:
-                single_cheque_list1 = [int(x.strip()) for x in cheque_str1.split(', ') if x.strip()]
+                single_cheque_list1 = [
+                    int(x.strip()) for x in cheque_str1.split(', ') if x.strip()
+                ]
                 single_cheque_list.extend(single_cheque_list1)
 
             single_cheque_list2 = [int(x.strip()) for x in cheque_str2.split(', ') if x.strip()]
             single_cheque_list.append(single_cheque_list2)
 
             if cheque_str3:
-                single_cheque_list3 = [int(x.strip()) for x in cheque_str3.split(', ') if x.strip()]
+                single_cheque_list3 = [
+                    int(x.strip()) for x in cheque_str3.split(', ') if x.strip()
+                ]
                 single_cheque_list.extend(single_cheque_list3)
         else:
             single_cheque_list = [int(x.strip()) for x in cheque_str.split(', ') if x.strip()]
@@ -938,14 +1109,17 @@ def get_cheque_cce_special(cce_special_cheque_str_list):
         # cheque: [-1, 14, [], [[8, 2]], [[7, 2]]]
         cce_special_cheque = []
         if '[' in cce_special_cheque_str:
-            cheque = [int(x.strip()) for x in
-                      cce_special_cheque_str.replace('[', '').replace(']', '').split(',')
-                      if x.strip()]
+            cheque = [
+                int(x.strip())
+                for x in cce_special_cheque_str.replace('[', '').replace(']', '').split(',')
+                if x.strip()
+            ]
             cce_special_cheque.append(cheque)
         # cheque: [-1, 14, [], [8, 2], [7, 2]]
         else:
-            cce_special_cheque = [int(x.strip()) for x in
-                                  cce_special_cheque_str.split(', ') if x.strip()]
+            cce_special_cheque = [
+                int(x.strip()) for x in cce_special_cheque_str.split(', ') if x.strip()
+            ]
         cce_special_cheque_list.append(cce_special_cheque)
     return cce_special_cheque_list
 
@@ -963,6 +1137,7 @@ def gen_cheque_by_code(code_line_list, kernel_name):
     sch_targets = []
     stage_get_axis_dict = {}
     specify_axis_name_dict = {}
+    last_code_line = None
     for code_line in code_line_list:
         if "pickle.loads(" in code_line:
             tensor_pickle_byte = code_line.split("pickle.loads(b'")[-1][:-2].encode('ISO-8859-1').\
@@ -977,33 +1152,35 @@ def gen_cheque_by_code(code_line_list, kernel_name):
 
         proc_cache_read(sch, sch_targets, cheque_list, code_line)
         proc_cache_write(sch, sch_targets, cheque_list, code_line)
+        proc_set_storage_bound(sch, sch_targets, cheque_list, code_line)
         proc_preload(sch, sch_targets, cheque_list, code_line)
         proc_double_buffer(sch, sch_targets, cheque_list, code_line)
         proc_compute_inline(sch, sch_targets, cheque_list, code_line)
         proc_axis_name(code_line, specify_axis_name_dict)
         proc_reduce_split(sch, sch_targets, cheque_list, stage_get_axis_dict,
                           specify_axis_name_dict, code_line)
-        proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict,
-                   specify_axis_name_dict,
+        proc_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specify_axis_name_dict,
                    code_line)
         proc_reorder(sch, sch_targets, cheque_list, code_line)
-        proc_nparts(sch, sch_targets, cheque_list, code_line)
+        proc_allocate_at(sch, sch_targets, cheque_list, code_line)
+        proc_mem_unique(sch, sch_targets, cheque_list, code_line)
+        proc_nparts(sch, sch_targets, cheque_list, code_line, specify_axis_name_dict)
         proc_compute_at(sch, sch_targets, cheque_list, code_line)
         proc_fuse(sch, sch_targets, cheque_list, specify_axis_name_dict, code_line)
         proc_rfactor(sch, sch_targets, cheque_list, code_line)
         proc_set_scope(sch, sch_targets, cheque_list, code_line)
         proc_bind(sch, sch_targets, cheque_list, code_line)
         proc_pragma(sch, sch_targets, cheque_list, code_line)
-        proc_emit_insn(sch, sch_targets, cheque_list, code_line)
+        proc_bind_buffer(sch, sch_targets, cheque_list, code_line)
+        proc_emit_insn(sch, sch_targets, cheque_list, code_line, last_code_line)
+        proc_buffer_align(sch, sch_targets, cheque_list, code_line)
         proc_insert_param(cheque_list, code_line)
         proc_reused_by(sch, sch_targets, cheque_list, code_line)
         proc_storage_align(sch, sch_targets, cheque_list, code_line)
 
-
-        proc_cce_special(sch, sch_targets, cheque_list, code_line,
-                         cce_special_cheque)
+        proc_cce_special(sch, sch_targets, cheque_list, code_line, cce_special_cheque)
         proc_build(sch, sch_targets, code_line, kernel_name)
-
+        last_code_line = code_line
     return cheque_list
 
 
@@ -1018,18 +1195,8 @@ def gen_cheque_by_comments(code_line_list):
     for code_line in code_line_list:
         if "# cheque_list: " in code_line:
             cheque_list_str = code_line.split("# cheque_list: ")[1].strip()
-            # get cheque of schedule operations other than cce_special
-            other_cheque_str_list = cheque_list_str.split("], [-1, 14, [")[
-                0].lstrip('[').split('], [')
-            other_cheque_list = get_cheque_non_cce_special(other_cheque_str_list)
-            new_cheque_list.extend(other_cheque_list)
-
-            # get cheque of sch.cce_special
-            cce_special_cheque_str_list = cheque_list_str.split("], [-1, 14, [")[1].split(', [')
-            cce_special_cheque_list = get_cheque_cce_special(cce_special_cheque_str_list)
-            new_cheque_list.append(cce_special_cheque_list)
-
-    return new_cheque_list
+            comment_cheque = json.loads(cheque_list_str)
+            return comment_cheque
 
 
 def judge_equal_or_not(cheque_list, new_cheque_list):
@@ -1041,6 +1208,8 @@ def judge_equal_or_not(cheque_list, new_cheque_list):
     '''
     for cheque in cheque_list:
         if cheque not in new_cheque_list:
+            log.error("sub cheque %s not in comment, its primitive is %s", cheque,
+                           PRIMITIVE_DICT[cheque[1]])
             return False
     if len(cheque_list) == len(new_cheque_list):
         return True
@@ -1060,8 +1229,10 @@ def gen_cheque(py_path, kernel_name=""):
     code_line_list = schedule_code_str.split("\n")
     # new_cheque_list by py should equal to cheque_list by code
     cheque_list = gen_cheque_by_code(code_line_list, kernel_name)
+    log.debug("cheque_list from code:%s", cheque_list)
     if os.getenv("DOUBLE_CHECK", "TRUE").lower() == "true":
         comments_cheque_list = gen_cheque_by_comments(code_line_list)
+        log.debug("cheque_list from comments:%s", comments_cheque_list)
         ret = judge_equal_or_not(cheque_list, comments_cheque_list)
         if ret:
             return cheque_list

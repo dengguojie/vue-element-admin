@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from functools import reduce as reduceIns
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -58,7 +59,7 @@ def rint_compute(input_x, output_y, kernel_name="rint"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def rint(input_x, output_y, kernel_name="rint"):
     """
     algorithm: rint
@@ -86,12 +87,10 @@ def rint(input_x, output_y, kernel_name="rint"):
     shape_x = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="input_x")
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype.lower(), check_list)
+    check_dtype(dtype.lower(), check_list, param_name="input_x")
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape_x)
     data_x = tvm.placeholder(fuseshape, dtype=dtype.lower(), name="data")

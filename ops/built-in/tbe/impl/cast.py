@@ -165,6 +165,9 @@ def _float16_process(data, dst_type):
     """
     deal with src dtype=float16 case
     """
+    if dst_type == "float16":
+        return data
+
     if dst_type == "float32":
         return te.lang.cce.cast_to(data, "float32")
 
@@ -172,9 +175,8 @@ def _float16_process(data, dst_type):
         return te.lang.cce.cast_to(data, "int32")
 
     if dst_type == "uint8":
-        version = util.get_product_version()
-        if not tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.cast_to", "f322f16"):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in \
+            ("Ascend310", "Hi3796CV300ES"):
             return te.lang.cce.cast_to(data, "uint8", True)
         data_int32 = te.lang.cce.cast_to(data, "int32")
         data_fp16 = te.lang.cce.cast_to(data_int32, "float16")
@@ -212,6 +214,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     verify the types of cast supported by tbe
     """
     src_type = input_x.get("dtype").lower()
+
     check_result = False
     if src_type == "bool":
         src_type = "int8"
@@ -220,7 +223,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
     check_list = []
     if src_type == "float16":
-        check_list = ["float32", "int32", "uint8"]
+        check_list = ["float16", "float32", "int32", "uint8"]
     elif src_type == "float32":
         check_list = ["float16", "int32"]
     elif src_type == "int8":
@@ -231,6 +234,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
         check_list = ["bool", "uint8", "int8", "float32", "float16"]
 
     src_shape = input_x.get("shape")
+
     if len(src_shape) == 1 and src_shape[0] == 1:
         if src_type == "int64":
             check_list = ["int32", "float32"]

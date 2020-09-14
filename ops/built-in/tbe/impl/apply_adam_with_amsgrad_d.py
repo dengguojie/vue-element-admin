@@ -14,11 +14,14 @@ http://www.apache.org/licenses/LICENSE-2.0
 apply_adam_with_amsgrad_d
 """
 
-from functools import reduce as functools_reduce
 import operator
+from functools import reduce as functools_reduce
+
 import te.lang.cce
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
 from topi.cce import util
 
@@ -29,8 +32,17 @@ NUM_N_ONE = -1.0
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
 # pylint: disable=unused-argument
 @fusion_manager.register("apply_adam_with_amsgrad_d")
-def apply_adam_with_amsgrad_d_compute(var, m, v, vhat, beta1_power, beta2_power,
-                                      lr, beta1, beta2, epsilon, grad,
+def apply_adam_with_amsgrad_d_compute(var,
+                                      m,
+                                      v,
+                                      vhat,
+                                      beta1_power,
+                                      beta2_power,
+                                      lr,
+                                      beta1,
+                                      beta2,
+                                      epsilon,
+                                      grad,
                                       kernel_name="apply_adam_with_amsgrad_d"):
     """
     the operator's compute
@@ -46,6 +58,14 @@ def apply_adam_with_amsgrad_d_compute(var, m, v, vhat, beta1_power, beta2_power,
     :param epsilon: epsilon, const
     :param grad: grad, placeholder
     """
+    inp_dtype = var.dtype
+    # check the instruction supports or not
+    vmul_support = tbe_platform.cce_conf.api_check_support(
+        "te.lang.cce.vmul", "float32")
+    if inp_dtype == "float32" and not vmul_support:
+        raise RuntimeError(
+            "Input dtype is float32, but do not support on the platform")
+
     one = tvm.const(NUM_ONE, "float32")
     neg_one = tvm.const(NUM_N_ONE, "float32")
 
@@ -95,8 +115,7 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
     list_placeholder = []
     for key, value in input_dict.items():
         shape = util.scalar2tensor_one(value.get("shape"))
-        util.check_shape_rule(shape)
-        util.check_tensor_shape_size(shape)
+        op_utils.check_shape(shape)
         if value in scalar_input:
             if not util.is_scalar(shape):
                 raise RuntimeError("The shape of ", key, " must be scalar")
@@ -106,26 +125,43 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
                                    "must be the same as the var")
 
         dtype = value.get("dtype").lower()
-        util.check_dtype_rule(dtype, check_list)
+        op_utils.check_dtype(dtype, check_list, param_name="var")
         if dtype != var_dtype:
             raise RuntimeError("The dtype of", key,
                                "must be the same as the var")
 
         shape_refine = (functools_reduce(operator.mul, shape), )
-        list_placeholder.append(tvm.placeholder(
-            shape=shape_refine, name=key, dtype=dtype))
+        list_placeholder.append(
+            tvm.placeholder(shape=shape_refine, name=key, dtype=dtype))
     return list_placeholder
 
 
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals,
 # pylint: disable=unbalanced-tuple-unpacking
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict,
-                       dict, dict, dict, dict, float, float, float,
-                       bool, str)
-def apply_adam_with_amsgrad_d(var, m, v, vhat, beta1_power, beta2_power, lr,
-                              grad, var_output, m_output, v_output,
-                              vhat_output, beta1, beta2,
-                              epsilon, use_locking=False,
+@op_utils.check_op_params(
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_FLOAT,
+    op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_FLOAT,
+    op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+def apply_adam_with_amsgrad_d(var,
+                              m,
+                              v,
+                              vhat,
+                              beta1_power,
+                              beta2_power,
+                              lr,
+                              grad,
+                              var_output,
+                              m_output,
+                              v_output,
+                              vhat_output,
+                              beta1,
+                              beta2,
+                              epsilon,
+                              use_locking=False,
                               kernel_name="apply_adam_with_amsgrad_d"):
     """
     Update '*var' according to the Adam algorithm.
@@ -181,10 +217,16 @@ def apply_adam_with_amsgrad_d(var, m, v, vhat, beta1_power, beta2_power, lr,
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
-    input_dict = {"var": var, "m": m, "v": v, "vhat": vhat,
-                  "beta1_power": beta1_power, "beta2_power": beta2_power,
-                  "lr": lr, "grad": grad}
+    input_dict = {
+        "var": var,
+        "m": m,
+        "v": v,
+        "vhat": vhat,
+        "beta1_power": beta1_power,
+        "beta2_power": beta2_power,
+        "lr": lr,
+        "grad": grad
+    }
     scalar_input = (lr, beta1_power, beta2_power, epsilon)
     tensor_input = (var, m, v, vhat, grad)
     var_input, m_input, v_input, vhat_input, \
@@ -205,14 +247,16 @@ def apply_adam_with_amsgrad_d(var, m, v, vhat, beta1_power, beta2_power, lr,
                                                               grad_input,
                                                               kernel_name)
     with tvm.target.cce():
-        schedule = generic.auto_schedule([var_output, m_output, v_output,
-                                          vhat_output])
+        schedule = generic.auto_schedule(
+            [var_output, m_output, v_output, vhat_output])
 
-    config = {"name": kernel_name,
-              "tensor_list": [var_input, m_input, v_input, vhat_input,
-                              beta1_power, beta2_power, lr_input,
-                              grad_input, var_output, m_output, v_output,
-                              vhat_output]}
+    config = {
+        "name":
+        kernel_name,
+        "tensor_list": [
+            var_input, m_input, v_input, vhat_input, beta1_power, beta2_power,
+            lr_input, grad_input, var_output, m_output, v_output, vhat_output
+        ]
+    }
 
     te.lang.cce.cce_build_code(schedule, config)
-

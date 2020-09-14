@@ -19,8 +19,11 @@ from __future__ import absolute_import
 
 from topi.cce import util
 from impl.transpose_d import transpose_d
+from te import platform as tbe_platform
+from te.platform.fusion_manager import fusion_manager
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 SIZE_SIXTEEN = 16
 
@@ -528,7 +531,41 @@ def op_select_format(x, y, perm, shape, transpose_first,
     return param_dynamic_in_json
 
 
-@util.check_input_type(dict, dict, (list, tuple), (list, tuple), bool, str)
+# pylint: disable=too-many-boolean-expressions
+def _is_bert_case(y, perm, shape, transpose_first):
+    "check if it is case of bert"
+    if isinstance(y, dict) and\
+            (isinstance(perm, (list, tuple))) and \
+            (isinstance(shape, (list, tuple))) and \
+            not transpose_first and \
+            tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if (list(y.get("shape")) == [128, 16, 4, 8, 16, 16] and
+                list(perm) == [0, 2, 1, 3] and list(shape) == [128, 128, 16, 64]) or \
+                (list(y.get("shape")) == [160, 16, 4, 8, 16, 16] and
+                 list(perm) == [0, 2, 1, 3] and list(shape) == [160, 128, 16, 64]) or \
+                (list(y.get("shape")) == [16, 16, 4, 32, 16, 16] and
+                 list(perm) == [0, 2, 1, 3] and list(shape) == [16, 512, 16, 64]) or \
+                (list(y.get("shape")) == [24, 16, 4, 32, 16, 16] and
+                 list(perm) == [0, 2, 1, 3] and list(shape) == [24, 512, 16, 64]):
+            return True
+
+    return False
+
+
+@fusion_manager.register("confusion_transpose_d")
+def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
+                                  kernel_name="confusion_transpose_d"):
+    "compute for matmul + confusion_transpose_d fusion"
+    if _is_bert_case(y, perm, shape, transpose_first):
+        setattr(x, "matmul_with_transpose", True)
+    else:
+        raise RuntimeError("This case does not support fusion now.")
+
+    return x
+
+
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
+                 REQUIRED_ATTR_BOOL, KERNEL_NAME)
 def confusion_transpose_d(x, y, perm, shape, transpose_first,
                           kernel_name="confusion_transpose_d"):
     """
@@ -560,13 +597,11 @@ def confusion_transpose_d(x, y, perm, shape, transpose_first,
     input_format = x.get("format")
     input_ori_format = x.get("ori_format")
 
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(input_shape, param_name="x")
 
     check_list = ("int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16", "float32")
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="x")
 
     if input_format == "FRACTAL_NZ":
         nd_shape = []
@@ -591,6 +626,8 @@ def confusion_transpose_d(x, y, perm, shape, transpose_first,
         if not transpose_first:
             x["shape"] = shape
 
-    x_dict = {"shape": input_shape, "ori_shape": input_ori_shape, "format": input_format, "ori_format": input_ori_format, "dtype": input_dtype}
+    x_dict = {"shape": input_shape, "ori_shape": input_ori_shape,
+              "format": input_format, "ori_format": input_ori_format,
+              "dtype": input_dtype}
     transpose_d(x, x_dict, perm, kernel_name)
-
+    fusion_manager.set_current_op_pattern("confusiontranspose")

@@ -720,8 +720,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                     tvm.call_extern(src.dtype, "vector_dup",
                                     src.access_ptr(
                                         "rw",
-                                        offset=
-                                        src_offset +
+                                        offset=src_offset +
                                         repeat * batch_cnt * dtype_factor),
                                     dup_value, 1, 1, 1, 8, 8))
 
@@ -830,26 +829,22 @@ def _vconv_one(args):
                                 "set_va_reg_sb",
                                 "VA0",
                                 addr_array_buf.access_ptr("rw",
-                                                          offset=
-                                                          src0_offset)))
+                                                          offset=src0_offset)))
     tvm_ib.emit(tvm.call_extern("int32",
                                 "set_va_reg_sb",
                                 "VA1",
                                 addr_array_buf.access_ptr("rw",
-                                                          offset=
-                                                          src1_offset)))
+                                                          offset=src1_offset)))
     tvm_ib.emit(tvm.call_extern("int32",
                                 "set_va_reg_sb",
                                 "VA2",
                                 addr_array_buf.access_ptr("rw",
-                                                          offset=
-                                                          dst0_offset)))
+                                                          offset=dst0_offset)))
     tvm_ib.emit(tvm.call_extern("int32",
                                 "set_va_reg_sb",
                                 "VA3",
                                 addr_array_buf.access_ptr("rw",
-                                                          offset=
-                                                          dst1_offset)))
+                                                          offset=dst1_offset)))
 
     with tvm_ib.if_scope(repeat_vconv == 1):
         tvm_ib.emit(tvm.call_extern("int32",

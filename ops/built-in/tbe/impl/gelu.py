@@ -24,6 +24,7 @@ from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # const CSVALUE equals 0.044715
 CSVALUE = tvm.const(0.044715, "float32")
@@ -114,7 +115,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     return result
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def gelu(input_x, output_y, kernel_name="gelu"):
     """
     mathematical formula of gelu(x):
@@ -137,13 +138,11 @@ def gelu(input_x, output_y, kernel_name="gelu"):
     none.
     """
     shape = input_x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(shape)
+    check_shape(shape, param_name="input_x")
 
     check_list = ("float16", "float32")
     input_dtype = input_x.get("dtype").lower()
-    util.check_dtype_rule(input_dtype, check_list)
+    check_dtype(input_dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape)

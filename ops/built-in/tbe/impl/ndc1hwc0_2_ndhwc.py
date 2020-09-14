@@ -75,8 +75,8 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
 def ndc1hwc0_2_ndhwc(src, dst, src_format, dst_format,
                      kernel_name='ndc1hwc0_2_ndhwc'):
     """
-    algorithm: five_2_four
-    calculating: change data format from NC1HWC0 to NCHW/NHWC
+    algorithm: ndc1hwc0_2_ndhwc
+    calculating: change data format from NDC1HWC0 to NDHWC
 
     Parameters
     ----------

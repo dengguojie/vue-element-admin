@@ -1855,8 +1855,14 @@ def _func_more_dim_ir_fp16(args):
                                                             "src_dim_gm"))),
                                 0, num_dim_cur_core, len_burst, 0, 0))
 
-    output_offset = param.get("num_dim_one_core")*param.get(
-        "src_dim_space")*param.get("float_size")
+    reg_addr[16] = tvm.expr.Cast("int64",
+                                 tvm.call_extern("handle", "",
+                                                 input_ub.access_ptr(
+                                                     "r"))).astype("int32")
+    reg_addr[17] = tvm.expr.Cast("int64",
+                                 tvm.call_extern("handle", "",
+                                                 output_ub.access_ptr(
+                                                     "r"))).astype("int32")
     with tvm_ib.for_range(0, num_dim_cur_core, name="num_d") as num_d:
         dim_offset = num_d*param.get("src_dim_space")*param.get(
             "float_size")
@@ -1869,23 +1875,23 @@ def _func_more_dim_ir_fp16(args):
                                         tvm.call_extern(addr_array.dtype, "reg",
                                                         addr_array[
                                                             src0_offset + i]),
-                                        dim_offset + i*src_gap))
+                                        reg_addr[16] + dim_offset + i*src_gap))
             tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                         tvm.call_extern(addr_array.dtype, "reg",
                                                         addr_array[
                                                             src1_offset + i]),
-                                        dim_offset + src_eight_block
-                                        + i*src_gap))
+                                        reg_addr[16] + dim_offset
+                                        + src_eight_block + i*src_gap))
             tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                         tvm.call_extern(addr_array.dtype, "reg",
                                                         addr_array[
                                                             dst0_offset + i]),
-                                        output_offset + dim_offset + i*dst_gap))
+                                        reg_addr[17] + dim_offset + i*dst_gap))
             tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                         tvm.call_extern(addr_array.dtype, "reg",
                                                         addr_array[
                                                             dst1_offset + i]),
-                                        output_offset + dim_offset
+                                        reg_addr[17] + dim_offset
                                         + dst_eight_block
                                         + i*dst_gap))
 
@@ -2177,7 +2183,7 @@ def _more_dim_ir_fp16(dst, data, max_dim, shape_all):
                                      scope=cce.scope_reg,
                                      data=addr_array)
     reg = tvm_ib.allocate(dst.dtype, (1,), name='reg', scope=cce.scope_reg)
-    reg_addr = tvm_ib.allocate("int32", (16,), name='reg_addr',
+    reg_addr = tvm_ib.allocate("int32", (18,), name='reg_addr',
                                scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
@@ -2265,8 +2271,8 @@ def _func_vnchw(args):
     function of changing NC1HWC0 to NCHW
 
     """
-    tvm_ib, addr_array, addr_array_buf, \
-    num_group, dim_offset, output_offset = args
+    tvm_ib, input_ub, output_ub, addr_array, addr_array_buf, reg_addr, \
+    num_group, dim_offset = args
 
     src0_offset = 8*0
     src1_offset = 8*1
@@ -2278,27 +2284,37 @@ def _func_vnchw(args):
     src_eight_block = 8*src_gap
     dst_eight_block = 8*dst_gap
 
+    reg_addr[16] = tvm.expr.Cast("int64",
+                                 tvm.call_extern("handle", "",
+                                                 input_ub.access_ptr(
+                                                     "r"))).astype("int32")
+    reg_addr[17] = tvm.expr.Cast("int64",
+                                 tvm.call_extern("handle", "",
+                                                 output_ub.access_ptr(
+                                                     "r"))).astype("int32")
+
     with tvm_ib.for_range(0, 8, name="i") as i:
         tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                     tvm.call_extern(addr_array.dtype, "reg",
                                                     addr_array[
                                                         src0_offset + i]),
-                                    dim_offset + i*src_gap))
+                                    reg_addr[16] + dim_offset + i*src_gap))
         tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                     tvm.call_extern(addr_array.dtype, "reg",
                                                     addr_array[
                                                         src1_offset + i]),
-                                    dim_offset + src_eight_block + i*src_gap))
+                                    reg_addr[16] + dim_offset
+                                    + src_eight_block + i*src_gap))
         tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                     tvm.call_extern(addr_array.dtype, "reg",
                                                     addr_array[
                                                         dst0_offset + i]),
-                                    output_offset + dim_offset + i*dst_gap))
+                                    reg_addr[17] + dim_offset + i*dst_gap))
         tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
                                     tvm.call_extern(addr_array.dtype, "reg",
                                                     addr_array[
                                                         dst1_offset + i]),
-                                    output_offset + dim_offset
+                                    reg_addr[17] + dim_offset
                                     + dst_eight_block + i*dst_gap))
 
     tvm_ib.emit(tvm.call_extern("int32",
@@ -2347,26 +2363,26 @@ def _vnchwconv(args):
     function of changing NC1HWC0 to NCHW for head, middle and tail in core
 
     """
-    tvm_ib, param, addr_array, addr_array_buf, head_num_group, tail_num_group, \
-    mid_num_dim, mid_num_group, output_offset = args
+    tvm_ib, param, input_ub, output_ub, addr_array, addr_array_buf, reg_addr,\
+    head_num_group, tail_num_group, mid_num_dim, mid_num_group = args
     bytes_one_num_group = 16*16*param.get("float_size")
 
     with tvm_ib.if_scope(head_num_group > 0):
         dim_offset = 0
-        args = tvm_ib, addr_array, addr_array_buf, head_num_group, \
-               dim_offset, output_offset
+        args = tvm_ib, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, head_num_group, dim_offset
         _func_vnchw(args)
     with tvm_ib.for_range(0, mid_num_dim, name="num_mid") as num_mid:
         dim_offset = (head_num_group + num_mid*mid_num_group) \
                      * bytes_one_num_group
-        args = tvm_ib, addr_array, addr_array_buf, mid_num_group, \
-               dim_offset, output_offset
+        args = tvm_ib, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, mid_num_group, dim_offset
         _func_vnchw(args)
     with tvm_ib.if_scope(tail_num_group > 0):
         dim_offset = (head_num_group + mid_num_dim*mid_num_group) \
                      * bytes_one_num_group
-        args = tvm_ib, addr_array, addr_array_buf, tail_num_group, \
-               dim_offset, output_offset
+        args = tvm_ib, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, tail_num_group, dim_offset
         _func_vnchw(args)
 
 
@@ -2482,7 +2498,7 @@ def _func_split_dim_ir_fp16(args):
     """
     param, tvm_ib, dst, data, input_ub, output_ub, \
     addr_array, addr_array_buf, reg, reg_addr, data_align, \
-    output_offset, num_g, num_row_cur_core = args
+    num_g, num_row_cur_core = args
 
     c_0 = 16
     _, c_i, h_i, w_i = dst.shape
@@ -2517,8 +2533,8 @@ def _func_split_dim_ir_fp16(args):
                                 0, 1, len_burst, 0, 0))
 
         num_16group_row = num_row_cur_core // 16
-        args = tvm_ib, param, addr_array, addr_array_buf, \
-               num_16group_row, 0, 0, 0, output_offset
+        args = tvm_ib, param, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, num_16group_row, 0, 0, 0
         _vnchwconv(args)
 
         dim_index = num_row_before_core_ture // num_row_one_dim_true
@@ -2551,8 +2567,8 @@ def _func_split_dim_ir_fp16(args):
                                 0, 1, len_burst, 0, 0))
 
         num_16group_row = reg_addr[1] // 16
-        args = tvm_ib, param, addr_array, addr_array_buf, \
-               num_16group_row, 0, 0, 0, output_offset
+        args = tvm_ib, param, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, num_16group_row, 0, 0, 0
         _vnchwconv(args)
 
         dim_index = num_row_before_core_ture // num_row_one_dim_true
@@ -2627,8 +2643,8 @@ def _func_split_dim_ir_fp16(args):
 
         head_num_group = reg_addr[1] // 16
         tail_num_group = reg_addr[2] // 16
-        args = tvm_ib, param, addr_array, addr_array_buf, head_num_group, \
-               tail_num_group, 0, 0, output_offset
+        args = tvm_ib, param, input_ub, output_ub, addr_array, addr_array_buf,\
+               reg_addr, head_num_group, tail_num_group, 0, 0
         _vnchwconv(args)
 
         dim_index = num_row_before_core_ture // num_row_one_dim_true
@@ -2703,16 +2719,14 @@ def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
                                      scope=cce.scope_reg,
                                      data=addr_array)
     reg = tvm_ib.allocate(dst.dtype, (1,), name='reg', scope=cce.scope_reg)
-    reg_addr = tvm_ib.allocate("int32", (16,), name='reg_addr',
+    reg_addr = tvm_ib.allocate("int32", (18,), name='reg_addr',
                                scope=cce.scope_reg)
 
-    output_offset = param.get("num_row_one_core")*c_0*param.get(
-        "float_size")
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
                           name="num_g") as num_g:
         with tvm_ib.if_scope(num_g < param.get("num_group_index")):
             args = param, tvm_ib, dst, data, input_ub, output_ub, addr_array, \
-                   addr_array_buf, reg, reg_addr, data_align, output_offset, \
+                   addr_array_buf, reg, reg_addr, data_align, \
                    num_g, param.get("num_row_one_core")
             _func_split_dim_ir_fp16(args)
             _func_pipe(tvm_ib)
@@ -2726,7 +2740,7 @@ def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
                 with tvm_ib.if_scope(param.get("block_index") < num_core):
                     args = param, tvm_ib, dst, data, input_ub, output_ub, \
                            addr_array, addr_array_buf, reg, reg_addr, \
-                           data_align, output_offset, num_g, \
+                           data_align, num_g, \
                            param.get("num_row_one_core")
                     _func_split_dim_ir_fp16(args)
             with tvm_ib.if_scope(num_row_mod > 0):
@@ -2735,7 +2749,7 @@ def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
                             param.get("block_index") > (num_core - 1))):
                     args = param, tvm_ib, dst, data, input_ub, output_ub, \
                            addr_array, addr_array_buf, reg, reg_addr, \
-                           data_align, output_offset, num_g, num_row_mod
+                           data_align, num_g, num_row_mod
                     _func_split_dim_ir_fp16(args)
             _func_pipe(tvm_ib)
 

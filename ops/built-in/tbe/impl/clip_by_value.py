@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -63,7 +64,7 @@ def clip_by_value_compute(input_t, clip_value_min, clip_value_max, output_t,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def clip_by_value(input_t, clip_value_min, clip_value_max,
                   output_t, kernel_name="clip_by_value"):
     """
@@ -97,24 +98,28 @@ def clip_by_value(input_t, clip_value_min, clip_value_max,
     shape_min = clip_value_min.get("shape")
     shape_max = clip_value_max.get("shape")
     input_dtype = dtype.lower()
-    util.check_dtype_rule(input_dtype, ("float16", "float32", "int32"))
+    check_dtype(input_dtype, ("float16", "float32", "int32"), param_name="input_t")
     if (shape_min != 0 and shape_max != 0):
         if (len(shape_min) > 1 and list(shape_min) != list(shape_x)):
-            raise RuntimeError(
-                "min/max: A 0-D (scalar) Tensor, "
-                "or a Tensor with the same shape as t.")
+            for i in range(0, len(shape_x)):
+                if shape_min[i] != shape_x[i] and shape_min[i] != 1:
+                    raise RuntimeError(
+                        "min/max: A 0-D (scalar) Tensor, "
+                        "or a Tensor with the same shape as t, "
+                        "or a Tensor broadcast to shape as t.")
         if (len(shape_max) > 1 and list(shape_max) != list(shape_x)):
-            raise RuntimeError(
-                "min/max: A 0-D (scalar) Tensor, "
-                "or a Tensor with the same shape as t.")
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+            for i in range(0, len(shape_x)):
+                if shape_max[i] != shape_x[i] and shape_max[i] != 1:
+                    raise RuntimeError(
+                        "min/max: A 0-D (scalar) Tensor, "
+                        "or a Tensor with the same shape as t, "
+                        "or a Tensor broadcast to shape as t.")
+    check_shape(shape_x, param_name="input_t")
     shape_x = util.shape_refine(shape_x)
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=input_dtype)
 
     data_value = {}
-    util.check_shape_rule(shape_min)
-    util.check_tensor_shape_size(shape_min)
+    check_shape(shape_min, param_name="clip_value_min")
     shape_min = util.shape_refine(shape_min)
     if len(shape_min) != len(shape_x) and len(shape_min) == 1:
         list_min = [1]*(len(shape_x) - 1)
@@ -122,8 +127,7 @@ def clip_by_value(input_t, clip_value_min, clip_value_max,
     data_value["min"] = tvm.placeholder(shape_min, name="data_min",
                                         dtype=input_dtype)
 
-    util.check_shape_rule(shape_max)
-    util.check_tensor_shape_size(shape_max)
+    check_shape(shape_max, param_name="clip_value_max")
     shape_max = util.shape_refine(shape_max)
     if len(shape_max) != len(shape_x) and len(shape_max) == 1:
         list_max = [1]*(len(shape_x) - 1)

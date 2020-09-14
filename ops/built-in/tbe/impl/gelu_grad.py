@@ -26,6 +26,7 @@ from topi import generic
 from topi.cce import util
 from functools import reduce as reduceIns
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 # CSVALUE equals 0.044715
 CSVALUE = tvm.const(0.044715, "float32")
@@ -225,7 +226,8 @@ def gelu_grad_compute(input_dy, input_x, input_y,
     return result
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 KERNEL_NAME)
 def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     """
     algorithm: gelu_grad
@@ -256,13 +258,12 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     shape_x = input_x.get("shape")
     shape_y = input_y.get("shape")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_dy)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_shape_size(shape_y, SHAPE_SIZE_LIMIT)
+    check_shape(shape_dy, param_name="input_dy")
+    check_shape(shape_x, param_name="input_x")
+    check_shape(shape_y, param_name="input_y")
     input_dtype = input_dy.get("dtype").lower()
-    util.check_dtype_rule(input_dtype, ("float16", "float32"))
+    check_list = ("float16", "float32")
+    check_dtype(input_dtype, check_list, param_name="input_dy")
     shape_dy = list(shape_dy)
     shape_x = list(shape_x)
     shape_y = list(shape_y)

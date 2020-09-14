@@ -120,16 +120,18 @@ def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
                     if begin_shape[i] < input_calc[i] and \
                            end_shape[i] >= input_calc[i]:
                         end_shape[i] = input_calc[i]
-            if begin_shape[i] < 0 and end_shape[i] > 0:
-                begin_shape[i] = begin_shape[i] + input_calc[i]
-                if begin_shape[i] >= end_shape[i]:
-                    begin_shape[i] = end_shape[i]
-                if begin_shape[i] < end_shape[i]:
-                    if begin_shape[i] <= 0:
-                        begin_shape[i] = 0
-                    if begin_shape[i] < input_calc[i] and \
+            if begin_shape[i] < 0 and end_shape[i] >= 0:
+                if begin_shape[i] + input_calc[i] <= 0 or \
+                     begin_shape[i] + input_calc[i] <= end_shape[i]:
+                    begin_shape[i] = begin_shape[i] + input_calc[i]
+                    if begin_shape[i] >= end_shape[i]:
+                        begin_shape[i] = end_shape[i]
+                    if begin_shape[i] < end_shape[i]:
+                        if begin_shape[i] <= 0:
+                            begin_shape[i] = 0
+                        if begin_shape[i] < input_calc[i] and \
                            end_shape[i] > input_calc[i]:
-                        end_shape[i] = input_calc[i]
+                            end_shape[i] = input_calc[i]
             if begin_shape[i] >= 0 and end_shape[i] < 0:
                 end_shape[i] = end_shape[i] + input_calc[i]
                 if end_shape[i] <= begin_shape[i]:
@@ -200,6 +202,8 @@ def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
         for i, _ in enumerate(input_calc):
             if shrink_axis_mask & 2**i == 2**i:
                 input_calc[i] = 0
+                if begin_mask & 2**i == 2**i:
+                    begin_mask = 0
 
     # if the begin mask or end mask or ellipsis is not 0, update begin and end shape
     for i, _ in \
@@ -307,6 +311,8 @@ def strided_slice_d_compute(input_data,
     begin_shape, end_shape, stride_shape = _init_parameter(
         input_list, begin_shape, end_shape, stride_shape, begin_mask, end_mask,
         ellipsis_mask, new_axis_mask, shrink_axis_mask)
+    if stride_shape[-1] != 1:
+        raise RuntimeError("Only support strides with 1 at last value.")
 
     # Estimate the value of shrink_axis_mask, to avoid the dimension of output with size 0
     shrink_axis_mask_temp = 0
@@ -892,11 +898,13 @@ def strided_slice_d(input_x,
             strided_slice_two_turn_one(input_x, output_x, kernel_name)
             return
         if input_list[-1] > 80 and output_shape[-1] == 80:
-            strided_slice_last_dim_only(input_shape, input_dtype,
-                                        output_shape, begin_shape,
-                                        kernel_name)
-            return
-        if input_list[-1] >= 32 and input_list[-1] < 7500 and output_shape[-1] >= 32:
+            res1 = strided_slice_last_dim_only(input_shape, input_dtype,
+                                               output_shape, begin_shape,
+                                               kernel_name)
+            if res1:
+                return
+        if input_list[-1] >= 32 and input_list[-1] < 7500 and len(output_shape) > 1 and \
+           output_shape[-1] >= 32:
             res = strided_slice_last_dim_mte(input_shape, input_dtype,
                                              output_shape, begin_shape,
                                              kernel_name)

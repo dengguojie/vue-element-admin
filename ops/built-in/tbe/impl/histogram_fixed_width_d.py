@@ -23,6 +23,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from topi.cce import util
+from te.utils.op_utils import *
 
 # segment num one time for copy_gm_to_ubuf
 SEGMENT_SIZE_COPY_GM_TO_UB = 1024 * 10
@@ -442,7 +443,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
     None
     """
     def _do_cmp_calcu(repeat, cal_offset, nbins_index):
-        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend620"):
+        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend710"):
             params.ir_builder.emit(
                 tvm.call_extern(
                     params.vcadd_ub.dtype, "vadds",
@@ -674,7 +675,7 @@ def _fuction_accu_to_output(_ib, params):
         # fp16 to s32
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f162s32r")
-    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend620"):
+    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend710"):
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f322s32r")
 
@@ -917,7 +918,8 @@ def histogram_fixed_width_d_compute(x,
 
 
 # pylint: disable=too-many-arguments,redefined-builtin
-@util.check_input_type(dict, dict, dict, int, (str, int), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
+                 OPTION_ATTR_STR, KERNEL_NAME)
 def histogram_fixed_width_d(x,
                             range,
                             y,
@@ -954,15 +956,14 @@ def histogram_fixed_width_d(x,
     input_dtype = x.get("dtype")
     dtype_input = input_dtype.lower()
 
-    util.check_shape_rule(input_shape_list[0])
-    util.check_shape_rule(input_shape_list[1])
-    util.check_kernel_name(kernel_name)
+    check_shape(input_shape_list[0], param_name="x")
+    check_shape(input_shape_list[1], param_name="range")
     util.compare_tensor_dict_key(x, range, "dtype")
     data_shape_size = util.check_tensor_shape_size(list(input_shape_list[0]))
     data_range_shape_size = util.check_tensor_shape_size(
         list(input_shape_list[1]))
 
-    util.check_dtype_rule(dtype_input, ("float16", "float32", "int32"))
+    check_dtype(dtype_input, ("float16", "float32", "int32"), param_name="x")
 
     if data_range_shape_size != 2:
         raise RuntimeError("the shape of range must be (2,) or [2]")

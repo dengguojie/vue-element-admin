@@ -26,6 +26,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform import cce_policy
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 cce_policy.disableL2()
 
 MAX_SHAPE_NUM = 10000000
@@ -47,11 +48,9 @@ def _check_shape(shape_x, shape_scale):
     -------
     None
     """
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="x")
 
-    util.check_shape_rule(shape_scale)
-    util.check_tensor_shape_size(shape_scale)
+    check_shape(shape_scale, param_name="scale")
 
     if len(shape_x) != 5 or len(shape_scale) != 5:
         raise RuntimeError(
@@ -88,11 +87,11 @@ def _check_dtype(dtype_x, dtype_scale, dtype_offset,
     -------
     None
     """
-    util.check_dtype_rule(dtype_x.lower(), ("float16", "float32"))
-    util.check_dtype_rule(dtype_scale.lower(), ("float32", "float16"))
-    util.check_dtype_rule(dtype_offset.lower(), ("float32", "float16"))
-    util.check_dtype_rule(dtype_mean.lower(), ("float32", "float16"))
-    util.check_dtype_rule(dtype_variance.lower(), ("float32", "float16"))
+    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
+    check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
+    check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
+    check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments
@@ -155,8 +154,8 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict,
-                       dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
+                 OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
 def bn_infer(x, scale, offset, mean, variance, y,
              epsilon, kernel_name="bn_infer"):
     """

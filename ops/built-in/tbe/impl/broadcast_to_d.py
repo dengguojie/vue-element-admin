@@ -43,6 +43,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 NUM_ONE = 1
 
@@ -118,7 +119,7 @@ def _check_shape_compatibility(shape_in, shape):
 
     try:
         comp_shape_in, comp_shape, shape_max = broadcast_shapes(
-            shape_in, shape)
+            shape_in, shape, param_name_input1="x", param_name_input2="shape")
         if comp_shape != shape_max:
             raise ValueError('shape_in is not compatible with shape_out.')
     except RuntimeError:
@@ -127,7 +128,7 @@ def _check_shape_compatibility(shape_in, shape):
     return comp_shape_in
 
 
-@util.check_input_type(dict, dict, (list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
 def broadcast_to_d(x,
                    y,
                    shape,
@@ -150,16 +151,15 @@ def broadcast_to_d(x,
     None
     """
 
-    util.check_kernel_name(kernel_name)
 
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
     dtype = x.get('dtype')
-    check_dtype(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="x")
     inp_dtype = dtype.lower()
 
     shape_in = x.get('shape')
-    check_shape(shape_in)
-    check_shape(shape)
+    check_shape(shape_in, param_name="x")
+    check_shape(shape, param_name="shape")
 
     compatible_shape_in = _check_shape_compatibility(shape_in, shape)
 

@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils.op_utils import *
 
 
 # define a scalar, value = 1
@@ -119,8 +120,8 @@ def binary_cross_entropy_grad_compute(
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-statements
-@util.check_input_type(dict, dict, dict,
-                       (dict, NoneType), dict, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME)
 def binary_cross_entropy_grad(
         x,
         y,
@@ -156,35 +157,32 @@ def binary_cross_entropy_grad(
     predict_shape = x.get("shape")
     predict_dtype = x.get("dtype")
     predict_dtype_lower = predict_dtype.lower()
-    util.check_shape_rule(predict_shape)
+    check_shape(predict_shape, param_name="x")
     shape_size = util.check_tensor_shape_size(predict_shape)
-    util.check_kernel_name(kernel_name)
     predict_data_input = tvm.placeholder(
         [shape_size], name="predict_data_input", dtype=predict_dtype_lower)
 
     target_shape = y.get("shape")
     target_dtype = y.get("dtype")
     target_dtype_lower = target_dtype.lower()
-    util.check_shape_rule(target_shape)
+    check_shape(target_shape, param_name="y")
     shape_size = util.check_tensor_shape_size(target_shape)
-    util.check_kernel_name(kernel_name)
     target_data_input = tvm.placeholder(
         [shape_size], name="target_data_input", dtype=target_dtype_lower)
 
     dout_shape = grad_output.get("shape")
     dout_dtype = grad_output.get("dtype")
     dout_dtype_lower = dout_dtype.lower()
-    util.check_shape_rule(dout_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(dout_shape, param_name="grad_output")
 
     # if dout is scaler get the boardcast shape, else not chenged
-    _, dout_shape, _ = util.produce_shapes(target_shape, dout_shape)
+    _, dout_shape, _ = broadcast_shapes(target_shape, dout_shape, param_name_input1="y", param_name_input2="grad_output")
     shape_size = util.check_tensor_shape_size(dout_shape)
     dout_data_input = tvm.placeholder(
         [shape_size], name="dout_data_input", dtype=dout_dtype_lower)
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(predict_dtype_lower, check_list)
+    check_dtype(predict_dtype_lower, check_list, param_name="x")
 
     if predict_shape != target_shape:
         raise RuntimeError("predictx(x) and target(y)"
@@ -199,9 +197,8 @@ def binary_cross_entropy_grad(
         weight_shape = weight.get("shape")
         weight_dtype = weight.get("dtype")
         weight_dtype_lower = weight_dtype.lower()
-        util.check_shape_rule(weight_shape)
+        check_shape(weight_shape, param_name="weight")
         shape_size = util.check_tensor_shape_size(weight_shape)
-        util.check_kernel_name(weight_dtype_lower)
         weight_data_input = tvm.placeholder(
             [shape_size], name="weight_data_input", dtype=weight_dtype_lower)
 

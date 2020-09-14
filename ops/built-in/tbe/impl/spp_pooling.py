@@ -28,6 +28,7 @@ AVG_POOLING = 1
 UB_RESERVED = 2048
 DBL_BUF_SW = True
 
+
 def check_param(x_dic, y_dic, param_dic, kernel_name):
     """
     check ops param interface
@@ -51,7 +52,7 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
     op_utils.check_shape(y_shape_val, param_name="input_y")
 
     tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tik_name == "Hi3796CV300ES":
+    if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
         op_utils.check_dtype(dtype_val.lower(), ["float16"], param_name="input_x")
     else:
         op_utils.check_dtype(dtype_val.lower(), ["float16", "float32"], param_name="input_x")
@@ -65,8 +66,8 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str(param_dic['window'])
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
                              
     if param_dic['stride'][0] < 1 or param_dic['stride'][1] < 1:
         error_info = {}
@@ -77,8 +78,8 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str(param_dic['stride'])
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
 
     if param_dic['pad'][0] > param_dic['window'][0] or \
             param_dic['pad'][2] > param_dic['window'][1]:
@@ -86,9 +87,9 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
         error_info['errCode'] = 'E81006'
         error_info['opname'] = 'spp_pooling'
         error_info['real_pad_value'] = str(param_dic['pad'])
-        error_info['real_window_value'] = str(param_dic['window_value'])
+        error_info['real_window_value'] = str(param_dic['window'])
         raise RuntimeError(error_info, "In op[spp_pooling], the parameter[pad]'s value[%s] should be not greater than parameter[window]'s value[%s]."
-                           %(error_info['real_pad_value'], error_info['real_window_value']))
+                           % (error_info['real_pad_value'], error_info['real_window_value']))
 
     if param_dic["mode"] != AVG_POOLING and \
             param_dic["mode"] != MAX_POOLING:

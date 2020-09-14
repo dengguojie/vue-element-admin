@@ -38,6 +38,7 @@ def check_params(x, y, axis):
     if axis != 1:
         raise RuntimeError("Only support axis = 1 now.")
 
+
 @fusion_manager.register("strided_write")
 def strided_write_compute(x, y, axis, stride, kernel_name='strided_write'):
     """
@@ -60,14 +61,10 @@ def strided_write_compute(x, y, axis, stride, kernel_name='strided_write'):
     output_y: result tensor.
     """
     shape_y = tuple(i.value for i in x.shape)
-    output_y = tvm.compute(
-        shape_y,
-        lambda batch_idx, c1_idx, hw_idx, c0_idx:
-        x[batch_idx, c1_idx, hw_idx, c0_idx],
-        name="strided_write",
-        tag=STRIDED_WRITE_TAG,
-        attrs={"stride": stride})
-
+    output_y = tvm.compute(shape_y, lambda *indice: x(*indice),
+                           name="strided_write",
+                           attrs={"stride": stride},
+                           tag=STRIDED_WRITE_TAG)
     return output_y
 
 

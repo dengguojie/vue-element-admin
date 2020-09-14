@@ -15,15 +15,15 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 log
 """
-from functools import reduce as reduceIns
 import math
+from functools import reduce as reduceIns
+
 import te.lang.cce
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -45,8 +45,12 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 # pylint: disable=too-many-arguments,unused-argument
 @fusion_manager.register("log")
-def log_compute(input_x, output_y, base=-1.0, scale=1.0,
-                shift=0.0, kernel_name="log"):
+def log_compute(input_x,
+                output_y,
+                base=-1.0,
+                scale=1.0,
+                shift=0.0,
+                kernel_name="log"):
     """
     calculating data
 
@@ -70,20 +74,28 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0,
     f322f16_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.cast_to", "f322f16")
     if dtype == "float32" and not f322f16_support:
-        raise RuntimeError(
-            "Input dtype only support float16 while input dtype is float32")
+        error_info = {}
+        error_info['errCode'] = 'E80008'
+        error_info['param_name'] = 'input_x'
+        error_info['op_name'] = 'elu'
+        error_info['expect_value'] = "float16"
+        error_info['real_value'] = dtype
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
+                                       "should be [%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['expect_value'], error_info['real_value']))
 
     if isclose(scale, 1.0) and isclose(shift, 0.0):
         x_log = te.lang.cce.vlog(input_x)
     else:
         x_scale_and_shift = input_x
         if not isclose(scale, 1.0):
-            x_scale_and_shift = te.lang.cce.vmuls(input_x,
-                                                  tvm.const(scale, dtype=dtype))
+            x_scale_and_shift = te.lang.cce.vmuls(
+                input_x, tvm.const(scale, dtype=dtype))
 
         if not isclose(shift, 0.0):
-            x_scale_and_shift = te.lang.cce.vadds(x_scale_and_shift,
-                                                  tvm.const(shift, dtype=dtype))
+            x_scale_and_shift = te.lang.cce.vadds(
+                x_scale_and_shift, tvm.const(shift, dtype=dtype))
 
         x_log = te.lang.cce.vlog(x_scale_and_shift)
 
@@ -93,7 +105,10 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0,
     return x_log
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_FLOAT, op_utils.KERNEL_NAME)
 def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     """
     calculating data
@@ -117,17 +132,26 @@ def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     input_dtype = dtype.lower()
 
     # input_x' shape check
-    check_shape(shape, param_name="input_x")
+    op_utils.check_shape(shape, param_name="input_x")
 
     # input_x' dtype check, only supports fp16 and fp32
     check_list = ("float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    op_utils.check_dtype(input_dtype, check_list, param_name="input_x")
 
     if base <= 0 and (not isclose(base, -1.0)):
-        raise RuntimeError("base must be strictly positive or -1.")
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'base'
+        error_info['op_name'] = 'log'
+        error_info['expect_value'] = "strictly positive or -1"
+        error_info['real_value'] = base
+        raise RuntimeError("In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['expect_value'], error_info['real_value']))
 
     fused_shape = [reduceIns(lambda x, y: x * y, shape[:])]
-    data_input = tvm.placeholder(fused_shape, name="data_input",
+    data_input = tvm.placeholder(fused_shape,
+                                 name="data_input",
                                  dtype=input_dtype)
 
     res = log_compute(data_input, output_y, base, scale, shift, kernel_name)
@@ -137,9 +161,10 @@ def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
         sch = generic.auto_schedule(res)
 
     # operator build
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "need_build": True,
-              "tensor_list": (data_input, res)}
+    config = {
+        "name": kernel_name,
+        "need_build": True,
+        "tensor_list": (data_input, res)
+    }
 
     te.lang.cce.cce_build_code(sch, config)

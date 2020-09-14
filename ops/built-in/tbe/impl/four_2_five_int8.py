@@ -2802,6 +2802,7 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
 
     return ib_.get()
 
+
 #pylint: disable=unused-argument
 def four_2_five_compute(src, dst, src_format, dst_format,
                         kernel_name="four_2_five"):

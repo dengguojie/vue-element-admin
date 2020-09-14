@@ -27,7 +27,6 @@ from impl import aipp_comm
 from impl import aipp_resize_padding
 from impl import aipp_dynamic
 from te.utils.op_utils import *
-
 from te.platform.fusion_manager import fusion_manager
 
 NoneType = type(None)
@@ -61,7 +60,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
 
     res_shape = output_shape
 
-    c0_channel = output_shape[3]
+    c0_channel = output_shape[4]
 
     aipp_map = {}
     aipp_map["ori_format"] = ori_format
@@ -72,6 +71,18 @@ def aipp_compute(input_data, input_dync_param, output_data,
     crop_size_w = 0
 
     cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if output_format == "NC1HWC0_C04":
+        if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS"]:
+            cause_dec = "when output_format is NC1HWC0_C04, " \
+                        "only support Ascend610, Ascend710 Ascend615 and Hi3796CV300CS, " \
+                        "cur_cce_product is %s" % cur_cce_product
+            aipp_comm.raise_RuntimeError(cause_dec)
+
+        if c0_channel != 4:
+            cause_dec = "when output_format is NC1HWC0_C04, C0[%d] must be 4" % \
+                        c0_channel
+            aipp_comm.raise_RuntimeError(cause_dec)
+
     if aipp_config.get('aipp_mode') == "static":
         aipp_comm.set_aipp_default_params(aipp_config)
         aipp_map["input_format"] = aipp_config.get('input_format')
@@ -84,7 +95,6 @@ def aipp_compute(input_data, input_dync_param, output_data,
 
         aipp_comm.get_spr2_spr9(aipp_config, output_dtype, cur_cce_product,
                                 output_format, aipp_map)
-
 
         if 'crop' in aipp_config and aipp_config.get('crop') == 1:
             if "load_start_pos_h" in aipp_config:
@@ -210,11 +220,12 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
 
         cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
-        #1.1,1.3 is mini,5.10 is hisi-es, 2.10 is v200
-        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend620",
-                                   "Hi3796CV300ES", "Hi3796CV300CS"]:
-            raise RuntimeError("Only support is mini,DC,MDC,hisi-es,hisi-cs!"
-                               "cur_cce_product:", cur_cce_product)
+        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend710",
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS"]:
+            cause_desc = "Only support is Ascend310,Ascend610,Ascend710,Ascend615," \
+                        "Hi3796CV300ES,Hi3796CV300CS. " \
+                        "cur_cce_product is %s" % cur_cce_product
+            aipp_comm.raise_RuntimeError(cause_desc)
 
         device_core_num = \
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -716,29 +727,49 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     """
 
     if aipp_config_json == "{}" or aipp_config_json == "":
-        raise RuntimeError("aipp_config_json is null")
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_001
+        error_info['param_name'] = 'aipp_config_json'
+        error_info['op_name'] = 'aipp'
+        raise RuntimeError(error_info, "In op[%s], the mandatory parameter[%s] is missed."
+                           % (error_info['op_name'], error_info['param_name']))
 
     aipp_config = json.loads(aipp_config_json)
 
     if 'aipp_mode' not in aipp_config:
-        raise RuntimeError("aipp_mode must be set!")
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_001
+        error_info['param_name'] = 'aipp_mode'
+        error_info['op_name'] = 'aipp'
+        raise RuntimeError(error_info, "In op[%s], the mandatory parameter[%s] is missed."
+                           % (error_info['op_name'], error_info['param_name']))
 
     aipp_mode = aipp_config.get('aipp_mode')
     if aipp_mode not in ['static', 'dynamic']:
-        raise RuntimeError("the aipp mode is only support static or dynamic!")
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_000
+        error_info['param_name'] = 'aipp_mode'
+        error_info['op_name'] = 'aipp'
+        error_info['expect_value'] = "static, dynamic"
+        error_info['real_value'] = aipp_mode
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be one of "
+                                       "[%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['expect_value'], error_info['real_value']))
 
     input_shape = input_data.get('shape')
     input_dtype = input_data.get('dtype')
     input_format = input_data.get('format')
     output_dtype = output_data.get('dtype')
     output_shape = output_data.get('shape')
+    output_format = output_data.get('format')
 
     check_shape(input_shape, param_name="input_data")
 
     check_list = ["float16", "uint8", "int8"]
     check_dtype(output_dtype.lower(), check_list, param_name="output")
 
-    input_format_list = ["NCHW", "NHWC", "NC1HWC0"]
+    input_format_list = ["NCHW", "NHWC", "NC1HWC0_C04"]
     check_format(input_format, input_format_list, param_name="input")
 
     cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
@@ -746,13 +777,20 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     if aipp_mode == 'dynamic':
         input_dync_param_shape = input_dync_param.get('shape')
         input_dync_param_dtype = input_dync_param.get('dtype')
-        util.check_shape_rule(input_dync_param_shape)
         check_shape(input_dync_param_shape, param_name="input_dync_param")
 
         check_dtype(input_dync_param_dtype, ["uint8"], param_name="input_dync_param_dtype")
-        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend620",
+        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend710", "Ascend615",
                                    "Hi3796CV300ES", "Hi3796CV300CS"]:
-            raise RuntimeError("dynamic aipp only support mini,DC,MDC,lhisi_es,lhisi_cs")
+            cause_desc = "dynamic aipp only support " \
+                         "Ascend310, Ascend610, Ascend710, Ascend615, " \
+                         "Hi3796CV300ES and Hi3796CV300CS"
+            aipp_comm.raise_RuntimeError(cause_desc)
+
+        if output_format == "NC1HWC0_C04":
+            cause_desc = "dynmic aipp single op not support " \
+                         "NC1HWC0_C04 output_format"
+            aipp_comm.raise_RuntimeError(cause_desc)
 
         # Compute
         data = tvm.placeholder(input_shape, name='input', dtype=input_dtype.lower())
@@ -765,26 +803,40 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
             tvm.build(s, [data, param, output], "cce", name=kernel_name)
     else:
         aipp_comm.set_aipp_default_params(aipp_config)
-        aipp_comm.check_aipp_static_config(input_shape, input_format, output_shape,
+        aipp_comm.check_aipp_static_config(input_shape, input_format, output_data,
                                            aipp_config, cur_cce_product)
 
         if aipp_config.get("input_format") == "NC1HWC0DI_S8":
-            if input_dtype != "int8" or output_dtype != "int8":
-                raise RuntimeError("the input/output dtype of "
-                                   "NC1HWC0DI_S8 must be int8!")
+            if input_dtype != "int8":
+                cause_desc = "when input_format is NC1HWC0DI_S8, the input dtype must be int8, " \
+                             "but actually is %s" % input_dtype
+                aipp_comm.raise_RuntimeError(cause_desc)
+
+            if output_dtype != "int8":
+                cause_desc = "when input_format is NC1HWC0DI_S8, the output dtype must be int8, " \
+                             "but actually is %s" % output_dtype
+                aipp_comm.raise_RuntimeError(cause_desc)
         elif aipp_config.get("input_format") == "NC1HWC0DI_FP16":
-            if input_dtype != "float16" or output_dtype != "float16":
-                raise RuntimeError("the input/output dtype of "
-                                   "NC1HWC0DI_S8 must be float16!")
+            if input_dtype != "float16":
+                cause_desc = "when input_format is NC1HWC0DI_FP16, the input dtype must be float16, " \
+                             "but actually is %s" % input_dtype
+                aipp_comm.raise_RuntimeError(cause_desc)
+
+            if output_dtype != "float16":
+                cause_desc = "when input_format is NC1HWC0DI_FP16, the output dtype must be float16, " \
+                             "but actually is %s" % output_dtype
+                aipp_comm.raise_RuntimeError(cause_desc)
         elif aipp_config.get("input_format") in ["RAW10", "RAW12",
                                                  "RAW16", "uint16"]:
             if input_dtype != "uint16":
-                raise RuntimeError("the input dtype of "
-                                   "RAW10/12/16 must be uint16!")
+                cause_desc = "when input_format is %s, the input dtype must be uint16, " \
+                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+                aipp_comm.raise_RuntimeError(cause_desc)
         else:
             if input_dtype != "uint8":
-                raise RuntimeError("the input dtype of "
-                                   "RGB and YUV must be uint8!")
+                cause_desc = "when input_format is %s, the input dtype must be uint8, " \
+                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+                aipp_comm.raise_RuntimeError(cause_desc)
 
         # Compute
         data = tvm.placeholder(input_shape, name='input',
@@ -800,15 +852,22 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
             output = aipp_compute_single(data, input_shape, input_format,
                                   output_data, aipp_config)
 
+        # pre-compile stage support NC1HWC0_C04 for aipp+conv fusion,
+        # but compile stage not support NC1HWC0_C04
+        # because aipp single op not support.
+        if fusion_manager.get_build_cfg() == "enable":
+            if output_format == "NC1HWC0_C04":
+                cause_desc = "aipp single op not support " \
+                             "NC1HWC0_C04 output_format"
+                aipp_comm.raise_RuntimeError(cause_desc)
+
         # Schedule
         s = tvm.create_schedule([output.op])
         with build_config:
             tvm.build(s, [data, output], "cce", name=kernel_name)
 
-        if cur_cce_product in ["Ascend610", "Ascend620", "Hi3796CV300ES", "Hi3796CV300CS"] or \
-           ("padding" in aipp_config and aipp_config.get("padding") == 1) or \
-           ("resize" in aipp_config and aipp_config.get("resize") == 1) or \
-           aipp_mode == 'dynamic':
+        if ("resize" in aipp_config and aipp_config.get("resize") == 1) or \
+           ("padding" in aipp_config and aipp_config.get("padding") == 1):
             fusion_manager.set_current_op_pattern("Opaque")
         else:
             fusion_manager.set_current_op_pattern("aipp")

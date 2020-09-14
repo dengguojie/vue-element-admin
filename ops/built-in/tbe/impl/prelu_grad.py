@@ -21,6 +21,7 @@ from te import tvm
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 def check_inputs_shape(features_shape, weights_shape, input_format):
@@ -245,7 +246,9 @@ def prelu_grad_compute(input_gradients,
     # broadcast in case the input shapes are not same
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape = \
-            util.produce_shapes(shape_input_gradients, shape_input_features)
+            broadcast_shapes(shape_input_gradients, shape_input_features,
+                             param_name_input1="input_gradients",
+                             param_name_input2="input_features")
         input_gradients = te.lang.cce.broadcast(input_gradients, shape,
                                                 trans_type)
         input_features = te.lang.cce.broadcast(input_features, shape,
@@ -303,7 +306,8 @@ def prelu_grad_compute(input_gradients,
     return output_backprops_dx, output_backprops_da
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, KERNEL_NAME)
 def prelu_grad(input_gradients,
                input_features,
                input_weights,
@@ -361,22 +365,18 @@ def prelu_grad(input_gradients,
     check_list = ("float16", "float32")
     util.compare_tensor_dict_key(input_gradients, input_features, "dtype")
     util.compare_tensor_dict_key(input_gradients, input_weights, "dtype")
-    util.check_dtype_rule(dtype_input_gradients, check_list)
-    util.check_dtype_rule(dtype_input_features, check_list)
-    util.check_dtype_rule(dtype_input_weights, check_list)
+    check_dtype(dtype_input_gradients, check_list, param_name="input_gradients")
+    check_dtype(dtype_input_features, check_list, param_name="input_features")
+    check_dtype(dtype_input_weights, check_list, param_name="input_weights")
     # check shape
-    util.check_shape_rule(shape_input_gradients)
-    util.check_shape_rule(shape_input_features)
-    util.check_shape_rule(shape_input_weights)
-    util.check_tensor_shape_size(shape_input_gradients)
-    util.check_tensor_shape_size(shape_input_features)
-    util.check_tensor_shape_size(shape_input_weights)
+    check_shape(shape_input_gradients, param_name="input_gradients")
+    check_shape(shape_input_features, param_name="input_features")
+    check_shape(shape_input_weights, param_name="input_weights")
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape_max = \
-            util.produce_shapes(shape_input_gradients, shape_input_features)
-        util.check_tensor_shape_size(shape_max)
-    # check kernelname
-    util.check_kernel_name(kernel_name)
+            broadcast_shapes(shape_input_gradients, shape_input_features,
+                             param_name_input1="input_gradients",
+                             param_name_input2="input_features")
     check_inputs_shape(shape_input_features, shape_input_weights, input_format)
 
     if len(shape_input_features) == 4:

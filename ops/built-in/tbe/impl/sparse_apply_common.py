@@ -26,6 +26,7 @@ from te import platform as tbe_platform
 # calculated address value in DMA caused Signed integer overflow.
 SHAPE_SIZE_LIMIT = (2**29 - 1)
 
+
 # pylint: disable=too-many-arguments,too-many-instance-attributes
 # pylint: disable=attribute-defined-outside-init,too-many-locals
 class SparseApply():
@@ -82,8 +83,9 @@ class SparseApply():
         self.grad_each_block = 32 // self.grad_dtype_bytes_size
         self.indices_data_each_block = 32 // self.indices_dtype_bytes_size
 
+        # Reserved 1024 Bytes for inputs and outputs 32B alignment
         self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec( \
-            tbe_platform.cce_conf.UB_SIZE) - 8192)
+            tbe_platform.cce_conf.UB_SIZE) - 1024)
 
         one_block_bytes_size = cce_params.VECTOR_INST_BLOCK_WIDTH // \
                                cce_params.VECTOR_INST_BLOCK_NUM

@@ -21,6 +21,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable = locally-disabled,invalid-name,too-many-arguments
@@ -53,7 +54,8 @@ def inplace_add_d_compute(x, v, y, indices, kernel_name="inplace_add_d"):
     return res
 
 
-@util.check_input_type(dict, dict, dict, (tuple, list), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+                 KERNEL_NAME)
 def inplace_add_d(x, v, y, indices, kernel_name="inplace__add_d"):
     """
     algorithm: inplacea_add_d
@@ -79,13 +81,10 @@ def inplace_add_d(x, v, y, indices, kernel_name="inplace__add_d"):
     shape_x = x.get("shape")
     shape_v = v.get("shape")
 
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_v)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_v)
-    util.check_dtype_rule(x.get("dtype").lower(), check_tuple)
-    util.check_dtype_rule(v.get("dtype").lower(), check_tuple)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_v, param_name="v")
+    check_dtype(x.get("dtype").lower(), check_tuple, param_name="x")
+    check_dtype(v.get("dtype").lower(), check_tuple, param_name="v")
     indices = list(indices)
 
     if len(shape_x) != len(shape_v):

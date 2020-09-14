@@ -26,6 +26,8 @@ from te.platform.cce_build import build_config
 from topi.cce import util
 from impl.pad_align_reorder_ub import pad_align
 from te.utils.op_utils import *
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
 def _ceil_div(value, block):
@@ -575,8 +577,7 @@ def _mask_copy(out_ubuf, data_buf, data_offset, data_len, params):
     params.ib_.emit(
         tvm.call_extern(
             params.dtype, 'vadd',
-            out_ubuf.buf.access_ptr("w", offset=out_ubuf.offset -
-                                    align_offset),
+            out_ubuf.buf.access_ptr("w", offset=out_ubuf.offset - align_offset),
             data_buf.access_ptr("r", offset=data_offset),
             dup_buf.access_ptr("r", offset=0), 1, 1, 1, 1, 8, 8, 8))
 
@@ -733,7 +734,7 @@ class PadParams:
         self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.type_size
         self.unified_buffer_len = \
             (tbe_platform.cce_conf.get_soc_spec(
-                tbe_platform.cce_conf.UB_SIZE) - 256) // self.type_size
+                tbe_platform.cce_conf.UB_SIZE) - 3072) // self.type_size
         self.vec_align_len = \
             cce_params.VECTOR_INST_BLOCK_WIDTH // self.type_size
         # Maximum number of uint8
@@ -1861,7 +1862,7 @@ def _pad_for_n_hw_c(ins, outs, paddings):
 
 def _check_align(shape, paddings, dtype, model):
 
-    in_paddings= paddings.copy()
+    in_paddings = paddings.copy()
     in_shape = shape.copy()
     ou_shape = _get_output_shape(in_shape, in_paddings)
     axis = len(in_shape) - 1
@@ -2102,6 +2103,68 @@ def _pattern_align(shape, paddings, dtype):
     return True, in_shape, in_paddings
 
 
+def op_select_format(input_x,
+                     output_x,
+                     paddings,
+                     kernel_name="pad_d"):
+    """ calculating pad tensor by paddings parameters
+
+    Parameters
+    ----------
+    input_x : dict
+        shape and dtype of input
+    output_x: dict
+        shape and dtype of output
+    paddings: list or tuple.
+        For each dimension D of input, paddings[D, 0] indicates how many
+        values to add
+        before the contents of tensor in that dimension, and paddings[D, 1]
+        indicates
+        how many values to add after the contents of tensor in that dimension.
+    kernel_name : str
+        cce kernel name, default value is "pad_d"
+
+    Returns
+    -------
+    None.
+    """
+    is_support_5hd = False
+    dtype = input_x.get("dtype").lower()
+    input_ori_shape = input_x.get("ori_shape")
+    input_ori_format = input_x.get("ori_format")
+
+    if input_ori_format == "NHWC" and len(input_ori_shape) == 4:
+        flag = paddings[0][0] == paddings[0][1] == \
+               paddings[3][0] == paddings[3][1] == 0
+        if flag:
+            is_support_5hd = True
+
+    dtype_base = [
+        "float16", "float", "int32", "int8", "uint8"
+    ]
+    dtype_5hd = [
+        "float16", "float32"
+    ]
+    dtype_base_out = dtype_base.copy()
+    format_base_out = ["ND"] * len(dtype_base)
+
+    if is_support_5hd:
+        dtype_base_out = dtype_base_out + dtype_5hd
+        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_5hd)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+
+    input0 = gen_param(
+        classify="input0", name="x", datatype=dtype_str, format=format_str)
+    output0 = gen_param(
+        classify="output0", name="y", datatype=dtype_str, format=format_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
 # pylint: disable=locally-disabled,too-many-statements
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_LIST_INT, KERNEL_NAME)
@@ -2130,6 +2193,16 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     shape = list(input_x.get("shape"))
     paddings = list(paddings)
     check_shape(shape, param_name="input_x")
+    check_list_dtype = ("float16", "float32", "int32", "int8", "uint8")
+    dtype = input_x.get("dtype").lower()
+    check_dtype(dtype, check_list_dtype, param_name="input_x")
+    input_format = input_x.get("format")
+    ori_format = input_x.get("ori_format")
+    if input_format == "NC1HWC0" and ori_format == "NHWC" \
+            and dtype in ["float16", "float32"]:
+        paddings = [[0, 0], [0, 0], [paddings[1][0], paddings[1][1]],
+                    [paddings[2][0], paddings[2][1]], [0, 0]]
+
     if len(paddings) is not len(shape):
         raise RuntimeError(
             "Paddings and shape are not the same length.")
@@ -2140,9 +2213,6 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
                 padding[1], int)):
             raise RuntimeError("Paddings only suppot int")
 
-    check_list_dtype = ("float16", "float32", "int32", "int8", "uint8")
-    dtype = input_x.get("dtype").lower()
-    check_dtype(dtype, check_list_dtype, param_name="input_x")
     data = tvm.placeholder(shape, name="data", dtype=dtype)
     if dtype == "int8" or dtype == "uint8":
         dtype_now = "float16"

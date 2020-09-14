@@ -24,6 +24,7 @@ import te.lang.cce
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from functools import reduce as reduceIns
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -89,7 +90,7 @@ def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
     return res
 
 
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     """
     algorithm: reciprocal
@@ -110,13 +111,11 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     None
     """
     shape = util.scalar2tensor_one(input_x.get("shape"))
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    check_shape(shape, param_name="input_x")
 
     check_list = ["float16", "float32"]
     inp_dtype = input_x.get("dtype").lower()
-    util.check_dtype_rule(inp_dtype, check_list)
+    check_dtype(inp_dtype, check_list, param_name="input_x")
 
     shape = util.shape_refine(shape)
     fuseshape = [1]

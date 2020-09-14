@@ -52,7 +52,7 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     -------
     NONE
     """
-    #tik_name_check = tik.Dprofile().get_product_name()
+
 
     in_shape = check_dic_dic.get("in_dic").get("shape")
     out1_shape = check_dic_dic.get("out1_dic").get("shape")
@@ -69,8 +69,8 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str(param_dic['boxes'])
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
     if param_dic['coords'] != 4:
         error_info = {}
         error_info['errCode'] = 'E80017'
@@ -79,8 +79,8 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         error_info['expect_value'] = '4'
         error_info['real_value'] = str(param_dic['coords'])
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], 
-                             error_info['expect_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'],
+                              error_info['expect_value'], error_info['real_value']))
         
     if param_dic['classes'] <= 0:
         error_info = {}
@@ -91,8 +91,8 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         error_info['max_value'] = 'inf'
         error_info['real_value'] = str(param_dic['classes'])
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
     
     op_utils.check_shape(in_shape, param_name="input")
     op_utils.check_shape(out1_shape, param_name="output1")
@@ -100,17 +100,13 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     op_utils.check_shape(out3_shape, param_name="output3")
 
     project_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    #if tik_name_check == "mini":
     if project_name in ("Ascend310",):
         op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend910",):
-    #elif tik_name_check == "cloud":
         op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
-    elif project_name in ("Hi3796CV300ES",):
-    #elif tik_name_check == "hisi-es":
+    elif project_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
         op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
-    elif project_name in ("Ascend610","Ascend620"):
-    #elif tik_name_check == "aic":
+    elif project_name in ("Ascend610", "Ascend710"):
         op_utils.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
     else:
         op_utils.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
@@ -217,7 +213,7 @@ class ComputerCommon(ShapeInfo):
         None
         """
         repeats = (dlen + 255) // 256
-        #if tik.Dprofile().get_product_name() != "mini":
+
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ("Ascend310",):
             tik_inst.vdiv(mask, dividend, dividend, divisor,
                           repeats, 1, 1, 1, 8, 8, 8)
@@ -876,7 +872,7 @@ class InitTikAndTensor:
         NONE
         """
         self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        #tik.Dprofile().get_product_name()
+
 
     def set_ub_buf(self):
         """
@@ -887,7 +883,7 @@ class InitTikAndTensor:
         -------
         tNONE
         """
-        #self.total_ub_size = tik.Dprofile().get_unified_buffer_size()
+
         self.total_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
 
@@ -1104,7 +1100,7 @@ def yolo_computer(yolo_op, shape_info, yolo_version):
     -------
     NONE
     """
-    #block_num = tik.Dprofile().get_aicore_num()
+
     block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
     if shape_info['batch'] > block_num:
         core_div_num = block_num

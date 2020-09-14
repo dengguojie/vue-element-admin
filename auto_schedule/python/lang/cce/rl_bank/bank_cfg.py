@@ -16,9 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 Define some config for rl bank
 """
 from te import platform as cceconf
-
-AXIS_NUM = 8
-
 DTYPE_INDEX = {
     'int8': 1,
     'uint8': 2,
@@ -113,7 +110,8 @@ TAG_INDEX = {
     'concat': 72,
     'elewise_empty_intrin': 73,
     'strided_slice_d': 74,
-    'split_com': 75
+    'split_com': 75,
+    'write_select': 76
 }
 
 INTRIN_MAP = {
@@ -200,6 +198,8 @@ INTRIN_MAP = {
     80: 'vector_mla',
     81: 'vector_madd',
     82: 'vector_maddrelu',
+    83: 'reuse_output',
+    84: 'json_info_cache_read_mode'
 }
 
 PRIMITIVE_DICT = {
@@ -223,7 +223,35 @@ PRIMITIVE_DICT = {
     17: 'rfactor',
     18: 'set_scope',
     19: 'reused_by',
-    20: 'preload'
+    20: 'preload',
+    21: 'allocate_at',
+    22: 'mem_unique',
+    23: 'allocate_root',
+    24: 'bind_buffer',
+    25: 'buffer_align',
+    26: 'buffer_tile',
+    27: 'compute_root',
+    28: 'cycle_double_buffer',
+    29: 'enable_mte4_mte5',
+    30: 'env_threads',
+    31: 'handle',
+    32: 'opengl',
+    33: 'parallel',
+    34: 'partition',
+    35: 'prefetch',
+    36: 'remove_init',
+    37: 'same_as',
+    38: 'set_block_sync',
+    39: 'set_storage_bound',
+    40: 'set_store_predicate',
+    41: 'specify_storage',
+    42: 'speel',
+    43: 'tensorize',
+    44: 'tile',
+    45: 'unreused_by',
+    46: 'unroll',
+    47: 'vectorize',
+    48: 'wait_block_sync'
 }
 
 SCOPE_DICT = {
@@ -236,7 +264,13 @@ SCOPE_DICT = {
     6: cceconf.scope_reg,
     7: cceconf.scope_aicpu,
     8: "",
+    9: cceconf.scope_cbuf_fusion
 }
+
+SPEC_ATTR_KEY = [
+    "addr_type", "valid_shape", "slice_offset", "L1_addr_flag", "L1_addr_offset", "L1_valid_size",
+    "L1_fusion_type"
+]
 
 MODE_RUNTIME = "runtime"
 MODE_OFFLINE = "offline"
@@ -266,6 +300,7 @@ class Axis():  # pylint: disable=too-few-public-methods
         if isinstance(self.name, str):
             self.name = [self.name, new_name]
         elif isinstance(self.name, list):
-            self.name.append(new_name)
+            if new_name not in self.name:
+                self.name.append(new_name)
         else:
             raise RuntimeError("axis name must be string or list!")

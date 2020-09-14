@@ -24,6 +24,7 @@ from te import tvm
 from te import platform as cce
 from te.platform import cce_util
 from te.platform import cce_emitinsn_params
+from te.platform import intrinsic_check_support
 from .util import get_align_factor
 from .util import get_nearest_factor
 from .util import gen_reversed_subgraph_list
@@ -130,6 +131,16 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
     else:
         vector_inst_one_repeat_size = 64
 
+    is_vcmax_fp32_v200 = \
+        (dtype.lower() == "float32") and \
+        intrinsic_check_support("Intrinsic_vcmax", "float32")
+
+    repeat_stride = (1, 1, 8)
+    # v200 vcmax/vcmin fp32, 7 input param
+    is_vcmax_v200 = intrin_cmd == "vcmax" and is_vcmax_fp32_v200
+    if is_vcmax_v200:
+        repeat_stride = (1, 1, 8, 0, 0, 0)
+
     if len(for_extent_vals) == 1:
         repeat_time = reduce_axis_len // vector_inst_one_repeat_size
         remain_size = reduce_axis_len % vector_inst_one_repeat_size
@@ -142,9 +153,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 res_buffer.access_ptr("rw", offset=0),
                 src_buffer.access_ptr("r", offset=-k1_size),
                 repeat_time,
-                1,
-                1,
-                8))
+                *repeat_stride))
 
         if remain_size > 0:
             reset_mask_insn(ib_expr, dtype, bits=remain_size)
@@ -155,11 +164,10 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 res_buffer.access_ptr("rw", offset=repeat_time),
                 src_buffer.access_ptr("r", offset=src_offset),
                 1,
-                1,
-                1,
-                8))
-
-        if repeat_time > 1 or (repeat_time == 1 and remain_size > 0):
+                *repeat_stride))
+        is_have_tile = repeat_time > 1 or \
+                       (repeat_time == 1 and remain_size > 0)
+        if is_have_tile:
             if remain_size > 0:
                 reset_mask_insn(ib_expr, dtype, bits=repeat_time + 1)
             else:
@@ -169,9 +177,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 res_buffer.access_ptr("rw", offset=0),
                 res_buffer.access_ptr("r", offset=0),
                 1,
-                1,
-                1,
-                8))
+                *repeat_stride))
 
         reset_mask_insn(ib_expr, res_buffer.dtype)
 
@@ -201,6 +207,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
 
     factor = 1
     is_vcmax = False
+
     if intrin_cmd == "vcmax":
         factor = 2
         is_vcmax = True
@@ -220,9 +227,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 tmp_buf.access_ptr("rw", offset=0),
                 tmp_buf.access_ptr("r", offset=0),
                 repeat_time,
-                1,
-                1,
-                8))
+                *repeat_stride))
 
         if remain_size > 0:
             reset_mask_insn(ib_expr, dtype, bits=remain_size)
@@ -231,9 +236,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 tmp_buf.access_ptr("rw", offset=repeat_time * factor),
                 tmp_buf.access_ptr("r", offset=repeat_time * vector_inst_one_repeat_size),
                 1,
-                1,
-                1,
-                8))
+                *repeat_stride))
 
         if is_vcmax:
             vcmax_repeat_size = (vector_inst_one_repeat_size // 2)
@@ -251,7 +254,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                     tmp_buf.access_ptr("rw", offset=0),
                     tmp_buf.access_ptr("r", offset=0),
                     sub_repeat_time,
-                    1, 1, 8))
+                    *repeat_stride))
             if total_time > 1 and sub_remain_size > 0:
                 reset_mask_insn(ib_expr, dtype, bits=sub_remain_size,
                                 mask_func=get_mask_fp16_skip_one)
@@ -261,7 +264,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                     tmp_buf.access_ptr("r",
                                        offset=sub_repeat_time
                                        * vector_inst_one_repeat_size),
-                    1, 1, 1, 8))
+                    1, *repeat_stride))
             if sub_repeat_time > 1 or (sub_repeat_time == 1 and sub_remain_size > 0):
                 if sub_remain_size > 0:
                     reset_mask_insn(ib_expr, dtype, bits=sub_repeat_time + 1,
@@ -274,7 +277,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                     tmp_buf.dtype, intrin_cmd,
                     tmp_buf.access_ptr("rw", offset=0),
                     tmp_buf.access_ptr("r", offset=0),
-                    1, 1, 1, 8))
+                    1, *repeat_stride))
         else:
             if repeat_time > 1 or (repeat_time == 1 and remain_size > 0):
                 if remain_size > 0:
@@ -286,7 +289,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                     tmp_buf.dtype, intrin_cmd,
                     tmp_buf.access_ptr("rw", offset=0),
                     tmp_buf.access_ptr("r", offset=0),
-                    1, 1, 1, 8))
+                    1, *repeat_stride))
 
         ib_expr.emit(tvm.call_extern(
             res_buffer.dtype, "reg_mov",
@@ -574,7 +577,8 @@ def logits_2d_schedule(res, input_tensors): # pylint: disable=unused-argument
             block_split_inner_size = n_h_w // npart_factor
 
     split_factor, npart_factor = get_ub_tiling_2d(
-        shape, npart_factor, block_split_inner_size, max_ub_count)
+        shape, npart_factor, block_split_inner_size,
+        min_num_size_one_core, max_ub_count)
 
     is_need_workspace = (npart_factor > 1 and \
                         split_factor < min_num_size_one_core) or\
@@ -881,12 +885,13 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_coun
     return ub_split_axis, ub_split_inner
 
 
-def get_ub_tiling_2d(shape, npart_factor,
-                     block_tiling_inner_loop, max_ub_count):
+def get_ub_tiling_2d(shape, npart_factor, block_tiling_inner_loop,
+                     min_num_size_one_core, max_ub_count):
     """
     get ub tiling 2d
     """
     step = -1
+    shape_nhw = shape[0]
     shape_c = shape[1]
     temp_size = shape_c
     bound_size = max_ub_count
@@ -896,6 +901,9 @@ def get_ub_tiling_2d(shape, npart_factor,
     byte_size_fp32 = 4
     if shape_c > threshold_size and\
         shape_c*byte_size_fp32 % one_block_size != 0:
+        if shape_nhw % npart_factor == 0 and \
+            shape_nhw // npart_factor >= min_num_size_one_core:
+            return 1, npart_factor
         return 1, 1
 
     split_size = 1
@@ -1210,22 +1218,35 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
 
     data_features = sub_0.op.input_tensors[0]
 
-    cast_1 = sub_0.op.input_tensors[1]
     log_3 = sub_4.op.input_tensors[1]
-    broadcast_tensor_0 = cast_1.op.input_tensors[0]
-    reduce_0 = broadcast_tensor_0.op.input_tensors[0]
-    cast_0 = reduce_0.op.input_tensors[0]
+
+    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
+                                                      "float32")
+    if vcmax_intr_support_fp32:
+        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+        data_features_ub_000 = s.cache_read(data_features,
+                                            'local.UB', [reduce_0])
+    else:
+        cast_1 = sub_0.op.input_tensors[1]
+        broadcast_tensor_0 = cast_1.op.input_tensors[0]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+        cast_0 = reduce_0.op.input_tensors[0]
+        data_features_ub_000 = s.cache_read(data_features,
+                                            'local.UB', [cast_0])
+        cast_0_ub = s.cache_write(cast_0, 'local.UB')
+        cast_1_ub = s.cache_write(cast_1, 'local.UB')
+        s[cast_0].compute_inline()
+        s[cast_1].compute_inline()
 
     # cache_read/cache_write code
     data_labels_ub_000 = s.cache_read(data_labels, 'local.UB', [mul_5])
     data_labels_ub_001 = s.cache_read(data_labels, 'local.UB', [sub_7])
-    data_features_ub_000 = s.cache_read(data_features, 'local.UB', [cast_0])
+
     data_features_ub_001 = s.cache_read(data_features, 'local.UB', [sub_0])
 
-    cast_0_ub = s.cache_write(cast_0, 'local.UB')
     reduce_0_ub = s.cache_write(reduce_0, 'local.UB')
     broadcast_tensor_0_ub = s.cache_write(broadcast_tensor_0, 'local.UB')
-    cast_1_ub = s.cache_write(cast_1, 'local.UB')
     sub_0_ub_000 = s.cache_read(sub_0, 'local.UB', [exp_1])
     sub_0_ub_001 = s.cache_read(sub_0, 'local.UB', [sub_4])
     sub_0_ub = s.cache_write(sub_0, 'local.UB')
@@ -1245,10 +1266,8 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     sub_7_ub = s.cache_write(sub_7, 'local.UB')
 
     # compute_inline code
-    s[cast_0].compute_inline()
     s[reduce_0].compute_inline()
     s[broadcast_tensor_0].compute_inline()
-    s[cast_1].compute_inline()
     s[reduce_1].compute_inline()
     s[log_3].compute_inline()
     s[sub_4].compute_inline()
@@ -1317,10 +1336,14 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+        s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
+        s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
+        s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
+
     s[reduce_0_ub].compute_at(s[sub_0], sub_0_axis_0_o)
     s[broadcast_tensor_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
-    s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0].compute_at(s[add_0], add_0_axis_0_n1_o)
     s[sub_0_ub_001].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_o)
@@ -1355,11 +1378,9 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     s[data_labels_ub_000].emit_insn(s[data_labels_ub_000].op.axis[0], 'dma_copy')
     s[data_features_ub_001].emit_insn(s[data_features_ub_001].op.axis[0], 'dma_copy')
     s[data_features_ub_000].emit_insn(s[data_features_ub_000].op.axis[0], 'dma_copy')
-    s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
     s[reduce_0_ub].emit_insn(reduce_0_ub_axis_0, 'vector_reduce_max')
     cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')
     cce_emitinsn_params.cceEmitParamsIns.insert_param('broadcast_axis_offset', 1)
-    s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
     s[sub_0_ub].emit_insn(s[sub_0_ub].op.axis[0], 'vector_sub')
     s[sub_0].emit_insn(sub_0_axis_1_i, 'dma_copy')
     s[sub_0_ub_001].emit_insn(s[sub_0_ub_001].op.axis[0], 'dma_copy')
@@ -1401,9 +1422,12 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     s[data_labels_ub_000].storage_align(s[data_labels_ub_000].op.axis[0], 8, 0)
     s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
     s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
-    s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+        s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
+
     s[broadcast_tensor_0_ub].storage_align(s[broadcast_tensor_0_ub].op.axis[0], 16, 0)
-    s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
     s[sub_0_ub].storage_align(s[sub_0_ub].op.axis[0], 8, 0)
     s[sub_0_ub_001].storage_align(s[sub_0_ub_001].op.axis[0], 8, 0)
     s[sub_0_ub_000].storage_align(s[sub_0_ub_000].op.axis[0], 8, 0)
@@ -1463,11 +1487,18 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
 
     data_features = sub_0.op.input_tensors[0]
 
-    cast_1 = sub_0.op.input_tensors[1]
     log_3 = sub_4.op.input_tensors[1]
-    broadcast_tensor_0 = cast_1.op.input_tensors[0]
-    reduce_0 = broadcast_tensor_0.op.input_tensors[0]
-    cast_0 = reduce_0.op.input_tensors[0]
+
+    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
+                                                      "float32")
+    if vcmax_intr_support_fp32:
+        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+    else:
+        cast_1 = sub_0.op.input_tensors[1]
+        broadcast_tensor_0 = cast_1.op.input_tensors[0]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+        cast_0 = reduce_0.op.input_tensors[0]
 
     # cache_read/cache_write code
     data_labels_ub = s.cache_read(data_labels, 'local.UB', [data_labels_broad])
@@ -1475,13 +1506,21 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     data_labels_broad_ub_000 = s.cache_read(data_labels_broad, 'local.UB', [mul_5])
     data_labels_broad_ub_001 = s.cache_read(data_labels_broad, 'local.UB', [sub_7])
 
-    data_features_ub_000 = s.cache_read(data_features, 'local.UB', [cast_0])
+    if vcmax_intr_support_fp32:
+        data_features_ub_000 = s.cache_read(data_features,
+                                            'local.UB', [reduce_0])
+    else:
+        data_features_ub_000 = s.cache_read(data_features,
+                                            'local.UB', [cast_0])
+
     data_features_ub_001 = s.cache_read(data_features, 'local.UB', [sub_0])
 
-    cast_0_ub = s.cache_write(cast_0, 'local.UB')
+    if not vcmax_intr_support_fp32:
+        cast_0_ub = s.cache_write(cast_0, 'local.UB')
+        cast_1_ub = s.cache_write(cast_1, 'local.UB')
+
     reduce_0_ub = s.cache_write(reduce_0, 'local.UB')
     broadcast_tensor_0_ub = s.cache_write(broadcast_tensor_0, 'local.UB')
-    cast_1_ub = s.cache_write(cast_1, 'local.UB')
     sub_0_ub_000 = s.cache_read(sub_0, 'local.UB', [exp_1])
     sub_0_ub_001 = s.cache_read(sub_0, 'local.UB', [sub_4])
     sub_0_ub = s.cache_write(sub_0, 'local.UB')
@@ -1501,10 +1540,12 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     sub_7_ub = s.cache_write(sub_7, 'local.UB')
 
     # compute_inline code
-    s[cast_0].compute_inline()
+    if not vcmax_intr_support_fp32:
+        s[cast_0].compute_inline()
+        s[cast_1].compute_inline()
+
     s[reduce_0].compute_inline()
     s[broadcast_tensor_0].compute_inline()
-    s[cast_1].compute_inline()
     s[reduce_1].compute_inline()
     s[log_3].compute_inline()
     s[sub_4].compute_inline()
@@ -1580,10 +1621,12 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+        s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
+
     s[reduce_0_ub].compute_at(s[sub_0], sub_0_axis_0_o)
     s[broadcast_tensor_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
-    s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0].compute_at(s[add_0], add_0_axis_0_n1_o)
     s[sub_0_ub_001].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_o)
@@ -1624,11 +1667,14 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_labels_broad_ub_000].emit_insn(s[data_labels_broad_ub_000].op.axis[0], 'dma_copy')
     s[data_features_ub_001].emit_insn(s[data_features_ub_001].op.axis[0], 'dma_copy')
     s[data_features_ub_000].emit_insn(s[data_features_ub_000].op.axis[0], 'dma_copy')
-    s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
+
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
+        s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
+
     s[reduce_0_ub].emit_insn(reduce_0_ub_axis_0, 'vector_reduce_max')
     cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')
     cce_emitinsn_params.cceEmitParamsIns.insert_param('broadcast_axis_offset', 1)
-    s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
     s[sub_0_ub].emit_insn(s[sub_0_ub].op.axis[0], 'vector_sub')
     s[sub_0].emit_insn(sub_0_axis_1_i, 'dma_copy')
     s[sub_0_ub_001].emit_insn(s[sub_0_ub_001].op.axis[0], 'dma_copy')
@@ -1673,9 +1719,12 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_labels_broad_ub].storage_align(s[data_labels_broad_ub].op.axis[0], 8, 0)
     s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
     s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
-    s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+        s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
+
     s[broadcast_tensor_0_ub].storage_align(s[broadcast_tensor_0_ub].op.axis[0], 16, 0)
-    s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
     s[sub_0_ub].storage_align(s[sub_0_ub].op.axis[0], 8, 0)
     s[sub_0_ub_001].storage_align(s[sub_0_ub_001].op.axis[0], 8, 0)
     s[sub_0_ub_000].storage_align(s[sub_0_ub_000].op.axis[0], 8, 0)
@@ -1742,11 +1791,33 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     data_features_cast = sub_0.op.input_tensors[0]
     data_features = data_features_cast.op.input_tensors[0]
 
-    cast_1 = sub_0.op.input_tensors[1]
     log_3 = sub_4.op.input_tensors[1]
-    broadcast_tensor_0 = cast_1.op.input_tensors[0]
-    reduce_0 = broadcast_tensor_0.op.input_tensors[0]
-    cast_0 = reduce_0.op.input_tensors[0]
+
+    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
+                                                      "float32")
+
+    data_features_ub = s.cache_read(data_features,
+                                    'local.UB', [data_features_cast])
+
+    if vcmax_intr_support_fp32:
+        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+        data_features_ub_000 = s.cache_read(data_features_cast,
+                                            'local.UB', [reduce_0])
+    else:
+        cast_1 = sub_0.op.input_tensors[1]
+        broadcast_tensor_0 = cast_1.op.input_tensors[0]
+        reduce_0 = broadcast_tensor_0.op.input_tensors[0]
+        cast_0 = reduce_0.op.input_tensors[0]
+
+        data_features_ub_000 = s.cache_read(data_features_cast,
+                                            'local.UB', [cast_0])
+
+        cast_0_ub = s.cache_write(cast_0, 'local.UB')
+        cast_1_ub = s.cache_write(cast_1, 'local.UB')
+
+        s[cast_0].compute_inline()
+        s[cast_1].compute_inline()
 
     # cache_read/cache_write code
 
@@ -1760,15 +1831,11 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     data_labels_ub_001 = s.cache_read(data_labels_cast, 'local.UB', [sub_7])
     data_labels_cast_ub = s.cache_write(data_labels_cast, 'local.UB')
 
-    data_features_ub = s.cache_read(data_features, 'local.UB', [data_features_cast])
-    data_features_ub_000 = s.cache_read(data_features_cast, 'local.UB', [cast_0])
     data_features_ub_001 = s.cache_read(data_features_cast, 'local.UB', [sub_0])
     data_features_cast_ub = s.cache_write(data_features_cast, 'local.UB')
 
-    cast_0_ub = s.cache_write(cast_0, 'local.UB')
     reduce_0_ub = s.cache_write(reduce_0, 'local.UB')
     broadcast_tensor_0_ub = s.cache_write(broadcast_tensor_0, 'local.UB')
-    cast_1_ub = s.cache_write(cast_1, 'local.UB')
     sub_0_ub_000 = s.cache_read(sub_0, 'local.UB', [exp_1])
     sub_0_ub_001 = s.cache_read(sub_0, 'local.UB', [sub_4])
     sub_0_ub = s.cache_write(sub_0, 'local.UB')
@@ -1790,10 +1857,8 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     reduce_2_cast_ub = s.cache_write(reduce_2_cast, 'local.UB')
 
     # compute_inline code
-    s[cast_0].compute_inline()
     s[reduce_0].compute_inline()
     s[broadcast_tensor_0].compute_inline()
-    s[cast_1].compute_inline()
     s[reduce_1].compute_inline()
     s[log_3].compute_inline()
     s[sub_4].compute_inline()
@@ -1886,10 +1951,18 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+    if not vcmax_intr_support_fp32:
+        s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
+        s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
+
+        s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
+        s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
+
+        s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+        s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
+
     s[reduce_0_ub].compute_at(s[sub_0], sub_0_axis_0_o)
     s[broadcast_tensor_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
-    s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0_ub].compute_at(s[sub_0], sub_0_axis_1_o)
     s[sub_0].compute_at(s[add_0], add_0_axis_0_n1_o)
     s[sub_0_ub_001].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_o)
@@ -1927,11 +2000,10 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     s[data_labels_ub_000].emit_insn(s[data_labels_ub_000].op.axis[0], 'dma_copy')
     s[data_features_ub_001].emit_insn(s[data_features_ub_001].op.axis[0], 'dma_copy')
     s[data_features_ub_000].emit_insn(s[data_features_ub_000].op.axis[0], 'dma_copy')
-    s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
+
     s[reduce_0_ub].emit_insn(reduce_0_ub_axis_0, 'vector_reduce_max')
     cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')
     cce_emitinsn_params.cceEmitParamsIns.insert_param('broadcast_axis_offset', 1)
-    s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
     s[sub_0_ub].emit_insn(s[sub_0_ub].op.axis[0], 'vector_sub')
     s[sub_0].emit_insn(sub_0_axis_1_i, 'dma_copy')
     s[sub_0_ub_001].emit_insn(s[sub_0_ub_001].op.axis[0], 'dma_copy')
@@ -1991,9 +2063,8 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     s[data_labels_ub_000].storage_align(s[data_labels_ub_000].op.axis[0], 8, 0)
     s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
     s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
-    s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
+
     s[broadcast_tensor_0_ub].storage_align(s[broadcast_tensor_0_ub].op.axis[0], 16, 0)
-    s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
     s[sub_0_ub].storage_align(s[sub_0_ub].op.axis[0], 8, 0)
     s[sub_0_ub_001].storage_align(s[sub_0_ub_001].op.axis[0], 8, 0)
     s[sub_0_ub_000].storage_align(s[sub_0_ub_000].op.axis[0], 8, 0)

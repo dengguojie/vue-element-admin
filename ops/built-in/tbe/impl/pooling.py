@@ -53,26 +53,26 @@ def pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
     check_dtype(output_dtype, ["float16", "int32"], param_name="y")
     # check window and stride length
     if len(window) != 2:
-        error_Info = {}
-        error_Info['errCode'] = 'E80000'
-        error_Info['param_name'] = 'window'
-        error_Info['op_name'] = 'pooling'
-        error_Info['real_value'] = len(window)
-        raise RuntimeError(error_Info,"In op[%s], the shape of [%s] must be 2 dims, "
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'window'
+        error_info['op_name'] = 'pooling'
+        error_info['real_value'] = len(window)
+        raise RuntimeError(error_info, "In op[%s], the shape of [%s] must be 2 dims, "
                         "including window h and window w, but actually is [%s]."
-                         %(error_Info['op_name'],error_Info['param_name'], error_Info['real_value']))
+                         % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
     if len(stride) != 2:
-        error_Info = {}
-        error_Info['errCode'] = 'E80000'
-        error_Info['param_name'] = 'stride'
-        error_Info['op_name'] = 'pooling'
-        error_Info['real_value'] = len(stride)
-        raise RuntimeError(error_Info,"In op[%s], the shape of [%s] must be 2 dims, "
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'stride'
+        error_info['op_name'] = 'pooling'
+        error_info['real_value'] = len(stride)
+        raise RuntimeError(error_info, "In op[%s], the shape of [%s] must be 2 dims, "
                           "including stride h and stride w, but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], error_Info['real_value']))
+                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
 
 
-def get_fusion_params(input_data, output_data):
+def get_fusion_params(input_data, output_data, is_fused_compute=True):
     """
     :param input_data: tensor of input_data
     :param output_data: dict of output_data
@@ -87,24 +87,24 @@ def get_fusion_params(input_data, output_data):
         if "valid_shape" in input_data.op.attrs else []
     in_slice_offset = input_data.op.attrs["slice_offset"] \
         if "slice_offset" in input_data.op.attrs else []
+    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value \
+        if "L1_addr_flag" in input_data.op.attrs else -1
+    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] \
+        if "L1_addr_offset" in input_data.op.attrs else -1
+    l1_valid_size = input_data.op.attrs["L1_valid_size"] \
+        if "L1_valid_size" in input_data.op.attrs else -1
     in_select_read_flag = bool(in_valid_shape)
     out_l1_flag = output_data.get("addr_type") == 1
-    out_valid_shape = output_data.get("valid_shape", [])
-    out_select_write_flag = bool(out_valid_shape)
-    out_shape = output_data.get("shape")
-    out_total_shape = output_data.get("valid_shape") \
-        if out_select_write_flag else output_data.get("shape")
-    out_slice_offset = output_data.get("slice_offset", [0, 0, 0, 0, 0])
-    fusion_params = {"l1_fusion_type": l1_fusion_type,
+    fusion_params = {"is_fused_compute": is_fused_compute,
+                     "l1_fusion_type": l1_fusion_type,
                      "in_l1_flag": in_l1_flag,
                      "out_l1_flag": out_l1_flag,
                      "in_select_read_flag": in_select_read_flag,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_total_shape": out_total_shape,
-                     "out_shape": out_shape,
-                     "out_slice_offset": out_slice_offset,
                      "in_slice_offset": in_slice_offset,
-                     "in_valid_shape": in_valid_shape}
+                     "in_valid_shape": in_valid_shape,
+                     "L1_addr_flag": l1_addr_flag,
+                     "L1_addr_offset": l1_addr_offset,
+                     "L1_valid_size": l1_valid_size}
 
     return fusion_params
 
@@ -164,6 +164,10 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
 
     # convert mode&pad_mode to str for pooling2d
     pad = list(pad)
+    if pad[0] >= window[0] or pad[1] >= window[0]:
+        raise RuntimeError("pad_h must less than kernel_h")
+    if pad[2] >= window[1] or pad[3] >= window[1]:
+        raise RuntimeError("pad_w must less than kernel_w")
 
     if mode == 0:
         conv_pooling_flag = False
@@ -195,7 +199,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                 if "L1_fusion_type" in input_data.op.attrs else -1
 
             # l1 fusion params assign
-            fusion_params = get_fusion_params(input_data, output_data)
+            fusion_params = get_fusion_params(input_data, output_data, True)
             in_select_read_flag = fusion_params.get("in_select_read_flag")
             in_valid_shape = fusion_params.get("in_valid_shape")
             in_slice_offset = fusion_params.get("in_slice_offset")
@@ -270,7 +274,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                       dilation, groups=1,
                                       data_format='NCHW',
                                       offset_x=offset_x,
-                                      kernel_name="conv2d")
+                                      kernel_name=kernel_name)
         else:
             # call pooling2d for gap&avg_old
             window = list(window)
@@ -280,7 +284,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                 if "L1_fusion_type" in input_data.op.attrs else -1
 
             # l1 fusion params assign
-            fusion_params = get_fusion_params(input_data, output_data)
+            fusion_params = get_fusion_params(input_data, output_data, True)
             in_select_read_flag = fusion_params.get("in_select_read_flag")
             in_valid_shape = fusion_params.get("in_valid_shape")
             in_slice_offset = fusion_params.get("in_slice_offset")
@@ -329,13 +333,13 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                             fusion_params=fusion_params,
                                             impl_mode=impl_mode)
     else:
-        error_Info = {}
-        error_Info['errCode'] = 'E80000'
-        error_Info['param_name'] = 'mode'
-        error_Info['op_name'] = 'pooling'
-        error_Info['real_value'] = mode
-        raise RuntimeError(error_Info,"In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'mode'
+        error_info['op_name'] = 'pooling'
+        error_info['real_value'] = mode
+        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
 
     return res
 
@@ -369,18 +373,18 @@ def pooling_compute(x, matrix, y, window, stride,
                 global_pooling:
             mode = "GAP"
     else:
-        error_Info = {}
-        error_Info['errCode'] = 'E80000'
-        error_Info['param_name'] = 'mode'
-        error_Info['op_name'] = 'pooling'
-        error_Info['real_value'] = mode
-        raise RuntimeError(error_Info,"In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'mode'
+        error_info['op_name'] = 'pooling'
+        error_info['real_value'] = mode
+        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
 
     window = list(window)
 
     # l1 fusion params assign
-    fusion_params = get_fusion_params(x, y)
+    fusion_params = get_fusion_params(x, y, False)
     in_select_read_flag = fusion_params.get("in_select_read_flag")
     in_valid_shape = fusion_params.get("in_valid_shape")
     in_slice_offset = fusion_params.get("in_slice_offset")
@@ -421,9 +425,9 @@ def pooling_compute(x, matrix, y, window, stride,
     return res
 
 
-@check_op_params(REQUIRED_INPUT,OPTION_INPUT,OPTION_INPUT,REQUIRED_OUTPUT, OPTION_ATTR_LIST_INT,
-                 OPTION_ATTR_LIST_INT,OPTION_ATTR_INT,OPTION_ATTR_INT,OPTION_ATTR_LIST_INT,
-                 OPTION_ATTR_BOOL,OPTION_ATTR_INT,OPTION_ATTR_LIST_INT,KERNEL_NAME,OPTION_ATTR_STR)
+@check_op_params(REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_INT,
+                 OPTION_ATTR_LIST_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_LIST_INT,
+                 OPTION_ATTR_BOOL, OPTION_ATTR_INT, OPTION_ATTR_LIST_INT, KERNEL_NAME, OPTION_ATTR_STR)
 def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
             offset_x=0, mode=0, pad=(0, 0, 0, 0),
             global_pooling=False, ceil_mode=0, dilation=(1, 1, 1, 1),
@@ -483,6 +487,11 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
 
     # convert mode&pad_mode to str for pooling2d
     pad = list(pad)
+    if pad[0] >= window[0] or pad[1] >= window[0]:
+        raise RuntimeError("pad_h must less than kernel_h")
+    if pad[2] >= window[1] or pad[3] >= window[1]:
+        raise RuntimeError("pad_w must less than kernel_w")
+
     if mode == 0:
         modes = "MAX"
         if (input_h == window[0] and input_w == window[1] and
@@ -496,16 +505,23 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
                 global_pooling:
             modes = "GAP"
     else:
-        error_Info = {}
-        error_Info['errCode'] = 'E80000'
-        error_Info['param_name'] = 'mode'
-        error_Info['op_name'] = 'pooling'
-        error_Info['real_value'] = mode
-        raise RuntimeError(error_Info,"In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           %(error_Info['op_name'],error_Info['param_name'], error_Info['real_value']))
+        error_info = {}
+        error_info['errCode'] = 'E80000'
+        error_info['param_name'] = 'mode'
+        error_info['op_name'] = 'pooling'
+        error_info['real_value'] = mode
 
+        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+
+    isUseMatrix = False
+    isWPadZero = False
+    if pad[2] == 0 and pad[3] == 0:
+        isWPadZero = True
+    if modes == "AVG" and not (input_h != window[0] and input_w == window[1] and isWPadZero):
+        isUseMatrix = True
     # avg pooling calls conv2d interface to implement
-    if modes == "AVG" and matrix:
+    if modes == "AVG" and matrix and isUseMatrix:
         # input origin shape should be set to [N*C1, C0, H, W]
         input_ori_shape = (input_shape[0] * input_shape[1], input_shape[4],
                            input_shape[2], input_shape[3])
@@ -530,10 +546,16 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         valid_shape = x.get("valid_shape", [])
         slice_offset = x.get("slice_offset", [])
         l1_fusion_type = x.get("L1_fusion_type", -1)
+        l1_addr_flag = x.get("L1_addr_flag", -1)
+        l1_addr_offset = x.get("L1_addr_offset", -1)
+        l1_valid_size = x.get("L1_valid_size", -1)
         attr = {"addr_type": addr_type,
                 "valid_shape": valid_shape,
                 "slice_offset": slice_offset,
-                "L1_fusion_type": l1_fusion_type}
+                "L1_fusion_type": l1_fusion_type,
+                "L1_addr_flag": l1_addr_flag,
+                "L1_addr_offset": l1_addr_offset,
+                "L1_valid_size": l1_valid_size}
         is_l1fusion = l1_fusion_type in (0, 1)
 
         tensor_in = tvm.placeholder(input_shape, name="tensor_in",

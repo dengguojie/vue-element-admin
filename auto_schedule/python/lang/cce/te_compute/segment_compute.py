@@ -133,7 +133,11 @@ def unsorted_segment_max(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_max(tensor , segment_ids)
     """
-    return __segment_op(tensor, segment_ids, num_segments, init_value, tensor.dtype, "segment_max")
+    if isinstance(segment_ids, tvm.tensor.Tensor):
+        return __segment_tensor_op(tensor, segment_ids, num_segments,
+                                   init_value, tensor.dtype, "segmentensor_max")
+    return __segment_op(tensor, segment_ids, num_segments,
+                        init_value, tensor.dtype, "segment_max")
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -144,7 +148,7 @@ def __segment_tensor_op(tensor, segment_ids, num_segments, init_value, output_dt
     shape_tensor = shape_to_list(tensor.shape)
     shape_ids = shape_to_list(segment_ids.shape)
     reduce_k = tvm.reduce_axis((0, shape_ids[0]), "reduce_k")
-    segment_dtype = ["float16", "float32", "int32"]
+    segment_dtype = ["float16", "float32", "int32", "int16"]
     if tensor.dtype not in segment_dtype:
         raise RuntimeError("data not support this dtype")
     if segment_ids.dtype != "int32":
@@ -169,6 +173,8 @@ def __segment_tensor_op(tensor, segment_ids, num_segments, init_value, output_dt
 
     if segment_op == "segmentensor_min":
         lambda_func = lambda *indices: tvm.min(__segment_select(indices), axis=[reduce_k])
+    elif segment_op == "segmentensor_max":
+        lambda_func = lambda *indices: tvm.max(__segment_select(indices), axis=[reduce_k])
     elif segment_op == "segmentensor_prod":
         lambda_func = lambda *indices: tvm.prod(__segment_select(indices), axis=[reduce_k])
     else:
@@ -222,7 +228,7 @@ def __segment_op(tensor, segment_ids, num_segments, init_value, output_dtype, se
                     else:
                         raise RuntimeError("operation %s not support yet" % segment_op)
                 if segment_op == "segment_mean":
-                    tmp = tmp // tvm.const(segment_ids.count(i), output_dtype)
+                    tmp = tmp / tvm.const(segment_ids.count(i), output_dtype)
             else:
                 tmp = tvm.const(init_value, tensor.dtype)
             return tmp

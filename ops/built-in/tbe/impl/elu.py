@@ -45,7 +45,7 @@ NUM_ZERO = 0.0
 NUM_ONE_NEG = -1.0
 
 
-def _elu_computer_mini(data, alpha, dtype):
+def _elu_computer_performance(data, alpha, dtype):
     scalar_one_neg = tvm.const(NUM_ONE_NEG, dtype)
 
     negative_data = te.lang.cce.vmuls(data, scalar_one_neg)
@@ -62,7 +62,7 @@ def _elu_computer_mini(data, alpha, dtype):
     return res
 
 
-def _elu_computer_cloud(data, alpha, dtype):
+def _elu_computer_precision(data, alpha, dtype):
     scalar_zero = tvm.const(NUM_ZERO, dtype)
     negative_data = te.lang.cce.vmins(data, scalar_zero)
     positive_data = te.lang.cce.vmaxs(data, scalar_zero)
@@ -100,23 +100,21 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     data = x
     dtype = data.dtype
 
-    isCloud = False
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Ascend910",):
-        isCloud = True
-
-    if dtype.lower() == "float16" and isCloud:
+    has_improve_precision = False
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        has_improve_precision = True
+    if dtype.lower() == "float16" and has_improve_precision:
         data = te.lang.cce.cast_to(data, "float32")
         cvt_dtype = "float32"
     else:
         cvt_dtype = dtype
 
-    if isCloud:
-        res = _elu_computer_cloud(data, alpha, cvt_dtype)
+    if has_improve_precision:
+        res = _elu_computer_precision(data, alpha, cvt_dtype)
     else:
-        res = _elu_computer_mini(data, alpha, cvt_dtype)
+        res = _elu_computer_performance(data, alpha, cvt_dtype)
 
-    if dtype.lower() == "float16" and isCloud:
+    if dtype.lower() == "float16" and has_improve_precision:
         res = te.lang.cce.cast_to(res, "float16")
 
     return res
@@ -153,8 +151,16 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
     check_dtype(dtype_input, check_list, param_name="x")
 
     if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32") and dtype_input == "float32":
-        raise RuntimeError(
-            "Input dtype only support float16 while input dtype is float32")
+        error_info = {}
+        error_info['errCode'] = 'E80008'
+        error_info['param_name'] = 'x'
+        error_info['op_name'] = 'elu'
+        error_info['expect_value'] = "float16"
+        error_info['real_value'] = dtype_input
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
+                                       "should be [%s], but actually is [%s]."
+                           % (error_info['op_name'], error_info['param_name'], \
+                              error_info['expect_value'], error_info['real_value']))
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape_input)

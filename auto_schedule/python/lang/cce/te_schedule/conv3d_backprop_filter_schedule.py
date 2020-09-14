@@ -27,8 +27,6 @@ from te.platform import get_soc_spec
 from te.domain.tiling.tiling_query import tiling_query
 from te.utils.error_manager import error_manager_util as err_mana
 
-L1_SIZE = get_soc_spec("L1_SIZE")  # L1 size
-
 
 CUBE_DIM = 16
 FLOAT16_SIZE = 2
@@ -48,8 +46,7 @@ def ceil_div(dividend, divisor):
             'first_operand': str(dividend),
             'second_operand': str(divisor)
         }
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
+        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
     return (dividend + divisor - 1) // divisor
 
 
@@ -64,8 +61,7 @@ def align(x_1, x_2):
             'first_operand': str(x_1),
             'second_operand': str(x_2)
         }
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
+        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
     return (x_1 + x_2 - 1) // x_2 * x_2
 
 
@@ -338,11 +334,11 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     bl1_min_byte = (kernel_height +
                                     bl1_align_factor * stride_height) \
                                     * width_fmap * CUBE_DIM * FLOAT16_SIZE
-
-            if (al1_min_byte + bl1_min_byte) > L1_SIZE:
+            l1_size = get_soc_spec("L1_SIZE")  # L1 size
+            if (al1_min_byte + bl1_min_byte) > l1_size:
                 dict_args = {
                     'errCode': 'E60011',
-                    'range': '(,{}]'.format(L1_SIZE),
+                    'range': '(,{}]'.format(l1_size),
                     'attr_name': 'al1_and_bl1_byte',
                     'value': str(al1_min_byte + bl1_min_byte)
                 }
@@ -617,11 +613,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                     block_dim_batch) + batch_insn_o
 
             dk_c1_axis = (
-                (block.var % (block_dim_cin)) * (fkk // block_dim_cin) +
+                (block % (block_dim_cin)) *
+                (fkk // block_dim_cin) +
                 (((c_fmap_l1_c1 * factor_kh + c_fmap_l1_kh) * factor_kw +
-                  c_fmap_l1_at) * tiling["BL1_shape"][1] + c_fmap_mad_at) *
-                dw_tiling_factor[0]) // (kernel_height * kernel_width)
-
+                  c_fmap_l1_at) *
+                 (dw_tiling_nparts[0] // fmap_l1_tiling_nparts[1]) +
+                 c_fmap_mad_at) * dw_tiling_factor[0]) // (kernel_height *
+                                                           kernel_width)
 
             mad_dict = {
                 "mad_pattern":
@@ -767,8 +765,8 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         featuremap_width = width_fmap
 
         weight_shape = [
-            c1_grads * c0_grads, kernel_depth, kernel_height,
-            kernel_width, c1_fmap * c0_fmap
+            c1_grads * c0_grads, kernel_depth, kernel_height, kernel_width,
+            c1_fmap * c0_fmap
         ]
 
         sch = sch_list[0]
@@ -887,11 +885,12 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         c_fmap_multicore, c_fmap_mad_at \
             = sch[dw_ddr].split(sch[dw_ddr].op.axis[0], nparts=block_dim_cin)
 
-        c_fmap_mad_at, c_fmap_mad_insn \
-            = sch[dw_ddr].split(c_fmap_mad_at, nparts=dw_tiling_nparts[0])
+        c_fmap_mad_at, c_fmap_mad_insn = sch[dw_ddr].split(
+            c_fmap_mad_at, nparts=dw_tiling_nparts[0])
 
-        c_fmap_l1_ori, c_fmap_mad_at \
-            = sch[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
+        c_fmap_l1_ori, c_fmap_mad_at = sch[dw_ddr].split(
+            c_fmap_mad_at,
+            nparts=fmap_l1_tiling_nparts[1])
 
         def _ddr_n_split():
             # for N axis, if Hk and Wk needs split, do explict split

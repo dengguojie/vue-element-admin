@@ -16,13 +16,16 @@ basic_lstm_cell_v2
 
 # pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
 import te.lang.cce
-from te import tvm, platform as cceconf
+from te import tvm
+from te import platform as cceconf
 import te.platform.cce_params as cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from impl.tanh_compute import tanh_compute
 from te.platform.cce_build import build_config
 import topi
+from te.utils.op_utils import *
 
 NONETYPE = type(None)
 C0 = 16
@@ -40,6 +43,7 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
     tensor_static = tvm.placeholder(static_shape, name='tensor_x_staic', dtype=static_dtype)
     build_list["w_xc_x_static"] = tensor_static
     symbol = ["it", "ft", "ot", "gt"]
+
     def _index(str_in):
         if str_in == "it":
             return 0
@@ -48,6 +52,7 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
         elif str_in == "ot":
             return 2
         return 3
+
     def _tensor(str_in):
         if str_in == "it":
             return tensor_list["it_ub"]
@@ -90,7 +95,7 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
 # pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
 @fusion_manager.register("basic_lstm_cell_v2")
 def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
-                               expose_hidden, product_info):
+                               expose_hidden, product_info, impl_mode):
     """
     the compute for LSTM op, return the compute object
     """
@@ -188,8 +193,12 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
             tensor_one, product_info, "ot",
             tensor_list, scope_list, operation_list)
     # Do tanh(gt) calculation
-    tanh(gate_shape, gt_ub_true, product_info,
-         "gt", tensor_list, scope_list, operation_list)
+    tanh_res, tanh_operation, tanh_scope = tanh_compute(gate_shape, gt_ub_true,
+                                                        "gt", impl_mode)
+    tensor_list.update(tanh_res)
+    operation_list.update(tanh_operation)
+    scope_list.update(tanh_scope)
+    tensor_ub_tanh_gt = tensor_list['ub_tanh_gt']
 
     # calc ft*c + it*gt
     if expose_hidden:
@@ -226,7 +235,7 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     scope_list["tensor_cf_ub"] = cce.scope_ubuf
     operation_list["tensor_cf_ub"] = "vector_mul"
     tensor_gi_ub = tvm.compute(gate_shape,
-                               lambda *i: tensor_list["tensor_ub_tanh_gt"](*i) *
+                               lambda *i: tensor_ub_tanh_gt(*i) *
                                tensor_list["tensor_gate_sigmoid_it"](*i),
                                name="tensor_gi_ub")
     tensor_list["tensor_gi_ub"] = tensor_gi_ub
@@ -264,23 +273,30 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     # Move ct back(Fake)
     tensor_ct_ub_fake = tvm.compute(gate_shape, lambda *i: ct(*i), name="ct_ub_fake")
     tensor_list["tensor_ct_ub_fake"] = tensor_ct_ub_fake
+    scope_list["tensor_ct_ub_fake"] = cce.scope_ubuf
+    operation_list["tensor_ct_ub_fake"] = "dma_copy"
     tensor_ct_ub_fake_true = tensor_ct_ub_fake
     if not product_info["hisi_es"] and tensor_ct_ub_fake.dtype == "float16":
         tensor_ct_ub_fake_true = tvm.compute(gate_shape,
                                              lambda *i:
                                              topi.cast(tensor_ct_ub_fake(*i), "float32"),
                                              name="tensor_ct_ub_fake_true")
-        tensor_list["tensor_ct_ub_fake_true"] = tensor_ct_ub_fake_true
-        scope_list["tensor_ct_ub_fake_true"] = cce.scope_ubuf
         operation_list["tensor_ct_ub_fake_true"] = "vector_conv"
+    tensor_list["tensor_ct_ub_fake_true"] = tensor_ct_ub_fake_true
+    scope_list["tensor_ct_ub_fake_true"] = cce.scope_ubuf
     # calc tanh(ct)
-    tanh(gate_shape, tensor_ct_ub_fake_true, product_info,
-         "ct", tensor_list, scope_list, operation_list)
+    tanh_res, tanh_operation, tanh_scope = tanh_compute(gate_shape,
+                                                        tensor_ct_ub_fake_true,
+                                                        "ct", impl_mode)
+    tensor_list.update(tanh_res)
+    operation_list.update(tanh_operation)
+    scope_list.update(tanh_scope)
+    tensor_ub_tanh_ct = tensor_list["ub_tanh_ct"]
 
     tensor_ht_ub = tvm.compute(gate_shape,
                                lambda *i:
                                tensor_list["tensor_gate_sigmoid_ot"](*i) *
-                               tensor_list["tensor_ub_tanh_ct"](*i),
+                               tensor_ub_tanh_ct(*i),
                                name="tensor_ht_ub")
     tensor_list["tensor_ht_ub"] = tensor_ht_ub
     scope_list["tensor_ht_ub"] = cce.scope_ubuf
@@ -631,113 +647,6 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
         operation_list["tensor_gate_sigmoid_" + symbol] = "vector_mul"
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
-def tanh(shape, tensor, product_info, symbol,
-         tensor_list, scope_list, operation_list):
-    """
-    the function of tanh
-    Parameters
-    ----------
-    shape : tensor shape
-    tensor : tensor
-    symbol : tensor symbol
-    Returns
-    -------
-    """
-    dtype_c = tensor.dtype 
-    const_num_one = tvm.const(1, dtype=dtype_c)
-    const_num_two = tvm.const(-2, dtype=dtype_c)
-    const_fp32_min = tvm.const(2 ** (-126), dtype=dtype_c)
-
-    tensor_ub_two_abs = tvm.compute(shape, lambda *i: tvm.abs(tensor(*i)), name="tensor_ub_two_abs_"+symbol)
-    tensor_list["tensor_ub_two_abs_" + symbol] = tensor_ub_two_abs
-    scope_list["tensor_ub_two_abs_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_two_abs_" + symbol] = "vector_abs"
-
-    tensor_ub_two = tvm.compute(shape, lambda *i: tensor_ub_two_abs(*i) * const_num_two,
-                                name="tensor_ub_two_" + symbol)
-    tensor_list["tensor_ub_two_" + symbol] = tensor_ub_two
-    scope_list["tensor_ub_two_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_two_" + symbol] = "vector_mul"
-
-    tensor_ub_exp_fp16 = tensor_ub_two
-    if product_info["mini"] and dtype_c == "float32":
-        tensor_ub_exp_fp16 = tvm.compute(shape,
-                                         lambda *i:
-                                         topi.cast(tensor_ub_two(*i), "float16"),
-                                         name="tensor_ub_exp_fp16_" + symbol)
-        tensor_list["tensor_ub_exp_fp16_" + symbol] = tensor_ub_exp_fp16
-        scope_list["tensor_ub_exp_fp16_" + symbol] = cce.scope_ubuf
-        operation_list["tensor_ub_exp_fp16_" + symbol] = "vector_conv"
-
-    tensor_ub_exp = tvm.compute(shape,
-                                lambda *i: tvm.exp(tensor_ub_exp_fp16(*i)),
-                                name="tensor_ub_exp_" + symbol)
-    tensor_list["tensor_ub_exp_" + symbol] = tensor_ub_exp
-    scope_list["tensor_ub_exp_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_exp_" + symbol] = "vector_exp"
-    tensor_ub_exp_fp32 = tensor_ub_exp
-    if dtype_c == "float32":
-        tensor_ub_exp_fp32 = tvm.compute(shape,
-                                         lambda *i:
-                                         topi.cast(tensor_ub_exp(*i), "float32"),
-                                         name="tensor_ub_exp_fp32_" + symbol)
-        tensor_list["tensor_ub_exp_fp32_" + symbol] = tensor_ub_exp_fp32
-        scope_list["tensor_ub_exp_fp32_" + symbol] = cce.scope_ubuf
-        operation_list["tensor_ub_exp_fp32_" + symbol] = "vector_conv"
-
-    tensor_mul_temp =  tvm.compute(
-        shape, lambda *i: tensor_ub_exp_fp32(*i) * tensor(*i), name="tensor_mul_temp_"+symbol)
-    tensor_list["tensor_mul_temp_" + symbol] = tensor_mul_temp
-    scope_list["tensor_mul_temp_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_mul_temp_" + symbol] = "vector_mul"
-
-    tensor_sub_temp = tvm.compute(
-        shape, lambda *i: tensor(*i) - tensor_mul_temp(*i), name="tensor_sub_temp_"+symbol)
-    tensor_list["tensor_sub_temp_" + symbol] = tensor_sub_temp
-    scope_list["tensor_sub_temp_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_sub_temp_" + symbol] = "vector_sub"
-
-    tenosr_add_min_temp = tvm.compute(
-        shape, lambda *i: tensor_ub_two_abs(*i) + const_fp32_min, name="tenosr_add_min_temp_"+symbol)
-    tensor_list["tenosr_add_min_temp_" + symbol] = tenosr_add_min_temp
-    scope_list["tenosr_add_min_temp_" + symbol] = cce.scope_ubuf
-    operation_list["tenosr_add_min_temp_" + symbol] = "vector_add"
-
-    tenosr_add_1_temp = tvm.compute(
-        shape, lambda *i: tensor_ub_exp_fp32(*i) + const_num_one, name="tenosr_add_1_temp_" + symbol)
-    tensor_list["tenosr_add_1_temp_" + symbol] = tenosr_add_1_temp
-    scope_list["tenosr_add_1_temp_" + symbol] = cce.scope_ubuf
-    operation_list["tenosr_add_1_temp_" + symbol] = "vector_add"
-
-    tenosr_down_temp = tvm.compute(
-        shape, lambda *i: tenosr_add_1_temp(*i)*tenosr_add_min_temp(*i), name="tenosr_down_temp_" + symbol)
-    tensor_list["tenosr_down_temp_" + symbol] = tenosr_down_temp
-    scope_list["tenosr_down_temp_" + symbol] = cce.scope_ubuf
-    operation_list["tenosr_down_temp_" + symbol] = "vector_mul"
-
-    tensor_ub_rec = tvm.compute(shape,
-                                lambda *i: const_num_one / tenosr_down_temp(*i),
-                                name="tensor_ub_rec_" + symbol)
-    tensor_list["tensor_ub_rec_" + symbol] = tensor_ub_rec
-    scope_list["tensor_ub_rec_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_rec_" + symbol] = "vector_rec"
-
-    tensor_newton_mul2 = newton_iteration(shape, tensor_ub_rec, tenosr_down_temp,
-                                          symbol, tensor_list,
-                                          scope_list, operation_list)
-    tensor_list["tensor_ub_tanh_newton_" + symbol] = tensor_newton_mul2
-    scope_list["tensor_ub_tanh_newton_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_tanh_newton_" + symbol] = "vector_mul"
-
-    tensor_ub_tanh = tvm.compute(shape,
-                                 lambda *i:
-                                 tensor_sub_temp(*i) * tensor_newton_mul2(*i),
-                                 name="tensor_ub_tanh_" + symbol)
-    tensor_list["tensor_ub_tanh_" + symbol] = tensor_ub_tanh
-    scope_list["tensor_ub_tanh_" + symbol] = cce.scope_ubuf
-    operation_list["tensor_ub_tanh_" + symbol] = "vector_mul"
-
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,consider-using-in
 def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                             expose_hidden, num_output, product_info):
@@ -753,26 +662,42 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     output_dim = shape_h[0]
     if num_output != 0 and num_output != output_dim * C0:
         raise RuntimeError("num_output[%s] is not equal"
-                           " output_dim[%s]!"%(str(num_output), str(num_output * C0)))
+                           " output_dim[%s]!"
+                           % (str(num_output), str(num_output * C0)))
     if x["dtype"] != "float16" or w_xh["dtype"] != "float16":
-        raise RuntimeError("x, w supports dtype float16 only!")
+        error_info = {}
+        error_info['errCode'] = 'E80008'
+        error_info['param_name1'] = 'x'
+        error_info['param_name2'] = 'w'
+        error_info['op_name'] = 'BasicLSTMCellV2'
+        error_info['expect_value'] = 'float16'
+        error_info['param1_dtype'] = x["dtype"]
+        error_info['param2_dtype'] = w_xh["dtype"]
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s]'s dtype should be "
+                                       "one of [%s], but actually is [%s]/[%s]."
+                           % (error_info['op_name'], error_info['param_name1'],
+                              error_info['param_name2'], error_info['expect_value'],
+                              error_info['param1_dtype'], error_info['param2_dtype']))
     if w_xh["shape"][0] != output_dim + intput_dim or w_xh["shape"][1] != 4 * output_dim:
         raise RuntimeError("w_xh shape is wrong, please check!")
     if expose_hidden:
         if h is None or c is None:
             raise RuntimeError("h, c can not be None when expose_hidden is True!")
         if h["dtype"] not in dtype_all or c["dtype"] not in dtype_all:
-            raise RuntimeError("h, c supports dtype(%s) only!"%(dtype_str))
+            raise RuntimeError("h, c supports dtype(%s) only!"
+                               % (dtype_str))
         if h["shape"][0] != output_dim or h["shape"][1] != n_dim or \
                 c["shape"][0] != output_dim or c["shape"][1] != n_dim:
             raise RuntimeError("h or c shape is wrong, please check!")
     if h_t["dtype"] not in dtype_all or c_t["dtype"] not in dtype_all:
-        raise RuntimeError("h_t, c_t supports dtype(%s) only!"%(dtype_str))
+        raise RuntimeError("h_t, c_t supports dtype(%s) only!"
+                           % (dtype_str))
     if c_t["shape"][0] != output_dim or c_t["shape"][1] != n_dim or shape_h[1] != n_dim:
         raise RuntimeError("h_t or c_t shape is wrong, please check!")
     if w_xc_x_static is not None:
         if w_xc_x_static["dtype"] not in dtype_all:
-            raise RuntimeError("w_xc_x_static supports dtype(%s) only!"%(dtype_str))
+            raise RuntimeError("w_xc_x_static supports dtype(%s) only!"
+                               % (dtype_str))
         if w_xc_x_static["shape"][1] != n_dim or w_xc_x_static["shape"][0] != 4 * output_dim:
             raise RuntimeError("w_xc_x_static shape is wrong, please check!")
 
@@ -822,7 +747,7 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
         block_out_o, block_out_i = s[tmp].split(tmp.op.axis[0],
                                                 factor=tilling_info["block_out_factor"])
         l1_n_outer, l1_n_inner = s[tmp].split(block_n_i,
-                                              factor=tilling_info["n_factor"]) #safe
+                                              factor=tilling_info["n_factor"])  # safe
         l1_out_outer, l1_out_inner = s[tmp].split(block_out_i,
                                                   factor=tilling_info["out_factor"])
         l1_k_outer, l1_k_inner = s[tmp].split(tmp.op.reduce_axis[0],
@@ -882,14 +807,38 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
     s[tensor_list["ot_ub"]].double_buffer()
     s[tensor_list["gt_ub"]].double_buffer()
 
-    if (ht_1 // tilling_info["block_n_factor"]) > 1\
-            and (ht_0 // tilling_info["block_n_factor"]) % 2 == 0:
-        core_outer = s[ht].split(axis_1_o, nparts=2)
-        s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
-    elif (ht_0 // tilling_info["block_out_factor"]) > 1 \
-            and (ht_0 // tilling_info["block_out_factor"]) % 2 == 0:
-        core_outer = s[ht].split(axis_0_o_o, nparts=2)
-        s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
+    if tilling_info["target"] == 1:
+        if (ht_1 // tilling_info["block_n_factor"]) > 1 \
+                and (ht_1 // tilling_info["block_n_factor"]) % 2 == 0:
+            c_factor = ht_1 // tilling_info["block_n_factor"]
+            if c_factor >= 2:
+                c_factor = c_factor // 2
+                core_outer = s[ht].split(axis_1_o,
+                                         factor=c_factor)
+                s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
+        elif (ht_0 // tilling_info["block_out_factor"]) > 1 \
+                and (ht_0 // tilling_info["block_out_factor"]) % 2 == 0:
+            c_factor = ht_0 // tilling_info["block_out_factor"]
+            if c_factor >= 2:
+                c_factor = c_factor // 2
+                core_outer = s[ht].split(axis_0_o_o,
+                                         factor=c_factor)
+                s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
+    elif tilling_info["target"] == 2:
+        if (ht_1 // tilling_info["block_n_factor"]) > 1 \
+                and (ht_1 // tilling_info["block_n_factor"]) % 2 == 0:
+            c_factor = ht_1 // tilling_info["block_n_factor"]
+            if c_factor >= 2:
+                core_outer = s[ht].split(axis_1_o,
+                                         factor=tilling_info["block_n_factor"])
+                s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
+        elif (ht_0 // tilling_info["block_out_factor"]) > 1 \
+                and (ht_0 // tilling_info["block_out_factor"]) % 2 == 0:
+            c_factor = ht_0 // tilling_info["block_out_factor"]
+            if c_factor >= 2:
+                core_outer = s[ht].split(axis_0_o_o,
+                                         factor=tilling_info["block_out_factor"])
+                s[ht].bind(core_outer[0], tvm.thread_axis("blockIdx.x"))
 
     special_symbol = {"tensor_xh_l0a_it", "tensor_xh_l0a_ft",
                       "tensor_xh_l0a_ot", "tensor_xh_l0a_gt",
@@ -920,31 +869,12 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
             s[tensor_list["tensor_cont_f_ub_tmp"]].\
                 storage_align(tensor_list["tensor_cont_f_ub_tmp"].op.axis[1], 8, 0)
 
-
     for key in tensor_list.keys():
         if key not in special_symbol:
             s[tensor_list[key]].compute_at(s[ht], compute_at_axis)
     ct_gm = s.cache_write(tensor_list["ct"], cce.scope_ubuf)
     s[ct_gm].compute_at(s[ht], compute_at_axis)
-    if not product_info["hisi_es"] and\
-                    tensor_list["tensor_ct_ub_fake"].dtype == "float16":
-        tensor_ct_ub_fake_ub = s.\
-            cache_read(tensor_list["tensor_ct_ub_fake"], cce.scope_ubuf,
-                       [tensor_list["tensor_ct_ub_fake_true"]])
-    else:
-        tensor_ct_ub_fake_ub = s.\
-            cache_read(tensor_list["tensor_ct_ub_fake"], cce.scope_ubuf,
-                       [tensor_list["tensor_ub_two_abs_ct"],
-                        tensor_list["tensor_mul_temp_ct"],
-                        tensor_list["tensor_sub_temp_ct"]])
-
-    s[tensor_ct_ub_fake_ub].compute_at(s[ht], compute_at_axis)
-    s[tensor_list["tensor_ct_ub"]].reused_by(tensor_ct_ub_fake_ub)
-    s[tensor_ct_ub_fake_ub].\
-        emit_insn(s[tensor_ct_ub_fake_ub].op.axis[0], 'phony_insn')
     s[ht].emit_insn(s[ht].op.axis[2], 'dma_copy')
-    s[tensor_list["tensor_ct_ub_fake"]].compute_inline()
-
 
     build_symbol = ["x", "cont",
                     "w_xc_x_static", "h", "c", "w_xh", "bias", "ht", "ct"]
@@ -956,8 +886,37 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
         tvm.build(s, new_build_list, "cce", name=kernel_name)
 
 
-def get_tilling(x, h_t, product_info):
+def get_high_precision_list():
+    """
+    return high precision list
+    """
+    result = [[2, 32, 8], [2, 8, 32], [1, 5, 4],
+              [1, 2, 4], [1, 6, 4],
+              [47, 86, 121], [41, 113, 62],
+              [29, 61, 110], [25, 1, 1],
+              [5, 45, 2], [54, 14, 1],
+              [18, 61, 1], [29, 104, 1],
+              [7, 62, 3], [9, 38, 2],
+              [6, 63, 5], [35, 18, 5],
+              [18, 60, 9], [6, 77, 8],
+              [28, 72, 3], [57, 10, 12],
+              [52, 7, 115], [44, 52, 6],
+              [51, 14, 6], [45, 30, 6],
+              [25, 33, 4], [18, 80, 2],
+              [27, 63, 3], [39, 86, 1],
+              [21, 123, 6], [21, 122, 8],
+              [54, 110, 5], [21, 82, 44],
+              [58, 45, 16], [1, 32, 16],
+              [1, 32, 32], [18, 6, 1], [44, 89, 122]]
+
+    return result
+
+
+def get_tilling(x, h_t, product_info, mini_core):
     block_num = cceconf.CceProductParams().getParams("Device_core_num")
+    if block_num != 1:
+        block_num = mini_core
+
     l0_size = cceconf.CceProductParams().getParams("L0B_Buffer")
     ub_size = cceconf.CceProductParams().getParams("Unified_Buffer")
     ub_limit = ub_size // 8
@@ -967,6 +926,21 @@ def get_tilling(x, h_t, product_info):
     input_dim = x_shape[0]
     n_dim = x_shape[1]
     out_dim = ht_shape[0]
+
+    pre_list = get_high_precision_list()
+    cur_tiling_info = [n_dim, input_dim, out_dim]
+    no_bind_list = [[5, 45, 2], [9, 38, 2]]
+
+    target = 1
+    if cur_tiling_info in no_bind_list:
+        target = 0
+
+    if cur_tiling_info in pre_list or n_dim == 2:
+        tilling_info = {'block_n_factor': 1, 'block_out_factor': 1,
+                        'k_factor': 128, 'n_factor': 1, 'out_factor': 1,
+                        'l1_factor': 1, 'target': target}
+
+        return tilling_info
 
     tilling_info = {}
     # block tilling
@@ -1034,9 +1008,9 @@ def get_tilling(x, h_t, product_info):
         return var1
     if input_dim == out_dim and input_dim <= k_factor:
         l1_factor = input_dim
-    elif (input_dim > out_dim and input_dim % out_dim ==0) or (input_dim < out_dim and out_dim % input_dim == 0):
+    elif (input_dim > out_dim and input_dim % out_dim == 0) or (input_dim < out_dim and out_dim % input_dim == 0):
         l1_factor = min(input_dim, out_dim)
-    else :
+    else:
         l1_factor = gcd(input_dim, out_dim)
     tilling_info["block_n_factor"] = block_n_factor
     tilling_info["block_out_factor"] = block_out_factor
@@ -1044,22 +1018,24 @@ def get_tilling(x, h_t, product_info):
     tilling_info["n_factor"] = n_factor
     tilling_info["out_factor"] = out_factor
     tilling_info["l1_factor"] = l1_factor
+    tilling_info["target"] = 2
 
     return tilling_info
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
-@util.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE),
-                       (dict, NONETYPE), dict, dict,
-                       (dict, NONETYPE), dict, dict, int, bool, float, bool, int,
-                       (int, list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, OPTION_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT,
+                 OPTION_ATTR_BOOL, OPTION_ATTR_INT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
 def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
                        h=None, c=None, w_xh=None, bias=None,
                        w_xh_deqscale=None,
                        h_t=None, c_t=None, num_output=0,
                        expose_hidden=False, xh_scale=0.0,
                        sqrt_mode=False, xh_offset=0, w_xh_offset=0,
-                       kernel_name="BasicLSTMCellV2"):
+                       kernel_name="BasicLSTMCellV2",
+                       impl_mode="high_performance"):
     """
     Parameters
     ----------
@@ -1117,14 +1093,22 @@ def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
         The value of w_xh_offset.
     kernel_name : str
         cce kernel name, default value == "BasicLSTMCellV2"
-
+    impl_mode: str
+        impl_mode, default value == "high_performance"
     Returns
     -------
     None
     """
-    is_hisi_es = False
-    is_mini = True
+    product_version = cceconf.cce_conf.get_soc_spec("SOC_VERSION")
+    if product_version in ("Hi3796CV300ES"):
+        is_hisi_es = True
+        is_mini = False
+    else:
+        is_hisi_es = False
+        is_mini = True
+
     is_cloud = False
+    mini_core = 2
     num_output = ((num_output + 15) // 16)*16
     product_info = {}
     product_info["hisi_es"] = is_hisi_es
@@ -1140,9 +1124,10 @@ def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
                                                             w_xh,
                                                             bias, h_t, c_t,
                                                             expose_hidden,
-                                                            product_info)
+                                                            product_info,
+                                                            impl_mode)
 
-    tilling_info = get_tilling(x, h_t, product_info)
+    tilling_info = get_tilling(x, h_t, product_info, mini_core)
 
     basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                                 operation_list, build_list, product_info, tilling_info, kernel_name)

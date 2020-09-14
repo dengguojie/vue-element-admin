@@ -15,9 +15,13 @@ cumulative_logsumexp
 """
 from topi.cce import util
 from impl.cum_computer import get_computer_by_ctype
-from te.utils.op_utils import check_op_params, check_dtype, \
-    REQUIRED_INPUT, OPTION_OUTPUT, REQUIRED_ATTR_INT,\
-    OPTION_ATTR_BOOL, KERNEL_NAME
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import OPTION_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_INT
+from te.utils.op_utils import OPTION_ATTR_BOOL
+from te.utils.op_utils import KERNEL_NAME
 
 # the computer type
 COMPUTE_TYPE = "logsumexp"

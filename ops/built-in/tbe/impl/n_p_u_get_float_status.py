@@ -19,12 +19,13 @@ GetFloatStatus
 from te import platform as tbe_platform
 from topi.cce import util
 from te import tik
+from te.utils.op_utils import *
 
 #constant 8
 NUM_EIGHT = 8
 
 # pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
-@util.check_input_type(dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
     """
     the main function of n_p_u_get_float_status
@@ -65,7 +66,7 @@ def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
         tik_instance.vector_dup(128, data_ub_input, 7, 150, 8, 1)
         tik_instance.vector_dup(128, data_ub_input, 8, 150, 8, 1)
         tik_instance.vector_dup(128, data_ub_input, 9, 150, 8, 1)
-        with tik_instance.if_scope(status_in_scalar_buffer == 1):
+        with tik_instance.if_scope(status_in_scalar_buffer != 0):
             tik_instance.data_move(input_addr, data_ub, 0, 1, 1, 0, 0)
         tik_instance.vector_dup(NUM_EIGHT, data_ub, 0, 1, 0, 0)
         tik_instance.data_move(output_data, data_ub, 0, 1, 1, 0, 0)

@@ -18,6 +18,7 @@ from te import tvm
 from te.platform.cce_build import build_config
 from topi.cce import util
 from impl.space_to_batch_nd_d import space_to_batch_nd_d_compute
+from te.utils.op_utils import *
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -28,10 +29,8 @@ def _check_param(x, y, paddings, block_size, kernel_name):
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
     dtype_list = ("float16", "float32")
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_dtype_rule(dtype, dtype_list)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="x")
+    check_dtype(dtype, dtype_list, param_name="x")
 
     if len(paddings) == 4:
         paddings = [[paddings[0], paddings[1]], [paddings[2], paddings[3]]]
@@ -46,8 +45,7 @@ def _check_param(x, y, paddings, block_size, kernel_name):
     padding_shape = (shape[0], shape[1],
                      shape[2] + paddings[0][0] + paddings[0][1],
                      shape[3] + paddings[1][0] + paddings[1][1], shape[4])
-    util.check_shape_rule(padding_shape)
-    util.check_tensor_shape_size(padding_shape)
+    check_shape(padding_shape, param_name="paddings")
 
     padding_height, padding_width = padding_shape[2], padding_shape[3]
     if padding_height % block_size != 0 or padding_width % block_size != 0:
@@ -57,8 +55,7 @@ def _check_param(x, y, paddings, block_size, kernel_name):
     output_shape = (padding_shape[0] * block_size * block_size,
                     padding_shape[1], padding_shape[2] // block_size,
                     padding_shape[3] // block_size, padding_shape[4])
-    util.check_shape_rule(output_shape)
-    util.check_tensor_shape_size(output_shape)
+    check_shape(output_shape, param_name="y")
 
 
 def _check_padding(paddings):
@@ -81,7 +78,8 @@ def _check_padding(paddings):
     _check_padding_val(paddings[1][1])
 
 
-@util.check_input_type(dict, dict, int, (tuple, list), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
+                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_LIST_INT), KERNEL_NAME)
 def space_to_batch_d(x,
                      y,
                      block_size,

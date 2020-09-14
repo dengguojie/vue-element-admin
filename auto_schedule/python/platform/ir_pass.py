@@ -140,7 +140,7 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
             raise RuntimeError(
                 ("Scope[%s]: cannot detect 2d pattern with elem_block=%d:" +
                  " shape=%s, strides=%s") % (
-                     dst_buf.scope, elem_block, shape, strides))
+                     dst_buf.scope, elem_block, list(int(i) for i in shape), strides))
 
         ndim = len(shape)
         if not equal_const_int(strides[-1] - 1, 0):
@@ -187,7 +187,7 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
             raise RuntimeError(
                 ("Scope[%s]: cannot detect mov pattern with elem_block=%d:" +
                  " shape=%s, strides=%s") % (
-                     dst_buf.scope, elem_block, shape, strides))
+                     dst_buf.scope, elem_block, list(int(i) for i in shape), strides))
 
         ndim = len(shape)
         if not equal_const_int(strides[-1] - 1, 0):

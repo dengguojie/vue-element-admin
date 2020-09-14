@@ -22,6 +22,7 @@ from topi.cce import util
 from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util as constant
+from te.utils.op_utils import *
 
 MAX_REPEAT = 255
 MAX_STRIDE = 65535
@@ -1033,15 +1034,11 @@ def _check_param(input_grads, input_image, output_image, depth_radius,
     output_image_shape = output_image.get("shape")
     output_image_dtype = output_image.get("dtype")
 
-    util.check_tensor_shape_size(input_grads_shape)
-    util.check_tensor_shape_size(input_image_shape)
-    util.check_tensor_shape_size(output_image_shape)
 
-    util.check_dtype_rule(input_grads_dtype, ("float16", "float32"))
-    util.check_dtype_rule(input_image_dtype, ("float16", "float32"))
-    util.check_dtype_rule(output_image_dtype, ("float16", "float32"))
+    check_dtype(input_grads_dtype, ("float16", "float32"), param_name="grads")
+    check_dtype(input_image_dtype, ("float16", "float32"), param_name="x")
+    check_dtype(output_image_dtype, ("float16", "float32"), param_name="y")
 
-    util.check_kernel_name(kernel_name)
 
     if len(input_grads_shape) != 4:
         raise RuntimeError("The shape of tensor must be 4D.")
@@ -1061,8 +1058,9 @@ def _check_param(input_grads, input_image, output_image, depth_radius,
 
 
 # pylint: disable=too-many-arguments, unused-argument, invalid-name
-@util.check_input_type(dict, dict, dict, dict, int, (float, int), (float, int),
-                       (float, int), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
+                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), (OPTION_ATTR_FLOAT, OPTION_ATTR_INT),
+                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), KERNEL_NAME)
 def lrn_grad(grads, x, y, z, depth_radius=5,
              bias=1.0, alpha=1.0, beta=0.5, kernel_name="lrn_grad"):
     """

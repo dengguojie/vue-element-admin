@@ -48,6 +48,7 @@ def store_to_gm_compute(input_tensor, output_x, kernel_name="store_to_gm"):
 
     return res, res_ub
 
+
 def _tilling_axis(valid_shape, input_dtype):
     ub_size_bytes = cce.CceProductParams().getParams("Unified_Buffer") - 32
     dtype_bytes_size = cce.cce_intrin.get_bit_len(input_dtype) // 8

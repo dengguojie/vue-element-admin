@@ -16,8 +16,12 @@ muls
 
 import te.lang.cce
 from te import tvm
-from te.utils.op_utils import check_op_params, check_dtype, REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_FLOAT
+from te.utils.op_utils import KERNEL_NAME
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 

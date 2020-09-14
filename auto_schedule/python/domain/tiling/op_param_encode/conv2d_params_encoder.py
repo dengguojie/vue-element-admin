@@ -6,6 +6,7 @@ Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 TBE operator param encoder
 """
 import math
+import json
 import numpy as np
 from copy import deepcopy
 from te import tvm
@@ -72,6 +73,25 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         # third: encode the params to tvm.nd.array
         return self.encode(params_in)
 
+    def decode(self, tiling_encode):
+        """
+        encode the input params to tvm.nd.array
+
+        Parameters
+        ----------
+        input_args: the input params
+
+        Returns
+        -------
+        tvm.nd.array: the NDArray
+        """
+        tiling = json.loads(tiling_encode)
+        # default set  channel_wise_flag
+        tiling["AUB_channel_wise_flag"] = None
+        tiling["BUB_channel_wise_flag"] = None
+        tiling["CUB_channel_wise_flag"] = True
+        return tiling
+
     def check_info_dict(self, params_in):
         """
         check the input params
@@ -112,6 +132,8 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         self.check_param_type(params_in.get( \
             'dilation'), [list, tuple])
         self.check_param_type(params_in.get('fused_coefficient'), [list])
+        self.check_param_type(params_in.get( \
+            'fused_ub_cl0', CONST_VALUE0), [int])
         self.check_param_type(params_in.get('fused_channel_wise'), [list])
         self.check_param_type(params_in.get('group', CONST_VALUE1), [int])
         self.check_param_type(params_in.get('bias_flag', False), [bool, int])
@@ -271,6 +293,8 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         # processing fixed-point number
         fused_coefficient = params_in.get('fused_coefficient')
         fused_coefficient = [math.ceil(100*elt) for elt in fused_coefficient]
+        fused_ub_cl0 = params_in.get('fused_ub_cl0', 0)
+        fused_ub_cl0 = math.ceil(100*fused_ub_cl0)
         fused_channel_wise = params_in.get('fused_channel_wise')
         fused_channel_wise = [math.ceil(100*elt) \
                               for elt in fused_channel_wise]
@@ -306,61 +330,6 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         # the fused_channel_wise and fused_coefficient are fixed-point number
         # account to two decimal places
         params_in['fused_coefficient'] = fused_coefficient
+        params_in['fused_ub_cl0'] = fused_ub_cl0
         params_in['fused_channel_wise'] = fused_channel_wise
         params_in['reserved_ub'] = reserved_ub
-
-    def encode(self, params):
-        """encode the information of shape to the list of uint32 digit
-
-        Parameters
-        ----------
-        params: dict of params
-            include all information of shape
-
-        Returns
-        -------
-        params_encode : list of encoded params
-            The encoded params, include uint32 numbers
-        """
-        # encode the dict to list
-        params_encode = list()
-        # encode the op_type
-        params_encode.append(params.get('op_type'))
-        # encode the l1_fusion_type
-        params_encode.append(params.get('l1_fusion_type'))
-        # encode the l2_fusion_type
-        params_encode.append(params.get('l2_fusion_type'))
-        # encode the shape(five dimensions)
-        self.encode_list(params.get('a_shape'), params_encode)
-        self.encode_list(params.get('b_shape'), params_encode)
-        self.encode_list(params.get('c_shape'), params_encode)
-        # encode the data type
-        params_encode.append(params.get('a_dtype'))
-        params_encode.append(params.get('b_dtype'))
-        params_encode.append(params.get('c_dtype'))
-        params_encode.append(params.get('mad_dtype'))
-        # encode the pad
-        self.encode_list(params.get('pad'), params_encode)
-        # encode the stride
-        self.encode_list(params.get('stride'), params_encode)
-        # encode the dilation
-        self.encode_list(params.get('dilation'), params_encode)
-        # encode the group and bias_flag
-        params_encode.append(params.get('group'))
-        params_encode.append(params.get('bias_flag'))
-        # encode the in_fm_memory_type and out_fm_memory_type
-        params_encode.append(params.get('in_fm_memory_type'))
-        params_encode.append(params.get('out_fm_memory_type'))
-        # encode the fused_coefficient(three dimensions) and
-        # fused_channel_wise is three dimensions
-        self.encode_list(params.get('fused_coefficient'), params_encode)
-        self.encode_list(params.get('fused_channel_wise'), params_encode)
-        # encode the fusion_type
-        params_encode.append(params.get('fusion_type'))
-        params_encode.append(params.get('reserved_ub'))
-        self.encode_list(params.get('pooling_shape'), params_encode)
-        self.encode_list(params.get('pooling_stride'), params_encode)
-
-        shape_encode = np.array(params_encode, dtype="uint32")
-
-        return tvm.nd.array(shape_encode)

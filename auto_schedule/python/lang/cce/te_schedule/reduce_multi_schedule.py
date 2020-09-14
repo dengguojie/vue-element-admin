@@ -18,6 +18,7 @@ elewise mutil out schedule
 import math
 from te import platform as cceconf
 from te import tvm
+from te.platform.cce_conf import CceProductParams as pver
 from . import util
 from .elewise_schedule_new import ElewiseSchedule
 from .elewise_schedule_new import NON_LAST_BROADCAST_UNIT_THRESHOLD
@@ -400,10 +401,52 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
         self.__consider_double_buffer()
 
+        tiling_shape = self._tiling_cur_shape[:]
+        tiling_barrier = self._tiling_barrier[:]
+
         if self.__caculate_all_tiling():
             return False
 
+        if not self.__check_tiling_res(tiling_shape):
+            while self._core_num > 1:
+                self._core_num -= 1
+                self._tiling_cur_shape = tiling_shape
+                self._tiling_barrier = tiling_barrier
+                if self.__caculate_all_tiling():
+                    return False
+                if self.__check_tiling_res(tiling_shape):
+                    break
+
         return True
+
+
+    def __check_tiling_res(self, tiling_shape):
+        block_tiling_para = self._tiling_para["block_tiling"]
+        ub_tiling_para = self._tiling_para["ub_tiling"]
+
+        block_tiling_axes = block_tiling_para["axes"]
+        block_factor = block_tiling_para["factor"]
+        ub_axis_idx = ub_tiling_para["axis"]
+        ub_factor = ub_tiling_para["factor"]
+
+        is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
+                                len(block_tiling_axes) == 1
+
+        if is_need_modify_factor:
+            block_tiling_axis = block_tiling_axes[0]
+            if isinstance(block_factor, int):
+                _block_factor = block_factor
+            if isinstance(block_factor, list) and \
+                    len(block_factor) == 1:
+                _block_factor = block_factor[0]
+            if _block_factor > 1:
+                block_tile = tiling_shape[block_tiling_axis] % _block_factor
+                if _block_factor % ub_factor == 1 or \
+                    block_tile % ub_factor == 1:
+                    return False
+
+        return True
+
 
     def __tiling_init(self):
         # pylint: disable=attribute-defined-outside-init
@@ -474,8 +517,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         for tensor in self._mid_tensors:
             if tensor.op.tag.split('|')[0] not in white_list:
                 return True
-        soc_version = cceconf.get_soc_spec("SOC_VERSION")
-        if soc_version in ("Ascend310",):
+        if pver().is_mini_version():
             for tensor in self._mid_tensors:
                 if tensor.op.tag.split('|')[0] in black_list_in_mini:
                     return True
@@ -550,6 +592,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             return True
         return False
 
+
     def __caculate_basic_info(self):
         # pylint: disable=attribute-defined-outside-init
         ### reduce info
@@ -571,6 +614,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 self._max_type_bitsize = util.DTYPE_WIDTH_MAP[dtype]
         ### ub block
         self._core_num = cceconf.get_soc_spec("CORE_NUM")
+
         ### ub size
         # div 2 for align to fp16
         total_size = cceconf.get_soc_spec("UB_SIZE") // 2
@@ -770,16 +814,17 @@ class ReduceMultiSchedule(ElewiseSchedule):
         """
         is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
                                 len(block_tiling_axes) == 1
+        _block_factor = 1
         if is_need_modify_factor:
-            is_int_instance = isinstance(block_factor, int) and \
-                              block_factor % ub_factor == 1
-            is_list_instance = isinstance(block_factor, list) and \
-                               len(block_factor) == 1 and \
-                               block_factor[0] % ub_factor == 1
-            if is_int_instance:
-                ub_factor = ub_factor - 1
-            elif is_list_instance:
-                ub_factor = ub_factor - 1
+            if isinstance(block_factor, int):
+                _block_factor = block_factor
+            if isinstance(block_factor, list) and \
+                len(block_factor) == 1:
+                _block_factor = block_factor[0]
+
+        if _block_factor > 1:
+            while _block_factor % ub_factor == 1:
+                ub_factor -= 1
 
         return ub_factor
 

@@ -23,7 +23,7 @@ from te.lang.cce.te_compute.conv3d_backprop_input_cube_util \
 from te.lang.cce.te_compute.conv3d_backprop_input_cube_util \
     import ConvDslPattern
 from te.utils.error_manager import error_manager_util as err_mana
-from topi.cce.util import is_lhisi_version
+from te.platform.cce_conf import get_soc_spec
 
 
 class DeConvPattern(CubeDslPattern): # pylint: disable=R0902
@@ -256,12 +256,13 @@ class DeConvPattern(CubeDslPattern): # pylint: disable=R0902
         ----------
         dx_ddr: dx tensor in ddr
         """
-        if is_lhisi_version():
-            dx_col = super(DeConvPattern,
-                           self).generate_c(dy_col, w_col, c_type="float16")
-        else:
-            dx_col = super(DeConvPattern,
-                           self).generate_c(dy_col, w_col, c_type="float32")
+        c_dtype = "float32"
+        if get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                           "Hi3796CV300CS"):
+            c_dtype = "float16"
+        dx_col = super(DeConvPattern, self).generate_c(dy_col,
+                                                       w_col,
+                                                       c_type=c_dtype)
 
         # mad dx shape
         dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 =\

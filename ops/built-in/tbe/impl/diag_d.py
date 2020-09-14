@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.op_utils import *
 
 # pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
 @fusion_manager.register("diag_d")
@@ -60,7 +61,7 @@ def diag_d_compute(x, assit, y, kernel_name="diag_d"):
     return res
 
 # pylint: disable =too-many-locals
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def diag_d(x, assist, y, kernel_name="diag_d"):
     """
     algorithm: diag_d
@@ -99,18 +100,14 @@ def diag_d(x, assist, y, kernel_name="diag_d"):
     shape_help = assist.get("shape")
     dtype_help = assist.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
-    util.check_shape_rule(shape_help)
-    util.check_tensor_shape_size(shape_help)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_help, param_name="assist")
 
     check_list = ("float16", "float32", "int32")
-    util.check_dtype_rule(dtype.lower(), check_list)
-    util.check_dtype_rule(dtype_help.lower(), check_list)
+    check_dtype(dtype.lower(), check_list, param_name="x")
+    check_dtype(dtype_help.lower(), check_list, param_name="assist")
 
-    shape_list = util.produce_shapes(shape_x, shape_help)
-    util.check_tensor_shape_size(shape_list[2])
+    shape_list = broadcast_shapes(shape_x, shape_help, param_name_input1="x", param_name_input2="assist")
     for i, element in enumerate(shape_x):
         if element != shape_help[i] or \
                 element != shape_help[i + len(shape_x)] or \

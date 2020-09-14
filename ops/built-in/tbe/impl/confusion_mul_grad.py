@@ -19,6 +19,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -43,8 +44,7 @@ def shape_broadcast(data_1, data_2):
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-        util.check_tensor_shape_size(shape_max)
+        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="input0", param_name_input2="input1")
         data_1 = te.lang.cce.broadcast(data_1, shape_max)
         data_2 = te.lang.cce.broadcast(data_2, shape_max)
 
@@ -93,8 +93,11 @@ def confusion_mul_grad_compute(data_input0, data_input1, data_input2,
     mul_1_result = te.lang.cce.vmul(data_input1, data_input2)
 
     # temp compute for tvm
-    zero_tmp = te.lang.cce.vmuls(result0, 0)
-    mul_1_result = te.lang.cce.vadd(mul_1_result, zero_tmp)
+    shape_x = te.lang.cce.util.shape_to_list(mul_1_result.shape)
+    shape_y = te.lang.cce.util.shape_to_list(result0.shape)
+    if shape_x == shape_y:
+        zero_tmp = te.lang.cce.vmuls(result0, 0)
+        mul_1_result = te.lang.cce.vadd(mul_1_result, zero_tmp)
 
     # sum
     dtype = mul_1_result.dtype
@@ -109,8 +112,8 @@ def confusion_mul_grad_compute(data_input0, data_input1, data_input2,
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict,
-                       (int, list, tuple), bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_BOOL, KERNEL_NAME)
 def confusion_mul_grad(input0, input1, input2,
                        output0, output1,
                        axis, keep_dims,
@@ -151,12 +154,11 @@ def confusion_mul_grad(input0, input1, input2,
     dtype_input2 = input2.get("dtype").lower()
     data_format1 = input1.get("format").upper()
 
-    util.check_kernel_name(kernel_name)
 
     shape_input0, shape_input1, shape_max_mul = \
-        util.produce_shapes(shape_input0, shape_input1)
+        broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0", param_name_input2="input1")
     shape_input1, shape_input2, shape_max_mul1 = \
-        util.produce_shapes(shape_input1, shape_input2)
+        broadcast_shapes(shape_input1, shape_input2, param_name_input1="input1", param_name_input2="input2")
 
     data_input0 = tvm.placeholder(shape_input0,
                                   name="data_input0",

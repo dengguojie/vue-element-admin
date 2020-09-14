@@ -24,7 +24,7 @@ rpn_proposals_post_processing
 
 
 from te import tik
-
+from te import platform as tbe_platform
 from topi.cce import util
 
 
@@ -58,7 +58,7 @@ CONFIG_LEN = 1536
 # 1MB can save 1024*1024/16 = 65536 proposals
 L1_MAX_NUM = 46080
 CONFIG_FP16 = 65404
-IF_USE_V200 = ("aic", "vec")
+IF_USE_V200 = ("Ascend610", "Ascend710")
 
 
 def ceil_div(num_a, num_bulk):
@@ -120,7 +120,7 @@ class InitGmTensor:
         return:
         """
 
-        # self.proposal_num[index, 0].set_as(num_in)
+
         tik_instance.vector_dup(CONFIG_EIGHT,
                                 self.proposal_num[index, 0],
                                 num_in,
@@ -417,6 +417,7 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
 
                 n_total_selected_.set_as(n_total_selected_ + n_selected_)
 
+
 def topk_sort(tik_instance, data_gm, topk_k, num_list, score_threshold, aicore_num):
     """
 
@@ -508,7 +509,7 @@ def topk_sort(tik_instance, data_gm, topk_k, num_list, score_threshold, aicore_n
                                       (topk_k + CONFIG_TWO) * CONFIG_THREE)
 
         if left_rep == CONFIG_ONE:
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_FOUR
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_FOUR
             n_required.set_as(n_required + num_list[index_scalar])
 
             tik_scalar_min(tik_instance, topk_k, n_required, n_required)
@@ -529,11 +530,11 @@ def topk_sort(tik_instance, data_gm, topk_k, num_list, score_threshold, aicore_n
                 data_gm.actual_proposal.set_as(n_required)
 
         if left_rep == 0:
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_FOUR
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_FOUR
             n_required.set_as(n_required + num_list[index_scalar])
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_FIVE
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_FIVE
             n_required.set_as(n_required + num_list[index_scalar])
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_SIX
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_SIX
             n_required.set_as(n_required + num_list[index_scalar])
 
             tik_scalar_min(tik_instance, topk_k, n_required, n_required)
@@ -554,9 +555,9 @@ def topk_sort(tik_instance, data_gm, topk_k, num_list, score_threshold, aicore_n
                 data_gm.actual_proposal.set_as(n_required)
 
         if left_rep == CONFIG_TWO:
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_FOUR
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_FOUR
             n_required.set_as(n_required + num_list[index_scalar])
-            index_scalar = t_cyc * CONFIG_THREE + CONFIG_FIVE
+            index_scalar = max_rep * CONFIG_THREE + CONFIG_FIVE
             n_required.set_as(n_required + num_list[index_scalar])
 
             tik_scalar_min(tik_instance, topk_k, n_required, n_required)
@@ -668,11 +669,11 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
     return: None
     """
 
+    num = ceil_div(proposal_num[0], CONFIG_MASK) * CONFIG_MASK
     proposal_ub = tik_instance.Tensor(input_param[CONFIG_TWO],
-                                      (proposal_num[0], CONFIG_EIGHT),
+                                      (num, CONFIG_EIGHT),
                                       name="proposal_ub",
-                                      scope=tik.scope_ubuf)
-    num = ceil_div(proposal_num[0], CONFIG_MASK) * CONFIG_MASK # 6016
+                                      scope=tik.scope_ubuf)    
     box_ub = tik_instance.Tensor(input_param[CONFIG_TWO],
                                  (CONFIG_TEN, num),
                                  name="box_ub",
@@ -684,14 +685,15 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                                   name="mask_ub",
                                   scope=tik.scope_ubuf)
     num_post_nms = tik_instance.Scalar("uint32", name="num_post_nms", init_value=0)
+    num_eff = tik_instance.Scalar("uint32", name="num_eff", init_value=0)
 
     # move data into UB
     # the actual proposals num 16 times (8 block)
-    num = proposal_num[CONFIG_ONE] // CONFIG_MASK * CONFIG_MASK
+    num_eff.set_as(proposal_num[CONFIG_ONE] // CONFIG_MASK * CONFIG_MASK)    
     tik_instance.vector_dup(CONFIG_MASK,
-                            proposal_ub[num, 0],
+                            proposal_ub[num_eff, 0],
                             0,
-                            CONFIG_ONE,
+                            CONFIG_EIGHT,
                             CONFIG_ONE,
                             CONFIG_EIGHT)
     tik_instance.data_move(proposal_ub,
@@ -709,27 +711,29 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                             ceil_div(proposal_num[0], CONFIG_MASK) * CONFIG_FIVE,
                             CONFIG_ONE,
                             CONFIG_EIGHT)
-    num = ceil_div(proposal_num[CONFIG_ONE], CONFIG_SIXTEEN)
 
-    with tik_instance.if_scope(num > MAX_REP_TIME):
+    # repeat_time
+    num_eff.set_as(ceil_div(proposal_num[CONFIG_ONE], CONFIG_SIXTEEN))    
+
+    with tik_instance.if_scope(num_eff > MAX_REP_TIME):
         if proposal_num[0] // CONFIG_SIXTEEN > MAX_REP_TIME:
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vextract(box_ub[t_cyc, 0],
                                       proposal_ub,
                                       MAX_REP_TIME,
                                       t_cyc)
-            num = num - MAX_REP_TIME
+            num_eff.set_as(num_eff - MAX_REP_TIME)
         with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
             tik_instance.vextract(box_ub[t_cyc, MAX_REP_TIME * CONFIG_SIXTEEN],
                                   proposal_ub[MAX_REP_TIME * CONFIG_SIXTEEN, 0],
-                                  num,
+                                  num_eff,
                                   t_cyc)
 
     with tik_instance.else_scope():
         with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
             tik_instance.vextract(box_ub[t_cyc, 0],
                                   proposal_ub,
-                                  num,
+                                  num_eff,
                                   t_cyc)
 
     # ======================>
@@ -881,46 +885,47 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                                     CONFIG_ONE,
                                     CONFIG_EIGHT)
 
-        num = ceil_div(num_post_nms, CONFIG_SIXTEEN)
-        with tik_instance.if_scope(num > MAX_REP_TIME):
+        num_eff.set_as(ceil_div(num_post_nms, CONFIG_SIXTEEN))
+        with tik_instance.if_scope(num_eff > MAX_REP_TIME):
             if proposal_num[0] // CONFIG_SIXTEEN > MAX_REP_TIME:
                 with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                     tik_instance.vconcat(proposal_ub,
                                          box_ub[CONFIG_FIVE + t_cyc, 0],
                                          MAX_REP_TIME,
                                          t_cyc)
-                num = num - MAX_REP_TIME
+                num_eff.set_as(num_eff - MAX_REP_TIME)
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vconcat(proposal_ub[MAX_REP_TIME * CONFIG_SIXTEEN, 0],
                                      box_ub[CONFIG_FIVE + t_cyc, MAX_REP_TIME * CONFIG_SIXTEEN],
-                                     num,
+                                     num_eff,
                                      t_cyc)
         with tik_instance.else_scope():
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vconcat(proposal_ub,
                                      box_ub[CONFIG_FIVE + t_cyc, 0],
-                                     num,
+                                     num_eff,
                                      t_cyc)
     else:
         num_post_nms.set_as(proposal_num[CONFIG_ONE])
-        num = ceil_div(num_post_nms, CONFIG_SIXTEEN)
+        num_eff.set_as(ceil_div(num_post_nms, CONFIG_SIXTEEN))
         with tik_instance.if_scope(num > MAX_REP_TIME):
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vconcat(proposal_ub,
                                      box_ub[t_cyc, 0],
                                      MAX_REP_TIME,
                                      t_cyc)
-            num = num - MAX_REP_TIME
+
+            num_eff.set_as(num_eff - MAX_REP_TIME)
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vconcat(proposal_ub[MAX_REP_TIME * CONFIG_SIXTEEN, 0],
                                      box_ub[t_cyc, MAX_REP_TIME * CONFIG_SIXTEEN],
-                                     num,
+                                     num_eff,
                                      t_cyc)
         with tik_instance.else_scope():
             with tik_instance.for_range(0, CONFIG_FIVE) as t_cyc:
                 tik_instance.vconcat(proposal_ub,
                                      box_ub[t_cyc, 0],
-                                     num,
+                                     num_eff,
                                      t_cyc)
 
     # move data from UB to DDR/L1
@@ -929,7 +934,7 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                                proposal_ub,
                                0,
                                CONFIG_ONE,
-                               ceil_div(num_post_nms, CONFIG_TWO),
+                               ceil_div(num_post_nms, CONFIG_MASK)*CONFIG_DATA_TRANS,
                                0, 0)
 
 
@@ -1034,8 +1039,7 @@ def nms_local(tik_instance, data_tensor, input_param):
                                      name="sup_vec_ub",
                                      scope=tik.scope_ubuf)
 
-    scalar_zero = tik_instance.Scalar(dtype="uint16")
-    scalar_zero.set_as(0)
+    scalar_zero = tik_instance.Scalar(dtype="uint16", name="scalar_zero", init_value=0)
     sup_vec_ub[0].set_as(scalar_zero)
 
     # init zero tensor
@@ -1203,7 +1207,6 @@ def nms_local(tik_instance, data_tensor, input_param):
 
                 # generate rpn_cor_ir
                 rpn_cor_ir = tik_instance.set_rpn_cor_ir(0)
-
                 # non-diagonal
                 rpn_cor_ir = tik_instance.rpn_cor(sup_matrix_ub,
                                                   sup_vec_ub,
@@ -1216,25 +1219,26 @@ def nms_local(tik_instance, data_tensor, input_param):
                         temp_sup_vec_ub,
                         CONFIG_ONE,
                         CONFIG_ONE, i)
+
                 # get final sup_vec
                 tik_instance.rpn_cor_diag(temp_sup_vec_ub[i * CONFIG_SIXTEEN],
                                           sup_matrix_ub[length - CONFIG_SIXTEEN], rpn_cor_ir)
 
             # v100 branch
-            if tik.Dprofile().get_product_name() not in IF_USE_V200:
-                # 每次对128 proposla 得到的抑制矩阵 0表示不过滤 1表示需要过滤
+            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
+                # get the suppression matrix from 128 proposla each time
                 with tik_instance.for_range(0, CONFIG_MASK) as i:
                     with tik_instance.if_scope(temp_sup_vec_ub[i] == 0):
-                        # 如果抑制矩阵为0, 就进行以下处理
+                        # if the suppression matrix is 0
                         for j in range(CONFIG_FOUR):
-                            # 把这个proposal对应的原坐标保存起来
+                            # save the ori coord
                             selected_reduced_coord_ub[
                                 output_nms_num * CONFIG_FOUR + j].set_as(ori_coord[i +
                                                                                    CONFIG_MASK * j])
-                            # 把这个proposal保存起来供下次nms使用
+                            # save this coord
                             temp_reduced_proposals_ub[output_nms_num * CONFIG_EIGHT + j].set_as(
                                 data_x_ub_burst_reduce[i * CONFIG_EIGHT + j])
-                        # 把这个proposal对应的面积保存起来供下次nms使用
+                        # save this area
                         selected_area_ub[output_nms_num].set_as(temp_area_ub[i])
                         # sup_vec_ub set as 0
                         sup_vec_ub[output_nms_num].set_as(scalar_zero)
@@ -1253,6 +1257,29 @@ def nms_local(tik_instance, data_tensor, input_param):
                 tik_instance.mov_cmpmask_to_tensor(
                     nms_tensor_pattern.reinterpret_cast_to("uint64"),
                     cmpmask)
+                if input_param[CONFIG_FOUR] < 0:
+                    with tik_instance.if_scope((burst_index + CONFIG_ONE)*CONFIG_MASK >
+                                               actual_input_nms_num):
+                        flag_tensor = tik_instance.Tensor("uint16",
+                                                          (1, 8),
+                                                          name="flag_tensor",
+                                                          scope=tik.scope_ubuf)
+                        tik_instance.vcmpv_gt(flag_tensor,
+                                              temp_area_ub,
+                                              data_zero,
+                                              CONFIG_ONE,
+                                              CONFIG_ONE,
+                                              CONFIG_ONE,
+                                              0, 0)
+                        tik_instance.vand(CONFIG_EIGHT,
+                                          nms_tensor_pattern,
+                                          nms_tensor_pattern,
+                                          flag_tensor,
+                                          CONFIG_ONE,
+                                          CONFIG_ONE,
+                                          CONFIG_ONE,
+                                          CONFIG_ONE,
+                                          0, 0, 0)
 
                 # 把这个proposal对应的原坐标保存起来
                 with tik_instance.for_range(0, CONFIG_FOUR) as i:
@@ -1315,17 +1342,34 @@ def nms_local(tik_instance, data_tensor, input_param):
                                              CONFIG_EIGHT,
                                              i)
 
-    if tik.Dprofile().get_product_name() in IF_USE_V200:
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:
         data_y_last = tik_instance.Tensor("float16",
                                           [post_nms_num, CONFIG_FOUR],
                                           name="data_y_last",
                                           scope=tik.scope_ubuf)
         # extract front 4*post_nms_num from 4*224
-        tik_instance.vadds(post_nms_num,
-                           data_y_last,
-                           ori_coord_reduce, 0, CONFIG_FOUR, CONFIG_ONE, CONFIG_ONE,
-                           post_nms_num//CONFIG_SIXTEEN,
-                           CONFIG_SIXTEEN - CONFIG_TWO)
+        if input_param[CONFIG_FOUR] == 0:
+            tik_instance.vadds(post_nms_num,
+                               data_y_last,
+                               ori_coord_reduce, 0, CONFIG_FOUR, CONFIG_ONE, CONFIG_ONE,
+                               post_nms_num//CONFIG_SIXTEEN,
+                               CONFIG_SIXTEEN - CONFIG_TWO)
+        else:
+            tik_instance.vector_dup(post_nms_num,
+                                    data_y_last,
+                                    0,
+                                    CONFIG_FOUR,
+                                    CONFIG_ONE,
+                                    post_nms_num // CONFIG_SIXTEEN)
+
+            tik_instance.vadds(output_nms_num,
+                               data_y_last,
+                               ori_coord_reduce,
+                               0,
+                               CONFIG_FOUR,
+                               CONFIG_ONE, CONFIG_ONE,
+                               post_nms_num//CONFIG_SIXTEEN,
+                               CONFIG_SIXTEEN - CONFIG_TWO)
         # transpose 4*post_nms_num to post_nms_num*4
         tik_instance.v4dtrans(True,
                               selected_reduced_coord_ub,
@@ -1422,7 +1466,9 @@ def rpn_proposal_calculate(param_list, kernel_name):
         # perform the NMS
         call_nms_v200(tik_instance,
                       (data_gm.proposal_post_topk, data_gm.box_gm),
-                      (data_gm.actual_proposal, param_list[CONFIG_FOUR], param_list[0], shape_out))
+                      (data_gm.actual_proposal, param_list[CONFIG_FOUR],
+                       param_list[0], shape_out,
+                       score_threshold))
     with tik_instance.else_scope():
         temp_box = tik_instance.Tensor("float16",
                                        (ceil_div(shape_out, CONFIG_DATA_ALIGN), CONFIG_MASK),
@@ -1452,7 +1498,6 @@ def rpn_proposal_calculate(param_list, kernel_name):
     tik_instance.BuildCCE(kernel_name=kernel_name,
                           inputs=[data_gm.proposal_gm, data_gm.proposal_num],
                           outputs=[data_gm.box_gm])
-    print("============> IR line num >======== {}".format(tik_instance.get_ir_num()))
 
     return tik_instance
 
@@ -1669,6 +1714,8 @@ def rpn_proposal_post_processing(sorted_proposal, proposal_num, sorted_box,
 
     check_input_param((img_size, score_threshold, k, min_size,
                        nms_threshold), kernel_name)
+    if score_threshold > 0:
+        score_threshold = 0
 
     aicore_num = tik.Dprofile().get_aicore_num()
     if core_max_num > aicore_num or core_max_num < 0:

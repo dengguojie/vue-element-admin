@@ -31,6 +31,7 @@ from te.platform.cce_build import build_config
 from te.platform.cce_intrin_md import reset_mask_insn
 from topi.cce import util
 from impl.copy_only import copy_only
+from te.utils.op_utils import *
 
 # one block
 BLOCK_SIZE = 32
@@ -640,7 +641,7 @@ class ResizeNearestNeighbor:
                                         w_loop_idx * w_out) * self.c0_block, 0,
                                 0))
 
-    def copy_src_h_w_to_dst_nh_nw(self):
+    def copy_src_h_w_to_dst_nh_nw_sh(self):
         """when src shape is [h,w]; dst shape is [n*h,n*w];
            gm -> ub -> ub -> gm
         """
@@ -769,6 +770,129 @@ class ResizeNearestNeighbor:
             outputs=[self.output_data],
             enable_l2=False)
 
+    def copy_src_h_w_to_dst_nh_nw_sw(self):
+        """when src shape is [h,w]; dst shape is [n*h,n*w];
+           gm -> ub -> ub -> gm
+        """
+        scale_h = self.output_h // self.input_h
+        scale_w = self.output_w // self.input_w
+        b_c1_h = self.batch * self.c1 * self.input_h
+        core_num = min(b_c1_h, self.core_number)
+        core_loop = b_c1_h // core_num
+        core_last = b_c1_h % core_num
+
+        def _inner_run(src_offset_loop, dst_offset_loop):
+            num = min(scale_h, (2 * self.one_six_ub_ele) //
+                      (self.output_w * self.c0))
+            loop = scale_h // num
+            last = scale_h % num
+
+            thread = 1
+            if loop > 1:
+                thread = 2
+            with self.tik_instance.for_range(
+                    0, loop, thread_num=thread) as loop_idx:
+                # define ub data
+                ub_data_1 = self.tik_instance.Tensor(
+                    self.dtype, (self.one_six_ub_ele,),
+                    name="ub_data_1",
+                    scope=tik.scope_ubuf)
+                ub_data_2 = self.tik_instance.Tensor(
+                    self.dtype, (2 * self.one_six_ub_ele,),
+                    name="ub_data_2",
+                    scope=tik.scope_ubuf)
+                # move gm to ub (input_data -> ub_data_1)
+                src_offset = src_offset_loop
+                self.tik_instance.data_move(ub_data_1,
+                                            self.input_data[src_offset], 0, 1,
+                                            self.input_w * self.c0_block,
+                                            0, 0)
+                # move ub to ub (ub_data_1 -> ub_data_2)
+                with self.tik_instance.for_range(0, num) as idx:
+                    with self.tik_instance.for_range(0, scale_w) as w_idx:
+                        ub_data_2_offset = idx * self.output_w * \
+                                           self.c0 + w_idx * self.c0
+                        self.tik_instance.data_move(
+                            ub_data_2[ub_data_2_offset],
+                            ub_data_1, 0, self.input_w,
+                            self.c0_block, 0, (scale_w - 1) * self.c0_block)
+                    # move ub to gm (ub_data_2 -> input_data)
+                    dst_offset = dst_offset_loop + loop_idx * num * \
+                                 self.output_w * self.c0 + idx * \
+                                 self.output_w * self.c0
+                    self.tik_instance.data_move(
+                        self.output_data[dst_offset], ub_data_2, 0, 1,
+                        self.output_w * self.c0_block, 0, 0)
+            if last != 0:
+                with self.tik_instance.for_range(0, 1):
+                    # define ub data
+                    ub_data_1 = self.tik_instance.Tensor(
+                        self.dtype, (self.one_six_ub_ele,),
+                        name="ub_data_1",
+                        scope=tik.scope_ubuf)
+                    ub_data_2 = self.tik_instance.Tensor(
+                        self.dtype, (2 * self.one_six_ub_ele,),
+                        name="ub_data_2",
+                        scope=tik.scope_ubuf)
+                    # move gm to ub (input_data -> ub_data_1)
+                    src_offset = src_offset_loop
+                    self.tik_instance.data_move(
+                        ub_data_1, self.input_data[src_offset], 0, 1,
+                        self.input_w * self.c0_block, 0, 0)
+                    # move ub to ub (ub_data_1 -> ub_data_2)
+                    with self.tik_instance.for_range(0, last) as idx:
+                        with self.tik_instance.for_range(0, scale_w) as w_idx:
+                            ub_data_2_offset = idx * self.output_w * \
+                                               self.c0 + w_idx * self.c0
+                            self.tik_instance.data_move(
+                                ub_data_2[ub_data_2_offset],
+                                ub_data_1, 0, self.input_w,
+                                self.c0_block, 0, (scale_w - 1) * self.c0_block)
+                        # move ub to gm (ub_data_2 -> input_data)
+                        dst_offset = dst_offset_loop + loop * num * \
+                                     self.output_w * self.c0 + idx * \
+                                     self.output_w * self.c0
+                        self.tik_instance.data_move(
+                            self.output_data[dst_offset], ub_data_2, 0, 1,
+                            self.output_w * self.c0_block, 0, 0)
+
+        with self.tik_instance.for_range(
+                0, core_num, block_num=core_num) as core_idx:
+            src_offset_core = core_idx * core_loop * \
+                              self.input_w * self.c0
+            dst_offset_core = core_idx * core_loop * scale_h * \
+                              self.output_w * self.c0
+            thread_loop = 1
+            if core_loop > 1:
+                thread_loop = 2
+            with self.tik_instance.for_range(
+                    0, core_loop, thread_num=thread_loop) as core_loop_idx:
+                src_offset_loop = src_offset_core + core_loop_idx * \
+                                  self.input_w * self.c0
+                dst_offset_loop = dst_offset_core + core_loop_idx * \
+                                  scale_h * self.output_w * self.c0
+                _inner_run(src_offset_loop, dst_offset_loop)
+            if core_last != 0:
+                src_offset_core = (core_loop * core_num) * \
+                                  self.input_w * self.c0
+                dst_offset_core = (core_loop * core_num) * scale_h * \
+                                  self.output_w * self.c0
+                thread_last = 1
+                if core_last > 1:
+                    thread_last = 2
+                with self.tik_instance.for_range(
+                        0, core_last, thread_num=thread_last) as core_last_idx:
+                    src_offset_last = src_offset_core + core_last_idx * \
+                                      self.input_w * self.c0
+                    dst_offset_last = dst_offset_core + core_last_idx * \
+                                      scale_h * self.output_w * self.c0
+                    _inner_run(src_offset_last, dst_offset_last)
+
+        self.tik_instance.BuildCCE(
+            kernel_name=self.kernel_name,
+            inputs=[self.input_data],
+            outputs=[self.output_data],
+            enable_l2=False)
 
 def check_supported(images,
                     y,
@@ -1003,7 +1127,8 @@ def resize_nearest_neighbor_v2_d_compute(images,
     return stmt
 
 
-@util.check_input_type(dict, dict, (list, tuple), bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def resize_nearest_neighbor_v2_d(images,
                                  y,
                                  size,
@@ -1035,12 +1160,10 @@ def resize_nearest_neighbor_v2_d(images,
     """
     image_shape = images.get("shape")
     image_dtype = images.get("dtype").lower()
-    util.check_shape_rule(image_shape)
-    util.check_shape_rule(size)
-    util.check_tensor_shape_size(image_shape)
+    check_shape(image_shape, param_name="images")
+    check_shape(size, param_name="size")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(image_dtype, check_list)
-    util.check_kernel_name(kernel_name)
+    check_dtype(image_dtype, check_list, param_name="images")
 
     if len(image_shape) != 5:
         raise RuntimeError("the length of image shape must be 5")
@@ -1054,7 +1177,6 @@ def resize_nearest_neighbor_v2_d(images,
 
     output_shape = (image_shape[0], image_shape[1], size[0], size[1],
                     image_shape[4])
-    util.check_tensor_shape_size(output_shape)
 
     image_data = tvm.placeholder(
         image_shape, dtype=image_dtype, name="image_data")
@@ -1071,7 +1193,10 @@ def resize_nearest_neighbor_v2_d(images,
                                        kernel_name)
         if 2 * resize.one_six_ub_ele // (size[0] // image_shape[2] * size[1] *
                                          resize.c0) >= 1:
-            resize.copy_src_h_w_to_dst_nh_nw()
+            resize.copy_src_h_w_to_dst_nh_nw_sh()
+            return
+        if 2 * resize.one_six_ub_ele // (size[1] * resize.c0) >= 1:
+            resize.copy_src_h_w_to_dst_nh_nw_sw()
             return
 
     res = tvm.extern([output_shape], [image_data],

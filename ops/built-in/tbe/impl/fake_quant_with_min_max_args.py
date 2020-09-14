@@ -15,9 +15,11 @@ fake_quant_with_min_max_args
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.platform.cce_conf import api_check_support
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals
@@ -67,25 +69,44 @@ def fake_quant_with_min_max_args_compute(x, y, min=-6, max=6, num_bits=8,
     nudged_min, nudged_max, scale = _nudge_min_max(min, max, num_bits,
                                                    narrow_range)
 
-    zero_tensor = te.lang.cce.broadcast(0, shape_x, output_dtype=output_dtype)
-    nudged_max_tensor = te.lang.cce.vadds(zero_tensor, nudged_max)
-    nudged_min_tensor = te.lang.cce.vadds(zero_tensor, nudged_min)
-    inv_nudged_scale = 1.00 / scale
-    inv_nudged_scale_const = tvm.const(inv_nudged_scale, dtype=output_dtype)
+    if api_check_support("te.lang.cce.vmaxs", x.dtype):
+        nudged_min_neg = nudged_min * (-1.0)
+        inv_nudged_scale = 1.00 / scale
 
-    # Transform the input between nudged_max and nudged_min
-    clamped_vmin = te.lang.cce.vmin(x, nudged_max_tensor)
-    clamped = te.lang.cce.vmax(clamped_vmin, nudged_min_tensor)
+        # Transform the input between nudged_max and nudged_min
+        clamped_vmin = te.lang.cce.vmins(x, nudged_max)
+        clamped = te.lang.cce.vmaxs(clamped_vmin, nudged_min)
 
-    # Calculate the quantized and dequantized results
-    clamped_shifted = te.lang.cce.vsub(clamped, nudged_min_tensor)
-    vmul_shifted = te.lang.cce.vmuls(clamped_shifted, inv_nudged_scale_const)
-    vadds_shifted = te.lang.cce.vadds(vmul_shifted, tvm.const(0.5,
-                                                              dtype="float32"))
-    floor_vadds_shifted = te.lang.cce.floor(vadds_shifted)
-    floor_cast = te.lang.cce.cast_to(floor_vadds_shifted, output_dtype)
-    res_scale = te.lang.cce.vmuls(floor_cast, scale)
-    res = te.lang.cce.vadd(res_scale, nudged_min_tensor)
+        # Calculate the quantized and dequantized results
+        clamped_shifted = te.lang.cce.vadds(clamped, nudged_min_neg)
+        vmul_shifted = te.lang.cce.vmuls(clamped_shifted, inv_nudged_scale)
+        vadds_shifted = te.lang.cce.vadds(vmul_shifted, tvm.const(0.5, dtype="float32"))
+
+        floor_vadds_shifted = te.lang.cce.floor(vadds_shifted)
+        floor_cast = te.lang.cce.cast_to(floor_vadds_shifted, output_dtype)
+        res_scale = te.lang.cce.vmuls(floor_cast, scale)
+        res = te.lang.cce.vadds(res_scale, nudged_min)
+
+    else:
+        zero_tensor = te.lang.cce.vmuls(x, 0)
+        nudged_max_tensor = te.lang.cce.vadds(zero_tensor, nudged_max)
+        nudged_min_tensor = te.lang.cce.vadds(zero_tensor, nudged_min)
+        inv_nudged_scale = 1.00 / scale
+        inv_nudged_scale_const = tvm.const(inv_nudged_scale, dtype=output_dtype)
+
+        # Transform the input between nudged_max and nudged_min
+        clamped_vmin = te.lang.cce.vmin(x, nudged_max_tensor)
+        clamped = te.lang.cce.vmax(clamped_vmin, nudged_min_tensor)
+
+        # Calculate the quantized and dequantized results
+        clamped_shifted = te.lang.cce.vsub(clamped, nudged_min_tensor)
+        vmul_shifted = te.lang.cce.vmuls(clamped_shifted, inv_nudged_scale_const)
+        vadds_shifted = te.lang.cce.vadds(vmul_shifted, tvm.const(0.5,
+                                                                  dtype="float32"))
+        floor_vadds_shifted = te.lang.cce.floor(vadds_shifted)
+        floor_cast = te.lang.cce.cast_to(floor_vadds_shifted, output_dtype)
+        res_scale = te.lang.cce.vmuls(floor_cast, scale)
+        res = te.lang.cce.vadd(res_scale, nudged_min_tensor)
 
     return res
 
@@ -134,7 +155,8 @@ def _nudge_min_max(min, max, num_bits, narrow_range):
     return nudged_min, nudged_max, scale
 
 
-@util.check_input_type(dict, dict, (float, int), (float, int), int, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (OPTION_ATTR_FLOAT, OPTION_ATTR_INT),
+                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), OPTION_ATTR_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def fake_quant_with_min_max_args(x, y, min=-6, max=6, num_bits=8,
                                  narrow_range=False, kernel_name="fake_quant_"
                                                                  "with_min_max_args"):
@@ -173,11 +195,9 @@ def fake_quant_with_min_max_args(x, y, min=-6, max=6, num_bits=8,
     None
     """
     shape_x = x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="x")
     input_dtype = x.get("dtype").lower()
-    util.check_dtype_rule(input_dtype, ["float32"])
+    check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
         raise RuntimeError("min must be less than max")
     if num_bits < 2 or num_bits > 16:

@@ -20,6 +20,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
+from te.utils.op_utils import *
 
 # MAX ELIMENT NUM OF FP16 IN 1BLOCK
 FP16_ELIMENTS_BLOCK = 16
@@ -866,7 +867,8 @@ def iou_compute(bboxes, gtboxes, overlap, mode, kernel_name):
     return iou_res.run_tik(kernel_name)
 
 
-@util.check_input_type(dict, dict, dict, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR,
+                 KERNEL_NAME)
 def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     """
     calculating data
@@ -898,11 +900,8 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     bboxes_shape = bboxes.get("shape")
     gtboxes_shape = gtboxes.get("shape")
 
-    util.check_shape_rule(bboxes_shape)
-    util.check_tensor_shape_size(bboxes_shape)
-    util.check_shape_rule(gtboxes_shape)
-    util.check_tensor_shape_size(gtboxes_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(bboxes_shape, param_name="bboxes")
+    check_shape(gtboxes_shape, param_name="gtboxes")
 
     _box_shape_check("bboxes", bboxes_shape)
     _box_shape_check("gtboxes", gtboxes_shape)
@@ -910,7 +909,7 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     bboxes_dtype = bboxes.get("dtype").lower()
     util.compare_tensor_dict_key(bboxes, gtboxes, "dtype")
     check_list = ("float16", "float32")
-    util.check_dtype_rule(bboxes_dtype, check_list)
+    check_dtype(bboxes_dtype, check_list, param_name="bboxes")
 
     # check whether mode is valid
     check_list = ("iou", "iof")

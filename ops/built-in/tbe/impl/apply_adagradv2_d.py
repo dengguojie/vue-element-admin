@@ -20,12 +20,12 @@ import operator
 from functools import reduce as functools_reduce
 
 import te.lang.cce
+from te import platform as tbe_platform
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import op_utils
 from topi import generic
-from topi.cce import util
 
-SHAPE_SIZE_LIMIT = 2 << 30
 
 # pylint: disable=unused-argument,invalid-name
 @fusion_manager.register("apply_adagradv2_d")
@@ -47,7 +47,7 @@ def apply_adagradv2_d_compute(var,
 
     Parameters:
     ----------
-    var: placeholder, input tensor with dtype float16 or float32
+    var: placeholder, input tensor with dtype float32
 
     accum: placeholder, has same shape and dtype as var
 
@@ -72,29 +72,25 @@ def apply_adagradv2_d_compute(var,
     out_var, out_accum
     """
     input_dtype = var.dtype
-    if input_dtype == "float16":
-        var = te.lang.cce.cast_to(var, "float32")
-        accum = te.lang.cce.cast_to(accum, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
+    vmul_support = tbe_platform.cce_conf.api_check_support(
+        "te.lang.cce.vmul", "float32")
+    if input_dtype == "float32" and not vmul_support:
+        raise RuntimeError(
+            "Input dtype is float32, but do not support on the platform")
 
     if update_slots is True:
         grad_square = te.lang.cce.vmul(grad, grad)
         out_accum = te.lang.cce.vadd(accum, grad_square)
     else:
-        out_accum = accum
+        out_accum = te.lang.cce.vadds(accum, tvm.const(0.0, input_dtype))
 
     lr_brc = te.lang.cce.broadcast(lr, grad.shape)
     lr_grad = te.lang.cce.vmul(grad, lr_brc)
     sqrt_accum = te.lang.cce.vsqrt(out_accum)
     sqrt_accum_epsilon = te.lang.cce.vadds(sqrt_accum,
-                                           tvm.const(epsilon, "float32"))
+                                           tvm.const(epsilon, input_dtype))
     update = te.lang.cce.vdiv(lr_grad, sqrt_accum_epsilon)
     out_var = te.lang.cce.vsub(var, update)
-
-    if input_dtype == "float16":
-        out_var = te.lang.cce.cast_to(out_var, "float16")
-        out_accum = te.lang.cce.cast_to(out_accum, "float16")
 
     return out_var, out_accum
 
@@ -112,16 +108,20 @@ def _get_placeholder(dict_list, name_list):
         if name == 'lr' and shape[0] != 1:
             raise RuntimeError("The shape of lr must be scalar.")
 
-        util.check_dtype_rule(dtype, ('float32', 'float16'))
-        util.check_shape_rule(shape, max_shape_num=SHAPE_SIZE_LIMIT)
-        util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+        op_utils.check_dtype(dtype, ('float32', ), param_name="var")
+        op_utils.check_shape(shape)
         shape_refine = (functools_reduce(operator.mul, shape), )
         list_placeholder.append(
             tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
+
 # pylint: disable=unbalanced-tuple-unpacking,invalid-name
-@util.check_input_type(dict, dict, dict, dict, dict, dict, float, bool, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def apply_adagradv2_d(var,
                       accum,
                       lr,
@@ -140,19 +140,19 @@ def apply_adagradv2_d(var,
 
     Parameters:
     ----------
-    var: the dict of var, only support float16, float32
+    var: the dict of var, only support float32
 
-    accum: the dict of accum, only support float16, float32
+    accum: the dict of accum, only support float32
 
-    lr: the dict of lr, only support float16, float32
+    lr: the dict of lr, only support float32
 
-    grad: the dict of grad, only support float16, float32
+    grad: the dict of grad, only support float32
 
-    out_var: the dict of output, only support float16, float32
+    out_var: the dict of output, only support float32
 
-    out_accum: the dict of output, only support float16, float32
+    out_accum: the dict of output, only support float32
 
-    epsilon: scalar, only support float16, float32
+    epsilon: scalar, only support float32
 
     update_slots: An optional 'bool'. Defaults to 'True',
         If True, the accum tensor will be updated;
@@ -165,7 +165,6 @@ def apply_adagradv2_d(var,
     None
     """
     input_name_list = ['var', 'accum', 'lr', 'grad']
-    util.check_kernel_name(kernel_name)
     var, accum, lr, grad = _get_placeholder([var, accum, lr, grad],
                                             input_name_list)
 

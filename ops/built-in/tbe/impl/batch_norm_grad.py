@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # define a scalar, value = 0.0
 SCALAR_ZERO = 0.0
@@ -296,16 +297,11 @@ def _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
     -------
     None
     """
-    util.check_shape_rule(shape_y_backprop)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_scale)
-    util.check_shape_rule(shape_reserve_space_1)
-    util.check_shape_rule(shape_reserve_space_2)
-    util.check_tensor_shape_size(shape_y_backprop)
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_scale)
-    util.check_tensor_shape_size(shape_reserve_space_1)
-    util.check_tensor_shape_size(shape_reserve_space_2)
+    check_shape(shape_y_backprop, param_name="y_backprop")
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_scale, param_name="scale")
+    check_shape(shape_reserve_space_1, param_name="reserve_space_1")
+    check_shape(shape_reserve_space_2, param_name="reserve_space_2")
 
     if data_format == "NHWC":
         if shape_scale[-1] != shape_y_backprop[-1]:
@@ -373,9 +369,10 @@ def _change_shape(shape_scale, shape_reserve_space_1, shape_reserve_space_2,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict,
-                       (dict, NONETYPE), (dict, NONETYPE), float, str, bool,
-                       str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
+                 OPTION_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
                     x_backprop, scale_backprop,
                     offset_backprop, reserve_space_4, reserve_space_5,
@@ -454,13 +451,12 @@ def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
     reserve_space_2_dtype = reserve_space_2.get("dtype").lower()
 
 
-    util.check_dtype_rule(y_backprop_dtype, ("float32", "float16"))
-    util.check_dtype_rule(x_dtype, ("float32", "float16"))
-    util.check_dtype_rule(scale_dtype, ("float32",))
-    util.check_dtype_rule(reserve_space_1_dtype, ("float32",))
-    util.check_dtype_rule(reserve_space_2_dtype, ("float32",))
+    check_dtype(y_backprop_dtype, ("float32", "float16"), param_name="y_backprop")
+    check_dtype(x_dtype, ("float32", "float16"), param_name="x")
+    check_dtype(scale_dtype, ("float32",), param_name="scale")
+    check_dtype(reserve_space_1_dtype, ("float32",), param_name="reserve_space_1")
+    check_dtype(reserve_space_2_dtype, ("float32",), param_name="reserve_space_2")
     util.compare_tensor_dict_key(y_backprop, x, "dtype")
-    util.check_kernel_name(kernel_name)
 
     _format_check(x, data_format)
     format_data = x.get("format")

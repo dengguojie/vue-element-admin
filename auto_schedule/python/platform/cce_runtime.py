@@ -104,6 +104,35 @@ class CceFlag(object):
     BatchBindOnly = False
 
 @tvm.register_func
+def tvm_callback_get_cce_output_dir():
+    """
+    get cce output directory
+    """
+    path = os.path.join(os.getcwd(), cce.OUTPUT_PATH_CLASS.output_path)
+    if path[-1] != '/':
+        path += '/'
+    return path
+
+@tvm.register_func
+def tvm_callback_create_dir_if_not_exist(dir_path):
+    """
+    create directory if not exist
+    """
+    if os.path.exists(dir_path) and not os.path.isdir(dir_path):
+        raise RuntimeError("The output directory specified "
+                           "should be a directory, "
+                           "but now is a file")
+
+    if dir_path[-1] != '/':
+        dir_path += '/'
+    if not os.path.exists(dir_path):
+        try:
+            os.makedirs(dir_path,
+                        stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
+        except OSError as err:
+            raise err
+
+@tvm.register_func
 def tvm_callback_cce_compile(target, kernel_name, dirpath, json_info={}):
     """
     cce compile
@@ -190,7 +219,7 @@ def add_json_info(title_dict, json_info, json_info_tuple):
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 # blockdim: cpu num,default value is 1.
 @tvm.register_func
-def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, atomic_args="", json_info={}, json_info_tuple={}):
+def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, args_size=0, atomic_args="", json_info={}, json_info_tuple={}):
     """
     cce postproc
     """
@@ -235,6 +264,7 @@ def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, atomic_args="", j
 
     # dict to write into json
     title_dict["blockDim"] = blockdim
+    title_dict["opParaSize"] = args_size
     title_dict = add_json_info(title_dict, json_info, json_info_tuple)
 
     # new parameters in aicpuos feature

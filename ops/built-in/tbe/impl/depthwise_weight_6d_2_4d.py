@@ -18,11 +18,11 @@ limitations under the License.
 Schedule for cce depthwise_weight_6d_2_4d
 """
 
-from te import tvm
-from te import platform as tbe_platform
-from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
-from topi.cce import util
+from te import platform as tbe_platform
+from te import tvm
+from te.platform.cce_build import build_config
+from te.utils import op_utils
 
 
 def _ceil_div(val, block):
@@ -40,7 +40,7 @@ def _ceil_fill(val, block):
     :param block
     :return: ((val + block - 1) // block)*block
     """
-    return _ceil_div(val, block)*block
+    return _ceil_div(val, block) * block
 
 
 def _prod(values):
@@ -54,7 +54,10 @@ def _prod(values):
     return res
 
 
-def _apply_for_new_alloc(ib_, dtype, buf_len, align_size,
+def _apply_for_new_alloc(ib_,
+                         dtype,
+                         buf_len,
+                         align_size,
                          scope=cce_params.scope_ubuf):
     """
     :param ib_: ir builder
@@ -64,9 +67,10 @@ def _apply_for_new_alloc(ib_, dtype, buf_len, align_size,
     :param scope : cce scope
     :return: new buffer
     """
-    shape_x = (_ceil_fill(buf_len, align_size),)
+    shape_x = (_ceil_fill(buf_len, align_size), )
     buf_var = ib_.allocate(dtype, shape_x, name="tmp_buf", scope=scope)
-    tmp_buffer = tvm.decl_buffer(shape_x, buf_var.dtype,
+    tmp_buffer = tvm.decl_buffer(shape_x,
+                                 buf_var.dtype,
                                  name="tmp_buf",
                                  scope=cce_params.scope_ubuf,
                                  data=buf_var)
@@ -78,25 +82,22 @@ class _BasicParams():
     """
     parameters for Segment
     """
-
     def __init__(self, ib_, dtype):
         self.ib_ = ib_
         self.dtype = dtype
         self.type_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
         self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.type_size
 
-        self.unified_buffer_len = \
-            tbe_platform.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // \
-            self.type_size
-        self.vec_align_len = cce_params.VECTOR_INST_BLOCK_WIDTH // \
-                             self.type_size
+        self.unified_buffer_len = tbe_platform.get_soc_spec(
+            tbe_platform.cce_conf.UB_SIZE) // self.type_size
+        self.vec_align_len = cce_params.VECTOR_INST_BLOCK_WIDTH // self.type_size
         self.uint8_max_value = 255
-        self.last_block = \
-            ib_.allocate("int32", (1,), name="last_block",
-                         scope=cce_params.scope_reg)
+        self.last_block = ib_.allocate("int32", (1, ),
+                                       name="last_block",
+                                       scope=cce_params.scope_reg)
 
-        self.device_core_num = \
-            tbe_platform.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.device_core_num = tbe_platform.get_soc_spec(
+            tbe_platform.cce_conf.CORE_NUM)
         self.block = tvm.thread_axis("blockIdx.x")
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 
@@ -116,14 +117,16 @@ class _BasicParams():
         :param input_len : input length
         :param output_len: output length
         """
-        total_buf_len = _ceil_fill(input_data_len, self.vec_align_len) + \
-                        _ceil_fill(output_data_len, self.vec_align_len)
+        total_buf_len = _ceil_fill(input_data_len,
+                                   self.vec_align_len) + _ceil_fill(
+                                       output_data_len, self.vec_align_len)
 
         if total_buf_len > self.unified_buffer_len:
             return False
 
         self.input_ub = _apply_for_new_alloc(self.ib_, self.dtype,
-                                             input_data_len, self.vec_align_len,
+                                             input_data_len,
+                                             self.vec_align_len,
                                              cce_params.scope_ubuf)
         self.output_ub = _apply_for_new_alloc(self.ib_, self.dtype,
                                               output_data_len,
@@ -156,20 +159,20 @@ def _do_vector_dup(ubuf, dup_len, dtype, params, val=0):
         :param data_len : length to dup
         :param cycle_offset : cycle_offset
         """
-        params.ib_.emit(tvm.call_extern(
-            dtype, 'vector_dup',
-            buf.access_ptr("rw", offset=buf_offset + cycle_offset),
-            tvm.const(val, dtype),
-            _ceil_div(data_len, _get_vec_align_len(dtype)),
-            1, 1, 8, 8))
+        params.ib_.emit(
+            tvm.call_extern(
+                dtype, 'vector_dup',
+                buf.access_ptr("rw", offset=buf_offset + cycle_offset),
+                tvm.const(val, dtype),
+                _ceil_div(data_len, _get_vec_align_len(dtype)), 1, 1, 8, 8))
 
-    vec_buffer_max_len = params.uint8_max_value*params.vec_align_len
+    vec_buffer_max_len = params.uint8_max_value * params.vec_align_len
     num_cycle = dup_len // vec_buffer_max_len
     with params.ib_.for_range(0, num_cycle, for_type="serial", name="i") as i:
-        _dump(vec_buffer_max_len, i*vec_buffer_max_len)
+        _dump(vec_buffer_max_len, i * vec_buffer_max_len)
     tail_len = dup_len % vec_buffer_max_len
     with params.ib_.if_scope(tail_len > 0):
-        _dump(tail_len, num_cycle*vec_buffer_max_len)
+        _dump(tail_len, num_cycle * vec_buffer_max_len)
 
     params.set_pipe_barrier('PIPE_ALL')
 
@@ -181,13 +184,11 @@ def _do_cp_input_gm(input_gm, data_len, offset, params):
     :param offset: gm offset
     :param params : parameters
     """
-    params.ib_.emit(tvm.call_extern(
-        params.dtype, 'copy_gm_to_ubuf',
-        params.input_ub.access_ptr("rw", offset=0),
-        input_gm.access_ptr("r", offset=offset),
-        0, 1,
-        _ceil_div(data_len, params.cp_align_len),
-        0, 0))
+    params.ib_.emit(
+        tvm.call_extern(params.dtype, 'copy_gm_to_ubuf',
+                        params.input_ub.access_ptr("rw", offset=0),
+                        input_gm.access_ptr("r", offset=offset), 0, 1,
+                        _ceil_div(data_len, params.cp_align_len), 0, 0))
 
     params.set_pipe_barrier('PIPE_ALL')
 
@@ -199,8 +200,8 @@ def _multi_core(_core_func, element_num, params):
     :param params : parameters
     """
     element_num_of_core = _ceil_div(element_num, params.device_core_num)
-    out_begin = params.block.var*element_num_of_core
-    out_end = params.block.var*element_num_of_core + element_num_of_core
+    out_begin = params.block.var * element_num_of_core
+    out_end = params.block.var * element_num_of_core + element_num_of_core
 
     with params.ib_.if_scope(out_end <= element_num):
         _core_func(out_begin, out_end, element_num_of_core)
@@ -219,11 +220,11 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
     """
     channel1, hight, weight, channel0 = six2four.get_hwc()
     channel = six2four.channel
-    total_element = hight*weight*channel1
+    total_element = hight * weight * channel1
 
     block_num_of_core = _ceil_div(total_element, params.device_core_num)
     input_data_len = _prod(six2four.input_shape)
-    output_data_len = block_num_of_core*channel
+    output_data_len = block_num_of_core * channel
 
     if not params.apply_bufs(input_data_len, output_data_len):
         return False
@@ -236,17 +237,18 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
         :param channel0_num : channel0 num
         :param offset : offset of data
         """
-        with params.ib_.for_range(0, channel0_num, for_type="serial",
+        with params.ib_.for_range(0,
+                                  channel0_num,
+                                  for_type="serial",
                                   name="c0_index") as c0_index:
-            input_offset = (c1_index*hight*weight +
-                            input_hw)*channel0*channel0 + \
-                           c0_index*channel0 + c0_index
-            output_offset = block_index*channel0 + c0_index + offset
+            input_offset = (
+                c1_index * hight * weight + input_hw
+            ) * channel0 * channel0 + c0_index * channel0 + c0_index
+            output_offset = block_index * channel0 + c0_index + offset
 
             # output_ub size >= _ceil_fill(output_data_len, params.cp_align_len)
-            with params.ib_.if_scope(output_offset <
-                                     _ceil_fill(output_data_len,
-                                                params.cp_align_len)):
+            with params.ib_.if_scope(output_offset < _ceil_fill(
+                    output_data_len, params.cp_align_len)):
                 value = params.input_ub.vload(input_offset)
                 params.ib_.emit(params.output_ub.vstore(output_offset, value))
 
@@ -264,8 +266,8 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
         if core_cal_num == 0:
             return
 
-        _do_vector_dup((params.output_ub, 0), output_data_len,
-                       params.dtype, params)
+        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype,
+                       params)
         _do_cp_input_gm(input_gm, input_data_len, 0, params)
 
         c0_pad_len = _ceil_fill(channel, channel0) - channel
@@ -280,51 +282,52 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
             if channel % channel0 == 0:
                 _data_copy(c1_index, block_index, i_hw, channel0, 0)
             else:
-                offset = ((i // channel1) - (out_begin // channel1))*c0_pad_len
+                offset = ((i // channel1) -
+                          (out_begin // channel1)) * c0_pad_len
                 with params.ib_.if_scope(c1_index != channel1 - 1):
                     _data_copy(c1_index, block_index, i_hw, channel0, -offset)
                 with params.ib_.else_scope():
-                    _data_copy(c1_index, block_index, i_hw,
-                               channel % channel0, -offset)
+                    _data_copy(c1_index, block_index, i_hw, channel % channel0,
+                               -offset)
 
-        with params.ib_.for_range(0, core_cal_num,
-                                  for_type="serial", name="j") as j:
+        with params.ib_.for_range(0, core_cal_num, for_type="serial",
+                                  name="j") as j:
             i = out_begin + j
             _do_data_copy(i, j)
 
-        core_out_len = core_cal_num*channel0
+        core_out_len = core_cal_num * channel0
 
         if channel % channel0 != 0:
-            out_begin_offset = params.ib_.allocate("int32", (1,),
+            out_begin_offset = params.ib_.allocate("int32", (1, ),
                                                    name="out_begin_offset",
                                                    scope=cce_params.scope_reg)
-            out_begin_offset[0] = (out_begin // channel1)*c0_pad_len
-            core_out_len -= ((out_end // channel1)*c0_pad_len \
-                             - out_begin_offset[0])
-            pad_len = _ceil_fill(core_out_len, params.cp_align_len) \
-                      - core_out_len
-            with params.ib_.for_range(0, params.cp_align_len,
-                                      for_type="serial", name="j") as j:
+            out_begin_offset[0] = (out_begin // channel1) * c0_pad_len
+            core_out_len -= ((out_end // channel1) * c0_pad_len -
+                             out_begin_offset[0])
+            pad_len = _ceil_fill(core_out_len,
+                                 params.cp_align_len) - core_out_len
+            with params.ib_.for_range(0,
+                                      params.cp_align_len,
+                                      for_type="serial",
+                                      name="j") as j:
                 i = out_begin + j + core_cal_num
                 _do_data_copy(i, j + core_cal_num)
 
-                real_pad_len = \
-                    ((i + 1)*channel0 - ((i + 1) // channel1)*c0_pad_len) - \
-                    ((out_begin + core_cal_num)*channel0 \
-                     -((out_begin + core_cal_num) // channel1)*c0_pad_len)
+                real_pad_len = ((i + 1) * channel0 - (
+                    (i + 1) // channel1) * c0_pad_len) - (
+                        (out_begin + core_cal_num) * channel0 -
+                        ((out_begin + core_cal_num) // channel1) * c0_pad_len)
                 with params.ib_.if_scope(real_pad_len >= pad_len):
-                    params.ib_.emit(tvm.call_extern(
-                        params.dtype, 'break'))
+                    params.ib_.emit(tvm.call_extern(params.dtype, 'break'))
 
         num_cp = _ceil_div(core_out_len, params.cp_align_len)
-        output_offset = out_begin*channel0 - (out_begin // channel1)*c0_pad_len
-        params.ib_.emit(tvm.call_extern(
-            params.dtype, 'copy_ubuf_to_gm',
-            output_gm.access_ptr("rw", offset=output_offset),
-            params.output_ub.access_ptr("r", offset=0),
-            0, 1,
-            num_cp,
-            0, 0))
+        output_offset = out_begin * channel0 - (out_begin //
+                                                channel1) * c0_pad_len
+        params.ib_.emit(
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                            output_gm.access_ptr("rw", offset=output_offset),
+                            params.output_ub.access_ptr("r", offset=0), 0, 1,
+                            num_cp, 0, 0))
 
     _multi_core(_core_func, total_element, params)
     return True
@@ -341,19 +344,18 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
     channel1, hight, weight, channel0 = six2four.get_hwc()
     channel = six2four.channel
     len_params = {}
-    len_params["total_element"] = hight*weight*channel1
+    len_params["total_element"] = hight * weight * channel1
 
     len_params["input_data_len"] = _prod(six2four.input_shape)
-    len_params["input_block_len"] = _ceil_fill(params.unified_buffer_len // 3*2,
-                                               params.vec_align_len)
+    len_params["input_block_len"] = _ceil_fill(
+        params.unified_buffer_len // 3 * 2, params.vec_align_len)
 
-    len_params["one_output_num"] = (params.unified_buffer_len -
-                                    _ceil_fill(len_params["input_block_len"],
-                                             params.vec_align_len)) // channel0
+    len_params["one_output_num"] = (params.unified_buffer_len - _ceil_fill(
+        len_params["input_block_len"], params.vec_align_len)) // channel0
     if len_params["one_output_num"] <= 0:
         raise RuntimeError("len_params['one_output_num'] <= 0")
 
-    len_params["output_data_len"] = len_params["one_output_num"]*channel0
+    len_params["output_data_len"] = len_params["one_output_num"] * channel0
 
     if not params.apply_bufs(len_params["input_block_len"],
                              len_params["output_data_len"]):
@@ -367,34 +369,38 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         :param channel0_num : channel0 num
         :param offset : offset of data
         """
-        with params.ib_.for_range(0, channel0_num,
+        with params.ib_.for_range(0,
+                                  channel0_num,
                                   for_type="serial",
                                   name="c0_index") as c0_index:
-            input_offset = (c1_index*hight*weight + \
-                    input_hw)*channel0*channel0 + c0_index*channel0 + c0_index
-            output_offset = block_index*channel0 + c0_index + offset
+            input_offset = (
+                c1_index * hight * weight + input_hw
+            ) * channel0 * channel0 + c0_index * channel0 + c0_index
+            output_offset = block_index * channel0 + c0_index + offset
 
-            with params.ib_.if_scope(params.last_block[0] != \
-                                input_offset // len_params["input_block_len"]):
-                params.last_block[0] = \
-                    input_offset // len_params["input_block_len"]
+            with params.ib_.if_scope(params.last_block[0] != input_offset //
+                                     len_params["input_block_len"]):
+                params.last_block[
+                    0] = input_offset // len_params["input_block_len"]
 
-                last_block = len_params["input_data_len"] \
-                             // len_params["input_block_len"]
+                last_block = len_params["input_data_len"] // len_params[
+                    "input_block_len"]
                 with params.ib_.if_scope(params.last_block[0] == last_block):
-                    _do_cp_input_gm(input_gm,
-                                    len_params["input_data_len"] \
-                                    % len_params["input_block_len"], \
-                    params.last_block[0]*len_params["input_block_len"], params)
+                    _do_cp_input_gm(
+                        input_gm, len_params["input_data_len"] %
+                        len_params["input_block_len"],
+                        params.last_block[0] * len_params["input_block_len"],
+                        params)
                 with params.ib_.else_scope():
-                    _do_cp_input_gm(input_gm, len_params["input_block_len"], \
-                    params.last_block[0]*len_params["input_block_len"], params)
+                    _do_cp_input_gm(
+                        input_gm, len_params["input_block_len"],
+                        params.last_block[0] * len_params["input_block_len"],
+                        params)
 
-            with params.ib_.if_scope(output_offset <
-                                     _ceil_fill(len_params["output_data_len"],
-                                                params.cp_align_len)):
-                value = params.input_ub.vload(input_offset \
-                                              % len_params["input_block_len"])
+            with params.ib_.if_scope(output_offset < _ceil_fill(
+                    len_params["output_data_len"], params.cp_align_len)):
+                value = params.input_ub.vload(input_offset %
+                                              len_params["input_block_len"])
                 params.ib_.emit(params.output_ub.vstore(output_offset, value))
 
     def _do_data_copy(i, block_index, out_begin, c0_pad_len):
@@ -403,7 +409,7 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         if channel % channel0 == 0:
             _data_copy(c1_index, block_index, i_hw, channel0, 0)
         else:
-            offset = ((i // channel1) - (out_begin // channel1))*c0_pad_len
+            offset = ((i // channel1) - (out_begin // channel1)) * c0_pad_len
             with params.ib_.if_scope(c1_index != channel1 - 1):
                 _data_copy(c1_index, block_index, i_hw, channel0, -offset)
             with params.ib_.else_scope():
@@ -421,52 +427,53 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
                        params.dtype, params)
         with params.ib_.for_range(0, sub_num, for_type="serial",
                                   name="i") as sub_i:
-            i = out_begin + block_index*len_params["one_output_num"] + sub_i
+            i = out_begin + block_index * len_params["one_output_num"] + sub_i
             _do_data_copy(i, sub_i, out_begin, c0_pad_len)
 
-        core_out_len = sub_num*channel0
+        core_out_len = sub_num * channel0
 
         if channel % channel0 != 0 and tail_core:
-            out_begin_offset = params.ib_.allocate("int32", (1,),
+            out_begin_offset = params.ib_.allocate("int32", (1, ),
                                                    name="out_begin_offset",
                                                    scope=cce_params.scope_reg)
-            out_begin_offset[0] = (out_begin // channel1)*c0_pad_len
-            core_out_len -= (((out_begin + \
-                            block_index*len_params["one_output_num"] + sub_num)
-                              // channel1)*c0_pad_len - out_begin_offset[0])
-            pad_len = \
-                _ceil_fill(core_out_len, params.cp_align_len) - core_out_len
-            with params.ib_.for_range(0, params.cp_align_len, for_type="serial",
+            out_begin_offset[0] = (out_begin // channel1) * c0_pad_len
+            core_out_len -= ((
+                (out_begin + block_index * len_params["one_output_num"] +
+                 sub_num) // channel1) * c0_pad_len - out_begin_offset[0])
+            pad_len = _ceil_fill(core_out_len,
+                                 params.cp_align_len) - core_out_len
+            with params.ib_.for_range(0,
+                                      params.cp_align_len,
+                                      for_type="serial",
                                       name="j") as sub_i:
-                i = out_begin + block_index*len_params["one_output_num"] \
-                    + sub_i + sub_num
-                _do_data_copy(i, sub_i + sub_num, out_begin \
-                        + block_index*len_params["one_output_num"], c0_pad_len)
+                i = out_begin + block_index * len_params[
+                    "one_output_num"] + sub_i + sub_num
+                _do_data_copy(
+                    i, sub_i + sub_num,
+                    out_begin + block_index * len_params["one_output_num"],
+                    c0_pad_len)
 
-                real_pad_len = ((i + 1)*channel0 - ((i + 1) \
-                                // channel1)*c0_pad_len) - \
-                               ((out_begin + \
-                            block_index*len_params["one_output_num"] + sub_num)
-                                *channel0 - \
-            ((out_begin + block_index*len_params["one_output_num"] +
-              sub_num) // channel1)*c0_pad_len)
+                real_pad_len = (
+                    (i + 1) * channel0 - ((i + 1) // channel1) * c0_pad_len
+                ) - ((out_begin + block_index * len_params["one_output_num"] +
+                      sub_num) * channel0 -
+                     ((out_begin + block_index * len_params["one_output_num"] +
+                       sub_num) // channel1) * c0_pad_len)
 
                 with params.ib_.if_scope(real_pad_len >= pad_len):
-                    params.ib_.emit(tvm.call_extern(
-                        params.dtype, 'break'))
+                    params.ib_.emit(tvm.call_extern(params.dtype, 'break'))
 
         num_cp = _ceil_div(core_out_len, params.cp_align_len)
-        out_gm_offset = (out_begin + \
-                         block_index*len_params["one_output_num"])*channel0 - \
-                        ((out_begin + block_index*len_params["one_output_num"])
-                         // channel1)*c0_pad_len
-        params.ib_.emit(tvm.call_extern(
-            params.dtype, 'copy_ubuf_to_gm',
-            output_gm.access_ptr("rw", offset=out_gm_offset),
-            params.output_ub.access_ptr("r", offset=0),
-            0, 1,
-            num_cp,
-            0, 0))
+        out_gm_offset = (
+            out_begin +
+            block_index * len_params["one_output_num"]) * channel0 - (
+                (out_begin + block_index * len_params["one_output_num"]) //
+                channel1) * c0_pad_len
+        params.ib_.emit(
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                            output_gm.access_ptr("rw", offset=out_gm_offset),
+                            params.output_ub.access_ptr("r", offset=0), 0, 1,
+                            num_cp, 0, 0))
 
     def _core_func(out_begin, out_end, element_num_of_core):
         """
@@ -474,8 +481,9 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         :param out_end : multi core output end address
         :param element_num_of_core : element num of one core
         """
-        if out_end != len_params["total_element"] or \
-                element_num_of_core == len_params["total_element"]:
+        if out_end != len_params[
+                "total_element"] or element_num_of_core == len_params[
+                    "total_element"]:
             core_cal_num = element_num_of_core
         else:
             core_cal_num = len_params["total_element"] % element_num_of_core
@@ -484,8 +492,10 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
             return
 
         params.last_block[0] = 0
-        _do_cp_input_gm(input_gm, min(len_params["input_block_len"],
-                                      len_params["input_data_len"]), 0, params)
+        _do_cp_input_gm(
+            input_gm,
+            min(len_params["input_block_len"], len_params["input_data_len"]),
+            0, params)
 
         cycle_num = core_cal_num // len_params["one_output_num"]
         tail_num = core_cal_num % len_params["one_output_num"]
@@ -498,12 +508,16 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
             core_inside_num = cycle_num - 1
             tail_core_len = len_params["one_output_num"]
 
-        with params.ib_.for_range(0, core_inside_num, for_type="serial",
+        with params.ib_.for_range(0,
+                                  core_inside_num,
+                                  for_type="serial",
                                   name="i") as i:
             _out_put_one_time(out_begin, i, len_params["one_output_num"])
 
-        _out_put_one_time(out_begin, core_inside_num,
-                          tail_core_len, tail_core=True)
+        _out_put_one_time(out_begin,
+                          core_inside_num,
+                          tail_core_len,
+                          tail_core=True)
 
     _multi_core(_core_func, len_params["total_element"], params)
     return True
@@ -534,13 +548,11 @@ class _Six2FourParam():
     """
     parameters for Segment
     """
-
     def __init__(self, input_shape, channel_4d):
         self.input_shape = input_shape
 
         if len(input_shape) == 6:
-            self.channel1, self.hight, self.weight, self.num,\
-            self.channel0, channel0 = input_shape
+            self.channel1, self.hight, self.weight, self.num, self.channel0, channel0 = input_shape
             if self.num != 1:
                 raise RuntimeError("N != 1.")
         else:
@@ -588,9 +600,15 @@ def _check_parameters(x, y, src_format, dst_format):
                                "the 1st,2rd,dimension of shape "
                                "must be the same !")
 
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, str, str, str)
-def depthwise_weight_6d_2_4d(x, y, src_format, dst_format,
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_STR,
+                          op_utils.REQUIRED_ATTR_STR, op_utils.KERNEL_NAME)
+def depthwise_weight_6d_2_4d(x,
+                             y,
+                             src_format,
+                             dst_format,
                              kernel_name="depthwise_weight_6d_2_4d"):
     """Operation and Schedule for depthwise_weight_6d_2_4d.
 
@@ -617,27 +635,24 @@ def depthwise_weight_6d_2_4d(x, y, src_format, dst_format,
     input_shape = x.get("shape")
     dtype = x.get("dtype")
     channel_4d = channel_size
-    util.check_shape_rule(input_shape)
+    op_utils.check_shape(input_shape, param_name="x")
 
     check_list = ("float16", "float32", "int32", "uint16")
     dtype = dtype.lower()
-    util.check_dtype_rule(dtype, check_list)
-
-    util.check_kernel_name(kernel_name)
+    op_utils.check_dtype(dtype, check_list, param_name="x")
 
     input_data = tvm.placeholder(input_shape, name="input_data", dtype=dtype)
 
     six2four = _Six2FourParam(input_shape, channel_4d)
 
-    res = tvm.extern([six2four.get_out_shape()], [input_data],
-                     lambda ins, outs: _intrin_factor(six2four, dtype,
-                                                      ins, outs),
-                     name="res", dtype=dtype)
+    res = tvm.extern(
+        [six2four.get_out_shape()], [input_data],
+        lambda ins, outs: _intrin_factor(six2four, dtype, ins, outs),
+        name="res",
+        dtype=dtype)
 
     sch = tvm.create_schedule(res.op)
     build_list = [input_data, res]
 
     with build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
-
-# pylint: enable=too-many-arguments

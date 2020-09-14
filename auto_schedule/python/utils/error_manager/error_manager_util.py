@@ -31,4 +31,5 @@ def get_error_message(args):
         else:
             arg_value.append(args.get(arg_name.strip()))
     msg = error_json.get(error_code).get("errMessage") % tuple(arg_value)
+    msg = msg.replace("op[]", "op").replace("op []", "op")
     return msg

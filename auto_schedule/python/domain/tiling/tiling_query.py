@@ -11,13 +11,16 @@ from te.platform import CUBE_MKN
 from te.platform.cce_conf import get_soc_spec
 from te.domain.tiling.tiling_helper import TILING_INSTANCE
 from te import platform as cce
+from te.domain.tiling.auto_tiling_log import AUTOTILINGLOG
 
 AUTO_TILING_TYPE = 0
 CCE_TILING_TYPE = 1
 REPOSITORY_TILING_TYPE = 2
 PRIORITY_TILING_TYPE = 3
 CUSTOM_TILING_TYPE = 4
-TUNING_TILING_TYPE = 5
+COST_MODEL_TILING_TYPE = 5
+TUNING_TILING_TYPE = 6
+
 
 MINI_FLAG = 1
 CLOUD_FLAG = 2
@@ -62,6 +65,7 @@ SUPPORT_TILING_TYPE = {
     "repository_tiling": REPOSITORY_TILING_TYPE,
     "custom_tiling": CUSTOM_TILING_TYPE,
     "priority_tiling": PRIORITY_TILING_TYPE,
+    "cost_model_tiling": COST_MODEL_TILING_TYPE,
     "tuning_tiling": TUNING_TILING_TYPE
 }
 
@@ -79,8 +83,11 @@ def get_platform_info():
         "Ascend310": 1,
         "Ascend910": 2,
         "Hi3796CV300ES": 3,
-        "Ascend610": 4,
-        "Ascend620": 5,
+        "Ascend710": 4,
+        "Ascend610": 5,
+        "Ascend910Lite": 6,
+        "Ascend910Pro": 7,
+        "Hi3796CV300CS": 8
     }
     return version_dict[get_soc_spec("SOC_VERSION")]
 
@@ -191,7 +198,9 @@ def tiling_query(a_shape, b_shape, c_shape=None, a_dtype='float16', \
     # the tiling from repository
     tiling = obtain_tiling(shape_encode_array, tiling_type,
                            params_in)
-
+    AUTOTILINGLOG.debug("[auto_tiling]params_in:{}".format(params_in))
+    AUTOTILINGLOG.debug("[auto_tiling]tiling:{}, "\
+        "tiling_type:{}".format(tiling, tiling_type))
     return tiling
 
 
@@ -254,10 +263,10 @@ def check_params_in(params_in):
 
     # check the type of param
     check_param_type(params_in, [dict])
-    check_param_type(params_in.get('A_shape'), [list, tuple])
-    check_param_type(params_in.get('B_shape'), [list, tuple])
+    check_param_type(params_in.get('A_shape'), [list])
+    check_param_type(params_in.get('B_shape'), [list])
     # check the type and value and C_shape
-    if isinstance(params_in.get('C_shape'), (list, tuple)):
+    if isinstance(params_in.get('C_shape'), list):
         if not (len(params_in.get('C_shape')) in \
             [SHAPE_LENGTH4, SHAPE_LENGTH5, SHAPE_LENGTH6]):
             raise ValueError("the length of param is error, \
@@ -346,59 +355,86 @@ def encode_array(params_in):
         _ca0 = config['mac'][1]
 
     params_dict = {}
-    if is_conv3d_op_tag(params_in['op_type']):
+    if (params_in['op_type'] == 'conv2d_backprop_filter' or\
+       params_in['op_type'] == 'conv2d_backprop_input'):
         params_dict['batchA'] = params_in["A_shape"][0]
-        params_dict['da'] = params_in["A_shape"][1]
-        params_dict['ca1'] = ((params_in["A_shape"][2]
-                               * params_in["A_shape"][5]) + _ca0 - 1) // _ca0
-        params_dict['ca0'] = _ca0
-        params_dict['ha'] = params_in["A_shape"][3]
-        params_dict['wa'] = params_in["A_shape"][4]
-        params_dict['batchB'] = params_in['B_shape'][0]
-        params_dict['db'] = params_in["B_shape"][1]
-        params_dict['cb'] = params_in['B_shape'][2] * params_in['B_shape'][5]
-        params_dict['hb'] = params_in['B_shape'][3]
-        params_dict['wb'] = params_in['B_shape'][4]
-        params_dict['padf'] = params_in['padf']
-        params_dict['padb'] = params_in['padb']
-        params_dict['strideD'] = params_in['strideD']
-    else:
-        params_dict['batchA'] = params_in["A_shape"][0]
-        params_dict['da'] = 0
         params_dict['ca1'] = ((params_in["A_shape"][1]
                                * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
         params_dict['ca0'] = _ca0
         params_dict['ha'] = params_in["A_shape"][2]
-        params_dict['wa'] = params_in["A_shape"][3]
+        params_dict['wa'] = params_in["A_shape"][3] & 0xFFFF
+        params_dict['wa_hi'] = params_in["A_shape"][3] >> 16
         params_dict['batchB'] = params_in['B_shape'][0]
-        params_dict['db'] = 0
         params_dict['cb'] = params_in['B_shape'][1] * params_in['B_shape'][4]
         params_dict['hb'] = params_in['B_shape'][2]
-        params_dict['wb'] = params_in['B_shape'][3]
+        params_dict['wb'] = params_in['B_shape'][3] & 0xFFFF
+        params_dict['wb_hi'] = params_in['B_shape'][3] >> 16
         params_dict['padf'] = 0
         params_dict['padb'] = 0
         params_dict['strideD'] = 0
+        params_dict['hc'] = 0
+        params_dict['wc'] = 0
+        params_dict['wc_hi'] = 0
+        if params_in['op_type'] == 'conv2d_backprop_filter':
+            params_dict['hc'] = params_in['C_shape'][2]
+            params_dict['wc'] = params_in['C_shape'][3] & 0xFFFF
+            params_dict['wc_hi'] = params_in['C_shape'][3] >> 16
+        elif params_in['op_type'] == 'conv2d_backprop_input':
+            if isinstance(params_in['C_shape'], list):
+                params_dict['hc'] = params_in['C_shape'][2]
+                params_dict['wc'] = params_in['C_shape'][3] & 0xFFFF
+                params_dict['wc_hi'] = params_in['C_shape'][3] >> 16
+    else:
+        if is_conv3d_op_tag(params_in['op_type']):
+            params_dict['batchA'] = params_in["A_shape"][0]
+            params_dict['da'] = params_in["A_shape"][1]
+            params_dict['ca1'] = ((params_in["A_shape"][2]
+                                * params_in["A_shape"][5]) + _ca0 - 1) // _ca0
+            params_dict['ca0'] = _ca0
+            params_dict['ha'] = params_in["A_shape"][3]
+            params_dict['wa'] = params_in["A_shape"][4]
+            params_dict['batchB'] = params_in['B_shape'][0]
+            params_dict['db'] = params_in["B_shape"][1]
+            params_dict['cb'] = params_in['B_shape'][2] *\
+                            params_in['B_shape'][5]
+            params_dict['hb'] = params_in['B_shape'][3]
+            params_dict['wb'] = params_in['B_shape'][4]
+            params_dict['padf'] = params_in['padf']
+            params_dict['padb'] = params_in['padb']
+            params_dict['strideD'] = params_in['strideD']
+        else:
+            params_dict['batchA'] = params_in["A_shape"][0]
+            params_dict['da'] = 0
+            params_dict['ca1'] = ((params_in["A_shape"][1]
+                                * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
+            params_dict['ca0'] = _ca0
+            params_dict['ha'] = params_in["A_shape"][2]
+            params_dict['wa'] = params_in["A_shape"][3]
+            params_dict['batchB'] = params_in['B_shape'][0]
+            params_dict['db'] = 0
+            params_dict['cb'] = params_in['B_shape'][1] *\
+                            params_in['B_shape'][4]
+            params_dict['hb'] = params_in['B_shape'][2]
+            params_dict['wb'] = params_in['B_shape'][3]
+            params_dict['padf'] = 0
+            params_dict['padb'] = 0
+            params_dict['strideD'] = 0
 
-    params_dict['dc'] = 0
-    params_dict['hc'] = 0
-    params_dict['wc'] = 0
-    if params_in['op_type'] == 'conv2d_backprop_filter'\
-        or params_in['op_type'] == 'depthwise_bp_filter':
-        params_dict['hc'] = params_in['C_shape'][2]
-        params_dict['wc'] = params_in['C_shape'][3]
-    elif params_in['op_type'] == 'conv2d_backprop_input' or\
-            params_in['op_type'] == 'matmul':
-        if isinstance(params_in['C_shape'], list):
+        params_dict['dc'] = 0
+        params_dict['hc'] = 0
+        params_dict['wc'] = 0
+        if params_in['op_type'] == 'depthwise_bp_filter':
+                params_dict['hc'] = params_in['C_shape'][2]
+                params_dict['wc'] = params_in['C_shape'][3]
+        elif params_in['op_type'] == 'matmul':
+            if isinstance(params_in['C_shape'], list):
+                params_dict['hc'] = params_in['C_shape'][2]
+                params_dict['wc'] = params_in['C_shape'][3]
+        elif params_in['op_type'] == 'conv3d_backprop_input' or\
+                params_in['op_type'] == 'conv3d_backprop_filter':
+            params_dict['dc'] = params_in['C_shape'][1]
             params_dict['hc'] = params_in['C_shape'][2]
             params_dict['wc'] = params_in['C_shape'][3]
-        else:
-            # set default value of hc and wc
-            pass
-    elif params_in['op_type'] == 'conv3d_backprop_input' or \
-            params_in['op_type'] == 'conv3d_backprop_filter':
-        params_dict['dc'] = params_in['C_shape'][1]
-        params_dict['hc'] = params_in['C_shape'][2]
-        params_dict['wc'] = params_in['C_shape'][3]
 
     params_dict['A_type_encode'] = DTYPE_DICT[params_in['A_dtype']]
     params_dict['B_dtype_encode'] = DTYPE_DICT[params_in['B_dtype']]
@@ -496,16 +532,24 @@ def encode(params):
     params_encode.append((params['platform'] << 25) + \
         (params['bias_flag'] << 24) + (params['op_tag_encode'] << 16) + \
         (params['group'] << 8) + params['dilationW'])
-    # da occupies 32 bits
-    params_encode.append(params['da'])
-    # db occupies 32 bits
-    params_encode.append(params['db'])
-    # padf occupies 8 bits, padb occupies 8 bits,
-    # strideD: 8 bits, the combination occupies 24 bits
-    params_encode.append((params['strideD'] << 16) + \
-                         (params['padb'] << 8) + params['padf'])
-    # dc occupies 32 bits
-    params_encode.append(params['dc'])
+    if (params['op_tag_encode'] == OP_TYPE_DICT['conv2d_backprop_filter'] or\
+        params['op_tag_encode'] == OP_TYPE_DICT['conv2d_backprop_input']):
+        # wa_hi occupies 16 bits, wb_hi occupies 16 bits
+        params_encode.append((params['wb_hi'] << 16) + params['wa_hi'])
+        params_encode.append(params['wc_hi'])
+        params_encode.append(0)
+        params_encode.append(0)
+    else:
+        # da occupies 32 bits
+        params_encode.append(params['da'])
+        # db occupies 32 bits
+        params_encode.append(params['db'])
+        # padf occupies 8 bits, padb occupies 8 bits,
+        # strideD: 8 bits, the combination occupies 24 bits
+        params_encode.append((params['strideD'] << 16) + \
+                             (params['padb'] << 8) + params['padf'])
+        # dc occupies 32 bits
+        params_encode.append(params['dc'])
     return params_encode
 
 def decode(tiling_encode):
@@ -737,7 +781,7 @@ def cast_data_type(tiling):
 
     Returns
     -------
-    tiling: dict of tiling
+    tiling : dict of tiling
         modify tiling
     """
     for key, value in tiling.items():

@@ -23,6 +23,7 @@ from topi.cce import util
 from te import platform as tbe_platform
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -354,7 +355,8 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
 def layer_norm_compute(input_x, input_gamma, input_beta,
                        output_y, output_mean, output_variance,
                        begin_norm_axis, begin_params_axis,
-                       epsilon, kernel_name="layer_norm"):
+                       epsilon, kernel_name="layer_norm",
+                       impl_mode="high_performance"):
     """
     DSL description of the layernorm operator's mathematical calculation process
 
@@ -390,7 +392,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+            "te.lang.cce.vexp", "float32") and impl_mode == "high_performance":
         cast_dtype = "float32"
         input_x = te.lang.cce.cast_to(input_x, "float32")
         input_gamma = te.lang.cce.cast_to(input_gamma, "float32")
@@ -417,16 +419,27 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     variance = te.lang.cce.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
-    mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
-    normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
-    epsilon = tvm.const(epsilon, dtype=cast_dtype)
-    variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
-    normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-    normalize_log = te.lang.cce.vlog(normalize_add)
-    normalize_log_mul = \
-        te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
-    normalize_exp = te.lang.cce.vexp(normalize_log_mul)
-    normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+    if impl_mode == "high_performance":
+        mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
+        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        epsilon = tvm.const(epsilon, dtype=cast_dtype)
+        variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
+        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
+        normalize_log = te.lang.cce.vlog(normalize_add)
+        normalize_log_mul = \
+            te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+        normalize_exp = te.lang.cce.vexp(normalize_log_mul)
+        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+    else:
+        tesor_one = te.lang.cce.broadcast(tvm.const(1, dtype), shape_x)
+        mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
+        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
+        epsilon = tvm.const(epsilon, dtype=dtype)
+        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
+        normalize_sqrt = te.lang.cce.vsqrt(normalize_add, 0)
+        normalize_rsqrt = te.lang.cce.vdiv(tesor_one, normalize_sqrt)
+        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
@@ -439,7 +452,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
         res = te.lang.cce.vadd(scale_mul, beta_broadcast)
 
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+            "te.lang.cce.vexp", "float32") and impl_mode == "high_performance":
         mean = te.lang.cce.cast_to(mean, "float16")
         variance = te.lang.cce.cast_to(variance, "float16")
         res = te.lang.cce.cast_to(res, "float16")
@@ -447,11 +460,14 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     return mean, variance, res
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, int, int, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT,
+                 OPTION_ATTR_FLOAT, KERNEL_NAME, OPTION_ATTR_STR)
 def layer_norm(input_x, input_gamma, input_beta,
                output_y, output_mean, output_variance,
                begin_norm_axis, begin_params_axis,
-               epsilon = 1e-12, kernel_name="layer_norm"):
+               epsilon=1e-12, kernel_name="layer_norm",
+               impl_mode="high_performance"):
     """
     layernorm operator interface implementation
     calculating: x, gamma, beta
@@ -496,21 +512,17 @@ def layer_norm(input_x, input_gamma, input_beta,
     input_gamma_format = input_gamma.get("format").upper()
     input_beta_format = input_beta.get("format").upper()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_gamma_shape)
-    util.check_tensor_shape_size(input_gamma_shape)
-    util.check_shape_rule(input_beta_shape)
-    util.check_tensor_shape_size(input_beta_shape)
-    util.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(shape_x)
+    check_shape(input_gamma_shape, param_name="input_gamma")
+    check_shape(input_beta_shape, param_name="input_beta")
+    check_shape(shape_x, param_name="input_x")
 
     check_list = ("float16", "float32")
     dtype = input_x.get("dtype").lower()
     dtype_gamma = input_gamma.get("dtype").lower()
     dtype_beta = input_gamma.get("dtype").lower()
-    util.check_dtype_rule(dtype, check_list)
-    util.check_dtype_rule(dtype_gamma, check_list)
-    util.check_dtype_rule(dtype_beta, check_list)
+    check_dtype(dtype, check_list, param_name="input_x")
+    check_dtype(dtype_gamma, check_list, param_name="input_gamma")
+    check_dtype(dtype_beta, check_list, param_name="input_gamma")
 
     shape_gamma = list(input_gamma.get("shape"))
     shape_beta = list(input_beta.get("shape"))
@@ -585,7 +597,7 @@ def layer_norm(input_x, input_gamma, input_beta,
                                output_y, output_mean,
                                output_variance,
                                begin_norm_axis, begin_params_axis,
-                               epsilon, kernel_name)
+                               epsilon, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = generic.auto_schedule([res, mean, variance])

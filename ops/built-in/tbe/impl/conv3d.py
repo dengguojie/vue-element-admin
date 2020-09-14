@@ -17,7 +17,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 conv3d
 """
 from __future__ import absolute_import
+from functools import reduce as func_reduce
 from te.platform import CUBE_MKN
+from te.platform.cce_conf import get_soc_spec
 import te.lang.cce
 from te.lang.cce.te_compute import conv3d_compute
 from te.utils.error_manager import error_manager_util as err_mana
@@ -26,15 +28,18 @@ from topi import generic
 from topi.cce import util
 
 Nonetype = type(None)
+
+BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,
 #  strides_width, strides_channel]
 STRIDE_LENGTH = 5
-#
+
 DILATION_LENGTH = 5
 # [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 PADS_LENGTH = 6
 # NDHWC or NCDHW
 SHAPE_DIMS = 5
+
 
 def _get_mad_dtype(w_dtype):
     """
@@ -48,12 +53,25 @@ def _get_mad_dtype(w_dtype):
     -------
     mad dtype
     """
+    mad_dtype = "float32"
+    if w_dtype == 'int8':
+        mad_dtype = "int32"
+    elif get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                         "Hi3796CV300CS"):
+        mad_dtype = "float16"
 
-    return 'int32' if w_dtype == 'int8' else 'float32'
+    return mad_dtype
 
 
-def _conv3d_compute(shape_fm, shape_filter, bias, stride_dhw, pads, fmp_dtype,
-                    w_dtype, res_dtype, kernel_name='conv3d'):
+def _conv3d_compute(shape_fm,
+                    shape_filter,
+                    bias,
+                    stride_dhw,
+                    pads,
+                    fmp_dtype,
+                    w_dtype,
+                    res_dtype,
+                    kernel_name='conv3d'):
     """
     algorithm: compute conv3d
 
@@ -118,6 +136,7 @@ def _conv3d_compute(shape_fm, shape_filter, bias, stride_dhw, pads, fmp_dtype,
         tensor_list = [data, weight, conv_res]
 
     return tensor_list
+
 
 def check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
@@ -211,7 +230,7 @@ def format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 
 
 def check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
-                      fmp_format, w_format, strides, pads, dilations):
+                      fmp_format, w_format, bias, strides, pads, dilations):
     """
     algorithm: check the input params of conv3d
 
@@ -222,9 +241,6 @@ def check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
 
     w_shape: the shape of filter, a list of 'int' that has length `== 5`
 
-    bias: dict with keys(shape and dtype) or None
-        input bias tensor
-
     fmp_dtype: the dtype of feature
 
     w_dtype: the dtype of filter
@@ -234,6 +250,9 @@ def check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     fmp_format: The data format of the input feature.
 
     w_format: The data format of the input filter.
+
+    bias: dict with keys(shape and dtype) or None
+        input bias tensor
 
     strides: A list of `ints` that has length `== 5`.
 
@@ -248,6 +267,19 @@ def check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     -------
     None
     """
+    if bias is not None:
+        bias_dtype = bias.get("dtype")
+        util.check_dtype_rule(bias_dtype, ('float16', ))
+        bias_shape = bias.get("ori_shape")
+        if len(bias_shape) != BIAS_LENGTH:
+            dict_args = {
+                'errCode': 'E60006',
+                'param_name': 'bias',
+                'expected_length': '1',
+                'length': '{}'.format(len(bias_shape))
+            }
+            raise RuntimeError(dict_args,
+                               err_mana.get_error_message(dict_args))
     if len(strides) != STRIDE_LENGTH:
         dict_args = {
             'errCode': 'E60006',
@@ -290,22 +322,26 @@ def check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
 
     check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype)
 
-    te.lang.cce.te_compute.check_conv3d_shape(shape_fm,
-        shape_filter, pads, stride_dhw, fmp_dtype, w_dtype)
+    te.lang.cce.te_compute.check_conv3d_shape(shape_fm, shape_filter, pads,
+                                              stride_dhw, fmp_dtype, w_dtype)
 
     return shape_fm, shape_filter, stride_dhw, dilation_hw
 
 
-@util.check_input_type(dict, dict, (dict, Nonetype), dict, (tuple, list),
-                       (tuple, list), str, (tuple, list), str)
+@util.check_input_type(dict, dict, (dict, Nonetype), (dict, Nonetype), dict,
+                       (tuple, list), (tuple, list), (tuple, list), int,
+                       str, int, str)
 def conv3d(fmap,
            weight,
            bias,
+           offset_w,
            output,
            strides,
            pads,
-           data_format="NDHWC",
            dilations=(1, 1, 1, 1, 1),
+           groups=1,
+           data_format="NDHWC",
+           offset_x=0,
            kernel_name="conv3d"):
     """
     algorithm: conv3d
@@ -321,6 +357,9 @@ def conv3d(fmap,
     bias: dict with keys(shape and dtype) or None
         input bias tensor
 
+    offset_w: dict with keys(shape and dtype) or None
+        input offset_w tensor
+
     output: dict with keys(shape and dtype)
         output tensor, dtype must be assigned
 
@@ -331,12 +370,18 @@ def conv3d(fmap,
     pads: tuple/list of 6 integers
         [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    data_format: The data format of the input and output data. With the
-        default format "NDHWC",
-
     dilations: tuple/list of 5 integers.
         dilation on D/H/W, format sensitive,
         Dilations in the batch and depth dimensions must be 1.
+
+    groups: int of blocked connections from input channels to output channels
+        default value 1
+
+    data_format: The data format of the input and output data. With the
+        default format "NDHWC",
+
+    offset_x: int
+        input offset_x value
 
     kernel_name: str
         kernel name, default value is "conv3d"
@@ -345,6 +390,24 @@ def conv3d(fmap,
     -------
     None
     """
+    def _conv3d_achieve_with_tvm():
+        tensor_list = _conv3d_compute(shape_fm,
+                                      shape_filter,
+                                      bias,
+                                      stride_dhw,
+                                      pads,
+                                      fmp_dtype,
+                                      w_dtype,
+                                      res_dtype,
+                                      kernel_name=kernel_name)
+
+        with tvm.target.cce():
+            sch = generic.auto_schedule(tensor_list[-1])
+
+        config = {"name": kernel_name, "tensor_list": tensor_list}
+        te.lang.cce.cce_build_code(sch, config)
+
+
     fmp_shape = fmap.get("ori_shape")
     fmp_dtype = fmap.get("dtype")
     fmp_format = data_format
@@ -360,7 +423,7 @@ def conv3d(fmap,
     # normalized format as NCDHW
     shape_fm, shape_filter, stride_dhw, _ = \
         check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype,
-                          res_dtype, fmp_format, w_format, strides,
+                          res_dtype, fmp_format, w_format, bias, strides,
                           pads, dilations)
 
     pads = list(pads)
@@ -379,15 +442,4 @@ def conv3d(fmap,
     shape_filter[0] = (
         (shape_filter[0] + w_block_n - 1) // w_block_n) * w_block_n
 
-    tensor_list = _conv3d_compute(shape_fm, shape_filter, bias, stride_dhw,
-                                  pads, fmp_dtype, w_dtype, res_dtype,
-                                  kernel_name=kernel_name)
-
-    with tvm.target.cce():
-        sch = generic.auto_schedule(tensor_list[-1])
-
-    config = {
-        "name": kernel_name,
-        "tensor_list": tensor_list
-    }
-    te.lang.cce.cce_build_code(sch, config)
+    _conv3d_achieve_with_tvm()

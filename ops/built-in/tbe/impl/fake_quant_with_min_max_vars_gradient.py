@@ -17,9 +17,11 @@ Compute gradient for a FakeQuantWithMinMaxVars operation.
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.platform.cce_conf import api_check_support
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # value of default num_bits
 NUM_BITS_MIN = 2
@@ -48,13 +50,18 @@ def _less_compare_float32(data_x, data_y):
     min_value = tvm.const(2 ** (-126), dtype=D_TYPE)
     max_value = tvm.const(2 ** 62, dtype=D_TYPE)
     factor_value = tvm.const(2 ** 2, dtype=D_TYPE)
-    data_zero = te.lang.cce.broadcast(tvm.const(0, dtype=D_TYPE), shape_inputs,
-                                      D_TYPE)
-    min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
 
-    res_sub = te.lang.cce.vsub(data_y, data_x)
-    res_min = te.lang.cce.vmin(res_sub, min_value_tensor)
-    res_max = te.lang.cce.vmax(res_min, data_zero)
+    if api_check_support("te.lang.cce.vmaxs", data_x.dtype):
+        res_sub = te.lang.cce.vsub(data_y, data_x)
+        res_min = te.lang.cce.vmins(res_sub, min_value)
+        res_max = te.lang.cce.vmaxs(res_min, tvm.const(0, dtype=D_TYPE))
+    else:
+        data_zero = te.lang.cce.vmuls(data_x, 0)
+        min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
+
+        res_sub = te.lang.cce.vsub(data_y, data_x)
+        res_min = te.lang.cce.vmin(res_sub, min_value_tensor)
+        res_max = te.lang.cce.vmax(res_min, data_zero)
 
     res_max_mul = te.lang.cce.vmuls(res_max, max_value)
     res_max_mul_max = te.lang.cce.vmuls(res_max_mul, max_value)
@@ -194,28 +201,39 @@ def _between_nudged_min_max_compute(x, nudged_min, nudged_max):
     min_value = tvm.const(2 ** (-126), dtype=D_TYPE)
     max_value = tvm.const(2 ** 62, dtype=D_TYPE)
     factor_value = tvm.const(2 ** 2, dtype=D_TYPE)
-    data_zero = te.lang.cce.broadcast(tvm.const(0, dtype=D_TYPE), shape_inputs,
-                                      D_TYPE)
-    min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
-    max_value_tensor = te.lang.cce.vadds(data_zero, max_value)
-    factor_value_tensor = te.lang.cce.vadds(data_zero, factor_value)
 
-    sub_tensor_min = te.lang.cce.vsub(x, nudged_min)
-    sub_min = te.lang.cce.vadds(sub_tensor_min, min_value)
-    more_nudged_min_tensor = te.lang.cce.vmax(sub_min, data_zero)
+    if api_check_support("te.lang.cce.vmaxs", x.dtype):
+        sub_tensor_min = te.lang.cce.vsub(x, nudged_min)
+        sub_min = te.lang.cce.vadds(sub_tensor_min, min_value)
+        more_nudged_min_tensor = te.lang.cce.vmaxs(sub_min, tvm.const(0, dtype=D_TYPE))
 
-    sub_tensor_max = te.lang.cce.vsub(nudged_max, x)
-    sub_max = te.lang.cce.vadds(sub_tensor_max, min_value)
-    less_nudged_max_tensor = te.lang.cce.vmax(sub_max, data_zero)
+        sub_tensor_max = te.lang.cce.vsub(nudged_max, x)
+        sub_max = te.lang.cce.vadds(sub_tensor_max, min_value)
+        less_nudged_max_tensor = te.lang.cce.vmaxs(sub_max, tvm.const(0, dtype=D_TYPE))
 
-    between_nudged_tensor = te.lang.cce.vmul(more_nudged_min_tensor,
-                                             less_nudged_max_tensor)
-    between_nudged_element = te.lang.cce.vmin(between_nudged_tensor,
-                                              min_value_tensor)
+        between_nudged_tensor = te.lang.cce.vmul(more_nudged_min_tensor,
+                                                 less_nudged_max_tensor)
+        between_nudged_element = te.lang.cce.vmins(between_nudged_tensor, min_value)
+    else:
+        data_zero = te.lang.cce.vmuls(x, 0)
+        min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
 
-    vmul_max_value = te.lang.cce.vmul(between_nudged_element, max_value_tensor)
-    vmul_factor_value = te.lang.cce.vmul(vmul_max_value, max_value_tensor)
-    between_nudged = te.lang.cce.vmul(vmul_factor_value, factor_value_tensor)
+        sub_tensor_min = te.lang.cce.vsub(x, nudged_min)
+        sub_min = te.lang.cce.vadds(sub_tensor_min, min_value)
+        more_nudged_min_tensor = te.lang.cce.vmax(sub_min, data_zero)
+
+        sub_tensor_max = te.lang.cce.vsub(nudged_max, x)
+        sub_max = te.lang.cce.vadds(sub_tensor_max, min_value)
+        less_nudged_max_tensor = te.lang.cce.vmax(sub_max, data_zero)
+
+        between_nudged_tensor = te.lang.cce.vmul(more_nudged_min_tensor,
+                                                 less_nudged_max_tensor)
+        between_nudged_element = te.lang.cce.vmin(between_nudged_tensor,
+                                                  min_value_tensor)
+
+    vmul_max_value = te.lang.cce.vmuls(between_nudged_element, max_value)
+    vmul_factor_value = te.lang.cce.vmuls(vmul_max_value, max_value)
+    between_nudged = te.lang.cce.vmuls(vmul_factor_value, factor_value)
 
     return between_nudged
 
@@ -233,27 +251,22 @@ def _check_parameters(gradients, x, input_min, input_max, kernel_name):
     shape_min = input_min.get("shape")
     dtype_max = input_max.get("dtype").lower()
     shape_max = input_max.get("shape")
-    util.check_tensor_shape_size(shape_min)
-    util.check_tensor_shape_size(shape_max)
 
     shape_min = util.scalar2tensor_one(shape_min)
     shape_max = util.scalar2tensor_one(shape_max)
 
     # check kernel name and shape
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_gradient)
-    util.check_tensor_shape_size(shape_gradient)
-    util.check_shape_rule(shape_data)
-    util.check_tensor_shape_size(shape_data)
-    util.check_shape_rule(shape_min, min_dim=1, max_dim=1, max_shape_num=1)
-    util.check_shape_rule(shape_max, min_dim=1, max_dim=1, max_shape_num=1)
+    check_shape(shape_gradient, param_name="gradients")
+    check_shape(shape_data, param_name="x")
+    check_shape(shape_min, min_rank=1, max_rank=1, param_name="min")
+    check_shape(shape_max, min_rank=1, max_rank=1, param_name="max")
 
     # check data type of input tensor
     check_list = (D_TYPE,)
-    util.check_dtype_rule(dtype_gradient, check_list)
-    util.check_dtype_rule(dtype_data, check_list)
-    util.check_dtype_rule(dtype_min, check_list)
-    util.check_dtype_rule(dtype_max, check_list)
+    check_dtype(dtype_gradient, check_list, param_name="gradients")
+    check_dtype(dtype_data, check_list, param_name="x")
+    check_dtype(dtype_min, check_list, param_name="min")
+    check_dtype(dtype_max, check_list, param_name="max")
 
     # check whether the shape of gradients and x are the same
     if list(shape_gradient) != list(shape_data):
@@ -392,7 +405,9 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
 
 
 # pylint: disable=locally-disabled,redefined-builtin,invalid-name
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, int, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
                                           backprops_wrt_x, backprops_wrt_min,
                                           backprops_wrt_max,
@@ -448,24 +463,21 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     dtype_min = min.get("dtype").lower()
     shape_min = min.get("shape")
     shape_max = max.get("shape")
-    util.check_shape_rule(shape_min)
-    util.check_tensor_shape_size(shape_min)
-    util.check_shape_rule(shape_max)
-    util.check_tensor_shape_size(shape_max)
+    check_shape(shape_min, param_name="min")
+    check_shape(shape_max, param_name="max")
     shape_backprops_wrt_x = backprops_wrt_x.get("shape")
     shape_backprops_wrt_min = backprops_wrt_min.get("shape")
     shape_backprops_wrt_max = backprops_wrt_max.get("shape")
     shape_backprops_wrt_min = util.scalar2tensor_one(shape_backprops_wrt_min)
     shape_backprops_wrt_max = util.scalar2tensor_one(shape_backprops_wrt_max)
-    util.check_tensor_shape_size(shape_backprops_wrt_x)
-    util.check_tensor_shape_size(shape_backprops_wrt_min)
-    util.check_tensor_shape_size(shape_backprops_wrt_max)
-    util.check_shape_rule(shape_backprops_wrt_x)
-    util.check_shape_rule(shape_backprops_wrt_min)
-    util.check_shape_rule(shape_backprops_wrt_max)
+    check_shape(shape_backprops_wrt_x, param_name="backprops_wrt_x")
+    check_shape(shape_backprops_wrt_min, param_name="backprops_wrt_min")
+    check_shape(shape_backprops_wrt_max, param_name="backprops_wrt_max")
     shape_min = util.scalar2tensor_one(shape_min)
     shape_gradient = (functools_reduce(lambda x, y: x * y, shape_gradient[:]),)
-    _, min_new_shape, _ = util.produce_shapes(shape_gradient, shape_min)
+    _, min_new_shape, _ = broadcast_shapes(shape_gradient, shape_min,
+                                              param_name_input1="gradients",
+                                              param_name_input2="min")
     gradient_data = tvm.placeholder(shape_gradient, name="gradient_data",
                                     dtype=dtype_gradient)
     x = tvm.placeholder(shape_gradient, name="x", dtype=dtype_gradient)

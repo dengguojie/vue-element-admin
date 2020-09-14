@@ -15,6 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Define the main function of generate schedule by cheque
 """
+from ast import literal_eval as make_tuple
 import re
 from te import tvm
 from te.platform import cce_emitinsn_params
@@ -100,13 +101,11 @@ def proc_cache_write(stage_index, primitive, args, sch_targets, sch, mode, code_
 
             written_name = '%s_l' % stage_name
             # insert before orignal  tensor
-            sch_targets.insert(stage_index,
-                               ScheduleTarget(written_name, written_tensors[0], []))
-            code_lines.append("%s = sch.cache_write([%s], '%s')" %
-                              (', '.join(written_tensor_names),
-                               ', '.join(write_tensor_names), scope))
-            code_lines.append('%s = %s' % (
-                written_name, written_tensor_names[0]))
+            sch_targets.insert(stage_index, ScheduleTarget(written_name, written_tensors[0], []))
+            code_lines.append(
+                "%s = sch.cache_write([%s], '%s')" %
+                (', '.join(written_tensor_names), ', '.join(write_tensor_names), scope))
+            code_lines.append('%s = %s' % (written_name, written_tensor_names[0]))
 
         else:
             sch_target = sch_targets[stage_index]
@@ -318,10 +317,60 @@ def proc_reorder(stage_index, primitive, args, sch_targets, sch, mode, code_line
         axis_reorder_list = [sch_target.axes[i] for i in order]
         if mode == MODE_RUNTIME:
             sch[sch_target.obj].reorder(*([axis.obj for axis in axis_reorder_list]))
-        sch_target.axes = [sch_target.axes[i] for i in
-                           order + left_axis_idx_list]
+        sch_target.axes = [sch_target.axes[i] for i in order + left_axis_idx_list]
         new_order_str = ', '.join([axis.name for axis in axis_reorder_list])
         code_lines.append("sch[%s].reorder(%s,)" % (sch_target.name, new_order_str))
+
+
+def proc_allocate_at(stage_index, primitive, args, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
+    """
+    proc_allocate_at
+    :param stage_index:
+    :param primitive:
+    :param args:
+    :param sch_targets:
+    :param sch:
+    :param mode:
+    :param code_lines:
+    :return:
+    """
+    if primitive == 21:
+        sch_target = sch_targets[stage_index]
+        at_stage_index = args[0]
+        at_axis_index = args[1]
+        run_once_axes_index_list = args[2]
+        at_sch_target = sch_targets[at_stage_index]
+        at_axis = at_sch_target.axes[at_axis_index]
+        run_once_axes_list = [at_sch_target.axes[i] for i in run_once_axes_index_list]
+        if mode == MODE_RUNTIME:
+            sch[sch_target.obj].allocate_at(sch[at_sch_target.obj], at_axis.obj,
+                                            [axis.obj for axis in run_once_axes_list])
+
+        run_once_axes_str = ""
+        if run_once_axes_list:
+            run_once_axes_str = ", [%s]" % ", ".join([axis.name for axis in run_once_axes_list])
+
+        code_lines.append("sch[%s].allocate_at(sch[%s], %s%s)" %
+                          (sch_target.name, at_sch_target.name, at_axis.name, run_once_axes_str))
+
+
+def proc_mem_unique(stage_index, primitive, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
+    '''
+    proc_cache_read
+    :param stage_index:
+    :param primitive:
+    :param args:
+    :param sch_targets:
+    :param sch:
+    :param mode:
+    :param code_lines:
+    :return:
+    '''
+    if primitive == 22:
+        sch_target = sch_targets[stage_index]
+        if mode == MODE_RUNTIME:
+            sch[sch_target.obj].mem_unique()
+        code_lines.append("sch[%s].mem_unique()" % sch_target.name)
 
 
 def proc_compute_at(stage_index, primitive, args, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
@@ -516,11 +565,30 @@ def proc_emit_insn(stage_index, primitive, args, sch_targets, sch, mode, code_li
                             sch[sch_target.obj].op.axis[axis_index])
             else:
                 axis = Axis('sch[%s].op.axis[%d]' % (sch_target.name, axis_index), None)
-        # 生成代码
-        code_lines.append("sch[%s].emit_insn(%s, '%s')" % (sch_target.name, axis.name, intrinsic))
 
         if mode == MODE_RUNTIME:
-            sch[sch_target.obj].emit_insn(axis.obj, intrinsic)
+            if intrinsic == "mad":
+                mad_pattern_value = int(args[2][0])
+                init_bias_value = int(args[2][1])
+                k_outer_axis_obj_list = [sch_target.axes[axis_idx].obj for axis_idx in args[2][2:]]
+                k_outer_axis_name_list = [
+                    sch_target.axes[axis_idx].name for axis_idx in args[2][2:]
+                ]
+                mad_dict = {"mad_pattern": mad_pattern_value, "k_outer": k_outer_axis_obj_list}
+                if init_bias_value:
+                    mad_dict["init_bias"] = init_bias_value
+                code_lines.append(
+                    'mad_dict = {"mad_pattern": %s, "k_outer": [%s]%s}' %
+                    (mad_pattern_value, ", ".join(k_outer_axis_name_list),
+                     ', "init_bias": %s' % init_bias_value if init_bias_value else ""))
+                sch[sch_target.obj].emit_insn(axis.obj, intrinsic, mad_dict)
+            else:
+                sch[sch_target.obj].emit_insn(axis.obj, intrinsic)
+
+        # gen code
+        code_lines.append(
+            "sch[%s].emit_insn(%s, '%s'%s)" %
+            (sch_target.name, axis.name, intrinsic, ", mad_dict" if intrinsic == "mad" else ""))
 
 
 def proc_reused_by(stage_index, primitive, args, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
@@ -564,7 +632,8 @@ def proc_insert_param(primitive, args, mode, code_lines):  # pylint: disable=too
         if mode == MODE_RUNTIME:
             cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')
             cce_emitinsn_params.cceEmitParamsIns.insert_param('broadcast_axis_offset', offset)
-        code_lines.append("cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')")
+        code_lines.append(
+            "cce_emitinsn_params.cceEmitParamsIns.del_param('broadcast_axis_offset')")
 
         code_lines.append(
             "cce_emitinsn_params.cceEmitParamsIns.insert_param('broadcast_axis_offset', %d)" %
@@ -598,6 +667,28 @@ def proc_storage_align(stage_index, primitive, args, sch_targets, sch, mode, cod
             sch[sch_target.obj].storage_align(axis.obj, block_num, 0)
         code_lines.append("sch[%s].storage_align(%s, %s, 0)" %
                           (sch_target.name, axis.name, block_num))
+
+
+def proc_buffer_align(stage_index, primitive, args, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
+    '''
+    proc_buffer_align
+    :param stage_index:
+    :param primitive:
+    :param args:
+    :param sch_targets:
+    :param sch:
+    :param mode:
+    :param code_lines:
+    :return:
+    '''
+    if primitive == 25:
+        # storage_align args : axis_index and block_num
+        sch_target = sch_targets[stage_index]
+        align_args = args[0]
+        align_args_obj = make_tuple(align_args)
+        if mode == MODE_RUNTIME:
+            sch[sch_target.obj].buffer_align(*align_args_obj)
+        code_lines.append("sch[%s].buffer_align%s" % (sch_target.name, align_args))
 
 
 def proc_cce_special(primitive, args, sch_targets, sch, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments
@@ -659,14 +750,13 @@ def proc_cce_special(primitive, args, sch_targets, sch, mode, code_lines):  # py
 
         code_lines.append("sch.cce_special = dict()")
 
-        code_lines.append(
-            'sch.cce_special["tensor_list"] = [%s]' % "".join(tensor_list_names))
+        code_lines.append('sch.cce_special["tensor_list"] = [%s]' % "".join(tensor_list_names))
 
-        code_lines.append(
-            'sch.cce_special["orign_out_tensor"] = [%s]' % "".join(orign_out_tensor_list_names))
+        code_lines.append('sch.cce_special["orign_out_tensor"] = [%s]' %
+                          "".join(orign_out_tensor_list_names))
 
-        code_lines.append(
-            'sch.cce_special["real_out_tensor"] = [%s]' % "".join(real_out_tensor_list_names))
+        code_lines.append('sch.cce_special["real_out_tensor"] = [%s]' %
+                          "".join(real_out_tensor_list_names))
 
 
 def get_leaves(res_list):
@@ -733,6 +823,8 @@ def withdraw(res_list, cheque, mode="runtime"):
         proc_split(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_nparts(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_reorder(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
+        proc_allocate_at(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
+        proc_mem_unique(stage_index, primitive, sch_targets, sch, mode, code_lines)
         proc_compute_at(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_fuse(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_rfactor(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
@@ -743,6 +835,7 @@ def withdraw(res_list, cheque, mode="runtime"):
         proc_reused_by(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_insert_param(primitive, args, mode, code_lines)
         proc_storage_align(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
+        proc_buffer_align(stage_index, primitive, args, sch_targets, sch, mode, code_lines)
         proc_cce_special(primitive, args, sch_targets, sch, mode, code_lines)
 
     return sch, code_lines

@@ -19,9 +19,14 @@ Compute Manager for fusion
 """
 
 import importlib
+import itertools
 import json
+import inspect
+
 from te import tvm
-from .cce_build import build_config as default_build_config
+from te.platform import operation
+from te.platform.operation import get_operator as dyn_get_operator
+
 from .cce_policy import OpImplPolicy
 
 
@@ -41,8 +46,12 @@ class FusionManager(object):
         self._op_args = {}
         self._op_kwds = {}
         self._op_compute = {}
-        self.fusion_build_config = default_build_config
+        self.fusion_build_config = {}
         self.res_map = {}
+
+    def clear(self):
+        """clear"""
+        self.__init__()
 
     def register(self, register_name):
         """Register compute
@@ -194,6 +203,27 @@ class FusionManager(object):
             sch = tvm.create_schedule(res_op)
             sch.cce_special = {"op_outputs": op_outputs}
             self.res_map[self._current_op_name] = sch
+
+
+    def set_tensor_list(self, tensor_list):
+        """save tensor_list
+
+        Parameters
+        ----------
+        args_type : list
+            tensor_list
+        """
+        if get_build_cfg() == "disable":
+            return
+        if self._current_op_name not in self.res_map:
+            return
+
+        sch = self.res_map[self._current_op_name]
+        if "tensor_list" in sch.cce_special:
+            return
+
+        sch.cce_special["tensor_list"] = tensor_list
+
 
     def get_op_res(self, key):
         """Get current op_name's build type
@@ -416,6 +446,17 @@ def set_op_res(res_val):
     fusion_manager.set_op_res(res_val)
 
 
+def set_tensor_list(tensor_list):
+    """save tensor_list
+
+    Parameters
+    ----------
+    args_type : list
+        tensor_list need to save
+    """
+    fusion_manager.set_tensor_list(tensor_list)
+
+
 def get_op_res(key):
     """Get current op_name's op_args
 
@@ -502,7 +543,105 @@ def get_op_pattern():
     return fusion_manager.get_current_op_pattern()
 
 
-def prebuild_op(op_module, op_type, op_func_name, op_args):
+def call_op_func(op_module, op_func_name, op_args):
+    """invoke function of op
+    """
+    opm = importlib.import_module(op_module)
+    opfunc = getattr(opm, op_func_name)
+    inputs, outputs, attrs = op_args
+    return opfunc(*inputs, *outputs, *attrs)
+
+
+def get_dyn_op(op_module, op_type, inputs=None, outputs=None,
+               unknown_shape=False):
+    """get dynamic version of op
+    """
+    if dyn_get_operator is None:
+        return None
+
+    if not unknown_shape:
+        if inputs is None:
+            return None
+
+        all_args = []
+        for ele in itertools.chain(inputs, outputs):
+            if isinstance(ele, (list, tuple)):
+                all_args.extend(ele)
+            else:
+                all_args.append(ele)
+
+        dyn_flag = False
+        for item in all_args:
+            if not isinstance(item, dict):
+                continue
+            shape = item.get('shape')
+            if shape is None:
+                continue
+            if [ele for ele in shape if ele == -1]:
+                dyn_flag = True
+                break
+
+        if dyn_flag is False:
+            return None
+
+    dyn_op_module = op_module.split('.')
+    dyn_op_module[-1] = 'dynamic'
+    dyn_op_module = '.'.join(dyn_op_module)
+    importlib.import_module(dyn_op_module)
+    return dyn_get_operator(op_type)
+
+
+def range_padding(inputs, outputs):
+    """
+    pad range paramters if range and shape not match
+    """
+    for item in (*inputs, *outputs):
+        if not isinstance(item, dict):
+            continue
+        shape = item.get('shape', [])
+        shape_range = item.get('range', [])
+        if len(shape) != len(shape_range):
+            tmp_range = []
+            for dim in shape:
+                dim1 = dim if dim > 0 else 1
+                dim2 = dim if dim > 0 else None
+                tmp_range.append([dim1, dim2])
+            item['range'] = tmp_range
+
+
+def check_op_impl_mode(op_module, op_func_name, op_type,
+                       inputs, outputs, unknown_shape):
+    dyn_opfunc = get_dyn_op(op_module, op_type, inputs, outputs, unknown_shape)
+    if dyn_opfunc:
+        opfunc = dyn_opfunc
+    else:
+        opm = importlib.import_module(op_module)
+        opfunc = getattr(opm, op_func_name)
+
+    impl_mode_arg = inspect.signature(opfunc).parameters.get('impl_mode', None)
+
+    if impl_mode_arg is not None and \
+       impl_mode_arg.kind in (inspect.Parameter.KEYWORD_ONLY,
+                              inspect.Parameter.POSITIONAL_OR_KEYWORD):
+        return True
+
+    return False
+
+
+def build_single_op_from_c(op_module, op_func_name, op_type,
+                           build_mode, unknown_shape, op_args):
+    """
+    build single op from tefsuion c side
+    """
+    inputs, outputs, attrs = op_args
+    return build_single_op(op_module, op_func_name, op_type, build_mode,
+                           inputs=inputs, outputs=outputs, attrs=attrs,
+                           unknown_shape=unknown_shape)
+
+
+def build_single_op(op_module, op_func_name, op_type, build_mode, *op_args,
+                    inputs=None, outputs=None, attrs=None,
+                    unknown_shape=False):
     """Prebuild Op
 
     Parameters
@@ -515,38 +654,60 @@ def prebuild_op(op_module, op_type, op_func_name, op_args):
     op pattern value
         end of execution
     """
-    opm = importlib.import_module(op_module)
-    opfunc = getattr(opm, op_func_name)
+    dyn_flag = False
+    dyn_opfunc = get_dyn_op(op_module, op_type, inputs, outputs, unknown_shape)
+    if dyn_opfunc:
+        opfunc = dyn_opfunc
+        dyn_flag = True
+    else:
+        try:
+            opm = importlib.import_module(op_module)
+            opfunc = getattr(opm, op_func_name)
+        except ImportError:
+            dict_args = dict()
+            dict_args["errCode"] = "E40008"
+            dict_args["module_path"] = op_module
+            raise RuntimeError(dict_args)
+
+    if build_mode == 'prebuild':
+        set_current_op_func_name(op_func_name)  # for pattern
+        init_op_pattern()                       # for init pattern to Opaque
+        op_build_cfg_dis()                      # for cce build
+    else:
+        op_build_cfg_en()
+
     kwargs = OpImplPolicy.get_op_impl_mode(opfunc, op_type)
 
-    set_current_op_func_name(op_func_name)  # for pattern
-    init_op_pattern()  # for init pattern to Opaque
-    op_build_cfg_dis()  # for cce build
-    opfunc(*op_args, **kwargs)
-    op_build_cfg_en()
-    pattern = get_op_pattern()
-    return pattern
+    def call_op():
+        _compile_info = None
+        if inputs is not None:
+            if dyn_flag:
+                range_padding(inputs, outputs)
+                with operation.dynamic():
+                    opfunc(*inputs, *outputs, *attrs, **kwargs)
+                    _compile_info = operation.get_compile_info()
+            else:
+                opfunc(*inputs, *outputs, *attrs, **kwargs)
+        else:
+            if dyn_flag:
+                with operation.dynamic():
+                    opfunc(*op_args, **kwargs)
+                    _compile_info = operation.get_compile_info()
+            else:
+                opfunc(*op_args, **kwargs)
+        return _compile_info
 
+    compile_info = call_op()
 
-def build_single_op(op_module, op_type, op_func_name, op_args):
-    """build single op
+    if build_mode == 'prebuild':
+        op_build_cfg_en()
+        pattern = get_op_pattern()
+        return pattern
 
-    Parameters
-    ----------
-    op_module: op module name
-    op_args: op args
+    if dyn_flag:
+        return json.dumps(compile_info)
 
-    Returns
-    -------
-    op pattern value
-        end of execution
-    """
-    opm = importlib.import_module(op_module)
-    opfunc = getattr(opm, op_func_name)
-    kwargs = OpImplPolicy.get_op_impl_mode(opfunc, op_type)
-
-    op_build_cfg_en()
-    opfunc(*op_args, **kwargs)
+    return ""
 
 
 def save_op_params(op_name, op_build_type, op_args):
@@ -563,7 +724,14 @@ def save_op_params(op_name, op_build_type, op_args):
     """
     set_current_op_name(op_name)
     set_op_build_type(op_build_type)  # for fusion
-    set_op_params(*op_args)
+    if isinstance(op_args, (list, tuple)):
+        if len(op_args) == 2:
+            outputs, attrs = op_args
+            set_op_params(*outputs, *attrs)
+        else:
+            set_op_params(*op_args)
+    else:
+        set_op_params(op_args)
 
 
 def op_params_to_json(op_name):
@@ -589,18 +757,14 @@ def get_fusion_build_cfg():
     return fusion_manager.fusion_build_config
 
 
-def set_fusion_build_cfg(cfg):
-    """set build_config used by fusion manager
-
-    Parameters
-    ----------
-    cfg : build_config
-
-    """
-    fusion_manager.fusion_build_config = cfg
-
-
 def reset_fusion_build_cfg():
     """reset build_config used by fusion manager
     """
-    fusion_manager.fusion_build_config = default_build_config
+    fusion_manager.fusion_build_config = {}
+
+
+def clear_fusion_params():
+    """
+    clear fusion op params
+    """
+    fusion_manager.clear()

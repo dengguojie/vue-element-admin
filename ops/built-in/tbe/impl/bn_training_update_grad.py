@@ -23,6 +23,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -225,17 +226,13 @@ def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance):
     -------
     None
     """
-    util.check_shape_rule(shape_grads, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_grads)
+    check_shape(shape_grads, param_name="grads")
 
-    util.check_shape_rule(shape_x, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_x)
+    check_shape(shape_x, param_name="x")
 
-    util.check_shape_rule(shape_batch_mean, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_batch_mean)
+    check_shape(shape_batch_mean, param_name="batch_mean")
 
-    util.check_shape_rule(shape_batch_variance, max_shape_num=MAX_SHAPE_NUM)
-    util.check_tensor_shape_size(shape_batch_variance)
+    check_shape(shape_batch_variance, param_name="batch_variance")
 
     dim_c1 = shape_grads[1]
     dim_c0 = shape_grads[4]
@@ -258,7 +255,8 @@ def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance):
             "Dimension C must be equal")
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, KERNEL_NAME)
 def bn_training_update_grad(grads, x, batch_mean, batch_variance,
                             diff_scale, diff_offset, epsilon=0.0001,
                             kernel_name="bn_training_update_grad"):
@@ -305,10 +303,10 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     batch_mean_dtype = dtype_batch_mean.lower()
     batch_variance_dtype = dtype_batch_variance.lower()
 
-    util.check_dtype_rule(input_grads_dtype, ("float32", "float16"))
-    util.check_dtype_rule(input_x_dtype, ("float32", "float16"))
-    util.check_dtype_rule(batch_mean_dtype, ("float32",))
-    util.check_dtype_rule(batch_variance_dtype, ("float32",))
+    check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
+    check_dtype(input_x_dtype, ("float32", "float16"), param_name="x")
+    check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
+    check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
     util.compare_tensor_dict_key(grads, x, "dtype")
 
     data_format = grads.get("format")

@@ -312,7 +312,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
 
                 lenBurst, nBurst = \
                     aipp_comm.get_lenBurst_and_nBurst(
-                        (ub_size // 2) //32, 1)
+                        (ub_size // 2) // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
@@ -416,11 +416,12 @@ def aipp_compute(input_tensor, input_shape, input_format,
 
         cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
-        # 1.1 is mini,5.10 is hisi-es, 2.10 is v200
-        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend620",
-                                   "Hi3796CV300ES", "Hi3796CV300CS"]:
-            raise RuntimeError("Only support is mini,DC,MDC,hisi-es,hisi-cs!cur_cce_product:",
-                               cur_cce_product)
+        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend710",
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS"]:
+            cause_dec = "Only support is Ascend310, Ascend610, Ascend710, Ascend615 " \
+                        "Hi3796CV300ES and Hi3796CV300CS, " \
+                        "cur_cce_product is %s" % cur_cce_product
+            aipp_comm.raise_RuntimeError(cause_dec)
 
         device_core_num = \
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)

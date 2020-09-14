@@ -42,6 +42,7 @@ from te.utils.op_utils import refine_shape_axes
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import *
 from te import platform as tbe_platform
+from te.platform.cce_conf import api_check_support
 from topi import generic
 from topi.cce import util
 from impl.util.util_compute import sign
@@ -100,9 +101,6 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
 
     inp_dtype = input_x.dtype.lower()
     shape = input_x.shape
-    const_zero_tensor = te.lang.cce.broadcast(tvm.const(CONST_ZERO, inp_dtype),
-                                              shape)
-    compare_one = te.lang.cce.vcmp(input_x, const_zero_tensor, "le")
     has_improve_precision = False
     if inp_dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec",
@@ -110,20 +108,30 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
         input_x = te.lang.cce.cast_to(input_x, "float32")
         has_improve_precision = True
 
-    input_x = te.lang.cce.vabs(input_x)
+    input_x1 = te.lang.cce.vabs(input_x)
     # to fix bug for input data is 0.0
-    input_x = te.lang.cce.vadds(input_x, MIN_FP16)
-    data_1_x = te.lang.cce.vrec(input_x)
+    input_x1 = te.lang.cce.vadds(input_x1, MIN_FP16)
+    data_1_x = te.lang.cce.vrec(input_x1)
     data_1_x_square = te.lang.cce.vmul(data_1_x, data_1_x)
     data_1_x_square = te.lang.cce.vadds(data_1_x_square, tvm.const(CONST_ONE,
                                                                    "float32"))
     data_s_1_sqrt = _newton_sqrt(data_1_x_square, inp_dtype)
-    data_res = te.lang.cce.vmul(data_s_1_sqrt, input_x)
-    data_res = te.lang.cce.vadd(input_x, data_res)
+    data_res = te.lang.cce.vmul(data_s_1_sqrt, input_x1)
+    data_res = te.lang.cce.vadd(input_x1, data_res)
     result = _log_taylor(data_res, shape)
-
     res_neg = te.lang.cce.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
-    res = te.lang.cce.vsel(compare_one, res_neg, result)
+
+    if input_x.dtype == result.dtype and api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
+        res = te.lang.cce.vcmpsel(
+            input_x,
+            tvm.const(CONST_ZERO, input_x.dtype),
+            'le',
+            res_neg,
+            result)
+    else:
+        const_zero_tensor = te.lang.cce.broadcast(tvm.const(CONST_ZERO, input_x.dtype), shape)
+        compare_one = te.lang.cce.vcmp(input_x, const_zero_tensor, "le")
+        res = te.lang.cce.vsel(compare_one, res_neg, result)
 
     if has_improve_precision:
         res = te.lang.cce.cast_to(res, "float16")
@@ -241,43 +249,81 @@ def _log_taylor(data_x, shape):
 
     """
     data = te.lang.cce.vadds(data_x, tvm.const(CONST_NEG_ONE, "float32"))
-    threshold_1 = te.lang.cce.broadcast(
-        tvm.const(CONST_LOG_THRESHOLD_1, "float32"), shape)
-    index_1 = te.lang.cce.vcmp(data, threshold_1, 'ge')
     data_1 = te.lang.cce.vadds(
         data,
         tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_1, "float32"))
-    data_sel = te.lang.cce.vsel(
-        index_1,
-        te.lang.cce.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
-        data)
-    data_sel = te.lang.cce.cast_to(data_sel, "float32")
+    if api_check_support("te.lang.cce.vcmpsel", "float32"):
+        data_sel = te.lang.cce.vcmpsel(
+            data,
+            tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
+            'ge',
+            te.lang.cce.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            data)
+        data_sel = te.lang.cce.cast_to(data_sel, "float32")
+        data_2 = te.lang.cce.vadds(
+            data_sel,
+            tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_2, "float32"))
+        data_vmuls = te.lang.cce.vmuls(
+            data_2,
+            tvm.const(CONST_THREE_FOUR, "float32"))
+        data_sel_1 = te.lang.cce.vcmpsel(
+            data_sel,
+            tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
+            'ge',
+            data_vmuls,
+            data_sel)
+        data_sel_1 = te.lang.cce.cast_to(data_sel_1, "float32")
+        taylor = _taylor_compute(data_sel_1)
+        # add log(4/3)
+        res = te.lang.cce.vcmpsel(
+            data_sel,
+            tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
+            'ge',
+            te.lang.cce.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            taylor)
+        res = te.lang.cce.cast_to(res, "float32")
+        # add log(5/3)
+        data = te.lang.cce.cast_to(data, "float32")
+        res = te.lang.cce.vcmpsel(
+            data,
+            tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
+            'ge',
+            te.lang.cce.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
+            res)
+    else:
+        threshold_1 = te.lang.cce.broadcast(
+            tvm.const(CONST_LOG_THRESHOLD_1, "float32"), shape)
+        index_1 = te.lang.cce.vcmp(data, threshold_1, 'ge')
+        data_sel = te.lang.cce.vsel(
+            index_1,
+            te.lang.cce.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            data)
+        data_sel = te.lang.cce.cast_to(data_sel, "float32")
 
-    threshold_2 = te.lang.cce.broadcast(
-        tvm.const(CONST_LOG_THRESHOLD_2, "float32"), shape)
-    index_2 = te.lang.cce.vcmp(data_sel, threshold_2, 'ge')
-    data_2 = te.lang.cce.vadds(
-        data_sel,
-        tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_2, "float32"))
-    data_vmuls = te.lang.cce.vmuls(
-        data_2,
-        tvm.const(CONST_THREE_FOUR, "float32"))
-    data_sel = te.lang.cce.vsel(index_2, data_vmuls, data_sel)
-    data_sel = te.lang.cce.cast_to(data_sel, "float32")
+        threshold_2 = te.lang.cce.broadcast(
+            tvm.const(CONST_LOG_THRESHOLD_2, "float32"), shape)
+        index_2 = te.lang.cce.vcmp(data_sel, threshold_2, 'ge')
+        data_2 = te.lang.cce.vadds(
+            data_sel,
+            tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_2, "float32"))
+        data_vmuls = te.lang.cce.vmuls(
+            data_2,
+            tvm.const(CONST_THREE_FOUR, "float32"))
+        data_sel = te.lang.cce.vsel(index_2, data_vmuls, data_sel)
+        data_sel = te.lang.cce.cast_to(data_sel, "float32")
+        taylor = _taylor_compute(data_sel)
+        # add log(4/3)
+        res = te.lang.cce.vsel(
+            index_2,
+            te.lang.cce.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            taylor)
+        res = te.lang.cce.cast_to(res, "float32")
+        # add log(5/3)
+        res = te.lang.cce.vsel(
+            index_1,
+            te.lang.cce.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
+            res)
 
-    taylor = _taylor_compute(data_sel)
-
-    # add log(4/3)
-    res = te.lang.cce.vsel(
-        index_2,
-        te.lang.cce.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
-        taylor)
-    res = te.lang.cce.cast_to(res, "float32")
-    # add log(5/3)
-    res = te.lang.cce.vsel(
-        index_1,
-        te.lang.cce.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
-        res)
     res = te.lang.cce.cast_to(res, "float32")
     # d: vlog:
     res = _log_compute(data_x, res, shape)
@@ -336,17 +382,34 @@ def _log_compute(data_x, res, shape):
 
     """
     # if data > 2, use vlog
-    threshold_3 = te.lang.cce.broadcast(tvm.const(CONST_TWO, "float32"), shape)
-    index_3 = te.lang.cce.vcmp(data_x, threshold_3, 'ge')
-    res = te.lang.cce.vsel(index_3, te.lang.cce.vlog(data_x), res)
+    if data_x.dtype == res.dtype and api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+        res = te.lang.cce.vcmpsel(
+            data_x,
+            tvm.const(CONST_TWO, data_x.dtype),
+            'ge',
+            te.lang.cce.vlog(data_x),
+            res)
+    else:
+        threshold_3 = te.lang.cce.broadcast(tvm.const(CONST_TWO, "float32"), shape)
+        index_3 = te.lang.cce.vcmp(data_x, threshold_3, 'ge')
+        res = te.lang.cce.vsel(index_3, te.lang.cce.vlog(data_x), res)
+
     # if data > 32768, use log(x/2.5)+log(2.5)
-    float_16_max_tensor = te.lang.cce.broadcast(
-        tvm.const(FLOAT_16_MAX, "float32"), shape)
-    index_4 = te.lang.cce.vcmp(data_x, float_16_max_tensor, 'ge')
     overflow_value = te.lang.cce.vmuls(data_x, CONST_FIVE_TWO)
     res_overflow = te.lang.cce.vadds(
         te.lang.cce.vlog(overflow_value), LOG_FIVE_TWO)
-    res = te.lang.cce.vsel(index_4, res_overflow, res)
+    if data_x.dtype == res.dtype and api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+        res = te.lang.cce.vcmpsel(
+            data_x,
+            tvm.const(FLOAT_16_MAX, data_x.dtype),
+            'ge',
+            res_overflow,
+            res)
+    else:
+        float_16_max_tensor = te.lang.cce.broadcast(
+            tvm.const(FLOAT_16_MAX, "float32"), shape)
+        index_4 = te.lang.cce.vcmp(data_x, float_16_max_tensor, 'ge')
+        res = te.lang.cce.vsel(index_4, res_overflow, res)
     res = te.lang.cce.cast_to(res, "float32")
 
     return res

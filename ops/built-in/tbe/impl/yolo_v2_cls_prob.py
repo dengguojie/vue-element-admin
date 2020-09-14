@@ -20,8 +20,12 @@ from te import tik
 from topi.cce import util
 from te.utils import op_utils
 from impl.yolo_v2_correct_box import CorrectBoxComputer
-from impl.constant_util import BLOCK_SIZE, VECTOR_BYTE_SIZE, STRIDE_ONE,\
-    CLOUD, HISI_ES, MINI
+from impl.constant_util import BLOCK_SIZE
+from impl.constant_util import VECTOR_BYTE_SIZE
+from impl.constant_util import STRIDE_ONE
+from impl.constant_util import CLOUD
+from impl.constant_util import HISI_ES
+from impl.constant_util import MINI
 import impl.constant_util as constant
 from impl import common_util as common
 from te import platform as tbe_platform
@@ -53,6 +57,7 @@ VALUE_ONE = 1
 # param for nms compute
 PRE_NMS_TOPN = 1024
 
+
 def check_param_range(param_name, min_value, max_value, real_value, op_name='yolo_v2_detection_output_d'):
     
     error_info = {}
@@ -63,8 +68,9 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='yol
     error_info['max_value'] = str(max_value)
     error_info['real_value'] = str(real_value)
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       %(error_info['opname'], error_info['param_name'], error_info['min_value'], 
-                         error_info['max_value'], error_info['real_value']))
+                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+                          error_info['max_value'], error_info['real_value']))
+
 
 class ClsProbComputer(CorrectBoxComputer):
     """
@@ -74,7 +80,7 @@ class ClsProbComputer(CorrectBoxComputer):
         super(ClsProbComputer, self).__init__(input_dict)
 
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             adj_hw = self.get_adj_hw(self.boxes * self.height * self.width)
             self.obj_prob_v200 = self.instance.Tensor(self.dtype,
                                                       (self.batch, adj_hw),
@@ -97,7 +103,7 @@ class ClsProbComputer(CorrectBoxComputer):
           """
         index_ub = None
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
                                             scope=tik.scope_ubuf)
@@ -210,7 +216,7 @@ class ClsProbComputer(CorrectBoxComputer):
           None
           """
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             sum_mask_ub = self.instance.Tensor(self.dtype, (16,),
                                                name="sum_mask_ub",
                                                scope=tik.scope_ubuf)
@@ -283,7 +289,7 @@ class ClsProbComputer(CorrectBoxComputer):
 
         # The supplemented part is deleted for v200 reduce
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             self.t_data_move(
                 self.obj_prob_v200[param['obj_gm_offset']], param['ub_a'],
                 param['burlen'])
@@ -475,7 +481,7 @@ class ClsProbComputer(CorrectBoxComputer):
                 last_index_len.set_as(index_len)
 
             if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
-                "Ascend310","Ascend910", "Hi3796CV300ES"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 self.t_data_move(
                     self.obj_prob_v200[param['obj_gm_offset']],
                     param['ub_a'], param['burlen'])
@@ -569,6 +575,7 @@ class ClsProbComputer(CorrectBoxComputer):
                         self.inter_classes[batch, co_id, param['mov_len'] * loop],
                         param['ub_c'], param['burlen'])
 
+
 def get_loop_param(length, max_ub_num):
     """
     get loop parameters
@@ -595,6 +602,7 @@ def get_loop_param(length, max_ub_num):
 
     return loop_cycle, ub_num, last_ub_num
 
+
 def check_param(input_dict):
     """
       check parameters
@@ -614,7 +622,7 @@ def check_param(input_dict):
       """
     pre_nms_topn = input_dict.get("pre_nms_topn")
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
-            "Ascend310","Ascend910", "Hi3796CV300ES"):
+            "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
         op_utils.check_dtype(input_dict.get("dtype"), ["float16"], param_name="windex")
     else:
         op_utils.check_dtype(input_dict.get("dtype"), ["float16", "float32"], param_name="windex")
@@ -628,38 +636,25 @@ def check_param(input_dict):
         error_info['param_name'] = 'coords'
         error_info['expect_value'] = '4'
         error_info['real_value'] = str(coords)
-        raise RuntimeError(error_info, 
+        raise RuntimeError(error_info,
             "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-            %(error_info['opname'], error_info['param_name'], error_info['expect_value'], 
-            error_info['real_value']))
+            % (error_info['opname'], error_info['param_name'], error_info['expect_value'],
+               error_info['real_value']))
 
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("dtype")
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") \
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            "Hi3796CV300ES", "Hi3796CV300CS") \
             or dtype == constant.DATA_TYPE_FP32:
-        if pre_nms_topn > PRE_NMS_TOPN // 2:
-            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN // 2 - 1, pre_nms_topn)
+        if pre_nms_topn > PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:
+            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN // 2,
+                              pre_nms_topn)
     else:
-        if pre_nms_topn > PRE_NMS_TOPN:
-            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN - 1, pre_nms_topn)
+        if pre_nms_topn > PRE_NMS_TOPN or pre_nms_topn <= 0:
+            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN, pre_nms_topn)
     if max_box_number_per_batch > PRE_NMS_TOPN or max_box_number_per_batch <= 0:
-        check_param_range("max_box_number_per_batch", 1, PRE_NMS_TOPN - 1, max_box_number_per_batch)
-
-    if max_box_number_per_batch % 16 != 0:
-        error_info = {}
-        error_info['errCode'] = 'E81011'
-        error_info['opname'] = 'yolo_v2_detection_output_d'
-        error_info['real_value'] = str(max_box_number_per_batch)
-        raise RuntimeError(error_info, 
-            "In op[%s], max_box_number_per_batch should be a multiple of 16, but actually is [%s]."
-            %(error_info['opname'], error_info['real_value']))
-
-    if max_box_number_per_batch < pre_nms_topn or pre_nms_topn <= 0:
-        check_param_range("pre_nms_topn", 1, max_box_number_per_batch-1, pre_nms_topn)
-        
-    if max_box_number_per_batch < post_nms_topn or post_nms_topn <= 0:
-        check_param_range("post_nms_topn", 1, max_box_number_per_batch-1, post_nms_topn)
-
+        check_param_range("max_box_number_per_batch", 1, PRE_NMS_TOPN,
+                          max_box_number_per_batch)
 
     dsize = common.get_data_size(input_dict.get("dtype"))
     height = input_dict.get("height")

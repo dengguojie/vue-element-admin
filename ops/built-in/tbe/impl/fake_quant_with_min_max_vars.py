@@ -18,9 +18,11 @@ fake_quant_with_min_max_vars
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.platform.cce_conf import api_check_support
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
+from te.utils.op_utils import *
 
 # define a scalar for add
 HALF_ONE = 0.5
@@ -49,13 +51,19 @@ def _less_compare_float32(data_x, data_y):
     """
     shape_inputs = te.lang.cce.util.shape_to_list(data_x.shape)
     # minimum num of float32 2**(-126)
-    data_min = te.lang.cce.broadcast(tvm.const(2 ** (-126), dtype="float32"),
-                                     shape_inputs, "float32")
-    data_zero = te.lang.cce.broadcast(tvm.const(0, dtype="float32"),
-                                      shape_inputs, "float32")
-    res_sub = te.lang.cce.vsub(data_y, data_x)
-    res_min = te.lang.cce.vmin(res_sub, data_min)
-    res_max = te.lang.cce.vmax(res_min, data_zero)
+    min_value = tvm.const(2 ** (-126), dtype="float32")
+
+    if api_check_support("te.lang.cce.vmaxs", data_x.dtype):
+        res_sub = te.lang.cce.vsub(data_y, data_x)
+        res_min = te.lang.cce.vmins(res_sub, min_value)
+        res_max = te.lang.cce.vmaxs(res_min, tvm.const(0, dtype="float32"))
+    else:
+        data_zero = te.lang.cce.vmuls(data_x, 0)
+        data_min = te.lang.cce.vadds(data_zero, min_value)
+        res_sub = te.lang.cce.vsub(data_y, data_x)
+        res_min = te.lang.cce.vmin(res_sub, data_min)
+        res_max = te.lang.cce.vmax(res_min, data_zero)
+
     # max num of float32 is 2**126
     # but cce can only support 2**62, so use 62/62/2 to adaptor 126
     res_muled = te.lang.cce.vmuls(res_max, tvm.const(2 ** 62, dtype="float32"))
@@ -221,7 +229,8 @@ def fake_quant_with_min_max_vars_compute(x, min, max, y, num_bits,
 
 
 # pylint: disable=locally-disabled,redefined-builtin,invalid-name
-@util.check_input_type(dict, dict, dict, dict, int, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 OPTION_ATTR_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def fake_quant_with_min_max_vars(x, min, max, y, num_bits,
                                  narrow_range,
                                  kernel_name="fake_quant_with_min_max_vars"):
@@ -260,13 +269,9 @@ def fake_quant_with_min_max_vars(x, min, max, y, num_bits,
 
     min_shape = util.scalar2tensor_one(min_shape)
     max_shape = util.scalar2tensor_one(max_shape)
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_shape_rule(min_shape, 1, 1, 1)
-    util.check_shape_rule(max_shape, 1, 1, 1)
-    util.check_tensor_shape_size(input_shape)
-    util.check_tensor_shape_size(min_shape)
-    util.check_tensor_shape_size(max_shape)
+    check_shape(input_shape, param_name="x")
+    check_shape(min_shape, min_rank=1, max_rank=1, param_name="min")
+    check_shape(max_shape, min_rank=1, max_rank=1, param_name="max")
 
     if num_bits > 16 or num_bits < 2:
         raise RuntimeError(
@@ -277,12 +282,13 @@ def fake_quant_with_min_max_vars(x, min, max, y, num_bits,
     x_type = input_dtype.lower()
     min_dtype = min_dtype.lower()
     max_dtype = max_dtype.lower()
-    util.check_dtype_rule(x_type, check_tuple)
-    util.check_dtype_rule(min_dtype, check_tuple)
-    util.check_dtype_rule(max_dtype, check_tuple)
+    check_dtype(x_type, check_tuple, param_name="x")
+    check_dtype(min_dtype, check_tuple, param_name="min")
+    check_dtype(max_dtype, check_tuple, param_name="max")
     input_shape = (functools_reduce(lambda x, y: x * y, input_shape[:]),)
-    shape_min, shape_max, shape_broadcast = util.produce_shapes(min_shape,
-                                                                input_shape)
+    shape_min, shape_max, shape_broadcast = broadcast_shapes(min_shape, input_shape,
+                                                             param_name_input1="min",
+                                                             param_name_input2="x")
     data = tvm.placeholder(input_shape, dtype=x_type, name="data_input")
     data_min = tvm.placeholder(shape_min, dtype=min_dtype, name="data_min")
     data_max = tvm.placeholder(shape_min, dtype=max_dtype, name="data_max")

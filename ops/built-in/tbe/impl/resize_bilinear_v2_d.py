@@ -24,6 +24,7 @@ from te.platform.cce_conf import CceProductParams
 from te import platform as tbe_platform
 from te.platform import cce_params as param
 from topi.cce import util
+from te.utils.op_utils import *
 # pylint: disable=ungrouped-imports
 from te.lang.cce.te_compute import irbuilder_api as kernel_api
 
@@ -4118,7 +4119,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         f32_out.access_ptr('r'), 0, 1,
                                         expand_loop * 2, 0, 0))
 
-    # No.4 situation: for mini_1951
+    # No.4 situation: for mini_dc
     elif tbe_platform.cce_conf.intrinsic_check_support(
             "Intrinsic_vbi", "float16") and dtype == "float16":
         # use multi-core resource
@@ -4162,9 +4163,9 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
              is_bigger_ub_size):
             is_smaller_l1_size = True
 
-        def _apply_ub_1951():
+        def _apply_ub_dc():
             """
-            apply ubuf for 1951
+            apply ubuf for dc
 
             """
             if not is_bigger_ub_size:
@@ -4279,7 +4280,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     name="float16_hw_scalar_l1",
                     scope=param.scope_cbuf)
 
-        _apply_ub_1951()
+        _apply_ub_dc()
         # apply reg for using to get pos
         pos_reg = ib.allocate("int32", (8,),
                               name="pos_reg",
@@ -6562,7 +6563,6 @@ def resize_bilinear_v2_d_compute(images,
     shape_out = list(images_shape)
     shape_out[-2] = size[-1]
     shape_out[-3] = size[-2]
-    util.check_tensor_shape_size(shape_out)
 
     res = tvm.extern(
         tuple(shape_out), [images],
@@ -6574,7 +6574,8 @@ def resize_bilinear_v2_d_compute(images,
 
 
 # pylint: disable=too-many-arguments
-@util.check_input_type(dict, dict, (tuple, list), bool, bool, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL,
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def resize_bilinear_v2_d(images,
                          y,
                          size,
@@ -6605,12 +6606,11 @@ def resize_bilinear_v2_d(images,
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
     image_dtype = images.get("dtype")
     image_shape = images.get("shape")
 
-    util.check_shape_rule(image_shape)
-    util.check_shape_rule(size)
+    check_shape(image_shape, param_name="images")
+    check_shape(size, param_name="size")
     check_list = ["float16", "float32"]
     if image_dtype not in check_list:
         raise RuntimeError("only support %s while dtype is %s" %
@@ -6626,7 +6626,6 @@ def resize_bilinear_v2_d(images,
         raise RuntimeError("If half_pixel_centers is True, "
                            "align_corners must be False.")
 
-    util.check_tensor_shape_size(image_shape)
 
     image_data = tvm.placeholder(image_shape,
                                  dtype=image_dtype,

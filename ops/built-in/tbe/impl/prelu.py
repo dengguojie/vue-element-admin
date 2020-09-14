@@ -45,12 +45,14 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     -------
     output tensor
     """
+    shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     if input_x.dtype == "float16":
         scalar_zero = tvm.const(0, dtype="float16")
     else:
         scalar_zero = tvm.const(0, dtype="float32")
     val_max = te.lang.cce.vmaxs(input_x, scalar_zero)
     val_min = te.lang.cce.vmins(input_x, scalar_zero)
+    weight_input = te.lang.cce.broadcast(weight_input, shape_x)
     val_prod = te.lang.cce.vmul(val_min, weight_input)
     res = te.lang.cce.vadd(val_max, val_prod)
     return res
@@ -81,7 +83,6 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
     input_format = input_x.get("format")
     input_dtype = dtype.lower()
     check_shape(shape, param_name="x")
-    
 
     check_list = ("float16", "float32")
 
@@ -133,7 +134,11 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             weight_shape_new = [1] * feature_dim
             weight_shape_new[1] = weight_shape[1]
             weight_shape_new[-1] = weight_shape[-1]
-
+    elif input_format == "FRACTAL_NZ":
+        # ND(C) -> (NC) C1,1,1,C0
+        weight_shape_new = [1] * feature_dim
+        weight_shape_new[0] = shape[0]
+        weight_shape_new[-1] = shape[-1]
     elif feature_dim == 1:
         if weight_shape[0] != 1 or weight_dim != 1:
             raise RuntimeError(

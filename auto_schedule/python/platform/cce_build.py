@@ -97,22 +97,31 @@ def build_config_update_list(current_config, config_list):
         "dump_pass_ir_to_file": current_config.dump_pass_ir_to_file,
         "out_of_bound_sync_check": current_config.out_of_bound_sync_check,
         "dummy_placeholder": current_config.dummy_placeholder,
+        "enable_vector_2x": current_config.enable_vector_2x,
         "read_write_bank_conflict": current_config.read_write_bank_conflict,
         "bind_reduction_using_block": current_config.bind_reduction_using_block,
         "use_realize_bound_simplify": current_config.use_realize_bound_simplify,
-        "ir_location_enable": current_config.ir_location_enable,
         "l1_fusion_option": current_config.l1_fusion_option,
         "dynamic_shape": current_config.dynamic_shape,
         "enable_vector_hierarchical_emit":
             current_config.enable_vector_hierarchical_emit,
+        "enable_mask_counter_mode": current_config.enable_mask_counter_mode,
         "enable_branch_eliminator_else_case":
             current_config.enable_branch_eliminator_else_case,
         "let_stmt_not_inline": current_config.let_stmt_not_inline,
         "double_buffer_no_tail": current_config.double_buffer_no_tail,
         "dump_error_info": current_config.dump_error_info,
         "build_sub_function": current_config.build_sub_function,
-        "limit_ir_lines": current_config.limit_ir_lines}
-
+        "limit_ir_lines": current_config.limit_ir_lines,
+        "build_fatbin": current_config.build_fatbin,
+        "parse_ddr_args": current_config.parse_ddr_args,
+        "enable_precise_sync_in_emit_insn":
+            current_config.enable_precise_sync_in_emit_insn,
+        "output_dir": current_config.output_dir,
+        "tbe_debug_level": current_config.tbe_debug_level,
+        "out_of_order": current_config.out_of_order,
+        "size_of_issueQ": current_config.size_of_issueQ,
+        "split_intersection": current_config.split_intersection}
 
     for attr in config_list:
         value = config_list[attr]
@@ -157,22 +166,30 @@ build_config = build_module.build_config(
     save_temp_cce_file=False,
     double_buffer_non_reuse=False,
     bind_reduction_using_block=True,
+    enable_vector_2x=True,
     read_write_bank_conflict=False,
     dump_pass_ir_to_file=True,
     dump_pass_ir=False,
     dump_pass_ir_list=[],
     dummy_placeholder=False,
     use_realize_bound_simplify=False,
-    ir_location_enable=False,
     l1_fusion_option=False,
     dynamic_shape=False,
     enable_vector_hierarchical_emit=False,
+    enable_mask_counter_mode=True,
     enable_branch_eliminator_else_case=True,
+    build_fatbin=False,
+    parse_ddr_args=False,
     let_stmt_not_inline=False,
     double_buffer_no_tail=False,
     dump_error_info=True,
     build_sub_function=False,
     limit_ir_lines=0,
+    enable_precise_sync_in_emit_insn=False,
+    tbe_debug_level=0,
+    out_of_order=False,
+    size_of_issueQ=32,
+    split_intersection=False,
 )
 
 # pylint: disable=invalid-name
@@ -185,7 +202,10 @@ dynamic_build_config = get_new_build_config(
         'dummy_placeholder': True,
         'enable_vector_hierarchical_emit': True,
         'enable_branch_eliminator_else_case': True,
+        'build_fatbin': False,
+        'parse_ddr_args': False,
         'let_stmt_not_inline': True,
         'double_buffer_no_tail': True,
+        'enable_precise_sync_in_emit_insn': True,
     }
 )

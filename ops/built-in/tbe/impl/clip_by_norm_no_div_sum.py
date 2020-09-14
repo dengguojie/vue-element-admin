@@ -21,6 +21,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2147483648
 
@@ -75,7 +76,7 @@ def greater_compute(x, y, z, kernel_name="greater"):
     shape_x = te.lang.cce.util.shape_to_list(x.shape)
     shape_y = te.lang.cce.util.shape_to_list(y.shape)
     dtype = x.dtype.lower()
-    shape_x, shape_y, shape = util.produce_shapes(shape_x, shape_y)
+    shape_x, shape_y, shape = broadcast_shapes(shape_x, shape_y, param_name_input1="x", param_name_input2="y")
     data_x = te.lang.cce.broadcast(x, shape)
     data_y = te.lang.cce.broadcast(y, shape)
 
@@ -108,8 +109,7 @@ def maximum_compute(input_x, input_y, output_z, kernel_name="maximum"):
 
     shape2 = util.scalar2tensor_one(shape2)
 
-    shape1, shape2, shape_max = util.produce_shapes(shape1, shape2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape1, shape2, shape_max = broadcast_shapes(shape1, shape2, param_name_input1="select1_result", param_name_input2="maximum_ones")
 
     data1_tmp1 = te.lang.cce.broadcast(input_x, shape_max)
     data2_tmp1 = te.lang.cce.broadcast(input_y, shape_max)
@@ -155,7 +155,8 @@ def clip_by_norm_no_div_sum_compute(data_input_x,
 
     return res
 
-
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, KERNEL_NAME)
 def clip_by_norm_no_div_sum(x, greater_zeros, select_ones, maximum_ones, y,
                             kernel_name="clip_by_norm_no_div_sum"):
     """
@@ -176,15 +177,13 @@ def clip_by_norm_no_div_sum(x, greater_zeros, select_ones, maximum_ones, y,
     shape_maximum_ones = maximum_ones.get("shape")
 
     shape_x, shape_greater_zeros, shape_greater_max = \
-        util.produce_shapes(shape_x, shape_greater_zeros)
+        broadcast_shapes(shape_x, shape_greater_zeros, param_name_input1="x", param_name_input2="greater_zeros")
     shape_x, shape_select_ones, shape_select_max = \
-        util.produce_shapes(shape_x, shape_select_ones)
+        broadcast_shapes(shape_x, shape_select_ones, param_name_input1="x", param_name_input2="select_ones")
     shape_x, shape_maximum_ones, shape_maximum_max = \
-        util.produce_shapes(shape_x, shape_maximum_ones)
+        broadcast_shapes(shape_x, shape_maximum_ones, param_name_input1="x", param_name_input2="maximum_ones")
 
-    util.check_shape_rule(shape_x)
-    util.check_tensor_shape_size(shape_x)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape_x, param_name="x")
 
     data_input_x = tvm.placeholder(shape_x,
                                    name="data_input_x",

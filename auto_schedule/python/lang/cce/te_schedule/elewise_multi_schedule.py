@@ -18,6 +18,7 @@ elewise mutil out schedule
 import math
 from te import tvm
 from te import platform as cceconf
+from te.platform import log
 from . import util
 from .elewise_schedule_new import ElewiseSchedule
 
@@ -43,7 +44,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
 
         Parameters
         ----------
-        outTensors : the out tvm.tensor
+        out_tensors : the out tvm.tensor
 
         sch : schedule, the computation schedule for the op
 
@@ -57,9 +58,11 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         if len(out_tensors) <= 1 or not util.MULTI_ELEMWISE:
             return False
         schedule = self.__pre_complement_tensors_map(out_tensors)
+        self._out_tensors = out_tensors
         if schedule is None:
             return False
 
+        log.debug("start elewise_multi_schedule")
         self._schedule = schedule
         self._construct_compute_graph(out_tensors, spec_node_list)
 
@@ -95,6 +98,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         self._calculate_double_buffer()
         self._do_double_buffer()
 
+        log.debug("end elewise_multi_schedule")
         sch[0] = self._schedule
         return True
 
@@ -116,6 +120,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         temp_mid_output_tensors_dst_tensor_map = {}
         temp_mid_output_tensors_in_ub = []
         self._mid_output_tensors_in_gm = []
+        self._temp_out_tensors = {}
         # travel syntax tree into map
         util.get_dst_tensor_map(out_tensors,
                                 temp_mid_output_tensors_dst_tensor_map)
@@ -134,6 +139,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
                                      name=out.name + "_gm")
             index = out_tensors.index(out)
             out_tensors[index] = out_gm
+            self._temp_out_tensors[out] = out_gm
             self._mid_output_tensors_in_gm.append(out_gm)
 
         # use fake node to intercept schedule

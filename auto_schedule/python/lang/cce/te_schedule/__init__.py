@@ -22,5 +22,7 @@ from .depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedul
 from .depthwise_conv2d_schedule import depthwise_conv2d_schedule
 from .pooling2d_schedule import pooling2d_schedule
 from .pooling3d_schedule import pooling3d_schedule
+from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule
 from .reduce_mean_mid_reduce_high_performance_schedule import *
+from .mmad_transpose_intrin import dma_copy_matmul_transpose
 from .reduce_5hdc_intrin import *

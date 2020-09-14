@@ -43,6 +43,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 from te.utils.op_utils import refine_shape_axes
+from te.utils.op_utils import *
 import topi
 from topi.cce import util
 
@@ -133,7 +134,7 @@ def _data_format_dim_map_compute(x,
     return _dimension_index(data_mod, ind)
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_STR, OPTION_ATTR_STR, KERNEL_NAME)
 def data_format_dim_map(x,
                         y,
                         src_format="NHWC",
@@ -160,12 +161,11 @@ def data_format_dim_map(x,
     dtype_input = x.get("dtype")
 
     # check kernel name, shape, size, dtype
-    util.check_kernel_name(kernel_name)
-    check_shape(shape_input)
+    check_shape(shape_input, param_name="x")
     shape_input, _ = refine_shape_axes(shape_input, [])
     check_list = ("int32", )
     dtype_input = dtype_input.lower()
-    check_dtype(dtype_input, check_list)
+    check_dtype(dtype_input, check_list, param_name="x")
 
     # check length of format
     if len(src_format) != 4:

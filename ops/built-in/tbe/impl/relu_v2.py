@@ -43,6 +43,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 # const value
 CONST_ZERO = 0
@@ -93,7 +94,7 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     return data_res, mask
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu_v2(x, y, mask, kernel_name="relu_v2"):
     """
     Algrithm: relu_v2(x) = x and 1 when x > 0 , else 0, 0
@@ -120,15 +121,14 @@ def relu_v2(x, y, mask, kernel_name="relu_v2"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    util.check_kernel_name(kernel_name)
-    check_shape(shape)
+    check_shape(shape, param_name="x")
 
     if shape[-1] % 8 != 0:
         raise RuntimeError(
             "the last axis if shape must be dive by 8")
 
     check_list = ("float16", "float32", "int8", "int32", "uint8")
-    check_dtype(dtype, check_list)
+    check_dtype(dtype, check_list, param_name="x")
 
     dtype = dtype.lower()
     input_data = tvm.placeholder(shape, dtype, "input_data")

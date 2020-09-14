@@ -25,6 +25,7 @@ from impl.roi_pooling_base import TYPELEN_DICT
 from impl.roi_pooling_base import INDEX_C1
 from impl.roi_pooling_base import INDEX_C0
 
+
 # pylint: disable=too-many-instance-attributes
 class RoiClassL1(RoiClass):
     """
@@ -271,7 +272,7 @@ class RoiClassL1(RoiClass):
                                     self.fm_c0 * TYPELEN_DICT[self.dtype] // 32)
                                 self.tik_instance.data_move(
                                     self.window_fm[0, 0, 0],
-                                    self.fm_in_l1[ci_loop%self.c1_num_in_l1,
+                                    self.fm_in_l1[ci_loop % self.c1_num_in_l1,
                                                   window_start_h,
                                                   window_start_w,
                                                   0],

@@ -28,6 +28,7 @@ from topi.cce import util
 
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.op_utils import *
 
 MAX_REPEAT_NUM = 255
 BLOCK_BYTE = 32
@@ -70,8 +71,9 @@ def op_select_format(x, segment_ids, y, num_segments,
     ori_dtype = x.get("dtype").lower()
     ori_shape = list(x.get("shape"))
     cce_product = get_cce_product_version()
-    if ori_dtype == "float16" and cce_product in ("Ascend910",) and \
-            ori_shape == [12288, 1024] and num_segments == 36548:
+    if (ori_dtype == "float16" or ori_dtype == "float32") and cce_product in ("Ascend910",) and \
+            ((ori_shape == [12288, 1024] or ori_shape == [200704, 256]) and \
+             (num_segments == 36548 or num_segments == 655360)):
         input0 = gen_param(classify="input0", name="x",
                            datatype=input0_dtype,
                            format=input0_format)
@@ -2535,7 +2537,7 @@ def _intrin_factor(in_shape, num_segments, dtype, ins, output_buf, gm_align):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
-@util.check_input_type(dict, dict, dict, int, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
 def unsorted_segment_sum_d(x,
                            segment_ids,
                            y,
@@ -2562,16 +2564,15 @@ def unsorted_segment_sum_d(x,
     """
     shape_x = x.get("shape")
     shape_y = segment_ids.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
+    check_shape(shape_x, param_name="x")
+    check_shape(shape_y, param_name="segment_ids")
     if num_segments <= 0:
         raise RuntimeError("num_segments must be more than 0.")
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     dtype = x.get("dtype").lower()
     dtype_segment_ids = segment_ids.get("dtype").lower()
-    util.check_dtype_rule(dtype, check_list)
-    util.check_dtype_rule(dtype_segment_ids, check_list)
+    check_dtype(dtype, check_list, param_name="x")
+    check_dtype(dtype_segment_ids, check_list, param_name="segment_ids")
     if len(shape_y) == 1:
         if shape_x[0] != shape_y[0]:
             raise RuntimeError(

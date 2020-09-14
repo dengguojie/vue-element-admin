@@ -21,6 +21,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from te.utils.op_utils import *
 
 NoneType = type(None)
 
@@ -66,8 +67,8 @@ def reduce_prod_d_compute(data_input, output_y, axes,
     return res
 
 # pylint: disable=invalid-name
-@util.check_input_type(dict, dict, (int, list, tuple, NoneType),
-                       (bool, NoneType), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
+                 OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_prod_d(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     """
     Reduce a tensor on a certain axes based on product.
@@ -91,12 +92,11 @@ def reduce_prod_d(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     None
     """
     shape = x.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
+    check_shape(shape, param_name="x")
 
     inp_dtype = x.get("dtype").lower()
     check_list = ["float16", "float32", "int8", "uint8"]
-    util.check_dtype_rule(inp_dtype, check_list)
+    check_dtype(inp_dtype, check_list, param_name="x")
 
     shape_len = len(shape)
 
@@ -108,7 +108,6 @@ def reduce_prod_d(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
 
     axes = util.axis_check(shape_len, axes)
     util.check_reduce_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
 
     shape, axes = util.shape_refine(list(shape), axes)
     shape, axes = util.simplify_axis_shape(shape, axes)

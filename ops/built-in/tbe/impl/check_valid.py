@@ -19,6 +19,7 @@ from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
 from impl import common_util
+from te.utils.op_utils import *
 
 # count of shape dim
 DIM_CNT = 2
@@ -29,7 +30,7 @@ FLOAT16_MINIMUM = 2**(-24)
 FLOAT16_SCALAR = 2**12
 
 
-@util.check_input_type(dict, dict, dict, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def check_valid(bbox_tensor, img_metas, valid_tensor,
                 kernel_name="check_valid"):
     """
@@ -53,19 +54,17 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
     bbox_shape = bbox_tensor.get("shape")
     bbox_dtype = bbox_tensor.get("dtype").lower()
     # check for value > 0
-    util.check_shape_rule(bbox_shape)
-    util.check_tensor_shape_size(bbox_shape)
+    check_shape(bbox_shape, param_name="bbox_tensor")
 
     bbox_dtype_check_list = [
         "float16",
     ]
-    util.check_dtype_rule(bbox_dtype, bbox_dtype_check_list)
+    check_dtype(bbox_dtype, bbox_dtype_check_list, param_name="bbox_tensor")
     valid_shape = valid_tensor.get("shape")
 
     img_metas_dtype = img_metas.get("dtype").lower()
     img_metas_shape = img_metas.get("shape")
-    util.check_shape_rule(img_metas_shape)
-    util.check_tensor_shape_size(img_metas_shape)
+    check_shape(img_metas_shape, param_name="img_metas")
     if img_metas_dtype != bbox_dtype:
         raise RuntimeError(
             "The type of img_metas should be same to bbox_tensor!")
@@ -81,7 +80,6 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
         raise RuntimeError(
             "the dim-0 must be equal between 'bbox_tensor' and 'valid_tensor'")
 
-    util.check_kernel_name(kernel_name)
     cvd = CheckValid(bbox_tensor, img_metas, valid_tensor, kernel_name)
     return cvd.check_valid()
 

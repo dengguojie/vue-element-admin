@@ -20,6 +20,7 @@ from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
 from impl import common_util
+from te.utils.op_utils import *
 
 # pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):
@@ -88,9 +89,8 @@ def _check_param(input_values, shape, kernel_name):
     for i, input_dict in enumerate(input_values):
         shape_input = input_dict.get("shape")
         dtype_input = input_dict.get("dtype").lower()
-        util.check_shape_rule(shape_input)
-        util.check_tensor_shape_size(shape_input)
-        util.check_dtype_rule(dtype_input, check_list)
+        check_shape(shape_input, param_name="values")
+        check_dtype(dtype_input, check_list, param_name="values")
         if shape_input != first_shape:
             raise RuntimeError(
                 "the input tensors shape must be same, "
@@ -111,10 +111,9 @@ def _check_param(input_values, shape, kernel_name):
     if list(shape[1:]) != list(first_shape[1:]):
         raise RuntimeError(
             "the input shape {} do not match the output shape {}".format(first_shape, shape))
-    util.check_kernel_name(kernel_name)
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument
-@util.check_input_type((list, tuple), dict, (list, tuple), int, str)
+@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
 def parallel_concat(values, output_data, shape, num, kernel_name="parallel_concat"):
     """
     algorithm: parallel_concat

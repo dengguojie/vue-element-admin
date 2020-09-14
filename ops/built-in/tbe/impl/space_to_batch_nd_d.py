@@ -28,6 +28,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_intrin_md import reset_mask_insn
 from topi.cce import util
 from impl.copy_only import copy_only
+from te.utils.op_utils import *
 
 
 # pylint: disable=too-many-instance-attributes,useless-object-inheritance
@@ -425,10 +426,8 @@ def _check_parms(shape, dtype, block_shape, paddings, kernel_name):
     """
     dtype_list = ("float16", "float32")
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_dtype_rule(dtype, dtype_list)
-    util.check_kernel_name(kernel_name)
+    check_shape(shape, param_name="x")
+    check_dtype(dtype, dtype_list, param_name="x")
 
     if len(shape) != 5:
         raise RuntimeError("the shape of image_input should be 5, "
@@ -504,7 +503,8 @@ def space_to_batch_nd_d_compute(x,
     return res
 
 
-@util.check_input_type(dict, dict, (list, tuple), (list, tuple), str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_LIST_INT), KERNEL_NAME)
 def space_to_batch_nd_d(x,
                         y,
                         block_shape,

@@ -20,6 +20,7 @@ from topi.cce import util
 from te import tik
 from te import platform as tbe_platform
 from impl import constant_util as constant
+from te.utils.op_utils import *
 
 
 # The maximum number of float16 data that can be
@@ -73,13 +74,10 @@ def _check_param(rois, deltas, kernel_name):
     rois_dtype = rois.get("dtype").lower()
     deltas_shape = deltas.get("shape")
     deltas_dtype = deltas.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(rois_shape)
-    util.check_tensor_shape_size(rois_shape)
-    util.check_dtype_rule(rois_dtype, ("float16", "float32"))
-    util.check_shape_rule(deltas_shape)
-    util.check_tensor_shape_size(deltas_shape)
-    util.check_dtype_rule(deltas_dtype, ("float16", "float32"))
+    check_shape(rois_shape, param_name="rois")
+    check_dtype(rois_dtype, ("float16", "float32"), param_name="rois")
+    check_shape(deltas_shape, param_name="deltas")
+    check_dtype(deltas_dtype, ("float16", "float32"), param_name="deltas")
     if rois_dtype != deltas_dtype:
         raise RuntimeError("rois type and deltas type must be the same")
 
@@ -93,8 +91,8 @@ def _check_param(rois, deltas, kernel_name):
 
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=unused-argument, too-many-locals, too-many-lines
-@util.check_input_type(dict, dict, dict, (list, tuple), (list, tuple),
-                       (list, tuple), float, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_FLOAT,
+                 OPTION_ATTR_LIST_FLOAT, OPTION_ATTR_LIST_INT, OPTION_ATTR_FLOAT, KERNEL_NAME)
 def bounding_box_decode(rois,
                         deltas,
                         bboxes,

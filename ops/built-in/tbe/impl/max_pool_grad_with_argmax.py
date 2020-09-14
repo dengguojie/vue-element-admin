@@ -17,6 +17,7 @@ from topi.cce import util
 from impl import constant_util as constant
 from impl.max_pool_grad_with_argmax_cut_one_h import MaxpoolGradCustom
 from impl import max_pool_grad_with_argmax_resnet50 as resnet50
+from te.utils.op_utils import *
 
 # size of 5HD format
 DIM_5HD = 5
@@ -40,7 +41,8 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
-@util.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple), str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_STR, KERNEL_NAME)
 def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, padding,
                               kernel_name="max_pool_grad_with_argmax"):
     """
@@ -495,7 +497,7 @@ def check_shape_5hd(shape):
     """
     The common check rule for tensor shape, just for 5hd
     """
-    util.check_shape_rule(shape)
+    check_shape(shape, param_name="x")
     if len(shape) != DIM_5HD:
         raise RuntimeError(
             "The dim of tensor must be %d"
@@ -520,8 +522,6 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
     """
     The common check rule for output dim and ksize and strides
     """
-    util.check_tensor_shape_size(ksize)
-    util.check_tensor_shape_size(strides)
     if len(ksize) < ATTR_SHAPE_MIN or len(strides) < ATTR_SHAPE_MIN:
         raise RuntimeError(
             "The shape length of ksize or strides must be more than 4")
@@ -555,7 +555,7 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
         dyh = (input_height - windowh + strides[1]) // strides[1]
         dyw = (input_weight - windoww + strides[2]) // strides[2]
 
-    if ksize[1] >= input_height or ksize[2] >= input_weight:
+    if ksize[1] > input_height or ksize[2] > input_weight:
         raise RuntimeError("can not support global pooling now")
 
     if dyh != output_height or dyw != output_weight or \
@@ -588,18 +588,14 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):
     grad_dtype = grad.get("dtype").lower()
     argmax_shape = argmax.get("shape")
     argmax_dtype = argmax.get("dtype").lower()
-    util.check_shape_rule(y_shape)
-    util.check_shape_rule(input_gard_shape)
-    util.check_shape_rule(argmax_shape)
-    util.check_kernel_name(kernel_name)
+    check_shape(y_shape, param_name="x")
+    check_shape(input_gard_shape, param_name="grad")
+    check_shape(argmax_shape, param_name="argmax")
     check_shape_5hd(y_shape)
     check_shape_5hd(input_gard_shape)
-    util.check_tensor_shape_size(input_gard_shape)
-    util.check_tensor_shape_size(argmax_shape)
-    util.check_tensor_shape_size(y_shape)
-    util.check_dtype_rule(grad_dtype, ("float16", "float32", "int32"))
-    util.check_dtype_rule(argmax_dtype, ("uint16"))
-    util.check_dtype_rule(y_dtype, ("float16", "float32", "int32"))
+    check_dtype(grad_dtype, ("float16", "float32", "int32"), param_name="grad")
+    check_dtype(argmax_dtype, ("uint16"), param_name="argmax")
+    check_dtype(y_dtype, ("float16", "float32", "int32"), param_name="x")
 
     if y_dtype != grad_dtype or y_dtype_arg != y_dtype:
         raise RuntimeError(

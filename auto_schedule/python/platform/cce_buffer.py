@@ -19,13 +19,14 @@ from __future__ import absolute_import as _abs
 
 from te import tvm
 
-from .cce_conf import cceProduct
+from .cce_conf import te_set_version
+from .cce_conf import get_soc_spec
 from . import cce_params as param
 
 # pylint: disable=invalid-name
-# add default product, default value is 200
+# add default product, default value is Ascend310
 # get the CceProductParams instance
-cur_cce_product_params = cceProduct("1.1.xxx.xxx")
+cur_cce_product_params = te_set_version("Ascend310")
 
 
 @tvm.register_func("te.cce.cur_buf_params")
@@ -49,7 +50,7 @@ def mem_info_l1_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=L1_UNIT_BITS,
                          max_simd_bits=L1_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("L1_Buffer")*8,
+                         max_num_bits=get_soc_spec("L1_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 @tvm.register_func("tvm.info.mem.%s" % param.scope_cbuf_fusion)
@@ -60,7 +61,7 @@ def mem_info_l1_fusion_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=L1_UNIT_BITS,
                          max_simd_bits=L1_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("L1_Buffer")*8,
+                         max_num_bits=get_soc_spec("L1_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 
@@ -76,7 +77,7 @@ def mem_info_ub_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=UB_UNIT_BITS,
                          max_simd_bits=UB_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("Unified_Buffer")*8,
+                         max_num_bits=get_soc_spec("UB_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 # The memory information for the compiler
@@ -93,7 +94,7 @@ def mem_info_smask_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=SMASK_UNIT_BITS,
                          max_simd_bits=SMASK_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("SMASK_Buffer")*8,
+                         max_num_bits=get_soc_spec("SMASK_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 L0A_UNIT_BITS = 2*16*16*8
@@ -108,7 +109,7 @@ def mem_info_l0a_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=L0A_UNIT_BITS,
                          max_simd_bits=L0A_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("L0A_Buffer")*8,
+                         max_num_bits=get_soc_spec("L0A_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 
@@ -124,7 +125,7 @@ def mem_info_l0b_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=L0B_UNIT_BITS,
                          max_simd_bits=L0B_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("L0B_Buffer")*8,
+                         max_num_bits=get_soc_spec("L0B_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 
@@ -140,7 +141,7 @@ def mem_info_l0c_buffer():
     return tvm.make.node("MemoryInfo",
                          unit_bits=L0C_UNIT_BITS,
                          max_simd_bits=L0C_MAX_SIMD_BITS,
-                         max_num_bits=cur_cce_product_params.getParams("L0C_Buffer")*8,
+                         max_num_bits=get_soc_spec("L0C_SIZE")*8,
                          head_address=tvm.const(0, 'int32'))
 
 

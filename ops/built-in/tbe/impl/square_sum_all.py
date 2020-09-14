@@ -21,11 +21,9 @@ import operator
 from functools import reduce as functools_reduce
 
 import te.platform.cce_params as cce_params
-from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
-
-SHAPE_SIZE_LIMIT = 2**30
+from te import tik
+from te.utils import op_utils
 
 # Each core processing data num greater than the size
 # we can get better performace from experience
@@ -70,20 +68,21 @@ class SquareSumAll():
                                                self.input_x_shape), )
         self.input_x_num = self.shape_one_dim[0]
 
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(\
-            tbe_platform.cce_conf.UB_SIZE) - 8192)
+        # Reserved 64 Bytes for the two inputs 32B alignment
+        self.ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(\
+            tbe_platform.cce_conf.UB_SIZE) - 64
 
         self.kernel_name = kernel_name
         self.dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
             self.input_x_dtype) // 8
         one_block_bytes_size = cce_params.VECTOR_INST_BLOCK_WIDTH // \
-                               cce_params.VECTOR_INST_BLOCK_NUM
+            cce_params.VECTOR_INST_BLOCK_NUM
         self.data_each_block = one_block_bytes_size // self.dtype_bytes_size
 
         self.vector_process_bytes = 256
 
         self.vector_mask_max = cce_params.VECTOR_INST_BLOCK_NUM * \
-                               self.data_each_block
+            self.data_each_block
 
         if self.input_x_num < self.data_each_block:
             self.block_num = 1
@@ -136,18 +135,12 @@ class SquareSumAll():
         -------
         None
         """
-
-        util.check_kernel_name(self.kernel_name)
-        util.check_shape_rule(self.input_x_shape)
-        util.check_shape_rule(self.input_y_shape)
-
-        util.check_shape_size(self.input_x_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.input_y_shape, SHAPE_SIZE_LIMIT)
-
-        check_list_dtype = ("float32")
-
-        util.check_dtype_rule(self.input_x_dtype, check_list_dtype)
-        util.check_dtype_rule(self.input_y_dtype, check_list_dtype)
+        op_utils.check_shape(self.input_x_shape, param_name="input_x")
+        op_utils.check_shape(self.input_y_shape, param_name="input_y")
+        op_utils.check_dtype(self.input_x_dtype, ("float32", ),
+                             param_name="input_x")
+        op_utils.check_dtype(self.input_y_dtype, ("float32", ),
+                             param_name="input_y")
 
         add_support = tbe_platform.cce_conf.api_check_support(
             "tik.vadd", "float32")
@@ -256,9 +249,8 @@ class SquareSumAll():
 
         self.every_process_data_num = every_process_data_num
         self.process_times = process_data_num_each_core // \
-                             every_process_data_num
-        self.core_tail_num = process_data_num_each_core % \
-                             every_process_data_num
+            every_process_data_num
+        self.core_tail_num = process_data_num_each_core % every_process_data_num
 
         flag = self.data_each_block
         assign_ub_shape = (math.ceil(every_process_data_num / flag) * flag, )
@@ -290,8 +282,7 @@ class SquareSumAll():
             data_offset = data_offset + i * self.every_process_data_num
             self.calc_op(self.every_process_data_num, data_offset)
 
-        data_offset = temp_offset + self.every_process_data_num * \
-                      self.process_times
+        data_offset = temp_offset + self.every_process_data_num * self.process_times
         if self.core_tail_num > 0:
             self.calc_op(self.core_tail_num, data_offset)
 
@@ -423,7 +414,11 @@ class SquareSumAll():
 
         return self.tik_instance
 
+
 # pylint: disable=unused-argument
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.KERNEL_NAME)
 def square_sum_all(input_x,
                    input_y,
                    output_x,

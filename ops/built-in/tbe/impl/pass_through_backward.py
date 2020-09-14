@@ -245,7 +245,9 @@ class SpaceToDepth(SpaceToDepthBase):
                                      self.tiling_shape[i:])
             is_buffer_large_enough = all_ub_buffer // buf_size_needed
             if is_buffer_large_enough > 0:
-                if i == 0:
+                batch_size = reduce(lambda x1, x2: x1 * x2,
+                                    self.input_shape[1:])
+                if i == 0 and batch_size >= self.element_size:
                     tiling_case = 1
                     buf_size = self.get_tiling_shape_size(1, 5)
                 else:
@@ -854,7 +856,6 @@ class SpaceToDepth(SpaceToDepthBase):
         """
         all_block_num = self.get_block_num()
 
-        #block_dim = tik.Dprofile().get_aicore_num()
         block_dim = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
         if all_block_num < block_dim:

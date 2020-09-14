@@ -15,7 +15,8 @@ normalize_sum
 """
 
 import te.lang.cce
-from te import tvm, platform as tbe_platform
+from te import tvm
+from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util

@@ -261,8 +261,8 @@ class RoiClass4C0(RoiClass):
                 pooled_res[0, 0, 0, 0],
                 0,
                 1,
-                self.tail_c0_num*self.pooled_h*self.pooled_w\
-                    *C0*self.dsize // BLOCK_SIZE,
+                self.tail_c0_num * self.pooled_h*self.pooled_w\
+                    * C0 * self.dsize // BLOCK_SIZE,
                 0,
                 0)
 
@@ -401,13 +401,14 @@ class RoiClass4C0(RoiClass):
                 0)
         with self.tik_instance.else_scope():  # tail
             self.tik_instance.data_move(
-                self.y[self.ouput_proposal_offset+self.calced_rois+proposal_id,
-                       (self.c1_looptime - 1)*FOUR_C0, 0, 0, 0],
+                self.y[self.ouput_proposal_offset +
+                       self.calced_rois+proposal_id,
+                       (self.c1_looptime - 1) * FOUR_C0, 0, 0, 0],
                 pooled_res[0, 0, 0, 0],
                 0,
                 1,
-                self.tail_c0_num*self.pooled_h*self.pooled_w*\
-                    C0*self.dsize // BLOCK_SIZE,
+                self.tail_c0_num * self.pooled_h * self.pooled_w * \
+                    C0 * self.dsize // BLOCK_SIZE,
                 0,
                 0)
 
@@ -427,14 +428,15 @@ class RoiClass4C0(RoiClass):
 
         if self.fm_c1 % FOUR_C0 != 0:
             self.c1_looptime = self.fm_c1 // FOUR_C0 + 1
-            self.tail_c0_num = self.fm_c1 - (self.c1_looptime - 1)*FOUR_C0
+            self.tail_c0_num = self.fm_c1 - (self.c1_looptime - 1) * FOUR_C0
         else:
             self.c1_looptime = self.fm_c1 // FOUR_C0
             self.tail_c0_num = FOUR_C0
 
-        burst_len = FOUR_C0*self.fm_h*self.fm_w*C0*self.dsize // BLOCK_SIZE
-        burst_len_l = self.tail_c0_num*self.fm_h*self.fm_w*C0\
-                      *self.dsize // BLOCK_SIZE
+        burst_len = FOUR_C0*self.fm_h * self.fm_w * C0 *\
+                    self.dsize // BLOCK_SIZE
+        burst_len_l = self.tail_c0_num * self.fm_h * self.fm_w * C0 \
+                      * self.dsize // BLOCK_SIZE
 
         # rois loop, loop step is 128 roi
         with self.tik_instance.for_range(0, self.tiling_num) as tiling_index:
@@ -481,7 +483,7 @@ class RoiClass4C0(RoiClass):
                                 self.proposal_pooling_fp32(proposal_id,
                                                            c1_loop_i)
 
-            self.calced_rois.set_as(self.calced_rois + 
+            self.calced_rois.set_as(self.calced_rois +
                                     self.proposal_ub_validnum)
 
     def proposal_pooling_multibatch(self):
@@ -529,14 +531,15 @@ class RoiClass4C0(RoiClass):
 
         if self.fm_c1 % FOUR_C0 != 0:
             self.c1_looptime = self.fm_c1 // FOUR_C0 + 1
-            self.tail_c0_num = self.fm_c1 - (self.c1_looptime - 1)*FOUR_C0
+            self.tail_c0_num = self.fm_c1 - (self.c1_looptime - 1) * FOUR_C0
         else:
             self.c1_looptime = self.fm_c1 // FOUR_C0
             self.tail_c0_num = FOUR_C0
 
-        burst_len = FOUR_C0*self.fm_h*self.fm_w*C0*self.dsize // BLOCK_SIZE
-        burst_len_l = self.tail_c0_num*self.fm_h*self.fm_w*C0\
-                      *self.dsize // BLOCK_SIZE
+        burst_len = FOUR_C0 * self.fm_h * self.fm_w * C0 *\
+                    self.dsize // BLOCK_SIZE
+        burst_len_l = self.tail_c0_num * self.fm_h * self.fm_w * C0\
+                      * self.dsize // BLOCK_SIZE
 
         with self.tik_instance.for_range(0, self.tiling_num, \
                 block_num=self.tiling_num) as tiling_index:
@@ -567,7 +570,7 @@ class RoiClass4C0(RoiClass):
                         self.x[0, (self.c1_looptime - 1)*FOUR_C0, 0, 0, 0],
                         0, 1, burst_len_l, 0, 0)
 
-                self.calced_rois.set_as(self.proposal_num_per_tiling*\
+                self.calced_rois.set_as(self.proposal_num_per_tiling * \
                                         tiling_index)
 
                 with self.tik_instance.for_range(0, self.proposal_ub_validnum,

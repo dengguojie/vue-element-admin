@@ -17,10 +17,16 @@ axpy
 import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params, check_dtype, \
-    REQUIRED_INPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, KERNEL_NAME
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import OPTION_OUTPUT
+from te.utils.op_utils import OPTION_ATTR_FLOAT
+from te.utils.op_utils import KERNEL_NAME
+from te.utils.op_utils import refine_shapes_for_broadcast
 from te.platform.fusion_manager import fusion_manager
-from impl.util.util_select_op_base import gen_param, get_dynamic_param_in_json
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 from topi import generic
 from topi.cce import util
 
@@ -56,7 +62,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES",):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         dtype_list = ["float16", "int32"]
     else:
         dtype_list = ["float16", "float32", "int32"]
@@ -308,7 +314,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
 
 def _add_check_format(x, y):
-    # format_pattern = 0
+
     shape1 = x.get("shape")
     shape2 = y.get("shape")
     list_format = [x.get("format"), y.get("format")]
@@ -406,6 +412,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     # broadcast
     shape_x = te.lang.cce.util.shape_to_list(x1.shape)
     shape_y = te.lang.cce.util.shape_to_list(x2.shape)
+    dtype = x1.dtype.lower()
 
     # neg_1_axis_flag
     neg_1_axis_flag = 0
@@ -423,34 +430,54 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
         x2 = te.lang.cce.broadcast(x2, shape_max)
 
     # start the main logic
-    dtype = x1.dtype.lower()
-    if dtype in ("float16", "float32"):
-        # fp16 or fp32
-        if neg_1_axis_flag:
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if dtype in ("float16", "float32"):
+            # fp16 or fp32
+            if neg_1_axis_flag:
+                res_muls = te.lang.cce.vmuls(x2, alpha)
+                res = te.lang.cce.vadd(x1, res_muls)
+            else:
+                res = te.lang.cce.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
+        else:
+            # int32
+            if alpha != 1:
+                # add+muls use fp32
+                to_type = "float32"
+                input_x_cast = te.lang.cce.cast_to(x1, to_type)
+                input_y_cast = te.lang.cce.cast_to(x2, to_type)
+
+                if neg_1_axis_flag:
+                    res_muls = te.lang.cce.vmuls(x2, alpha)
+                    res_tmp = te.lang.cce.vadd(x1, res_muls)
+                else:
+                    res_tmp = te.lang.cce.vaxpy(input_y_cast, input_x_cast,
+                                                tvm.const(alpha, dtype=to_type))
+
+                res = te.lang.cce.cast_to(res_tmp, dtype)
+
+            else:
+                # if alpha == 1
+                res = te.lang.cce.vadd(x2, x1)
+    else:
+        if dtype in ("float16", "float32"):
+            # fp16 or fp32
             res_muls = te.lang.cce.vmuls(x2, alpha)
             res = te.lang.cce.vadd(x1, res_muls)
         else:
-            res = te.lang.cce.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
-    else:
-        # int32
-        if alpha != 1:
-            # add+muls use fp32
-            to_type = "float32"
-            input_x_cast = te.lang.cce.cast_to(x1, to_type)
-            input_y_cast = te.lang.cce.cast_to(x2, to_type)
+            # int32
+            if alpha != 1:
+                # add+muls use fp32
+                to_type = "float32"
+                input_x1_cast = te.lang.cce.cast_to(x1, to_type)
+                input_x2_cast = te.lang.cce.cast_to(x2, to_type)
 
-            if neg_1_axis_flag:
-                res_muls = te.lang.cce.vmuls(x2, alpha)
-                res_tmp = te.lang.cce.vadd(x1, res_muls)
+                res_muls = te.lang.cce.vmuls(input_x2_cast, alpha)
+                res_tmp = te.lang.cce.vadd(input_x1_cast, res_muls)
+
+                res = te.lang.cce.cast_to(res_tmp, dtype)
             else:
-                res_tmp = te.lang.cce.vaxpy(input_y_cast, input_x_cast,
-                                            tvm.const(alpha, dtype=to_type))
-
-            res = te.lang.cce.cast_to(res_tmp, dtype)
-
-        else:
-            # if alpha == 1
-            res = te.lang.cce.vadd(x2, x1)
+                # if alpha == 1
+                res = te.lang.cce.vadd(x2, x1)
 
     return res
 
@@ -512,6 +539,8 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
         shape_x2 = shape_x2 if len(shape_x2) == 1 else shape_x2[:-1]
         shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
     util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    
+    shape_x1, shape_x2 = refine_shapes_for_broadcast(shape_x1, shape_x2)
 
     data_input_x1 = tvm.placeholder(shape_x1,
                                     name="data_input_x1", dtype=dtype_x1)

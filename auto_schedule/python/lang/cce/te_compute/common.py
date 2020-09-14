@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from te import tvm
 from te.platform import intrinsic_check_support
 import te.platform.cce_params as cce_params
+from .depthwise_conv2d_compute import DepthwiseConv2dParam
 from .elewise_compute import vadds, vmuls, vmax, vmin, vabs, vmul, vrec
 from .broadcast_compute import broadcast
 # pylint: disable=redefined-builtin
@@ -110,7 +111,8 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         raise RuntimeError("The cast input type must be tvm.tensor")
     check_input_tensor_shape(data)
 
-    if (data_dtype.lower() == "float32") and (dtype == "int32"):
+    if (data_dtype.lower() == "float32") and (dtype == "int32") and \
+            not intrinsic_check_support("Intrinsic_vconv", "f322s32z"):
         fp32_max = tvm.const(2147483648, dtype="float32")
         fp32_min = tvm.const(2**(-31), dtype="float32")
         data1 = round_to(data, 0.5, -0.5)
@@ -125,9 +127,10 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         res = vmul(floor_data, sign_res)
         return res
 
-    if (data_dtype.lower() == "float16") and (dtype == "int32"):
+    if (data_dtype.lower() == "float16") and (dtype == "int32") and \
+            not intrinsic_check_support("Intrinsic_vconv", "f162s32z"):
         fp16_max = tvm.const(32768, dtype="float16")
-        fp16_min = tvm.const(2**(-15), dtype="float16")
+        fp16_min = tvm.const(2 ** (-15), dtype="float16")
 
         data1 = round_to(data, 0.5, -0.5)
 
@@ -272,6 +275,11 @@ def im2col_6d(input_img,
         img_w_index = (col_howo % output_w) * stride_w + col_ww
         img_c0_index = col_c0
 
+        slice_offset = DepthwiseConv2dParam.fusion_para.get("slice_offset")
+        input_memory_type = DepthwiseConv2dParam.fusion_para.get(
+            "input_memory_type")
+        offset_w = slice_offset[2] if (
+                slice_offset and input_memory_type == 1) else 0
         if sixd_flag == 1:
             return tvm.select(
                 tvm.any(img_h_index < pad_top,
@@ -280,7 +288,8 @@ def im2col_6d(input_img,
                         img_w_index > fmap_w.value + pad_left - 1),
                 tvm.const(padding_value, input_img.dtype),
                 input_img(img_n_index, col_cg, img_c1_index,
-                          img_h_index - pad_top, img_w_index - pad_left,
+                          img_h_index - pad_top + offset_w,
+                          img_w_index - pad_left,
                           img_c0_index))
         else:
             return tvm.select(
@@ -289,8 +298,11 @@ def im2col_6d(input_img,
                         img_w_index < pad_left,
                         img_w_index > fmap_w.value + pad_left - 1),
                 tvm.const(padding_value, input_img.dtype),
-                input_img(img_n_index, col_cg, img_h_index - pad_top,
-                          img_w_index - pad_left, img_c0_index))
+                input_img(img_n_index,
+                          col_cg,
+                          img_h_index - pad_top + offset_w,
+                          img_w_index - pad_left,
+                          img_c0_index))
 
     return tvm.compute(
         col_shape,

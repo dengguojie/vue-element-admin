@@ -25,11 +25,13 @@ from .cast_compute import ceil, floor, round, trunc, round_d
 from .common import round_to, cast_to, cast_to_round
 from .concat_compute import concat
 from .conv_compute import conv, ConvParam, check_conv_shape, conv_compress
+from .conv_compute import is_support_v200
 from .dim_conv import compute_four2five, compute_five2four
 from .elewise_compute import vmuls, vadds, vlog, vexp, vabs, vrec, vrelu, vnot, \
     vsqrt, vrsqrt, vdiv, vmul, vadd, vsub, vmin, vmax, vor, vand, vaxpy, vmla, \
     vmadd, \
-    vmaddrelu, vmaxs, vmins, vcmp, vlogic, vsel, vcmpsel, vmod
+    vmaddrelu, vmaxs, vmins, vcmp, vlogic, vsel, vcmpsel, vmod, \
+    vlrelu, vaddrelu, vsubrelu
 from .reduction_compute import sum, reduce_min, reduce_max, reduce_prod
 from .segment_compute import unsorted_segment_max, unsorted_segment_min, \
     unsorted_segment_sum, \
@@ -37,8 +39,10 @@ from .segment_compute import unsorted_segment_max, unsorted_segment_min, \
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .mmad_compute import matmul
+from .mmad_compute import get_matmul_performance_format
 from .gemm_compute import gemm
-from .depthwise_conv2d_compute import depthwise_conv2d_compute
+from .depthwise_conv2d_compute import depthwise_conv2d_compute, \
+    DepthwiseConv2dParam
 from .inplace_compute import inplace_add, inplace_sub, inplace_update
 from .conv3d_compute import conv3d
 from .conv3d_compute import Conv3DParam

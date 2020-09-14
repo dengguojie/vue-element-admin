@@ -21,7 +21,9 @@ from te.platform import cce_conf
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce
 import topi
+from impl.tanh_compute import tanh_compute
 from topi.cce import util
+from te.utils.op_utils import *
 
 MIN_FP32 = 2**(-126)
 NONETYPE = type(None)
@@ -49,7 +51,8 @@ class BasicRNNCell:
                  h_t,
                  expose_hidden=False,
                  num_output=0,
-                 kernel_name="basicrnn_cell"):
+                 kernel_name="basicrnn_cell",
+                 impl_mode="high_performance"):
         """
         Init BasicRNNCell base parameters
 
@@ -83,12 +86,15 @@ class BasicRNNCell:
             number of output
         kernel_name: str
             the name of the operator
+        impl_mode: str
+            impl mode
 
         Returns
         -------
         None
         """
         self.kernel_name = kernel_name
+        self.impl_mode = impl_mode
         self.tensor_list1 = {}
         self.tensor_list2 = {}
         self.emit_cmd = {}
@@ -176,6 +182,10 @@ class BasicRNNCell:
         self.datas = datas
         self.dims = dims
 
+        self.device = "mini"
+        if not cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            self.device = "hisi_es"
+
     def check_input_parameters(self, dtypes, shapes, dims):
         """
         Check the input parameters
@@ -194,24 +204,22 @@ class BasicRNNCell:
         None
         """
         # check dtypes
-        util.check_dtype_rule(dtypes["x"].lower(), ("float16",))
-        util.check_dtype_rule(dtypes["w_xh"].lower(), ("float16",))
-        util.check_dtype_rule(dtypes["w_ho"].lower(), ("float16",))
-        util.check_dtype_rule(dtypes["bias_h"].lower(),
-                              ("float16", "float32", "int16", "int32"))
-        util.check_dtype_rule(dtypes["bias_o"].lower(),
-                              ("float16", "float32", "int16", "int32"))
-        util.check_dtype_rule(dtypes["o_t"].lower(), ("float16", "float32"))
-        util.check_dtype_rule(dtypes["h_t"].lower(), ("float16", "float32"))
+        check_dtype(dtypes["x"].lower(), ("float16",), param_name="x")
+        check_dtype(dtypes["w_xh"].lower(), ("float16",), param_name="w_xh")
+        check_dtype(dtypes["w_ho"].lower(), ("float16",), param_name="w_ho")
+        check_dtype(dtypes["bias_h"].lower(),
+                    ("float16", "float32", "int16", "int32"), param_name="bias_h")
+        check_dtype(dtypes["bias_o"].lower(),
+                    ("float16", "float32", "int16", "int32"), param_name="bias_o")
+        check_dtype(dtypes["o_t"].lower(), ("float16", "float32"), param_name="o_t")
+        check_dtype(dtypes["h_t"].lower(), ("float16", "float32"), param_name="h_t")
 
         # check shapes
         for key in shapes:
             if key in ("bias_h", "bias_o", "cont"):
-                util.check_shape_rule(shapes[key], min_dim=2, max_dim=2)
-                util.check_tensor_shape_size(shapes[key])
+                check_shape(shapes[key], min_rank=2, max_rank=2)
             else:
-                util.check_shape_rule(shapes[key], min_dim=4, max_dim=4)
-                util.check_tensor_shape_size(shapes[key])
+                check_shape(shapes[key], min_rank=4, max_rank=4)
 
         batch_dim = dims["batch_dim"]
         input_dim = dims["input_dim"]
@@ -226,17 +234,18 @@ class BasicRNNCell:
         check_shapes(shapes["h_t"], (hidden_dim, batch_dim, 16, 16))
 
         if self.expose_hidden:
-            util.check_dtype_rule(
-                dtypes["h_0"].lower(), ("float16", "float32"))
-            util.check_dtype_rule(dtypes["cont"].lower(), ("float16",))
-            util.check_dtype_rule(dtypes["w_hh"].lower(), ("float16",))
-            check_shapes(shapes["cont"], (batch_dim, 16))
+
+            check_dtype(dtypes["h_0"].lower(),
+                        ("float16", "float32"), param_name="h_0")
+            check_dtype(dtypes["cont"].lower(), ("float16",), param_name="cont")
+            check_dtype(dtypes["w_hh"].lower(), ("float16",), param_name="w_hh")
+            check_shapes(shapes["cont"], (batch_dim, 16), )
             check_shapes(shapes["h_0"], (hidden_dim, batch_dim, 16, 16))
             check_shapes(shapes["w_hh"], (hidden_dim, hidden_dim, 16, 16))
 
         if self.has_static:
-            util.check_dtype_rule(
-                dtypes["w_xh_x_static"].lower(), ("float16", "float32"))
+            check_dtype(dtypes["w_xh_x_static"].lower(),
+                        ("float16", "float32"), param_name="w_xh_x_static")
             check_shapes(
                 shapes["w_xh_x_static"], (hidden_dim, batch_dim, 16, 16))
 
@@ -264,19 +273,21 @@ class BasicRNNCell:
             ht_tensors["l0c_whh_ht"] = self.tensor_list1["l0c_whh_ht"]
             ht_tensors["ub_whh_ht"] = self.tensor_list1["ub_whh_ht"]
             ht_tensors["ub_cont"] = self.tensor_list1["ub_cont"]
-            ht_tensors["ub_cont_fp32"] = self.tensor_list1["ub_cont_fp32"]
+            if self.device != "hisi_es":
+                ht_tensors["ub_cont_fp32"] = self.tensor_list1["ub_cont_fp32"]
             ht_tensors["ub_whh_ht_cont"] = self.tensor_list1["ub_whh_ht_cont"]
             ht_tensors["ub_ht_tmp1"] = self.tensor_list1["ub_ht_tmp1"]
 
         if self.has_static:
             ht_tensors["ub_w_xh_x_static"] = self.tensor_list1[
                 "ub_w_xh_x_static"]
-            if self.dtypes["w_xh_x_static"] == "float16":
+            if self.dtypes["w_xh_x_static"] == "float16" \
+                and self.device != "hisi_es":
                 ht_tensors["ub_w_xh_x_static_fp32"] = self.tensor_list1[
                     "ub_w_xh_x_static_fp32"]
             ht_tensors["ub_ht_tmp2"] = self.tensor_list1["ub_ht_tmp2"]
 
-        if self.dtypes["h_t"] == "float16":
+        if self.dtypes["h_t"] == "float16" and self.device != "hisi_es":
             ht_tensors["ub_ht_fp16"] = self.tensor_list1["ub_ht_fp16"]
 
         return ht_tensors
@@ -300,7 +311,7 @@ class BasicRNNCell:
         ot_tensors["l0c_who_ht_bias_o"] = self.tensor_list2[
             "l0c_who_ht_bias_o"]
         ot_tensors["ub_who_ht_bias_o"] = self.tensor_list2["ub_who_ht_bias_o"]
-        if self.dtypes["o_t"] == "float16":
+        if self.dtypes["o_t"] == "float16" and self.device != "hisi_es":
             ot_tensors["ub_ot_fp16"] = self.tensor_list2["ub_ot_fp16"]
 
         return ot_tensors
@@ -532,14 +543,24 @@ class BasicRNNCell:
         reduce_kb = tvm.reduce_axis((0, self.dims["hidden_dim"]),
                                     name='reduce_kb')
         reduce_kp = tvm.reduce_axis((0, 16), name='reduce_kp')
-        l0c_whh_ht = tvm.compute(
-            matmul_res_shape,
-            lambda nb, mb, mp, np: tvm.sum(
-                (l0a_h_0[mb, reduce_kb, mp, reduce_kp] * l0b_w_hh[
-                    reduce_kb, nb, np, reduce_kp]).astype("float32"),
-                axis=[reduce_kb, reduce_kp]),
-            name='l0c_whh_ht',
-            attrs={'input_order': 'positive'})
+        if self.device == "hisi_es":
+            l0c_whh_ht = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_h_0[mb, reduce_kb, mp, reduce_kp] * l0b_w_hh[
+                        reduce_kb, nb, np, reduce_kp]),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_whh_ht',
+                attrs={'input_order': 'positive'})
+        else:
+            l0c_whh_ht = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_h_0[mb, reduce_kb, mp, reduce_kp] * l0b_w_hh[
+                        reduce_kb, nb, np, reduce_kp]).astype("float32"),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_whh_ht',
+                attrs={'input_order': 'positive'})
         self.tensor_list1["l0c_whh_ht"] = l0c_whh_ht
         self.scope_list["l0c_whh_ht"] = cce.scope_cc
 
@@ -559,7 +580,7 @@ class BasicRNNCell:
         self.emit_cmd["ub_cont"] = "dma_copy"
         self.scope_list["ub_cont"] = cce.scope_ubuf
 
-        if ub_cont.dtype == "float16":
+        if ub_cont.dtype == "float16" and self.device != "hisi_es":
             ub_cont_fp32 = tvm.compute(
                 ub_cont.shape,
                 lambda *i: topi.cast(ub_cont(*i), "float32"),
@@ -607,8 +628,8 @@ class BasicRNNCell:
         -------
         output tensor
         """
-        matmul_res_shape = (self.dims["hidden_dim"], self.dims["batch_dim"], 16,
-                            16)
+        matmul_res_shape = (self.dims["hidden_dim"], self.dims["batch_dim"],
+                            16, 16)
         # Tensor x from GM to L1, L0A
         l1_x = tvm.compute(
             (self.dims["batch_dim"], self.dims["input_dim"], 16, 16),
@@ -646,7 +667,7 @@ class BasicRNNCell:
         self.tensor_list1["ub_bias_h"] = ub_bias_h
         self.emit_cmd["ub_bias_h"] = "dma_copy"
         self.scope_list["ub_bias_h"] = cce.scope_ubuf
-        if ub_bias_h.dtype == "float16":
+        if ub_bias_h.dtype == "float16" and self.device != "hisi_es":
             l0c_bias_h = tvm.compute(
                 matmul_res_shape,
                 lambda i0, i1, i2, i3: ub_bias_h[i0, i3].astype("float32"),
@@ -664,14 +685,24 @@ class BasicRNNCell:
                                     name='reduce_kb')
         reduce_kp = tvm.reduce_axis((0, 16), name='reduce_kp')
 
-        l0c_wht_xt = tvm.compute(
-            matmul_res_shape,
-            lambda nb, mb, mp, np: tvm.sum(
-                (l0a_x[mb, reduce_kb, mp, reduce_kp] * l0b_w_xh[
-                    reduce_kb, nb, np, reduce_kp]).astype("float32"),
-                axis=[reduce_kb, reduce_kp]),
-            name='l0c_wht_xt',
-            attrs={'input_order': 'positive'})
+        if self.device == "hisi_es":
+            l0c_wht_xt = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_x[mb, reduce_kb, mp, reduce_kp] * l0b_w_xh[
+                        reduce_kb, nb, np, reduce_kp]),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_wht_xt',
+                attrs={'input_order': 'positive'})
+        else:
+            l0c_wht_xt = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_x[mb, reduce_kb, mp, reduce_kp] * l0b_w_xh[
+                        reduce_kb, nb, np, reduce_kp]).astype("float32"),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_wht_xt',
+                attrs={'input_order': 'positive'})
         self.tensor_list1["l0c_wht_xt"] = l0c_wht_xt
         self.scope_list["l0c_wht_xt"] = cce.scope_cc
 
@@ -708,7 +739,8 @@ class BasicRNNCell:
             self.emit_cmd["ub_w_xh_x_static"] = "dma_copy"
             self.scope_list["ub_w_xh_x_static"] = cce.scope_ubuf
 
-            if ub_w_xh_x_static.dtype == "float16":
+            if ub_w_xh_x_static.dtype == "float16" \
+                and self.device != "hisi_es":
                 ub_w_xh_x_static_fp32 = tvm.compute(
                     ub_w_xh_x_static.shape,
                     lambda *i: topi.cast(ub_w_xh_x_static(*i), "float32"),
@@ -729,10 +761,10 @@ class BasicRNNCell:
         else:
             ub_ht_tmp2 = ub_ht_tmp1
 
-        tanh_ht_tensor, ht_tanh_op, ht_tanh_scope = tanh_compute(
-            ub_ht_tmp2.shape, ub_ht_tmp2, "ht")
+        tanh_ht_tensor, ht_tanh_op, ht_tanh_scope = \
+            tanh_compute(ub_ht_tmp2.shape, ub_ht_tmp2, "ht", self.impl_mode)
 
-        if self.dtypes["h_t"] == "float16":
+        if self.dtypes["h_t"] == "float16" and self.device != "hisi_es":
             ub_ht_fp16 = tvm.compute(
                 matmul_res_shape,
                 lambda *i: topi.cast(
@@ -743,7 +775,7 @@ class BasicRNNCell:
             ht_tanh_scope["ub_ht_fp16"] = cce.scope_ubuf
             ub_ht = ub_ht_fp16
         else:
-            ub_ht = self.tensor_list1["ub_tanh_ht"]
+            ub_ht = tanh_ht_tensor["ub_tanh_ht"]
 
         self.tanh_ht_tensor = tanh_ht_tensor
         self.scope_list.update(ht_tanh_scope)
@@ -807,7 +839,7 @@ class BasicRNNCell:
         self.tensor_list2["ub_bias_o"] = ub_bias_o
         self.emit_cmd["ub_bias_o"] = "dma_copy"
         self.scope_list["ub_bias_o"] = cce.scope_ubuf
-        if ub_bias_o.dtype == "float16":
+        if ub_bias_o.dtype == "float16" and self.device != "hisi_es":
             l0c_bias_o = tvm.compute(
                 matmul_res_shape,
                 lambda i0, i1, i2, i3: ub_bias_o[i0, i3].astype("float32"),
@@ -825,14 +857,24 @@ class BasicRNNCell:
                                     name='reduce_kb')
         reduce_kp = tvm.reduce_axis((0, 16), name='reduce_kp')
 
-        l0c_who_ht = tvm.compute(
-            matmul_res_shape,
-            lambda nb, mb, mp, np: tvm.sum(
-                (l0a_ht[mb, reduce_kb, mp, reduce_kp] * l0b_w_ho[
-                    reduce_kb, nb, np, reduce_kp]).astype("float32"),
-                axis=[reduce_kb, reduce_kp]),
-            name='l0c_who_ht',
-            attrs={'input_order': 'positive'})
+        if self.device == "hisi_es":
+            l0c_who_ht = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_ht[mb, reduce_kb, mp, reduce_kp] * l0b_w_ho[
+                        reduce_kb, nb, np, reduce_kp]),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_who_ht',
+                attrs={'input_order': 'positive'})
+        else:
+            l0c_who_ht = tvm.compute(
+                matmul_res_shape,
+                lambda nb, mb, mp, np: tvm.sum(
+                    (l0a_ht[mb, reduce_kb, mp, reduce_kp] * l0b_w_ho[
+                        reduce_kb, nb, np, reduce_kp]).astype("float32"),
+                    axis=[reduce_kb, reduce_kp]),
+                name='l0c_who_ht',
+                attrs={'input_order': 'positive'})
         self.tensor_list2["l0c_who_ht"] = l0c_who_ht
         self.scope_list["l0c_who_ht"] = cce.scope_cc
 
@@ -854,10 +896,11 @@ class BasicRNNCell:
         self.emit_cmd["ub_who_ht_bias_o"] = "dma_copy"
         self.scope_list["ub_who_ht_bias_o"] = cce.scope_ubuf
 
-        tanh_ot_tensor, tanh_ot_operator, tanh_ot_scope = tanh_compute(
-            ub_who_ht_bias_o.shape, ub_who_ht_bias_o, "ot")
+        tanh_ot_tensor, tanh_ot_operator, tanh_ot_scope = \
+            tanh_compute(ub_who_ht_bias_o.shape, ub_who_ht_bias_o, "ot",
+                         self.impl_mode)
 
-        if self.dtypes["o_t"] == "float16":
+        if self.dtypes["o_t"] == "float16" and self.device != "hisi_es":
             ub_ot_fp16 = tvm.compute(
                 matmul_res_shape,
                 lambda *i: topi.cast(
@@ -932,65 +975,6 @@ class BasicRNNCell:
             sch[tensor_list[key]].set_scope(scope_list[key])
 
 
-# pylint: disable=too-many-locals
-def newton_iteration(shape, tensor_x_rec, tensor_x, symbol, iter_num):
-    """
-    the function of newton_iteration
-    Parameters
-    ----------
-    shape: tensor shape
-    tensor_x_rec: tensor
-    tensor_x: tensor
-    symbol: tensor symbol
-
-    Returns
-    -------
-    tensor_list: dict
-    scope_list: dict
-    emit_list: dict
-    """
-    dtype_c = tensor_x_rec.dtype
-    num_two = tvm.const(2, dtype=dtype_c)
-    neg_one = tvm.const(-1, dtype=dtype_c)
-    tmp = tensor_x_rec
-
-    tensor_list = {}
-    scope_list = {}
-    emit_list = {}
-    tmp_mul = None
-    tmp_neg = None
-    tmp_add = None
-    for index in range(0, iter_num):
-        key = "tmp_mul_" + symbol + str(index)
-        tmp_mul = tvm.compute(
-            shape, lambda *i: tensor_x(*i) * tmp(*i), name=key)
-        tensor_list[key] = tmp_mul
-        scope_list[key] = cce.scope_ubuf
-        emit_list[key] = "vector_mul"
-
-        key = "tmp_neg_" + symbol + str(index)
-        tmp_neg = tvm.compute(
-            shape, lambda *i: tmp_mul(*i) * neg_one, name=key)
-        tensor_list[key] = tmp_neg
-        scope_list[key] = cce.scope_ubuf
-        emit_list[key] = "vector_muls"
-
-        key = "tmp_add_" + symbol + str(index)
-        tmp_add = tvm.compute(
-            shape, lambda *i: tmp_neg(*i) + num_two, name=key)
-        tensor_list[key] = tmp_add
-        scope_list[key] = cce.scope_ubuf
-        emit_list[key] = "vector_adds"
-
-        key = "tmp_" + symbol + str(index)
-        tmp = tvm.compute(shape, lambda *i: tmp_add(*i) * tmp(*i), name=key)
-        tensor_list[key] = tmp
-        scope_list[key] = cce.scope_ubuf
-        emit_list[key] = "vector_mul"
-
-    return tensor_list, scope_list, emit_list
-
-
 # pylint: disable=too-many-locals,too-many-branches
 def get_tilling(m_dim, k_dim, n_dim):
     """
@@ -1062,135 +1046,6 @@ def get_tilling(m_dim, k_dim, n_dim):
 
     return tilling_info
 
-
-# pylint: disable=too-many-statements
-def tanh_compute(shape, input_x, symbol):
-    """
-    the function of tanh
-    Parameters
-    ----------
-    shape : tensor shape
-    input_x : tensor
-    symbol : tensor symbol
-    Returns
-    -------
-    """
-    res = {}
-    operation = {}
-    scope = {}
-
-    dtype_x = input_x.dtype
-    const_one = tvm.const(1, dtype=dtype_x)
-    const_neg_two = tvm.const(-2, dtype=dtype_x)
-    const_fp32_min = tvm.const(2 ** (-126), dtype=dtype_x)
-
-    key = "input_abs_" + symbol
-    input_abs = tvm.compute(
-        shape, lambda *i: tvm.abs(input_x(*i)), name=key)
-    res[key] = input_abs
-    operation[key] = "vector_abs"
-    scope[key] = cce.scope_ubuf
-
-    key = "power_val_" + symbol
-    power_val = tvm.compute(
-        shape, lambda *i: input_abs(*i) * const_neg_two, name=key)
-    res[key] = power_val
-    operation[key] = "vector_muls"
-    scope[key] = cce.scope_ubuf
-
-    if dtype_x == "float32":
-        key = "exp_val_fp16_" + symbol
-        exp_val_fp16 = tvm.compute(
-            shape, lambda *i: topi.cast(power_val(*i), "float16"), name=key)
-        res[key] = exp_val_fp16
-        operation[key] = "vector_conv"
-        scope[key] = cce.scope_ubuf
-
-        key = "exp_val_" + symbol
-        exp_val = tvm.compute(
-            shape, lambda *i: tvm.exp(exp_val_fp16(*i)), name=key)
-        res[key] = exp_val
-        operation[key] = "vector_exp"
-        scope[key] = cce.scope_ubuf
-
-        key = "exp_val_fp32_" + symbol
-        exp_val_fp32 = tvm.compute(
-            shape, lambda *i: topi.cast(exp_val(*i), "float32"), name=key)
-        res[key] = exp_val_fp32
-        operation[key] = "vector_conv"
-        scope[key] = cce.scope_ubuf
-
-        exp_val_true = exp_val_fp32
-    else:
-        key = "exp_val_" + symbol
-        exp_val = tvm.compute(
-            shape, lambda *i: tvm.exp(power_val(*i)), name=key)
-        res[key] = exp_val
-        operation[key] = "vector_exp"
-        scope[key] = cce.scope_ubuf
-        exp_val_true = exp_val
-
-    key = "up_val_tmp_" + symbol
-    up_val_tmp = tvm.compute(
-        shape, lambda *i: exp_val_true(*i) * input_x(*i), name=key)
-    res[key] = up_val_tmp
-    operation[key] = "vector_mul"
-    scope[key] = cce.scope_ubuf
-
-    key = "up_val_" + symbol
-    up_val = tvm.compute(
-        shape, lambda *i: input_x(*i) - up_val_tmp(*i), name=key)
-    res[key] = up_val
-    operation[key] = "vector_sub"
-    scope[key] = cce.scope_ubuf
-
-    key = "input_tmp_" + symbol
-    input_tmp = tvm.compute(
-        shape, lambda *i: input_abs(*i) + const_fp32_min, name=key)
-    res[key] = input_tmp
-    operation[key] = "vector_adds"
-    scope[key] = cce.scope_ubuf
-
-    key = "down_val_tmp_" + symbol
-    down_val_tmp = tvm.compute(
-        shape, lambda *i: exp_val_true(*i) + const_one, name=key)
-    res[key] = down_val_tmp
-    operation[key] = "vector_adds"
-    scope[key] = cce.scope_ubuf
-
-    key = "down_val_" + symbol
-    down_val = tvm.compute(
-        shape, lambda *i: down_val_tmp(*i) * input_tmp(*i), name=key)
-    res[key] = down_val
-    operation[key] = "vector_mul"
-    scope[key] = cce.scope_ubuf
-
-    ub_rec = tvm.compute(
-        shape, lambda *i: const_one / down_val(*i), name="ub_rec_" + symbol)
-    res["ub_rec_" + symbol] = ub_rec
-    operation["ub_rec_" + symbol] = "vector_rec"
-    scope["ub_rec_" + symbol] = cce.scope_ubuf
-
-    iter_num = 1
-    tensor_list, scope_list, emit_list = newton_iteration(
-        shape, ub_rec, down_val, symbol, iter_num)
-    res.update(tensor_list)
-    operation.update(emit_list)
-    scope.update(scope_list)
-
-    newton_res = tensor_list["tmp_" + symbol + str(iter_num - 1)]
-
-    ub_tanh = tvm.compute(
-        shape,
-        lambda *i: up_val(*i) * newton_res(*i),
-        name="ub_tanh_" + symbol)
-    res["ub_tanh_" + symbol] = ub_tanh
-    operation["ub_tanh_" + symbol] = "vector_mul"
-    scope["ub_tanh_" + symbol] = cce.scope_ubuf
-
-    return res, operation, scope
-
-
 def matmul_schedule(sch, tensors, tilling_info, init_bias):
     """
     matmul schedule
@@ -1257,6 +1112,7 @@ def matmul_schedule(sch, tensors, tilling_info, init_bias):
 
     return compute_at_axis
 
+
 def check_shapes(input_shape, check_shape):
     """
     check input tensor shapes
@@ -1273,17 +1129,30 @@ def check_shapes(input_shape, check_shape):
     None
     """
     if len(input_shape) != len(check_shape):
-        raise RuntimeError("the dim number of input shape is error")
+        error_info = {}
+        error_info['errCode'] = 'E80017'
+        error_info['op_name'] = 'basicrnn_cell'
+        error_info['param_name1'] = "input_shape"
+        error_info['param_name2'] = "check_shape"
+        error_info['param1_shape'] = len(input_shape)
+        error_info['param2_shape'] = len(check_shape)
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] "
+                           "are not equal in shape with parameter[%s][%s]"
+                           % (error_info['op_name'], error_info['param_name1'], \
+                              error_info['param1_shape'], error_info['param_name2'],\
+                              error_info['param2_shape']))
 
     for index, dim in enumerate(check_shape):
         if input_shape[index] != dim:
             raise RuntimeError("the dim(%d) is error" % (index))
 
 
-@util.check_input_type(dict, (dict, NONETYPE), (dict, NONETYPE),
-                       (dict, NONETYPE), dict, dict, (dict, NONETYPE),
-                       dict, dict, dict, dict, bool, int, str)
 # pylint: disable=too-many-arguments, invalid-name
+@check_op_params(REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, OPTION_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
+                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, OPTION_ATTR_INT,
+                 KERNEL_NAME)
 def basic_rnn_cell(x,
                    cont,
                    w_xh_x_static,
@@ -1297,7 +1166,8 @@ def basic_rnn_cell(x,
                    h_t,
                    expose_hidden=False,
                    num_output=0,
-                   kernel_name="basicrnn_cell"):
+                   kernel_name="basicrnn_cell",
+                   impl_mode="high_performance"):
     """
     calculating data
 

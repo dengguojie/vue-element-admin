@@ -24,7 +24,7 @@ from te.platform.cce_util import get_const
 from impl import aipp_comm
 
 
-def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
+def get_dync_padding_size(ib, p_ub_buf, tmp, padding_info):
     """
     :param aipp_config:
     :return:
@@ -34,7 +34,6 @@ def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                            aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                             aipp_comm.BATCH_OFFSET_PAD_SWITCH)))
 
     with ib.if_scope(tmp[0]):
@@ -42,7 +41,6 @@ def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_TOP)))
         padding_info[0] = tmp[0]
 
@@ -50,7 +48,6 @@ def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_BOTTOM)))
         padding_info[1] = tmp[0]
 
@@ -58,7 +55,6 @@ def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_LEFT)))
         padding_info[2] = tmp[0]
 
@@ -66,7 +62,6 @@ def get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info):
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_RIGHT)))
         padding_info[3] = tmp[0]
 
@@ -538,10 +533,9 @@ def get_dync_src_image_size(ib, p_ub_buf, tmp, src_image_size):
         src_image_size[1] = tmp[0]
 
 
-def get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info):
+def get_dync_crop_info(ib, p_ub_buf, tmp, load_image_info):
     """
     :param ib:
-    :param batch_id:
     :param p_ub_buf:
     :param tmp:
     :param load_image_info:
@@ -552,7 +546,6 @@ def get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info):
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                            aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                             aipp_comm.BATCH_OFFSET_CROP_STARTPOS_W)))
     # load_start_pos_w
     load_image_info[1] = tmp[0]
@@ -561,7 +554,6 @@ def get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info):
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                            aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                             aipp_comm.BATCH_OFFSET_CROP_STARTPOS_H)))
     # load_start_pos_h
     load_image_info[0] = tmp[0]
@@ -570,7 +562,6 @@ def get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info):
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                            aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                             aipp_comm.BATCH_OFFSET_CROP_W)))
     # load_image_w
     load_image_info[3] = tmp[0]
@@ -579,7 +570,6 @@ def get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info):
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                            aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                             aipp_comm.BATCH_OFFSET_CROP_H)))
     # load_image_h
     load_image_info[2] = tmp[0]
@@ -605,6 +595,21 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
     else:
         size = 1
         C0 = 32
+
+    if C1 != 1:
+        output_ori_shape = output_data.get('ori_shape')
+        output_ori_format = output_data.get('ori_format')
+        if output_ori_format == "NCHW":
+            output_ori_C = output_ori_shape[1]
+        elif output_ori_format == "NHWC":
+            output_ori_C = output_ori_shape[3]
+        else:
+            cause_desc = "network input format[%s] is not supported" % output_ori_format
+            aipp_comm.raise_RuntimeError(cause_desc)
+
+        cause_desc = "network input C[%d] should be less than or equal to %d" % \
+                     (output_ori_C, C0)
+        aipp_comm.raise_RuntimeError(cause_desc)
 
     actual_col_size = H * W
 
@@ -689,6 +694,13 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                               tvm.const(batch_factor, dtype="uint64"),
                               name="n1", dtype="uint64") as n1:
                 batch_id = batch_factor * block_index + n1
+                ib.emit(tvm.call_extern("uint8", 'copy_gm_to_ubuf',
+                                        p_ub_buf.access_ptr("w", ptr_type=dtype,
+                                                            offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE),
+                                        param_buf.access_ptr("rw", ptr_type=dtype,
+                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id),
+                                        0, 1, aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE//32, 0, 0))
 
                 actual_col_size_reg[0] = src_image_size[0] * src_image_size[1]
 
@@ -716,12 +728,11 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r',
                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                   aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                    aipp_comm.BATCH_OFFSET_CROP_SWITCH)))
                 crop[0] = tmp[0]
                 #crop enable
                 with ib.if_scope(tmp[0] > 0):
-                    get_dync_crop_info(ib, batch_id, p_ub_buf, tmp, load_image_info)
+                    get_dync_crop_info(ib, p_ub_buf, tmp, load_image_info)
 
                     actual_col_size_reg[0] = load_image_info[2] * load_image_info[3]
 
@@ -885,7 +896,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     spr[1] = tvm.const(0, dtype="uint64") << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
 
-                aipp_comm.set_spr_dync_in_batch(ib, dtype, batch_id, p_ub_buf, spr, tmp)
+                aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp)
 
                 resize[0] = tvm.const(0, dtype="uint64")
                 if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
@@ -899,7 +910,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r',
                                                                 offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id +
                                                                 aipp_comm.BATCH_OFFSET_SCF_SWITCH)))
                     resize[0] = tmp[0]
                     with ib.if_scope(resize[0] == 1):
@@ -908,7 +918,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
                                                                     offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id +
                                                                     aipp_comm.BATCH_OFFSET_SCF_INPUT_H)))
                         resize_input_h[0] = tmp[0]
                         with ib.if_scope(resize_input_h[0] == 0):
@@ -922,7 +931,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
                                                                     offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id +
                                                                     aipp_comm.BATCH_OFFSET_SCF_OUTPUT_H)))
                         resize_output_h[0] = tmp[0]
 
@@ -940,7 +948,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
                                                                     offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id +
                                                                     aipp_comm.BATCH_OFFSET_SCF_INPUT_W)))
                         resize_input_w[0] = tmp[0]
                         with ib.if_scope(resize_input_w[0] == 0):
@@ -954,7 +961,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
                                                                     offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id +
                                                                     aipp_comm.BATCH_OFFSET_SCF_OUTPUT_W)))
                         resize_output_w[0] = tmp[0]
 
@@ -978,14 +984,13 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_13", spr[13]))
                         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_16", spr[16]))
 
-                get_dync_padding_size(ib, batch_id, p_ub_buf, tmp, padding_info)
+                get_dync_padding_size(ib, p_ub_buf, tmp, padding_info)
 
                 ib.emit(tvm.call_extern("int8",
                                         "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r',
                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                   aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id + \
                                                                    aipp_comm.BATCH_OFFSET_PAD_SWITCH)))
                 padding[0] = tmp[0]
                 # padding enable

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd.
+Copyright (C) 2020. Huawei Technologies Co., Ltd.
 
 conv2d_backprop_input
 """
@@ -12,6 +12,7 @@ from te import tvm
 from topi import generic
 from te.platform import CUBE_MKN
 from te.platform.fusion_manager import fusion_manager
+from te.utils.error_manager import error_manager_util as err_man
 from topi.cce import util
 import impl.util.util_deconv_comm as comm
 
@@ -60,7 +61,7 @@ DATA_SIZE_MAX = 9223372036854775807
 # If pads is string , only support "SAME" or "VALID"
 PADDING_SUPPORT = ('SAME', 'VALID')
 # pads valid mode is [0, 0, 0, 0]
-PADDING_VAILD = [0, 0, 0, 0]
+PADDING_VAILD = (0, 0, 0, 0)
 
 
 @util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list),
@@ -121,7 +122,15 @@ def conv2d_backprop_input_d(filter,  # pylint: disable=W0622,C0103,R0913,R0914
     ori_format_filters = filter.get("ori_format")
     ori_format_out_backprop = out_backprop.get("ori_format")
     ori_format_res = y.get("ori_format")
-
+    if list(input_size) != list(ori_shape_res):
+        dict_args = {}
+        dict_args['errCode'] = "E65007"
+        dict_args['param1'] = "input_size"
+        dict_args['param2'] = "ori_shape of y"
+        dict_args['actual_value'] = "{}, {}". \
+            format(input_size, ori_shape_res)
+        raise RuntimeError(dict_args,
+                           err_man.get_error_message(dict_args))
     util.check_kernel_name(kernel_name)
     util.check_shape_rule(ori_shape_filters,
                           CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
@@ -221,7 +230,15 @@ def conv2d_backprop_input_d_compute(filter, out_backprop, y, input_size,
     ori_format_filters = filter.op.attrs["ori_format"]
     ori_format_out_backprop = out_backprop.op.attrs["ori_format"]
     ori_format_res = y["ori_format"]
-
+    if list(input_size) != list(ori_shape_res):
+        dict_args = {}
+        dict_args['errCode'] = "E65007"
+        dict_args['param1'] = "input_size"
+        dict_args['param2'] = "ori_shape of y"
+        dict_args['actual_value'] = "{}, {}". \
+            format(input_size, ori_shape_res)
+        raise RuntimeError(dict_args,
+                           err_man.get_error_message(dict_args))
     if len(strides) == 4:
         h_index = data_format.find('H')
         w_index = data_format.find('W')

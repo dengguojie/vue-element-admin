@@ -16,12 +16,8 @@ sparse_apply_adadelta_d
 """
 from impl.sparse_apply_common import SparseApply
 
-from topi.cce import util
 from te import platform as tbe_platform
-
-# when input_dtype is float32 and shape_size_limit >= 2**29, then
-# calculated address value in DMA caused Signed integer overflow.
-SHAPE_SIZE_LIMIT = (2**29 - 1)
+from te.utils import op_utils
 
 
 class SparseApplyAdadelta(SparseApply):
@@ -30,16 +26,8 @@ class SparseApplyAdadelta(SparseApply):
     """
 
     # pylint: disable=too-many-statements
-    def __init__(self,
-                 var,
-                 accum,
-                 accum_update,
-                 learning_rate,
-                 rho,
-                 grad,
-                 indices,
-                 epsilon,
-                 kernel_name):
+    def __init__(self, var, accum, accum_update, learning_rate, rho, grad,
+                 indices, epsilon, kernel_name):
         """
         Init sparse_apply_adadelta base parameters
 
@@ -120,28 +108,23 @@ class SparseApplyAdadelta(SparseApply):
             raise RuntimeError(
                 "Input dtype is float32, but do not support on the platform")
 
-        util.check_shape_rule(self.var_shape)
-        util.check_shape_rule(self.accum_shape)
-        util.check_shape_rule(self.accum_update_shape)
-        util.check_shape_rule(self.lr_shape)
-        util.check_shape_rule(self.rho_shape)
+        op_utils.check_shape(self.var_shape, param_name="var")
+        op_utils.check_shape(self.accum_shape, param_name="accum")
+        op_utils.check_shape(self.accum_update_shape,
+                             param_name="accum_update")
+        op_utils.check_shape(self.lr_shape, param_name="lr")
+        op_utils.check_shape(self.rho_shape, param_name="rho")
 
-        util.check_shape_size(self.var_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.accum_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.accum_update_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.lr_shape, SHAPE_SIZE_LIMIT)
-        util.check_shape_size(self.rho_shape, SHAPE_SIZE_LIMIT)
-
-        check_list_var_dtype = ("float32")
-        util.check_dtype_rule(self.var_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.accum_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.accum_update_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.lr_dtype, check_list_var_dtype)
-        util.check_dtype_rule(self.rho_dtype, check_list_var_dtype)
+        op_utils.check_dtype(self.var_dtype, ("float32", ), param_name="var")
+        op_utils.check_dtype(self.accum_dtype, ("float32", ),
+                             param_name="accum")
+        op_utils.check_dtype(self.accum_update_dtype, ("float32", ),
+                             param_name="accum_update")
+        op_utils.check_dtype(self.lr_dtype, ("float32", ), param_name="lr")
+        op_utils.check_dtype(self.rho_dtype, ("float32", ), param_name="rho")
 
         if self.accum_shape != self.var_shape:
-            raise RuntimeError(
-                "accum's shape must be the same as var's shape")
+            raise RuntimeError("accum's shape must be the same as var's shape")
 
         if self.accum_update_shape != self.var_shape:
             raise RuntimeError(
@@ -173,62 +156,58 @@ class SparseApplyAdadelta(SparseApply):
             accum_ub = self.get_ub("accum_ub")[offset]
             accum_update_ub = self.get_ub("accum_update_ub")[offset]
             grad_ub = self.grad_ub[offset]
-
-
-        self.tik_instance.vmuls(mask, accum_ub, accum_ub,
-                                self.rho_scalar, repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, accum_ub, accum_ub, self.rho_scalar,
+                                repeat_times, 1, 1, 8, 8)
         self.tik_instance.vmul(mask, tmp1_ub, grad_ub, grad_ub, repeat_times,
                                1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmuls(mask, tmp1_ub, tmp1_ub,
-                                (1 - self.rho_scalar), repeat_times,
-                                1, 1, 8, 8)
-        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp1_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
-
-
-        self.tik_instance.vadds(mask, tmp1_ub, accum_update_ub,
-                                self.epsilon, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vsqrt(mask, tmp1_ub, tmp1_ub,
+        self.tik_instance.vmuls(mask, tmp1_ub, tmp1_ub, (1 - self.rho_scalar),
                                 repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vadds(mask, tmp2_ub, accum_ub,
-                                self.epsilon, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vsqrt(mask, tmp2_ub, tmp2_ub,
+        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp1_ub, repeat_times,
+                               1, 1, 1, 8, 8, 8)
+
+        self.tik_instance.vadds(mask, tmp1_ub, accum_update_ub, self.epsilon,
                                 repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vsqrt(mask, tmp1_ub, tmp1_ub, repeat_times, 1, 1, 8,
+                                8)
+        self.tik_instance.vadds(mask, tmp2_ub, accum_ub, self.epsilon,
+                                repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vsqrt(mask, tmp2_ub, tmp2_ub, repeat_times, 1, 1, 8,
+                                8)
         if self.vdiv_support:
-            self.tik_instance.vdiv(mask,
-                                   tmp2_ub,
-                                   grad_ub,
-                                   tmp2_ub,
-                                   repeat_times,
-                                   1, 1, 1, 8, 8, 8)
+            self.tik_instance.vdiv(mask, tmp2_ub, grad_ub, tmp2_ub,
+                                   repeat_times, 1, 1, 1, 8, 8, 8)
         else:
-            self.tik_instance.vrec(mask, tmp2_ub, tmp2_ub,
-                                   repeat_times, 1, 1, 8, 8)
-            self.tik_instance.vmul(mask, tmp2_ub, grad_ub,
-                                   tmp2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vrec(mask, tmp2_ub, tmp2_ub, repeat_times, 1, 1,
+                                   8, 8)
+            self.tik_instance.vmul(mask, tmp2_ub, grad_ub, tmp2_ub,
+                                   repeat_times, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vmul(mask, tmp1_ub, tmp1_ub, tmp2_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, tmp1_ub, tmp1_ub, tmp2_ub, repeat_times,
+                               1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vmuls(mask, tmp2_ub, tmp1_ub,
-                                self.lr_scalar, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, var_ub, var_ub, tmp2_ub,
-                               repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmuls(mask, tmp2_ub, tmp1_ub, self.lr_scalar,
+                                repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, var_ub, var_ub, tmp2_ub, repeat_times, 1,
+                               1, 1, 8, 8, 8)
 
         self.tik_instance.vmuls(mask, accum_update_ub, accum_update_ub,
                                 self.rho_scalar, repeat_times, 1, 1, 8, 8)
-        self.tik_instance.vmul(mask, tmp2_ub, tmp1_ub, tmp1_ub,
+        self.tik_instance.vmul(mask, tmp2_ub, tmp1_ub, tmp1_ub, repeat_times,
+                               1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmuls(mask, tmp2_ub, tmp2_ub, (1 - self.rho_scalar),
+                                repeat_times, 1, 1, 8, 8)
+        self.tik_instance.vadd(mask, accum_update_ub, accum_update_ub, tmp2_ub,
                                repeat_times, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmuls(mask, tmp2_ub, tmp2_ub,
-                                (1 - self.rho_scalar), repeat_times,
-                                1, 1, 8, 8)
-        self.tik_instance.vadd(mask, accum_update_ub, accum_update_ub,
-                               tmp2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict,
-                       dict, dict, dict, float, bool, str)
+@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
+                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
+                          op_utils.REQUIRED_ATTR_FLOAT,
+                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
 def sparse_apply_adadelta_d(var,
                             accum,
                             accum_update,
@@ -305,13 +284,11 @@ def sparse_apply_adadelta_d(var,
 
     sparse_apply_adadelta.add_output("var_out_gm", var_dtype, var_shape)
     sparse_apply_adadelta.add_output("accum_out_gm", var_dtype, var_shape)
-    sparse_apply_adadelta.add_output("accum_update_out_gm",
-                                     var_dtype,
+    sparse_apply_adadelta.add_output("accum_update_out_gm", var_dtype,
                                      var_shape)
     sparse_apply_adadelta.reserve_ub("var_ub", var_dtype, "var_align_ub")
     sparse_apply_adadelta.reserve_ub("accum_ub", var_dtype, "accum_align_ub")
-    sparse_apply_adadelta.reserve_ub("accum_update_ub",
-                                     var_dtype,
+    sparse_apply_adadelta.reserve_ub("accum_update_ub", var_dtype,
                                      "accum_update_align_ub")
     sparse_apply_adadelta.reserve_ub("lr_ub", var_dtype, is_scalar=True)
     sparse_apply_adadelta.reserve_ub("rho_ub", var_dtype, is_scalar=True)

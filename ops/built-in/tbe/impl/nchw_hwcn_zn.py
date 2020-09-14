@@ -1417,7 +1417,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
                                         "scatter_vnchwconv_b16",
                                         "VA2", "VA0", repeat,
                                         dst_stride, src_stride))
-                elif is_1951:
+                elif is_dc:
                     repeat = vnchwconv_cube_col_size // 8
                     src_stride = 0 if repeat == 1 else 1
                     dst_stride = 0 if repeat == 1 else 16
@@ -1517,7 +1517,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
                     if pad_n_len:
                         _clean_ubuf(ib_, output_ub, n_left * axis_c0,
                                     (axis_c0 - pad_n_len) * axis_c0)
-                elif is_1951:
+                elif is_dc:
                     repeat = (n_left + 7) // 8
                     src_stride = 0 if repeat == 1 else 1
                     dst_stride = 0 if repeat == 1 else 16
@@ -1592,7 +1592,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
                     _clean_ubuf(ib_, output_ub, actual_col_size * axis_c0,
                                 (axis_c0 - actual_col_size % axis_c0)
                                 * axis_c0)
-            elif is_1951:
+            elif is_dc:
                 repeat = (actual_col_size + 7) // 8
                 src_stride = 0 if repeat == 1 else 1
                 dst_stride = 0 if repeat == 1 else 16
@@ -1644,7 +1644,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
             (c_part_list[c_part_idx] // axis_c0) % params.device_core_num
         # left axis_c * axis_n
         axis_c_left = c_part_list[c_part_idx] % axis_c0
-        is_1951 = (input_tensor.dtype.lower() == "float32" and
+        is_dc = (input_tensor.dtype.lower() == "float32" and
                    tvm_cce.cce_conf.intrinsic_check_support("Intrinsic_vbi",
                                                             "float16"))
 
@@ -1652,7 +1652,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
             with ib_.for_range(0, 4, name="n_part") as n_part_idx:
                 if core_loop_count > 0:
                     with ib_.if_scope(hw_idx == 0):
-                        if input_tensor.dtype.lower() == "float16" or is_1951:
+                        if input_tensor.dtype.lower() == "float16" or is_dc:
                             _clean_ubuf(ib_, input_ub, 0,
                                         vnchwconv_cube_buf_max)
                         else:
@@ -1668,7 +1668,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
 
                 if core_loop_tail > 0:
                     with ib_.if_scope(core_loop_count == 0 and hw_idx == 0):
-                        if input_tensor.dtype.lower() == "float16" or is_1951:
+                        if input_tensor.dtype.lower() == "float16" or is_dc:
                             _clean_ubuf(ib_, input_ub, 0,
                                         vnchwconv_cube_buf_max)
                         else:
@@ -1685,7 +1685,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
                     with ib_.if_scope(params.block.var < 1):
                         if core_loop_count > 0 or core_loop_tail > 0:
                             if input_tensor.dtype.lower() == "float16" or \
-                                    is_1951:
+                                    is_dc:
                                 _clean_ubuf(ib_, input_ub, 0,
                                             vnchwconv_cube_buf_max)
                             else:
@@ -1694,7 +1694,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
                         else:
                             with ib_.if_scope(hw_idx == 0):
                                 if input_tensor.dtype.lower() == "float16" or \
-                                        is_1951:
+                                        is_dc:
                                     _clean_ubuf(ib_, input_ub, 0,
                                                 vnchwconv_cube_buf_max)
                                 else:

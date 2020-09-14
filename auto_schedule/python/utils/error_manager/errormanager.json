@@ -57,7 +57,7 @@
         {
             "errCode": "E50033",
             "errMessage": "The format of [%s] of op[%s] must in [%s], actual format is [%s]",
-            "argList": "param_name,p_name,expected_format_list,format"
+            "argList": "param_name,op_name,expected_format_list,format"
         },
         {
             "errCode": "E50034",
@@ -76,7 +76,7 @@
         },
         {
             "errCode": "E50037",
-            "errMessage": "The original format of [%s] of op[%s] must in [%s], actual format is [%s]",
+            "errMessage": "The format of [%s] of op[%s] must in [%s], actual format is [%s]",
             "argList": "param_name,op_name, expected_format_list,format"
         },
         {
@@ -86,7 +86,7 @@
         },
         {
             "errCode": "E50039",
-            "errMessage": "In op[%s], the channel of a shoud be equal to  filter's, actual input are [%s] and [%s]",
+            "errMessage": "In op[%s], the channel of x shoud be equal to  filter's, actual input are [%s] and [%s]",
             "argList": "op_name,channel_of_x,channel_of_filter"
         },
         {
@@ -181,6 +181,16 @@
         },
         {
             "errCode": "E50058",
+            "errMessage": "In op [%s], [%s]",
+            "argList": "op_name,description"
+        },
+        {
+            "errCode": "E50059",
+            "errMessage": "In op[%s], x channel should be equal to filter channel*groups, x shape is: [%s], filter shape is: [%s], groups is: [%s]",
+            "argList": "op_name,x_shape,filter_shape,groups"
+        },
+        {
+            "errCode": "E50060",
             "errMessage": "In op [%s], [%s]",
             "argList": "op_name,description"
         },
@@ -325,6 +335,11 @@
             "argList": "op_name,dilation_h,dilation_w"
         },
         {
+            "errCode": "E60036",
+            "errMessage": "In op[%s], quant model only surport scale == 1 and sqrt == 0, but scale is [%s], sqrt is [%s]",
+            "argList": "op_name,scale_value,sqrt_mode"
+        },
+        {
             "errCode": "E60101",
             "errMessage": "In op[%s], the last 2 dim of [%s] should be [%s], actual are [%s] ",
             "argList": "op_name,param_name,expected_two_dims,actual_two_dim"
@@ -426,18 +441,18 @@
         },
         {
             "errCode": "E60034",
-            "errMessage": "The op [%s]'s kernel name[%s] is invalid, it can only contain letters, numbers and underscores, and begin with underscores or letters\n\uff08kernel name\u5e94\u8be5\u662f\u5185\u90e8\u4fe1\u606f,\u4e0d\u5408\u9002\u5bf9\u7528\u6237\u5448\u73b0\uff09?\uff08\u5efa\u8bae\u663e\u793a\u51fa\u6765\uff09",
+            "errMessage": "The op [%s]'s kernel name[%s] is invalid, it can only contain letters, numbers and underscores, and begin with underscores or letters",
             "argList": "op_name,kernel_name"
         },
         {
             "errCode": "E60035",
-            "errMessage": "The op [%s] does not support this fusion mode\n\uff08\u786e\u8ba4\u5177\u4f53\u4e1a\u52a1\u573a\u666f\uff1f\uff09",
+            "errMessage": "The op [%s] does not support this fusion mode",
             "argList": "op_name"
         },
         {
             "errCode": "E60115",
             "errMessage": "The op [%s] get illegal tiling parameter",
-            "argList": "\uff1f"
+            "argList": "op_name"
         },
         {
             "errCode": "E60116",
@@ -456,38 +471,68 @@
         },
         {
             "errCode": "E61000",
-            "errMessage": "In op[%s], [%s] should be 4d list",
+            "errMessage": "In op [%s], [%s] should be 4d list",
             "argList": "op_name,param_name"
         },
         {
             "errCode": "E61001",
-            "errMessage": "In op[%s], [%s],actual is [%s]",
-            "argList": "op_name,reason,value"
+            "errMessage": "In op [%s], [%s]",
+            "argList": "op_name,reason"
         },
         {
-            "errCode": "E61202",
-            "errMessage": "The op [%s] input parameter [%s] should be [%s] type, but the type you enter is [%s]",
-            "argList": "op_name, param_name, optype_1, optype_2"
+            "errCode": "E61203",
+            "errMessage": "In op [%s], [%s] , actual is [%s] and [%s]",
+            "argList": "op_name,sence_params,param_1,param_2"
+        },
+        {
+            "errCode": "E61204",
+            "errMessage": "In op [%s], [%s] , actual is [%s]",
+            "argList": "op_name,sence_params,param_1"
+        },
+        {
+            "errCode": "E61205",
+            "errMessage": "In op[%s], [%s]",
+            "argList": "op_name,reason"
         },
         {
             "errCode": "E61300",
-            "errMessage": "wrong tiling in op[%s]: [%s] must be [%s] [%s]",
+            "errMessage": "In op [%s], [%s] must be [%s] [%s]",
             "argList": "op_name,param_name,expect_value,condition"
         },
         {
             "errCode": "E61301",
-            "errMessage": "wrong tiling in op[%s]: [%s] must be equal to [%s]",
+            "errMessage": "In op [%s], [%s] must be equal to [%s]",
             "argList": "op_name,param_name_1,param_name_2"
         },
         {
             "errCode": "E61500",
-            "errMessage": "In op[%s], input_memory_type should be 0 or 1 or 2, actual is [%s]",
+            "errMessage": "In op [%s], input_memory_type should be 0 or 1 or 2, actual is [%s]",
             "argList": "op_name,input_memory_type"
         },
         {
             "errCode": "E61501",
-            "errMessage": "In op[%s], output_memory_type should be 0 or 1 or 2, actual [%s]",
+            "errMessage": "In op [%s], output_memory_type should be 0 or 1 or 2, actual [%s]",
             "argList": "op_name,output_memory_type"
+        },
+        {
+            "errCode": "E61600",
+            "errMessage": "In op [%s] param [%s] must > 0",
+            "argList": "op_name, param"
+        },
+        {
+            "errCode": "E61601",
+            "errMessage": "In op [%s], if it is the [%s] cut shape, the [%s] must be [%s]",
+            "argList": "op_name,scene,param_name,claim"
+        },
+        {
+            "errCode": "E61602",
+            "errMessage": "In op [%s] input parameter [%s] should be [%s] type, but the type you enter is [%s]",
+            "argList": "op_name, param_name, optype_1, optype_2"
+        },
+        {
+            "errCode": "E61603",
+            "errMessage": "In op [%s] [%s] must equal to [%s]",
+            "argList": "op_name, optype_1, optype_2"
         },
         {
             "errCode": "E62001",
@@ -688,5 +733,45 @@
             "errCode": "E65007",
             "errMessage": "In op[%s], [%s] must be equal to [%s], while the input of them are [%s]",
             "argList": "op_name, param1, param2, actual_value"
+        },
+        {
+            "errCode": "E65008",
+            "errMessage": "In op [%s], input_memory_type should be [%s], actual is [%s]",
+            "argList": "op_name, input_memory_type_range, input_memory_type"
+        },
+        {
+            "errCode": "E65009",
+            "errMessage": "In op [%s], output_memory_type should be [%s], actual is [%s]",
+            "argList": "op_name, output_memory_type_range, output_memory_type"
+        },
+        {
+            "errCode": "E80000",
+            "errMessage": "In op[%s], the parameter[%s] should be [%s], but actually is [%s].",
+            "argList": "op_name,param_name,excepted_value,real_value"
+        },
+        {
+            "errCode": "E80018",
+            "errMessage": "In op[%s], the parameter[%s][%s] are not equal in dtype with dtype[%s][%s].",
+            "argList": "op_name,param_name1,param_name2,param1_dtype,param2_dtype"
+        },
+        {
+            "errCode": "E80028",
+            "errMessage": "In op[%s], the shape of input[%s] is invalid, [%s].",
+            "argList": "op_name,param_name,error_detail"
+        },
+        {
+            "errCode": "E80029",
+            "errMessage": "In op[%s], the shape of inputs[%s][%s] are invalid, [%s].",
+            "argList": "op_name,param_name1,param_name2,error_detail"
+        },
+        {
+            "errCode": "E80030",
+            "errMessage": "In op[%s], the dtype of inputs[%s][%s] are invalid, [%s].",
+            "argList": "op_name,param_name1,param_name2,error_detail"
+        },
+        {
+            "errCode": "E80031",
+            "errMessage": "In op[%s], the format of inputs[%s][%s] are invalid, [%s].",
+            "argList": "op_name,param_name1,param_name2,error_detail"
         }
 ]

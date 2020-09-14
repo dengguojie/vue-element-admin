@@ -20,6 +20,7 @@ from functools import reduce as functools_reduce
 from te import platform as cce
 from te import tik
 from topi.cce import util
+from te.utils.op_utils import *
 
 
 # pylint: disable=too-many-instance-attributes
@@ -124,8 +125,7 @@ class LstmCellGradInput():
             shape_list += (self.dht_out_shape,)
 
         for shape in shape_list:
-            util.check_shape_rule(shape, min_dim=4, max_dim=4)
-            util.check_tensor_shape_size(shape)
+            check_shape(shape, min_rank=4, max_rank=4, param_name="dht_out")
             if shape != self.c_shape:
                 raise RuntimeError("the input shapes are not same")
 
@@ -138,11 +138,10 @@ class LstmCellGradInput():
             dtype_list += (self.dht_out_dtype,)
 
         for dtype in dtype_list:
-            util.check_dtype_rule(dtype.lower(), check_list)
+            check_dtype(dtype.lower(), check_list, param_name="dht_out")
             if dtype != self.c_dtype:
                 raise RuntimeError("the input dtypes are not same")
 
-        util.check_kernel_name(self.kernel_name)
 
     def init_gm_tensor(self):
         """
@@ -710,8 +709,9 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, dict, dict,
-                       dict, float, str, str)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
+                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR, KERNEL_NAME)
 # pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_c_state_grad(c,
                                  dht,
@@ -739,10 +739,10 @@ def basic_lstm_cell_c_state_grad(c,
         cell state gradient at time t
     it: dict
         forward it buffer value at time t
-    ft: dict
-        forward ft buffer value at time t
     jt: dict
         forward jt buffer value at time t
+    ft: dict
+        forward ft buffer value at time t
     ot: dict
         forward ot buffer value at time t
     tanh_ct: dict
