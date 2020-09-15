@@ -130,6 +130,10 @@ class OpReg {
     Operator::SetInput(#x, v, srcName);                                        \
     return *this;                                                              \
   }                                                                            \
+  _THIS_TYPE &set_input_##x(Operator &v, uint32_t index) {                     \
+    Operator::SetInput(#x, v, index);                                          \
+    return *this;                                                              \
+  }                                                                            \
   _THIS_TYPE &set_input_##x(Operator &v) {                                     \
     Operator::SetInput(#x, v);                                                 \
     return *this;                                                              \
@@ -157,6 +161,10 @@ class OpReg {
   }                                                                            \
   _THIS_TYPE &set_input_##x(Operator &v, const string &srcName) {              \
     Operator::SetInput(#x, v, srcName);                                        \
+    return *this;                                                              \
+  }                                                                            \
+  _THIS_TYPE &set_input_##x(Operator &v, uint32_t index) {                     \
+    Operator::SetInput(#x, v, index);                                          \
     return *this;                                                              \
   }                                                                            \
   TensorDesc get_input_desc_##x() const { return Operator::GetInputDesc(#x); } \
@@ -354,6 +362,7 @@ class OpReg {
     auto x_type = op.GetInputDesc(in_name).GetDataType();         \
     TensorDesc op_output_desc = op.GetOutputDesc(out_name);       \
     op_output_desc.SetShape(ge::Shape(x_shape));                  \
+    op_output_desc.SetOriginShape(ge::Shape(x_shape));            \
     op_output_desc.SetDataType(x_type);                           \
     return op.UpdateOutputDesc(out_name, op_output_desc);         \
   }
