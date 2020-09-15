@@ -628,7 +628,7 @@ class OpUT:
             case_info_list.append(case_obj)
         return case_info_list
 
-    def run(self, soc, case_name=None, simulator_mode=None, simulator_lib_path=None):
+    def run(self, soc, case_name=None, simulator_mode=None, simulator_lib_path=None, print_summary=True):
         if simulator_mode:
             if not simulator_lib_path:
                 simulator_lib_path = os.environ.get("SIMULATOR_PATH")
@@ -644,10 +644,11 @@ class OpUT:
             self._simulator_mode_hook = [simulator_mode, ]
 
         op_uts = self.get_test_case(soc, case_name)
-        runner = op_ut_runner.OpUTTestRunner(print_summary=True, simulator_mode=simulator_mode,
+        runner = op_ut_runner.OpUTTestRunner(print_summary=print_summary, simulator_mode=simulator_mode,
                                              simulator_lib_path=simulator_lib_path)
         run_rpt = runner.run(op_uts)
         run_rpt.save("ut_report.txt")
+        return run_rpt
 
 
 class BroadcastOpUT(OpUT):

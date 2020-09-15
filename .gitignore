@@ -12,9 +12,11 @@ dist/
 # python cache
 *.pyc
 
-# python cov
+# python ut/st
 cov_report/
 report/
+data/
+*.dump
 
 # protobuf
 *.pb.h
