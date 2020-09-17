@@ -1,21 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache Licenses for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pooling2d compute
 """
-
 import math
 
 from te import platform as cceconf
@@ -91,7 +94,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     :tensor_in: input tensor
     :window: input window
     :pooling_mode: can be MAX, AVG, GAP, GMP
-    :padding_mode: can be SAME, VALID
+    :padding_mode: can be SAME, VALID, CALCULATED
     :pad: padT, padB, padL, padR
     :dilation: params to be reserved, use default value
     :stride: window move steps in h or w dimension
@@ -99,6 +102,10 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
+    is_calculate = False
+    if padding_mode == "CALCULATED":
+        padding_mode = "SAME"
+        is_calculate = True
     l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
     is_l2fusion = get_L1_info("L2_fusion_enabled")
@@ -173,7 +180,8 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                                                 window_h, window_w, stride_h,
                                                 stride_w, dilation_h, dilation_w,
                                                 pad_top, pad_bottom, pad_left,
-                                                pad_right, fusion_params)
+                                                pad_right, ceil_mode,
+                                                is_calculate, fusion_params)
 
         # get the min ub occupy size when out_size_h = 1 and c1 = 1
         ub_size = get_soc_spec("UB_SIZE")
@@ -414,8 +422,8 @@ def check_tensorflow_attr_rule(padding_mode):
     """
     if not isinstance(padding_mode, str):
         raise RuntimeError("invalid padding_mode params, type of padding_mode must be str.")
-    if padding_mode not in ["SAME", "VALID"]:
-        raise RuntimeError("can only support SAME or VALID padding mode.")
+    if padding_mode not in ["SAME", "VALID", "CALCULATED"]:
+        raise RuntimeError("can only support SAME, VALID and CALCULATED padding mode.")
 
 
 def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
@@ -621,8 +629,8 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w, window_h, window_w,
                                     stride_h, stride_w, dilation_h, dilation_w, pad_top,
-                                    pad_bottom, pad_left, pad_right,
-                                    fusion_params={}):
+                                    pad_bottom, pad_left, pad_right, ceil_mode,
+                                    is_calculate, fusion_params={}):
     """
     :param padding_mode: can be SAME, VALID
     :param in_size_h: input tensor
@@ -637,9 +645,48 @@ def get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w, window_h
     :param pad_bottom: pad bottom
     :param pad_left: pad left
     :param pad_right: pad right
+    :param ceil_mod: ceil or floor when padding_mod is calculated
+    :param is_calculate: if padding_mod is calculated
+    :param fusion_params: fusion params
     :return:
     """
-    if padding_mode == "SAME":
+    if is_calculate:
+        if ceil_mode == 0:
+            out_size_h = math.ceil((in_size_h + pad_top + pad_bottom - window_h)/stride_h) + 1
+            out_size_w = math.ceil((in_size_w + pad_left + pad_right - window_w)/stride_w) + 1
+
+        if ceil_mode == 1:
+            out_size_h = math.floor((in_size_h + pad_top + pad_bottom - window_h)/stride_h) + 1
+            out_size_w = math.floor((in_size_w + pad_left + pad_right - window_w)/stride_w) + 1
+
+        if pad_top != 0 or pad_left != 0:
+            # If we have padding, ensure that the last pooling starts strictly
+            # inside the image (instead of at the padding); otherwise clip the last.
+            if (out_size_h - 1)*stride_h >= in_size_h + pad_top:
+                out_size_h -= 1
+
+            if (out_size_w - 1)*stride_w >= in_size_w + pad_left:
+                out_size_w -= 1
+
+            # CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top);
+            # CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left);
+            if (out_size_h - 1)*stride_h >= in_size_h + pad_top:
+                raise RuntimeError("CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top)")
+            if (out_size_w - 1)*stride_w >= in_size_w + pad_left:
+                raise RuntimeError("CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)")
+
+        # floor mode modify davici pad
+        if ceil_mode == 0:
+            pad_rows = (out_size_h - 1)*stride_h + ((window_h - 1)*dilation_h + 1) - in_size_h
+            pad_bottom = pad_rows - pad_top
+            pad_cols = (out_size_w - 1)*stride_w + ((window_w - 1)*dilation_w + 1) - in_size_w
+            pad_right = pad_cols - pad_left
+        if pad_bottom < 0:
+            pad_bottom = 0
+        if pad_right < 0:
+            pad_right = 0
+
+    elif padding_mode == "SAME":
         # caculate output size in SAME mode
         # Hout = ceil(Hi, Sh)
         # Wout = ceil(Wi, Sw)
