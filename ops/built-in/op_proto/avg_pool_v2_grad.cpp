@@ -16,7 +16,7 @@
 
 /*!
  * \file avg_pool_v2_grad.cpp
- * \brief Performs average pooling on the input . \n
+ * \brief Performs average pooling on the input.
 */
 #include "avg_pool_v2_grad.h"
 #include <string>

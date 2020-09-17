@@ -16,7 +16,7 @@
 
 /*!
  * \file acg_pool_v2_grad.h
- * \brief Performs average pooling on the input . \n
+ * \brief Performs average pooling on the input.
 */
 #ifndef GE_OP_AVGPOOLV2GRAD_OPS_H
 #define GE_OP_AVGPOOLV2GRAD_OPS_H

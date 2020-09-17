@@ -1,5 +1,5 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ * Copyright 2020 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
  */
 
 /*
- * proto def of avg_pool_v2
+ * \file avg_pool_v2.h
+ * \brief proto def of avg_pool_v2
  */
 #ifndef GE_OP_AVG_POOL_V2_H
 #define GE_OP_AVG_POOL_V2_H
