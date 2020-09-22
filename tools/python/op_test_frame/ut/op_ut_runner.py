@@ -195,29 +195,37 @@ def run_ut(case_dir, soc_version, case_name=None,
 
     def _build_multiprocess_run_args():
         total_run_arg_list = []
+        if not isinstance(soc_version, (tuple, list)):
+            soc_version_list = str(soc_version).split(",")
+        else:
+            soc_version_list = soc_version
         for case_file_info in case_file_info_list:
             case_file_tmp = os.path.basename(case_file_info.case_file)[:-3]
-            single_cov_data_path = os.path.join(cov_combine_dir, ".coverage_" + case_file_tmp)
-            single_rpt_data_path = os.path.join(rpt_combine_dir, "rpt_" + case_file_tmp + ".data")
-            run_arg = RunUTCaseFileArgs(case_file=case_file_info.case_file,
-                                        op_module_name=case_file_info.op_module_name,
-                                        soc_version=soc_version,
-                                        case_name=case_name,
-                                        test_report=test_report,
-                                        test_report_data_path=single_rpt_data_path,
-                                        cov_report=cov_report,
-                                        cov_data_path=single_cov_data_path,
-                                        simulator_mode=simulator_mode,
-                                        simulator_lib_path=simulator_lib_path,
-                                        data_dir=test_data_path,
-                                        dump_model_dir=simulator_data_path)
-            total_run_arg_list.append(run_arg)
+            for one_soc_version in soc_version_list:
+                single_cov_data_path = os.path.join(cov_combine_dir,
+                                                    ".coverage_" + case_file_tmp + "_" + one_soc_version)
+                single_rpt_data_path = os.path.join(rpt_combine_dir,
+                                                    "rpt_" + "_" + one_soc_version + case_file_tmp + ".data")
+                run_arg = RunUTCaseFileArgs(case_file=case_file_info.case_file,
+                                            op_module_name=case_file_info.op_module_name,
+                                            soc_version=one_soc_version,
+                                            case_name=case_name,
+                                            test_report=test_report,
+                                            test_report_data_path=single_rpt_data_path,
+                                            cov_report=cov_report,
+                                            cov_data_path=single_cov_data_path,
+                                            simulator_mode=simulator_mode,
+                                            simulator_lib_path=simulator_lib_path,
+                                            data_dir=test_data_path,
+                                            dump_model_dir=simulator_data_path)
+                total_run_arg_list.append(run_arg)
         return total_run_arg_list
 
     multiprocess_run_args = _build_multiprocess_run_args()
 
     cpu_count = multiprocessing.cpu_count()
     logger.log_info("multiprocessing cpu count: %d" % cpu_count)
+    logger.log_info(" multiprocess_run_args count: %d" % len(multiprocess_run_args))
 
     if len(multiprocess_run_args) == 1:
         run_success = _run_ut_case_file(multiprocess_run_args[0])
@@ -235,13 +243,15 @@ def run_ut(case_dir, soc_version, case_name=None,
 
     if cov_report:
         total_cov_data_file = os.path.join(cov_report_path, ".coverage")
-        cov = coverage.Coverage(source="impl", data_file=total_cov_data_file)
         combine_cov_files = os.listdir(cov_combine_dir)
-        combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in combine_cov_files]
-        cov.combine(combine_files)
-        cov.save()
-        cov.load()
-        cov.html_report(directory=cov_report_path)
+        if combine_cov_files:
+            cov = coverage.Coverage(source="impl", data_file=total_cov_data_file)
+            combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in combine_cov_files]
+            cov.combine(combine_files)
+            cov.save()
+            cov.load()
+            if cov.get_data():
+                cov.html_report(directory=cov_report_path)
         os.removedirs(cov_combine_dir)
 
     return SUCCESS if run_success and test_report.err_cnt == 0 and test_report.failed_cnt == 0 else FAILED

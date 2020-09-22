@@ -34,15 +34,27 @@ set_env() {
 main() {
   local task="$1"
   local base_path="$2"
+  local pr_file="$3"
   set_env "${base_path}"
   if [[ "$task" == "ut" || "$task" == "all" ]]; then
-    local supported_soc="Ascend310 Ascend910"
-    for version in $(echo ${supported_soc}); do
-      python3.7 run_ut.py --soc_version="${version}" --simulator_lib_path="${BASE_HOME}/simulator"
-      if [[ $? -ne 0 ]]; then
-        exit $STATUS_FAILED
+    local supported_soc="Ascend310,Ascend910"
+    python3.7 run_ut.py --soc_version="${supported_soc}" --simulator_lib_path="${BASE_HOME}/simulator" --pr_changed_file="${pr_file}"
+    if [[ $? -ne 0 ]]; then
+      exit $STATUS_FAILED
+    fi
+    if [ "x$pr_file" == "x" ]; then
+      echo "run all ut case successfully."
+    else
+      echo "run inc ut case successfully, start generate inc report."
+      if [ -f "$CURR_PATH/cov_report/.coverage" ]; then
+        cp $CURR_PATH/cov_report/.coverage $CANN_ROOT/.coverage
+        cd $CANN_ROOT
+        coverage xml -o $CURR_PATH/cov_report/coverage.xml
+        diff-cover $CURR_PATH/cov_report/coverage.xml --html-report $CURR_PATH/cov_report/report.html
+      else
+        echo "coverage data is not exist, do not need generate inc report."
       fi
-    done
+    fi
   fi;
   if [[ "$task" == "st" || "$task" == "all" ]]; then
     echo "run st"
