@@ -93,7 +93,7 @@ def impl_file_op_relation_map():
         depend_files = []
         for m_name in module_name_file_map.keys():
             for depend_module in depend_modules:
-                if m_name in depend_module:
+                if m_name == depend_module or (m_name + ".") in depend_module:
                     depend_file = module_name_file_map.get(m_name)
                     if depend_file not in depend_files:
                         depend_files.append(depend_file)
@@ -129,7 +129,6 @@ def recursion_depend(depends_map):
         recursion_path = []
         get_depend_module(module_name, depends_map, recursion_path, all_depends_modules)
         recursion_depend_map[module_name] = all_depends_modules
-    print(recursion_depend_map)
     return recursion_depend_map
 
 
@@ -302,6 +301,10 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
                     impl_changed_files.append(ops_changed_file)
 
             op_types = get_change_file_op(impl_changed_files)
+            if not op_types:
+                print("[INFO] op file changes affect none op.")
+                return
+            print("[INFO] op file changes affect ops: [%s]" % ",".join(op_types))
             for op_type in op_types:
                 op_ut_test_dir = os.path.join(repo_root, "ops", "tests", "ut", "ops_test", op_type)
                 if not os.path.exists(op_ut_test_dir):

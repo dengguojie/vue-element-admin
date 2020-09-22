@@ -535,7 +535,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     shape_y = util.scalar2tensor_one(shape_y)
     check_shape(shape_x, param_name="input_x")
     check_shape(shape_y, param_name="input_y")
-
+    print("abc")
     check_tuple = ("float16", "float32", "int32")
     input_data_type = input_x.get("dtype").lower()
     check_dtype(input_data_type, check_tuple, param_name="input_x")
