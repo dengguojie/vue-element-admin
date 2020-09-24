@@ -26,10 +26,10 @@ foreach(_op_proto ${PROTO_SRCS})
   )
 
   target_link_libraries(${_target} PRIVATE
-    # graph
-    # register
-    # slog
-    # error_manager
+    ${graph}
+    ${register}
+    ${slog}
+    ${error_manager}
     c_sec
     protobuf
   )
