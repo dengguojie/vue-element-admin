@@ -14,7 +14,7 @@
 # ============================================================================
 
 ExternalProject_Add(secure_c
-  URL               http://121.36.71.102/third_party/nlohmann/json/releases/download/v3.6.1/include.zip 
+  URL               http://121.36.71.102/third_party/openeuler/bounds_checking_function/repository/archive/v1.1.10.tar.gz 
                     https://gitee.com/openeuler/bounds_checking_function/repository/archive/v1.1.10.tar.gz
   URL_MD5           0782dd2351fde6920d31a599b23d8c91
   DOWNLOAD_DIR      download/secure_c
