@@ -13,19 +13,38 @@
 # limitations under the License.
 # ============================================================================
 
-set(_framework "${CMAKE_CURRENT_SOURCE_DIR}")
+# the list of source files
+set(_op_tiling_files
+  # file1
+  # file2
+)
 
-# libops_all_caffe_plugin.so
-if(IS_DIRECTORY "${_framework}/caffe_plugin")
-  add_subdirectory(caffe_plugin)
-endif()
+if(_op_tiling_files)
 
-# libops_all_onnx_plugin.so
-if(IS_DIRECTORY "${_framework}/onnx_plugin")
-  add_subdirectory(onnx_plugin)
-endif()
+  add_library(op_tiling SHARED ${_op_tiling_files})
 
-# libops_all_plugin.so
-if(IS_DIRECTORY "${_framework}/tf_plugin")
-  add_subdirectory(tf_plugin)
+  target_include_directories(op_tiling PRIVATE
+    ${CANN_ROOT}/ops/built-in/common/inc
+    ${CANN_ROOT}/inc
+    ${CANN_ROOT}/inc/external
+    ${JSON_INCLUDE}
+    ${Protobuf_INCLUDE}
+  )
+
+  target_link_libraries(op_tiling PRIVATE
+    ${graph}
+    ${register}
+    ${slog}
+    ${error_manager}
+    c_sec
+    protobuf
+  )
+
+  set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_tiling/built-in")
+  cann_install(
+    TARGET      op_tiling
+    FILES       $<TARGET_FILE:op_tiling>
+    DESTINATION "${OP_TILING_PATH}"
+  )
+
 endif()

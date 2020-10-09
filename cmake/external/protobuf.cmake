@@ -32,10 +32,19 @@ ExternalProject_Add(external_protobuf
 ExternalProject_Get_Property(external_protobuf SOURCE_DIR)
 ExternalProject_Get_Property(external_protobuf BINARY_DIR)
 
+set(Protobuf_INCLUDE ${SOURCE_DIR}/src)
+set(Protobuf_PATH ${BINARY_DIR})
+set(Protobuf_LIBRARIES ${Protobuf_PATH}/libprotobuf.so)
+set(Protobuf_PROTOC_EXECUTABLE ${Protobuf_PATH}/protoc)
+
 add_library(protobuf SHARED IMPORTED)
 add_dependencies(protobuf external_protobuf)
 set_target_properties(protobuf PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/libprotobuf.so)
 
-set(Protobuf_INCLUDE ${SOURCE_DIR}/src)
-set(Protobuf_LIBRARIES ${BINARY_DIR}/libprotobuf.so)
-set(Protobuf_PROTOC_EXECUTABLE ${BINARY_DIR}/protoc)
+add_custom_command(
+  OUTPUT ${Protobuf_PROTOC_EXECUTABLE}
+  DEPENDS external_protobuf
+)
+add_custom_target(
+  protoc ALL DEPENDS ${Protobuf_PROTOC_EXECUTABLE}
+)

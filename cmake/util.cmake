@@ -40,3 +40,32 @@ function(cann_install)
     )
   endif()
 endfunction()
+
+
+function(protobuf_generate_cc PROTOBUF_SRCS PROTOBUF_OUTPUT)
+  string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR}/ "" _relative_path ${PROTOBUF_SRCS})
+  get_filename_component(_relative_path ${_relative_path} DIRECTORY)
+
+  if(NOT PROTOBUF_OUTPUT)
+    set(_proto_outpath ${CMAKE_CURRENT_BINARY_DIR}/${_relative_path})
+  else()
+    set(_proto_outpath ${PROTOBUF_OUTPUT}/${_relative_path})
+  endif()
+  file(MAKE_DIRECTORY ${_proto_outpath})
+
+  get_filename_component(_proto_file ${PROTOBUF_SRCS} NAME)
+  get_filename_component(_proto_path ${PROTOBUF_SRCS} DIRECTORY)
+  string(REPLACE ".proto" ".pb.h" _proto_h ${_proto_file})
+  string(REPLACE ".proto" ".pb.cc" _proto_cc ${_proto_file})
+
+  add_custom_command(
+    OUTPUT ${_proto_outpath}/${_proto_h} ${_proto_outpath}/${_proto_cc}
+    COMMAND ${CMAKE_COMMAND} -E
+              env "LD_LIBRARY_PATH=${Protobuf_PATH}:$ENV{LD_LIBRARY_PATH}"
+              ${Protobuf_PROTOC_EXECUTABLE} --proto_path=${_proto_path}
+                                            --cpp_out=${_proto_outpath}
+                                            ${PROTOBUF_SRCS}
+    DEPENDS protoc
+    COMMENT "Generate ${_proto_h} and ${_proto_cc} ..."
+  )
+endfunction()
