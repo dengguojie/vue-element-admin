@@ -30,8 +30,8 @@ foreach(_op_proto ${PROTO_SRCS})
     ${register}
     ${slog}
     ${error_manager}
+    ${protobuf}
     c_sec
-    protobuf
   )
 
   set(OPS_PROTO_PATH "${INSTALL_PATH}/opp/op_proto/built-in")

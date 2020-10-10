@@ -41,8 +41,8 @@ if(_onnx_plugins)
     ${error_manager}
     ${te_fusion}
     ${_caffe_parser}
+    ${protobuf}
     c_sec
-    protobuf
   )
 
   set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")

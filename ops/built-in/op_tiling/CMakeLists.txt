@@ -36,8 +36,8 @@ if(_op_tiling_files)
     ${register}
     ${slog}
     ${error_manager}
+    ${protobuf}
     c_sec
-    protobuf
   )
 
   set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_tiling/built-in")

@@ -58,6 +58,7 @@ include(ExternalProject)
 include(cmake/external/secure_c.cmake)
 include(cmake/external/nlohmann_json.cmake)
 include(cmake/external/protobuf.cmake)
+include(cmake/external/gtest.cmake)
 
 # find necessary packages
 find_package(Python3 3.7 COMPONENTS Interpreter)
@@ -73,6 +74,7 @@ if(DEFINED ENV{D_LINK_PATH})
   find_library(error_manager liberror_manager.so ${CANN_LIB_PATH})
   find_library(te_fusion libte_fusion.so ${CANN_LIB_PATH})
   find_library(_caffe_parser lib_caffe_parser.so ${CANN_LIB_PATH})
+  find_library(protobuf libprotobuf.so.19 ${CANN_LIB_PATH})
   set(tbe_whl ${CANN_LIB_PATH}/te-0.4.0-py3-none-any.whl)
 else()
   # Ascend mode
@@ -88,6 +90,7 @@ else()
   find_library(error_manager liberror_manager.so ${ASCEND_DIR})
   find_library(te_fusion libte_fusion.so ${ASCEND_DIR})
   find_library(_caffe_parser lib_caffe_parser.so ${ASCEND_DIR})
+  find_library(protobuf libprotobuf.so.19 ${CANN_LIB_PATH})
   find_file(tbe_whl te-0.4.0-py3-none-any.whl ${ASCEND_DIR})
 endif()
 
@@ -95,3 +98,6 @@ endif()
 add_subdirectory(ops/built-in)
 add_subdirectory(auto_schedule)
 add_subdirectory(tools)
+
+# tests
+add_subdirectory(ops/tests)

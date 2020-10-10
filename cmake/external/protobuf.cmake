@@ -24,7 +24,7 @@ ExternalProject_Add(external_protobuf
       -DProtobuf_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -Dprotobuf_BUILD_TESTS:BOOL=OFF
       -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
-      -Dprotobuf_BUILD_SHARED_LIBS:BOOL=ON
+      -Dprotobuf_BUILD_SHARED_LIBS:BOOL=OFF
       -DProtobuf_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
   INSTALL_COMMAND   ""
 )
@@ -34,12 +34,7 @@ ExternalProject_Get_Property(external_protobuf BINARY_DIR)
 
 set(Protobuf_INCLUDE ${SOURCE_DIR}/src)
 set(Protobuf_PATH ${BINARY_DIR})
-set(Protobuf_LIBRARIES ${Protobuf_PATH}/libprotobuf.so)
 set(Protobuf_PROTOC_EXECUTABLE ${Protobuf_PATH}/protoc)
-
-add_library(protobuf SHARED IMPORTED)
-add_dependencies(protobuf external_protobuf)
-set_target_properties(protobuf PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/libprotobuf.so)
 
 add_custom_command(
   OUTPUT ${Protobuf_PROTOC_EXECUTABLE}

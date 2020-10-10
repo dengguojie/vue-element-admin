@@ -27,8 +27,8 @@ set(_common_fusion_pass_dep
   ${slog}
   ${error_manager}
   ${platform}
+  ${protobuf}
   c_sec
-  protobuf
 )
 
 set(_common_srcs
