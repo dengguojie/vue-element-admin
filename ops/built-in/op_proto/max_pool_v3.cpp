@@ -16,12 +16,12 @@
  *\brief infer_shape of max_pool_v3
  */
 #include "max_pool_v3.h"
-#include <string>
 #include <vector>
+#include <string>
 
 namespace ge {
 
-IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
+IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
   const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;
@@ -74,7 +74,7 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
   if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
     return GRAPH_FAILED;
   }
-  if (paddingMode != "SAME" && paddingMode != "VALID" && paddingMode != "CACULATED") {
+  if (paddingMode != "SAME" && paddingMode != "VALID" && paddingMode != "CALCULATED") {
     return GRAPH_FAILED;
   }
 
@@ -133,12 +133,10 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if (ceilMode) {
           if (DIM_SIZE1 == i) {
-            int64_t dims =
-                (dims_input[i] - ksizeList[i] + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - ksizeList[0] + padVec[0] + padVec[1]) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE2 == i) {
-            int64_t dims =
-                (dims_input[i] - ksizeList[i] + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - ksizeList[1] + padVec[2] + padVec[3]) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -146,10 +144,12 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
           }
         } else {
           if (DIM_SIZE1 == i) {
-            int64_t dims = (dims_input[i] - ksizeList[i] + padVec[0] + padVec[1]) / stridesList[i] + 1;
+            int64_t dims =
+                (dims_input[i] - ksizeList[0] + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE2 == i) {
-            int64_t dims = (dims_input[i] - ksizeList[i] + padVec[2] + padVec[3]) / stridesList[i] + 1;
+            int64_t dims =
+                (dims_input[i] - ksizeList[1] + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -158,7 +158,8 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
         }
       }
     }
-  } else {  // NCHW
+  } else {
+    // NCHW
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if (DIM_SIZE2 == i || DIM_SIZE3 == i) {
@@ -183,12 +184,10 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
       if (ceilMode) {
         for (size_t i = 0; i < dims_input.size(); i++) {
           if (DIM_SIZE2 == i) {
-            int64_t dims =
-                (dims_input[i] - ksizeList[i] + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - ksizeList[0] + padVec[0] + padVec[1]) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE3 == i) {
-            int64_t dims =
-                (dims_input[i] - ksizeList[i] + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - ksizeList[1] + padVec[2] + padVec[3]) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -198,10 +197,12 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
       } else {
         for (size_t i = 0; i < dims_input.size(); i++) {
           if (DIM_SIZE2 == i) {
-            int64_t dims = (dims_input[i] - ksizeList[i] + padVec[0] + padVec[1]) / stridesList[i] + 1;
+            int64_t dims =
+                (dims_input[i] - ksizeList[0] + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE3 == i) {
-            int64_t dims = (dims_input[i] - ksizeList[i] + padVec[2] + padVec[3]) / stridesList[i] + 1;
+            int64_t dims =
+                (dims_input[i] - ksizeList[1] + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -220,5 +221,7 @@ IMPLEMT_INFERFUNC(MaxPoolV3, MaxPoolV3InferShape) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(MaxPoolV3, MaxPoolV3InferShape);
+COMMON_INFER_FUNC_REG(MaxPoolV3, MaxPoolV3InferShape);
+// INFER_FUNC_REG(MaxPoolV3, MaxPoolV3InferShape);
 }  // namespace ge
+// namespace ge
