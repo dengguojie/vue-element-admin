@@ -13,10 +13,15 @@
 # limitations under the License.
 # ============================================================================
 
+set(_secure_c_url "")
+if(CANN_PKG_SERVER)
+  set(_secure_c_url "${CANN_PKG_SERVER}/libs/securec/v1.1.10.tar.gz")
+endif()
+
 ExternalProject_Add(secure_c
-  URL               http://121.36.71.102/third_party/openeuler/bounds_checking_function/repository/archive/v1.1.10.tar.gz 
+  URL               ${_secure_c_url}
                     https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
-  URL_MD5           0782dd2351fde6920d31a599b23d8c91
+  URL_MD5           193f0ca5246c1dd84920db34d2d8249f
   DOWNLOAD_DIR      download/secure_c
   PREFIX            third_party
   CONFIGURE_COMMAND ""

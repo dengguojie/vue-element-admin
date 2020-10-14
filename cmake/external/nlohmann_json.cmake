@@ -13,8 +13,13 @@
 # limitations under the License.
 # ============================================================================
 
+set(_json_url "")
+if(CANN_PKG_SERVER)
+  set(_json_url "${CANN_PKG_SERVER}/libs/json/v3.6.1/include.zip")
+endif()
+
 ExternalProject_Add(nlohmann_json
-  URL               http://121.36.71.102/third_party/nlohmann/json/releases/download/v3.6.1/include.zip 
+  URL               ${_json_url}
                     https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
   URL_MD5           0dc903888211db3a0f170304cd9f3a89
   DOWNLOAD_DIR      download/nlohmann_json

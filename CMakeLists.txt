@@ -53,7 +53,12 @@ add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
 # include useful funcs
 include(cmake/util.cmake)
+
 # build external prjects
+if(DEFINED ENV{D_PKG_SERVER})
+  set(CANN_PKG_SERVER $ENV{D_PKG_SERVER})
+  message("Download packages from PKG server")
+endif()
 include(ExternalProject)
 include(cmake/external/secure_c.cmake)
 include(cmake/external/nlohmann_json.cmake)

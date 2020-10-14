@@ -13,8 +13,13 @@
 # limitations under the License.
 # ============================================================================
 
+set(_gtest_url "")
+if(CANN_PKG_SERVER)
+  set(_gtest_url "${CANN_PKG_SERVER}/libs/ge_gtest/release-1.8.0.tar.gz")
+endif()
+
 ExternalProject_Add(external_gtest
-  URL               http://172.16.0.82:8081/libs/ge_gtest/release-1.8.0.tar.gz
+  URL               ${_gtest_url}
                     https://github.com/google/googletest/archive/release-1.8.0.tar.gz
   URL_MD5           16877098823401d1bf2ed7891d7dce36
   DOWNLOAD_DIR      download/gtest

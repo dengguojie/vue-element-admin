@@ -13,8 +13,13 @@
 # limitations under the License.
 # ============================================================================
 
+set(_protobuf_url "")
+if(CANN_PKG_SERVER)
+  set(_protobuf_url "${CANN_PKG_SERVER}/libs/protobuf/v3.8.0.tar.gz")
+endif()
+
 ExternalProject_Add(external_protobuf
-  URL               http://121.36.71.102/third_party/protocolbuffers/protobuf/archive/v3.8.0.tar.gz 
+  URL               ${_protobuf_url}
                     https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
   URL_MD5           3d9e32700639618a4d2d342c99d4507a
   DOWNLOAD_DIR      download/protobuf
