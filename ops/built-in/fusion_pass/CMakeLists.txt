@@ -13,10 +13,24 @@
 # limitations under the License.
 # ============================================================================
 
+set(_proto_srcs
+  "${CANN_ROOT}/third_party/metadef/inc/common/proto/task.proto"
+)
+
+# the output path of generated files
+set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
+protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
+
 set(_common_fusion_pass_inc
-  ${CANN_ROOT}/ops/built-in/common/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/common
+  ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/inc/
+  ${CANN_ROOT}/inc/framework
   ${CANN_ROOT}/inc/external
+  ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/register
+  ${_proto_include}
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
@@ -32,53 +46,235 @@ set(_common_fusion_pass_dep
 )
 
 set(_common_srcs
-  # file
+  ${_proto_cc}
+  common/fp16_t.cc
+  common/fusion_addoutput_registry.cc
+  common/fusion_const2attr_registry.cc
+  common/fusion_precheck_func.cc
+  common/fusion_removenode_registry.cc
+  common/pattern_fusion_util.cc
+  common/quant_host_cpu_op_common.cc
 )
 
 set(_buffer_fusion
-  # file
+  buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_quant_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_single_in_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
+  buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_multiout_quant_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_quant_stridewrite_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_relu_eltwise_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_relu6_quant_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.cc
 )
 
 set(_aic_srcs
-  # file
   ${_common_srcs}
   ${_buffer_fusion}
+  graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
+  graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
+  graph_fusion/ai_core/add_n_fusion_pass.cc
+  graph_fusion/ai_core/antiquant_maxpool_fusion_pass.cc
+  graph_fusion/ai_core/apply_addoutput_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_max_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_mean_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_min_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_prod_fusion_pass.cc
+  graph_fusion/ai_core/a_reduce_sum_fusion_pass.cc
+  graph_fusion/ai_core/arg_max_with_k_fusion_pass.cc
+  graph_fusion/ai_core/avg_pool_1d_fusion_pass.cc
+  graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
+  graph_fusion/ai_core/avg_pool_pass.cc
+  graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
+  graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
+  graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
+  graph_fusion/ai_core/batchnorm_fusion_pass.cc
+  graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
+  graph_fusion/ai_core/batch_to_space_fusion_pass.cc
+  graph_fusion/ai_core/batch_to_space_nd_fusion_pass.cc
+  graph_fusion/ai_core/biasadd_conv_fusion_pass.cc
+  graph_fusion/ai_core/concatd_fusion_pass.cc
+  graph_fusion/ai_core/concat_fusion_pass.cc
+  graph_fusion/ai_core/concat_v2d_fusion_pass.cc
+  graph_fusion/ai_core/concat_v2_fusion_pass.cc
+  graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
+  graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
+  graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
+  graph_fusion/ai_core/conv2dbackprop_group_fusion_pass.cc
+  graph_fusion/ai_core/conv2d_group_fusion_pass.cc
+  graph_fusion/ai_core/conv3d_backprop_filter_fusion_pass.cc
+  graph_fusion/ai_core/conv3d_backprop_input_fusion_pass.cc
+  graph_fusion/ai_core/conv3d_transpose_fusion_pass.cc
+  graph_fusion/ai_core/conv_add_fusion_pass.cc
+  graph_fusion/ai_core/conv_batchnorm_fusion_pass.cc
+  graph_fusion/ai_core/conv_fusion_pass_base.cc
+  graph_fusion/ai_core/conv_scale_fusion_pass.cc
+  graph_fusion/ai_core/conv_to_fullyconnection_fusion_pass.cc
+  graph_fusion/ai_core/copy_fusion_pass.cc
+  graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.cc
+  graph_fusion/ai_core/deconv_group_fusion_pass.cc
+  graph_fusion/ai_core/deconv_weight_trans_fusion_pass.cc
+  graph_fusion/ai_core/depthwise_conv2d_backprop_filter_fusion_pass.cc
+  graph_fusion/ai_core/depthwise_conv2d_backprop_input_fusion_pass.cc
+  graph_fusion/ai_core/derelu_fusion_pass.cc
+  graph_fusion/ai_core/diag_fusion_pass.cc
+  graph_fusion/ai_core/diag_part_fusion_pass.cc
+  graph_fusion/ai_core/extremum_grad_fusion_pass.cc
+  graph_fusion/ai_core/flatten_v2_fusion_pass.cc
+  graph_fusion/ai_core/fullyconnection_reshape_fusion_pass.cc
+  graph_fusion/ai_core/fusedbatchnorm_assignmoving_fusion_pass.cc
+  graph_fusion/ai_core/fusedbatchnorm_bert_fusion_pass.cc
+  graph_fusion/ai_core/fusedbatchnorm_fusion_pass.cc
+  graph_fusion/ai_core/fusedbatchnormgrad_fusion_pass.cc
+  graph_fusion/ai_core/fusedbatchnorminfgrad_fusion_pass.cc
+  graph_fusion/ai_core/gather_v2_fusion_pass.cc
+  graph_fusion/ai_core/gelu_fusion_pass.cc
+  graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
+  graph_fusion/ai_core/hostbn_fusion_pass.cc
+  graph_fusion/ai_core/hostin_fusion_pass.cc
+  graph_fusion/ai_core/lars_v2_fusion_pass.cc
+  graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.cc
+  graph_fusion/ai_core/layer_norm_fusion_pass.cc
+  graph_fusion/ai_core/layernormgrad_fusion_pass.cc
+  graph_fusion/ai_core/lin_space_fusion_pass.cc
+  graph_fusion/ai_core/logsoftmaxgrad_fusion_pass.cc
+  graph_fusion/ai_core/lstm_fusion_pass.cc
+  graph_fusion/ai_core/matmul_biasadd_fusion_pass.cc
+  graph_fusion/ai_core/matmul_cast_fusion_pass.cc
+  graph_fusion/ai_core/matmulv2_fusion_pass.cc
+  graph_fusion/ai_core/matrix_diag_fusion_pass.cc
+  graph_fusion/ai_core/matrix_diag_part_fusion_pass.cc
+  graph_fusion/ai_core/matrix_set_diag_fusion_pass.cc
+  graph_fusion/ai_core/max_pool3d_grad_grad_fusion_pass.cc
+  graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.cc
+  graph_fusion/ai_core/mean_grad_fusion_pass.cc
+  graph_fusion/ai_core/momentum_lossscale_fusion_pass.cc
+  graph_fusion/ai_core/mul_add_fusion_pass.cc
+  graph_fusion/ai_core/mul_addn_fusion_pass.cc
+  graph_fusion/ai_core/mul_addn_l2loss_fusion_pass.cc
+  graph_fusion/ai_core/mul_maximum_fusion_pass.cc
+  graph_fusion/ai_core/nms_with_mask_fusion_pass.cc
+  graph_fusion/ai_core/normalize_fusion_pass.cc
+  graph_fusion/ai_core/one_hot_fusion_pass.cc
+  graph_fusion/ai_core/pack_fusion_pass.cc
+  graph_fusion/ai_core/padd_conv2d_fusion_pass.cc
+  graph_fusion/ai_core/padd_depthwise_conv2d_fusion_pass.cc
+  graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
+  graph_fusion/ai_core/pad_fusion_pass.cc
+  graph_fusion/ai_core/pass_through_fusion_pass.cc
+  graph_fusion/ai_core/pass_through_second_fusion_pass.cc
+  graph_fusion/ai_core/permute_fusion_pass.cc
+  graph_fusion/ai_core/pooling_matrix_pass.cc
+  graph_fusion/ai_core/pow_2_square_fusion_pass.cc
+  graph_fusion/ai_core/prelu_abs_fusion_pass.cc
+  graph_fusion/ai_core/prelu_fusion_pass.cc
+  graph_fusion/ai_core/prior_box_fusion_pass.cc
+  graph_fusion/ai_core/proposal_fusion_pass.cc
+  graph_fusion/ai_core/range_fusion_pass.cc
+  graph_fusion/ai_core/reduce_max_d_fusion_pass.cc
+  graph_fusion/ai_core/reduce_min_d_fusion_pass.cc
+  graph_fusion/ai_core/relu_fusion_pass.cc
+  graph_fusion/ai_core/remove_node_fusion_pass.cc
+  graph_fusion/ai_core/reshape_transpose_fusion_pass.cc
+  graph_fusion/ai_core/resize_nearest_neighbor_grad_d_fusion_pass.cc
+  graph_fusion/ai_core/rnn_fusion_pass.cc
+  graph_fusion/ai_core/rpn_proposals_fusion_pass.cc
+  graph_fusion/ai_core/scatter_nd_fusion_pass.cc
+  graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
+  graph_fusion/ai_core/single_input_concat_fusion_pass.cc
+  graph_fusion/ai_core/softmax_cross_entropy_with_logits.cc
+  graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.cc
+  graph_fusion/ai_core/softmax_fusion_pass.cc
+  graph_fusion/ai_core/softmax_grad_ext_fusion_pass.cc
+  graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.cc
+  graph_fusion/ai_core/softmax_transpose_fusion_pass.cc
+  graph_fusion/ai_core/space_to_batch_fusion_pass.cc
+  graph_fusion/ai_core/space_to_batch_nd_fusion_pass.cc
+  graph_fusion/ai_core/space_to_depth_fusion_pass.cc
+  graph_fusion/ai_core/sparse_softmax_cross_entropy_with_logits_fusion_pass.cc
+  graph_fusion/ai_core/spatial_transformer_d_fusion_pass.cc
+  graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
+  graph_fusion/ai_core/splitd_fusion_pass.cc
+  graph_fusion/ai_core/split_fusion_pass.cc
+  graph_fusion/ai_core/splitvd_fusion_pass.cc
+  graph_fusion/ai_core/splitv_fusion_pass.cc
+  graph_fusion/ai_core/spp_fusion_pass.cc
+  graph_fusion/ai_core/strided_slice_fusion_pass.cc
+  graph_fusion/ai_core/strided_slice_grad_fusion_pass.cc
+  graph_fusion/ai_core/tbe_fusion_pass_util.cc
+  graph_fusion/ai_core/tensor_scatter_add_fusion_pass.cc
+  graph_fusion/ai_core/tensor_scatter_sub_fusion_pass.cc
+  graph_fusion/ai_core/tensor_scatter_update_fusion_pass.cc
+  graph_fusion/ai_core/tile_fusion_pass.cc
+  graph_fusion/ai_core/top_k_fusion_pass.cc
+  graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
+  graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
+  graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
+  graph_fusion/ai_core/unpack_fusion_pass.cc
+  graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
+  graph_fusion/ai_core/yolo_fusion_pass.cc
+  graph_fusion/ai_core/yolo_v2_detection_output_fusion_pass.cc
+  graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.cc
+  graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.cc
 )
 
 set(_vec_srcs
   ${_common_srcs}
 )
 
-set(ops_fusion_pass_path "${install_path}/opp/fusion_pass/built-in")
+set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built-in")
 
-if(_aic_srcs)
-  add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
-  target_include_directories(ops_fusion_pass_aicore PRIVATE
-    ${_common_fusion_pass_inc}
-  )
-  target_link_libraries(ops_fusion_pass_aicore PRIVATE
-    ${_common_fusion_pass_dep}
-  )
 
-  cann_install(
-    TARGET      ops_fusion_pass_aicore
-    FILES       $<target_file:ops_fusion_pass_aicore>
-    DESTINATION "${ops_fusion_pass_path}"
-  )
-endif()
+add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
 
-if(_vec_srcs)
-  add_library(ops_fusion_pass_vectorcore SHARED ${_vec_srcs})
-  target_include_directories(ops_fusion_pass_vectorcore PRIVATE
-    ${_common_fusion_pass_inc}
-  )
-  target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
-    ${_common_fusion_pass_dep}
-  )
+target_include_directories(ops_fusion_pass_aicore PRIVATE
+  ${_common_fusion_pass_inc}
+)
 
-  cann_install(
-    TARGET      ops_fusion_pass_vectorcore
-    FILES       $<target_file:ops_fusion_pass_vectorcore>
-    DESTINATION "${ops_fusion_pass_path}"
-  )
-endif()
+target_link_libraries(ops_fusion_pass_aicore PRIVATE
+  ${_common_fusion_pass_dep}
+)
+
+add_dependencies(ops_fusion_pass_aicore json_headers)
+
+# to solve the compile warnings in fp16_t.cc
+target_compile_options(ops_fusion_pass_aicore PRIVATE
+  "-fno-strict-aliasing"
+)
+
+cann_install(
+  TARGET      ops_fusion_pass_aicore
+  FILES       $<TARGET_FILE:ops_fusion_pass_aicore>
+  DESTINATION "${ops_fusion_pass_path}"
+)
+
+
+add_library(ops_fusion_pass_vectorcore SHARED ${_vec_srcs})
+
+target_include_directories(ops_fusion_pass_vectorcore PRIVATE
+  ${_common_fusion_pass_inc}
+)
+
+target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
+  ${_common_fusion_pass_dep}
+)
+
+# to solve the compile warnings in fp16_t.cc
+target_compile_options(ops_fusion_pass_vectorcore PRIVATE
+  "-fno-strict-aliasing"
+)
+
+add_dependencies(ops_fusion_pass_vectorcore json_headers)
+cann_install(
+  TARGET      ops_fusion_pass_vectorcore
+  FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
+  DESTINATION "${ops_fusion_pass_path}"
+)

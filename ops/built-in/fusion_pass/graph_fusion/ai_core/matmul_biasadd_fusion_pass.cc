@@ -1,0 +1,197 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ *
+ * @brief matmul biasadd fusion pass(matmul --> biasadd)
+ *
+ */
+#include "matmul_biasadd_fusion_pass.h"
+#include <vector>
+#include <string>
+
+#include "graph/debug/ge_attr_define.h"
+#include "graph/utils/attr_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+
+#include "op_log.h"
+#include "pattern_fusion_util.h"
+
+namespace fe {
+static const string HAS_BIAS = "has_bias";
+static const string PATTERN_MATMUL = "mat_mul";
+static const string PATTERN_BIASADD = "bias_add";
+static const string PATTERN_BIAS = "bias";
+static const int MATMUL_INPUT_NUM = 2;
+
+static const char *TF_MATMUL = "MatMul";
+static const char *TF_MATMULV2 = "MatMulV2";
+static const char *BIASADD = "BiasAdd";
+static const char *ADD = "Add";
+
+vector<FusionPattern *> MatMulBiasAddFusionPass::DefinePatterns() {
+  vector<FusionPattern *> patterns;
+
+  FusionPattern *pattern =
+      new (std::nothrow) FusionPattern("MatMulBiasAddFusion");
+  if (pattern == nullptr) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern not success.");
+      return patterns;
+  }
+
+  pattern->AddOpDesc(PATTERN_MATMUL, {TF_MATMUL, TF_MATMULV2})
+      .AddOpDesc(PATTERN_BIAS)
+      .AddOpDesc(PATTERN_BIASADD, {BIASADD, ADD})
+      .SetInputs(PATTERN_BIASADD, {PATTERN_MATMUL, PATTERN_BIAS})
+      .SetOutput(PATTERN_BIASADD);
+  patterns.push_back(pattern);
+
+  return patterns;
+}
+
+Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph &graph,
+                                       Mapping &mapping,
+                                       vector<ge::NodePtr> &fusionNodes) {
+  ge::NodePtr nodeMatMul = GetNodeFromMapping(PATTERN_MATMUL, mapping);
+  ge::NodePtr nodeBias = GetNodeFromMapping(PATTERN_BIAS, mapping);
+  ge::NodePtr nodeBiasAdd = GetNodeFromMapping(PATTERN_BIASADD, mapping);
+
+  if (nodeMatMul == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeMatMul] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+  if (nodeBias == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeBias] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+  if (nodeBiasAdd == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeBiasAdd] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+
+  auto biasAddOpDesc = nodeBiasAdd->GetOpDesc();
+  if (biasAddOpDesc == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOpDesc] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+  auto matMulOpDesc = nodeMatMul->GetOpDesc();
+  if (matMulOpDesc == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[matMulOpDesc] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+
+  FUSION_PASS_CHECK(!CheckOpSupported(matMulOpDesc),
+           OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul[%s] is not supported by FE, fusion abort.",
+                   matMulOpDesc->GetName().c_str()),
+           return NOT_CHANGED);
+
+  if (nodeBiasAdd->GetType() == ADD) {
+    FUSION_PASS_CHECK(nodeBias->GetType() != CONSTANT && nodeBias->GetType() != CONSTANTOP,
+            OP_LOGI(FUSED_OP_TYPE.c_str(), "bias is not const node"), return NOT_CHANGED);
+    ge::GeShape inputShape = nodeBiasAdd->GetOpDesc()->GetInputDesc(0).GetShape();
+    ge::GeShape biasShape = nodeBiasAdd->GetOpDesc()->GetInputDesc(1).GetShape();
+    FUSION_PASS_CHECK(biasShape.GetDimNum() != 1 && inputShape.GetDimNum() != 1,
+            OP_LOGI(FUSED_OP_TYPE.c_str(), "Add input is not scalar"), return NOT_CHANGED);
+    if (biasShape.GetDimNum() == 1) {
+      uint32_t biasDim = biasShape.GetDim(0);
+      FUSION_PASS_CHECK(biasDim != inputShape.GetDim(1),
+               OP_LOGI(FUSED_OP_TYPE.c_str(), "bias shape is not equal to input second dim."),
+               return NOT_CHANGED);
+    } else {
+      uint32_t biasDim = inputShape.GetDim(0);
+      FUSION_PASS_CHECK(biasDim != biasShape.GetDim(1),
+               OP_LOGI(FUSED_OP_TYPE.c_str(), "bias shape is not equal to input second dim."),
+               return NOT_CHANGED);
+    }
+  }
+  // to add node bias as third input, nodeMatMul must have 2 InDataAnchor
+  // and 2 InputDesc(referenced AddLinkFrom())
+  if (nodeMatMul->GetAllInDataAnchors().size() != MATMUL_INPUT_NUM ||
+          matMulOpDesc->GetAllInputsDesc().size() != MATMUL_INPUT_NUM) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should have 2 inputs, acutal %zu",
+              nodeMatMul->GetInAllNodes().size());
+      return NOT_CHANGED;
+  }
+
+  // check nodeMatMul must have only one output to nodeBiasAdd
+  if (nodeMatMul->GetOutDataNodes().size() != 1) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should only have 1 output, actual %zu",
+              nodeMatMul->GetOutDataNodes().size());
+      return NOT_CHANGED;
+  }
+
+  // check biasAddOpDesc should only have one outputTensroDesc
+  if (biasAddOpDesc->GetAllOutputsDesc().size() != 1) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "BiasAdd node should only have 1 output, actual %zu",
+              biasAddOpDesc->GetAllOutputsDesc().size());
+      return NOT_CHANGED;
+  }
+
+  // check Bias node should only have 1 output, because ge::graph haven't offer
+  // method to modify node anchor, only way to add anchor is AddLinkFrom
+  if (nodeBias->GetAllOutDataAnchors().size() != 1) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "now don't support fusion Bias with over 1 output");
+      return NOT_CHANGED;
+  }
+
+
+  // add HAS_BIAS attr to MatMul, and set value with "true"
+  if (ge::AttrUtils::SetBool(matMulOpDesc, HAS_BIAS, true) == false) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed");
+      return FAILED;
+  }
+
+  // add link from nodeBias to nodeMatMul,x3 is the name of third input of
+  // MatMul in IR matmul.h
+  if (nodeMatMul->AddLinkFrom("bias", nodeBias) != ge::GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add link from Bias to MatMul failed");
+      return FAILED;
+  }
+
+  vector<bool> isInputConst;
+  for (auto anchor : nodeMatMul->GetAllInDataAnchors()) {
+    auto peerAnchor = anchor->GetPeerOutAnchor();
+    auto node = peerAnchor->GetOwnerNode();
+    if (node->GetType() == CONSTANT || node->GetType() == CONSTANTOP) {
+      isInputConst.push_back(true);
+    } else {
+      isInputConst.push_back(false);
+    }
+  }
+  nodeMatMul->GetOpDesc()->SetIsInputConst(isInputConst);
+  // replace src (BiasAdd(0) -> OtherNode) to (MatMul -> OtherNode)
+  auto matMulOutAnchor = nodeMatMul->GetOutDataAnchor(0);
+  if (matMulOutAnchor == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[matMulOutAnchor] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+  auto biasAddOutAnchor0 = nodeBiasAdd->GetOutDataAnchor(0);
+  if (biasAddOutAnchor0 == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOutAnchor0] must not be null.");
+    return fe::PARAM_INVALID;
+  }
+  for (auto dstAnchor : biasAddOutAnchor0->GetPeerInDataAnchors()) {
+    if (dstAnchor == nullptr) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[dstAnchor] must not be null.");
+      return fe::PARAM_INVALID;
+    }
+    if (ge::GraphUtils::RemoveEdge(biasAddOutAnchor0, dstAnchor) !=
+                ge::GRAPH_SUCCESS ||
+            ge::GraphUtils::AddEdge(matMulOutAnchor, dstAnchor) !=
+                ge::GRAPH_SUCCESS) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace edge src Failed.");
+        return FAILED;
+    }
+  }
+
+  // delete BiasAdd node
+  if (graph.RemoveNode(nodeBiasAdd) !=  ge::GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "delete BiasAdd failed");
+      return FAILED;
+  }
+  fusionNodes.push_back(nodeMatMul);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "matmul biasadd fusion success!");
+  return SUCCESS;
+}
+REGISTER_PASS("MatMulBiasAddFusionPass", BUILT_IN_GRAPH_PASS, MatMulBiasAddFusionPass);
+}  // namespace fe

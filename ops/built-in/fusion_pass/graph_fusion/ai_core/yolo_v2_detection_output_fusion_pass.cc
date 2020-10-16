@@ -1,0 +1,161 @@
+#include "yolo_v2_detection_output_fusion_pass.h"
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/node_utils.h"
+#include "graph/utils/attr_utils.h"
+#include "graph/debug/ge_attr_define.h"
+#include "op_log.h"
+#include "fp16_t.hpp"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "securec.h"
+#include "pattern_fusion_util.h"
+
+using namespace std;
+using namespace ge;
+
+namespace fe {
+static const string PATTERN_YOLOV2 = "YoloV2DetectionOutput";
+static const char *YOLOV2 = "YoloV2DetectionOutput";
+
+Status GenWIndexFP16(const int32_t h, const int32_t w, uint16_t *output1) {
+  for (int32_t i = 0; i < h; ++i) {
+    for (int32_t j = 0; j < w; ++j) {
+      fp16_t t;
+      t.val = 0;
+      t = j;
+      output1[i * w + j] = t.val;
+    }
+  }
+  return SUCCESS;
+}
+
+Status GenHIndexFP16(const int32_t h, const int32_t w, uint16_t *output1) {
+  for (int32_t i = 0; i < h; ++i) {
+    for (int32_t j = 0; j < w; ++j) {
+      fp16_t t;
+      t.val = 0;
+      t = i;
+      output1[i * w + j] = t.val;
+    }
+  }
+  return SUCCESS;
+}
+
+vector<FusionPattern *> YoloV2DetectionOutputPass::DefinePatterns() {
+  vector<FusionPattern *> patterns;
+  // yolo_v3_detection_output->yolo_v3_detection_output_d
+  // define Fusion
+  FusionPattern *pattern =
+    new (std::nothrow) FusionPattern("YoloV2DetectionOutputPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+    return patterns);
+  // define origin graph
+  pattern->AddOpDesc(PATTERN_YOLOV2, {YOLOV2}).SetOutput(PATTERN_YOLOV2);
+
+  patterns.push_back(pattern);
+
+  return patterns;
+}
+
+Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph &graph,
+                                         Mapping &mapping,
+                                         vector<ge::NodePtr> &fusionNodes)
+{
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloV2DetectionOutputPass");
+  // diag node
+  ge::NodePtr yolov2VNode = GetNodeFromMapping(PATTERN_YOLOV2, mapping);
+  FUSION_PASS_CHECK(yolov2VNode == nullptr,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov2VNode is null, fusion failed."), return PARAM_INVALID);
+
+  // input of diag
+  ge::OpDescPtr yolov2Desc = yolov2VNode->GetOpDesc();
+  FUSION_PASS_CHECK(yolov2Desc == nullptr,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov2VNode's OpDesc is null, fusion failed."),
+    return PARAM_INVALID);
+
+  // 寻找yolov2节点的输入的父fu节点
+  ge::InDataAnchorPtr yolov2AnchorPtr0 = yolov2VNode->GetInDataAnchor(0);
+  ge::OutDataAnchorPtr constAnchorPtr0 = yolov2AnchorPtr0->GetPeerOutAnchor();
+  ge::NodePtr regionNode = constAnchorPtr0->GetOwnerNode();
+
+  // 获取进入节点的输入描述：区分const与variable
+  ge::GeTensorDesc region1AnchorPtr0 =
+    regionNode->GetOpDesc()->GetInputDesc(0);
+
+  // 获取shape信息
+  ge::GeShape diagInputShape1 = region1AnchorPtr0.GetShape();
+
+  // GESHAPE->vector
+  vector<int64_t> dimInfo1 = diagInputShape1.GetDims();
+
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass dimInfo1:%d,%d,%d,%d", dimInfo1[0],
+    dimInfo1[1], dimInfo1[2], dimInfo1[3]);
+
+  ge::GeTensorPtr assitPtrW1 = nullptr;
+  ge::GeTensorPtr assitPtrH1 = nullptr;
+
+  unique_ptr<uint16_t[]> inputAssitW1(new (std::nothrow)
+    uint16_t[dimInfo1[2] * dimInfo1[3]]());
+  FUSION_PASS_CHECK(inputAssitW1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitW1 is NULL"),
+    return PARAM_INVALID);
+  unique_ptr<uint16_t[]> inputAssitH1(new (std::nothrow)
+    uint16_t[dimInfo1[2] * dimInfo1[3]]());
+  FUSION_PASS_CHECK(inputAssitH1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
+    return PARAM_INVALID);
+
+  Status ret = GenWIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitW1.get());
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex1 failed."), return ret);
+  ret = GenHIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitH1.get());
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex1 failed."), return ret);
+
+  // 定义辅助矩阵输入shape
+  vector<int64_t> assitDimInfo1;
+  assitDimInfo1.push_back(dimInfo1[2]);
+  assitDimInfo1.push_back(dimInfo1[3]);
+  assitDimInfo1.push_back(1);
+  assitDimInfo1.push_back(1);
+
+  ge::GeShape assitShape1(assitDimInfo1);
+  ge::GeTensorDesc tensorDescW1(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  tensorDescW1.SetShape(assitShape1);
+  tensorDescW1.SetOriginShape(assitShape1);
+  tensorDescW1.SetOriginFormat(ge::FORMAT_NCHW);
+  ge::GeTensorDesc tensorDescH1(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  tensorDescH1.SetShape(assitShape1);
+  tensorDescH1.SetOriginShape(assitShape1);
+  tensorDescH1.SetOriginFormat(ge::FORMAT_NCHW);
+
+  FUSION_PASS_MAKE_SHARED((assitPtrW1 =
+    std::make_shared<ge::GeTensor>(tensorDescW1,
+    reinterpret_cast<uint8_t *>(inputAssitW1.get()),
+    dimInfo1[2] * dimInfo1[3] * sizeof(uint16_t))),
+    assitPtrW1 = nullptr; return PARAM_INVALID);
+  FUSION_PASS_MAKE_SHARED((assitPtrH1 =
+    std::make_shared<ge::GeTensor>(tensorDescH1,
+    reinterpret_cast<uint8_t *>(inputAssitH1.get()),
+    dimInfo1[2] * dimInfo1[3] * sizeof(uint16_t))),
+    assitPtrH1 = nullptr; return PARAM_INVALID);
+
+
+  vector<ge::GeTensorPtr> weights = {assitPtrW1, assitPtrH1};
+  ge::OpDescUtils::SetWeights(yolov2VNode, weights);
+  auto constInputNodes = OpDescUtils::GetConstInputs(yolov2VNode);
+  NodePtr constInput0 = constInputNodes[0];
+  constInput0->GetOpDesc()->SetType("Const");
+  NodePtr constInput1 = constInputNodes[1];
+  constInput1->GetOpDesc()->SetType("Const");
+
+  yolov2Desc->SetType("YoloV2DetectionOutputD");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass pass handle success!!!!");
+
+  return SUCCESS;
+  }
+REGISTER_PASS("YoloV2DetectionOutputPass", BUILT_IN_GRAPH_PASS,
+  YoloV2DetectionOutputPass);
+}

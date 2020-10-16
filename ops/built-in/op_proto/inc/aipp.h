@@ -1,0 +1,74 @@
+/**
+ * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * @file aipp.h
+ *
+ * @brief
+ *
+ * @version 1.0
+ *
+ */
+
+#ifndef GE_OP_AIPP_H
+#define GE_OP_AIPP_H
+
+#include "graph/operator_reg.h"
+
+namespace ge {
+/**
+*@brief Performs AI pre-processing (AIPP) on images including color space conversion (CSC), image normalization (by subtracting the mean value or multiplying a factor), image cropping (by specifying the crop start and cropping the image to the size required by the neural network), and much more.
+
+*@par Inputs:
+*@li images: An NCHW or NHWC tensor of type uint8, specifying the input to the data layer.
+*@li params: Dynamic AIPP configuration parameters of type uint8.
+
+*@par Attributes:
+*aipp_config_path: A required string, specifying the path of the AIPP configuration file
+
+*@par Outputs:
+*features: The AIPP-processed output tensor of type float16 or uint8.
+*@par Third-party framework compatibility
+* It is a custom operator. It has no corresponding operator in Caffe.
+*/
+REG_OP(Aipp)
+    .INPUT(images, TensorType{DT_UINT8})
+    .OPTIONAL_INPUT(params, TensorType{DT_UINT8})
+    .OUTPUT(features, TensorType({DT_FLOAT16, DT_UINT8}))
+    .ATTR(aipp_config_path, String, "./aipp.cfg")
+    .OP_END_FACTORY_REG(Aipp)
+} // namespace ge
+
+/**
+*@brief Performs this op is for dynamic aipp.If you set aipp-mode to dynamic \n
+in aipp config file, framework will auto add one input node to graph at last.
+
+*@par Inputs:
+*data: An NCHW or NHWC tensor of type uint8, specifying the input to the data layer.
+
+*@par Attributes:
+*index: specify aipp serial num
+
+*@par Outputs:
+*out: The AIPP-processed output tensor of all types.
+
+*@par Third-party framework compatibility
+*Compatible with the TensorFlow operator AippData.
+*/
+namespace ge {
+REG_OP(AippData)
+    .INPUT(data, TensorType::ALL())
+    .OUTPUT(out, TensorType::ALL())
+    .ATTR(index, Int, 0)
+    .OP_END_FACTORY_REG(AippData)
+}
+
+#endif // GE_OP_AIPP_H

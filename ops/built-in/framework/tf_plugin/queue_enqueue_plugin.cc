@@ -1,0 +1,32 @@
+/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use
+ * this file except in compliance with the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+#include "register/register.h"
+
+using namespace ge;
+namespace domi {
+Status AutoMappingFnEnqueue(const google::protobuf::Message* op_src,
+                            ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["in"] = pair<string, string>("components", "Tcomponents");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+// register QueueEnqueue op to GE
+REGISTER_CUSTOM_OP("QueueEnqueue")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("QueueEnqueueV2")
+    .ParseParamsFn(AutoMappingFnEnqueue)
+    .ImplyType(ImplyType::AI_CPU);
+}  // namespace domi

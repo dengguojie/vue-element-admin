@@ -24,8 +24,8 @@ target_compile_definitions(model_run_tool
 
 target_include_directories(model_run_tool
   PUBLIC
-  ./src/model_run_tool
-  ${CANN_ROOT}/inc
+  src/model_run_tool
+  ${CANN_ROOT}/third_party/fwkacllib/inc
 )
 
 

@@ -15,36 +15,58 @@
 
 # the list of source files
 set(_op_tiling_files
-  # file1
-  # file2
+  ../op_proto/util/error_util.cc
+  ../fusion_pass/common/fp16_t.cc
+  concat.cc
+  conv2d.cc
+  dynamic_atomic_addr_clean.cc
+  eletwise.cc
+  gather_nd.cc
+  gather_v2.cc
+  reduce_tiling.cc
+  scatter_add.cc
+  scatter_nd.cc
+  scatter_sub.cc
+  scatter_update.cc
+  sparse_apply_ftrl_d.cc
+  sparse_apply_proximal_adagrad_d.cc
+  tiling_dispatch.cc
+  unsorted_segment_sum.cc
 )
 
-if(_op_tiling_files)
+add_library(op_tiling SHARED ${_op_tiling_files})
 
-  add_library(op_tiling SHARED ${_op_tiling_files})
+target_include_directories(op_tiling PRIVATE
+  ${CANN_ROOT}/ops/common/inc
+  ${CANN_ROOT}/ops/built-in
+  ${CANN_ROOT}/inc
+  ${CANN_ROOT}/inc/external
+  ${CANN_ROOT}/inc/external/graph
+  ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${CANN_ROOT}/third_party/metadef
+  ${JSON_INCLUDE}
+  ${Protobuf_INCLUDE}
+)
 
-  target_include_directories(op_tiling PRIVATE
-    ${CANN_ROOT}/ops/built-in/common/inc
-    ${CANN_ROOT}/inc
-    ${CANN_ROOT}/inc/external
-    ${JSON_INCLUDE}
-    ${Protobuf_INCLUDE}
-  )
+target_link_libraries(op_tiling PRIVATE
+  ${graph}
+  ${register}
+  ${slog}
+  ${error_manager}
+  ${protobuf}
+  c_sec
+)
 
-  target_link_libraries(op_tiling PRIVATE
-    ${graph}
-    ${register}
-    ${slog}
-    ${error_manager}
-    ${protobuf}
-    c_sec
-  )
+add_dependencies(op_tiling json_headers)
 
-  set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_tiling/built-in")
-  cann_install(
-    TARGET      op_tiling
-    FILES       $<TARGET_FILE:op_tiling>
-    DESTINATION "${OP_TILING_PATH}"
-  )
+# to solve the compile warnings in fp16_t.cc
+target_compile_options(op_tiling PRIVATE
+  "-fno-strict-aliasing"
+)
 
-endif()
+set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_tiling/built-in")
+cann_install(
+  TARGET      op_tiling
+  FILES       $<TARGET_FILE:op_tiling>
+  DESTINATION "${OP_TILING_PATH}"
+)

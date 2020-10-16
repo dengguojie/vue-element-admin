@@ -1,0 +1,3 @@
+[submodule "third_party/metadef"]
+	path = third_party/metadef
+	url = https://gitee.com/ascend/metadef.git

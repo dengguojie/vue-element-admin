@@ -14,7 +14,7 @@
 # ============================================================================
 
 set(_proto_srcs
-  ${CANN_ROOT}/ops/built-in/op_proto/max_pool_v3.cpp
+  ${CANN_ROOT}/ops/built-in/op_proto/max_pool_v3.cc
 )
 
 set(_ut_proto_files

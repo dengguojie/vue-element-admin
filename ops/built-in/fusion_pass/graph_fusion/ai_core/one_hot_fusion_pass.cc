@@ -1,0 +1,95 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ *
+ * @brief split fusion pass(one_hot --> one_hot_d)
+ *
+ */
+
+#include "one_hot_fusion_pass.h"
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/node_utils.h"
+#include "graph/utils/attr_utils.h"
+#include "graph/debug/ge_attr_define.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "securec.h"
+#include "op_log.h"
+#include "pattern_fusion_util.h"
+
+using namespace ge;
+namespace fe {
+static const std::string PATTERN_ONEHOT = "OneHot";
+static const char *ONEHOT = "OneHot";
+
+vector<FusionPattern *> OneHotFusionPass::DefinePatterns() {
+  vector < FusionPattern * > patterns;
+
+  // one_hot fusion to one_hot_d
+  FusionPattern *pattern = new(std::nothrow) FusionPattern("OneHotFusion");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  return patterns);
+
+  pattern->AddOpDesc(PATTERN_ONEHOT, {ONEHOT})
+      .SetOutput(PATTERN_ONEHOT);
+
+  patterns.push_back(pattern);
+
+  return patterns;
+}
+
+template<typename SRCTYPE, typename DESTYPE>
+static DESTYPE GetOneHotConstValue(const uint8_t *const_data) {
+  DESTYPE result;
+  SRCTYPE *data = (SRCTYPE *) const_data;
+  result = *data;
+  return result;
+}
+
+Status OneHotFusionPass::Fusion(ge::ComputeGraph &graph,
+                                Mapping &mapping,
+                                vector<ge::NodePtr> &fusionNodes)
+{
+  // get one_hot node and node-desc
+  ge::NodePtr one_hot_node = GetNodeFromMapping(PATTERN_ONEHOT, mapping);
+  FUSION_PASS_CHECK(one_hot_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "one_hot_node is null, fusion failed."),
+  return PARAM_INVALID);
+
+  ge::OpDescPtr one_hot_desc = one_hot_node->GetOpDesc();
+  FUSION_PASS_CHECK(one_hot_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "one_hot_node's OpDesc is null, fusion failed."),
+  return PARAM_INVALID);
+
+  std::string fusionOpType = "OneHotD";
+  std::vector<PassAttrInfo> transposeAttrInfo;
+  PassAttrInfo axis = {1, "depth", "SetInt"};
+  transposeAttrInfo.push_back(axis);
+
+  ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(one_hot_node, fusionOpType, transposeAttrInfo);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr,
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
+           return PARAM_INVALID);
+
+  // check op support
+  FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr),
+            OP_LOGI(FUSED_OP_TYPE.c_str(), "Op OneHot Not Supported."),
+            return NOT_CHANGED);
+
+  ge::NodePtr fusion_node = nullptr;
+  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, one_hot_node, fusionOpType, transposeAttrInfo, fusion_node);
+  if (ret != SUCCESS) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "OneHot has input which is not a CONST, graph not changed.");
+    return NOT_CHANGED;
+  }
+  fusionNodes.push_back(fusion_node);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "one_hot_node fusion SUCCESSS!!!!!");
+
+  return SUCCESS;
+}
+
+REGISTER_PASS("OneHotFusionPass", BUILT_IN_GRAPH_PASS, OneHotFusionPass);
+}

@@ -41,31 +41,49 @@ function(cann_install)
   endif()
 endfunction()
 
-
-function(protobuf_generate_cc PROTOBUF_SRCS PROTOBUF_OUTPUT)
-  string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR}/ "" _relative_path ${PROTOBUF_SRCS})
-  get_filename_component(_relative_path ${_relative_path} DIRECTORY)
-
-  if(NOT PROTOBUF_OUTPUT)
-    set(_proto_outpath ${CMAKE_CURRENT_BINARY_DIR}/${_relative_path})
-  else()
-    set(_proto_outpath ${PROTOBUF_OUTPUT}/${_relative_path})
+function(protobuf_generate_cc h_files cc_files output_path)
+  if(NOT ARGN)
+    message(SEND_ERROR "Error: protobuf_generate() called without any proto files")
+    return()
   endif()
-  file(MAKE_DIRECTORY ${_proto_outpath})
 
-  get_filename_component(_proto_file ${PROTOBUF_SRCS} NAME)
-  get_filename_component(_proto_path ${PROTOBUF_SRCS} DIRECTORY)
-  string(REPLACE ".proto" ".pb.h" _proto_h ${_proto_file})
-  string(REPLACE ".proto" ".pb.cc" _proto_cc ${_proto_file})
+  set(${h_files})
+  set(${cc_files})
 
-  add_custom_command(
-    OUTPUT ${_proto_outpath}/${_proto_h} ${_proto_outpath}/${_proto_cc}
-    COMMAND ${CMAKE_COMMAND} -E
-              env "LD_LIBRARY_PATH=${Protobuf_PATH}:$ENV{LD_LIBRARY_PATH}"
-              ${Protobuf_PROTOC_EXECUTABLE} --proto_path=${_proto_path}
-                                            --cpp_out=${_proto_outpath}
-                                            ${PROTOBUF_SRCS}
-    DEPENDS protoc
-    COMMENT "Generate ${_proto_h} and ${_proto_cc} ..."
-  )
+  foreach(_file ${ARGN})
+    if(NOT EXISTS ${_file})
+      message(SEND_ERROR "Error: files ars not exist ${_file}")
+      return()
+    endif()
+    get_filename_component(_abs_file ${_file} ABSOLUTE)
+    get_filename_component(_proto_name ${_abs_file} NAME)
+    get_filename_component(_proto_path ${_abs_file} DIRECTORY)
+    get_filename_component(_proto_parent_dir ${_proto_path} NAME)
+
+    if("${_proto_parent_dir}" STREQUAL "proto")
+      set(_proto_outpath "${output_path}/proto")
+    else()
+      set(_proto_outpath "${output_path}/proto/${_proto_parent_dir}")
+    endif()
+    file(MAKE_DIRECTORY ${_proto_outpath})
+
+    string(REPLACE ".proto" ".pb.h"  _proto_pb_h ${_proto_name})
+    string(REPLACE ".proto" ".pb.cc" _proto_pb_cc ${_proto_name})
+    set(_out_proto_h  "${_proto_outpath}/${_proto_pb_h}")
+    set(_out_proto_cc "${_proto_outpath}/${_proto_pb_cc}")
+    list(APPEND ${h_files}  ${_out_proto_h})
+    list(APPEND ${cc_files} ${_out_proto_cc})
+
+    add_custom_command(
+      OUTPUT ${_out_proto_h} ${_out_proto_cc}
+      COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I${_proto_path} --cpp_out=${_proto_outpath} ${_file}
+      DEPENDS protoc
+      COMMENT "Running Protubuf to generate ${_proto_pb_cc} and ${_proto_pb_h}"
+    )
+  endforeach()
+
+  set(${h_files}  ${${h_files}} PARENT_SCOPE)
+  set(${cc_files} ${${cc_files}} PARENT_SCOPE)
+  set_source_files_properties(${${h_files}} ${${cc_files}} PROPERTIES GENERATED TRUE)
+
 endfunction()

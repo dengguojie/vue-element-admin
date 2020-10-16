@@ -13,43 +13,66 @@
 # limitations under the License.
 # ============================================================================
 
-# the list of source files
-set(_onnx_plugins
-  # file1
-  # file2
+set(_proto_srcs
+  "${CANN_ROOT}/third_party/metadef/inc/register/proto/onnx/ge_onnx.proto"
 )
 
-if(_onnx_plugins)
+# the output path of generated files
+set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
+protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
 
-  add_library(ops_all_onnx_plugin SHARED ${_onnx_plugin})
+# the list of source files
+set(_onnx_plugins
+ abs_plugin.cc
+ add_plugin.cc
+ batch_normalization_plugin.cc
+ concat_plugin.cc
+ conv2d_plugin.cc
+ div_plugin.cc
+ gather_plugin.cc
+ gemm_plugin.cc
+ global_average_pool_plugin.cc
+ max_pool_plugin.cc
+ mul_plugin.cc
+ reduce_mean_plugin.cc
+ reduce_sum_plugin.cc
+ relu_plugin.cc
+ reshape_plugin.cc
+ shape_plugin.cc
+ sigmoid_plugin.cc
+ sqrt_plugin.cc
+ sub_plugin.cc
+ unsqueeze_plugin.cc
+)
 
-  # add_dependencies(ops_all_onnx_plugin generate_onnx_proto_files)
+add_library(ops_all_onnx_plugin SHARED
+  ${_onnx_plugins}
+  ${_proto_cc}
+)
 
-  target_include_directories(ops_all_onnx_plugin PRIVATE
-    ${CANN_ROOT}/ops/built-in/common/inc
-    ${CANN_ROOT}/inc
-    ${CANN_ROOT}/inc/external
-    ${JSON_INCLUDE}
-    ${Protobuf_INCLUDE}
-    ${PROTO_OUTPATH}
-  )
+target_include_directories(ops_all_onnx_plugin PRIVATE
+  ${CANN_ROOT}/ops/common/inc
+  ${CANN_ROOT}/inc
+  ${CANN_ROOT}/inc/external
+  ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${_proto_include}
+  ${Protobuf_INCLUDE}
+)
 
-  target_link_libraries(ops_all_onnx_plugin PRIVATE
-    ${graph}
-    ${register}
-    ${slog}
-    ${error_manager}
-    ${te_fusion}
-    ${_caffe_parser}
-    ${protobuf}
-    c_sec
-  )
+target_link_libraries(ops_all_onnx_plugin PRIVATE
+  ${graph}
+  ${register}
+  ${slog}
+  ${error_manager}
+  ${te_fusion}
+  ${_caffe_parser}
+  ${protobuf}
+  c_sec
+)
 
-  set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
-  cann_install(
-    TARGET      ops_all_onnx_plugin
-    FILES       $<TARGET_FILE:ops_all_onnx_plugin>
-    DESTINATION "${ONNX_PLUGIN_PATH}"
-  )
-
-endif()
+set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
+cann_install(
+  TARGET      ops_all_onnx_plugin
+  FILES       $<TARGET_FILE:ops_all_onnx_plugin>
+  DESTINATION "${ONNX_PLUGIN_PATH}"
+)

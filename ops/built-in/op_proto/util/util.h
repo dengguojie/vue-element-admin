@@ -1,0 +1,343 @@
+/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use
+ * this file except in compliance with the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+#ifndef OP_PROTO_UTIL_H_
+#define OP_PROTO_UTIL_H_
+#include "framework/omg/omg_inner_types.h"
+#include "operator.h"
+#include "op_log.h"
+#include "graph/operator_reg.h"
+#include "../graph/operator_reg.h"
+#include "transfer_shape_according_to_format.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/tensor_utils.h"
+#include "graph/tensor.h"
+
+#include <string>
+#include <vector>
+#include <map>
+#include <memory.h>
+#include <algorithm>
+
+#define LOG_ERROR(format, args...) printf(format, ##args)
+namespace ge
+{
+
+// enum type and string type mapping
+static const std::map<ge::DataType, std::string> DTYPE_STR_MAP {
+    {ge::DT_FLOAT16, "float16"},
+    {ge::DT_FLOAT, "float32"},
+    {ge::DT_INT8, "int8"},
+    {ge::DT_INT16, "int16"},
+    {ge::DT_INT32, "int32"},
+    {ge::DT_INT64, "int64"},
+    {ge::DT_UINT8, "uint8"},
+    {ge::DT_UINT16, "uint16"},
+    {ge::DT_UINT32, "uint32"},
+    {ge::DT_UINT64, "uint64"},
+    {ge::DT_BOOL, "bool"}};
+
+// define the input num of shape
+const size_t INPUT_NUM0 = 0;
+const size_t INPUT_NUM1 = 1;
+const size_t INPUT_NUM2 = 2;
+const size_t INPUT_NUM3 = 3;
+const size_t INPUT_NUM4 = 4;
+const size_t INPUT_NUM5 = 5;
+const size_t INPUT_NUM6 = 6;
+const size_t INPUT_NUM7 = 7;
+const size_t INPUT_NUM8 = 8;
+const size_t INPUT_NUM9 = 9;
+
+// define the dims size of shape
+const size_t DIM_SIZE0 = 0;
+const size_t DIM_SIZE1 = 1;
+const size_t DIM_SIZE2 = 2;
+const size_t DIM_SIZE3 = 3;
+const size_t DIM_SIZE4 = 4;
+const size_t DIM_SIZE5 = 5;
+const size_t DIM_SIZE6 = 6;
+const size_t DIM_SIZE7 = 7;
+const size_t DIM_SIZE8 = 8;
+
+//define the index of shape dim
+const size_t DIM_INDEX0 = 0;
+const size_t DIM_INDEX1 = 1;
+const size_t DIM_INDEX2 = 2;
+const size_t DIM_INDEX3 = 3;
+const size_t DIM_INDEX4 = 4;
+const size_t DIM_INDEX5 = 5;
+const size_t DIM_INDEX6 = 6;
+const size_t DIM_INDEX7 = 7;
+const size_t DIM_INDEX8 = 8;
+
+/*
+* get the datatype of input
+* param[in] dataType  input datatype of enum value
+* param[in] supportList  the support range of op
+* return true :get type success
+*        false:get type failed
+*/
+bool GetInputDataType(const ge::DataType& data_type,
+                      const std::vector<ge::DataType>& supportList);
+
+bool GetInputDataType(const ge::DataType& dataType,
+                      const std::vector<ge::DataType>& supportList,
+                      std::string& dType);
+
+/* infer shape of two input and on output with broadcast
+* param[in] op  op desc supply by ge
+* param[in] inputName1  first input name
+* param[in] inputName2  second input name
+* param[in] outputName  output name
+* return SUCCESS:infer success
+*        FAILED:infer failed like unsupported broadcast input shape
+*/
+bool CheckInputDataType(const Operator& op, const std::string& input_name,
+                        const std::vector<ge::DataType>& support_list);
+
+
+/*
+* check the datatype and shape of input
+* param[in] op  the operator
+* param[in] inputTensorMap  the map of input name and support datatype
+* param[in] paramType  the mode of input param, tensor or scalar
+* return true
+*        false
+*/
+bool CheckInputDtypeAndShape(const Operator &op,
+                             const std::map<std::string, std::vector<DataType> > &inputTensorMap);
+
+/*
+* infer shape of two input and on output with broadcast
+* param[in] op  op desc supply by ge
+* param[in] inputName1  first input name
+* param[in] inputName2  second input name
+* param[in] outputName  output name
+* return SUCCESS:infer success
+*        FAILED:infer failed like unsupported broadcast input shape
+*/
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op,
+                                           const string& input_name1,
+                                           const string& input_name2,
+                                           const string& output_name);
+
+bool InferShapeRangeTwoInOneOutBroadcase(Operator& op,
+                                         const string& input_name1,
+                                         const string& input_name2,
+                                         const string& output_name);
+
+bool CheckInputDataType(const Operator& op, std::string* data_type,
+                        const std::string& input_name,
+                        const std::vector<ge::DataType>& supportList);
+
+bool CheckTwoInputDtypeSame(const Operator &op, const string &input_name1,
+                            const string &input_name2);
+
+bool CheckInputDtypeSame(const Operator &op,
+                         std::vector<std::string> &input_tensors);
+
+bool CheckInputsShapeDtypeSame(const Operator& op,
+                               const std::vector<std::string>& input_names);
+
+bool GetConstValue(const ge::Operator& op, const std::string& key_name,
+                   float& attr_value);
+
+bool GetConstValue(const ge::Operator& op, const std::string& key_name,
+                   int64_t& attr_value);
+
+bool GetConstValue(const ge::Operator& op, const std::string& key_name,
+                   bool& attr_value);
+
+bool GetConstValue(const ge::Operator& op, const std::string& key_name,
+                   std::vector<int32_t>& attr_value);
+
+ /**
+  * Get int type const value from tensor data
+  * @param [in] data const tensor data
+  * @param [in] data_type DT_INT8, DT_INT16, DT_INT32, DT_INT64
+  * @param [out] const_values const int values
+  * @return true:success, false:failed.
+  */
+bool GetConstIntData(const Tensor& data, DataType data_type, std::vector<int64_t>& const_values);
+
+
+bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                          std::vector <int64_t>& const_data);
+bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                    std::int64_t& const_data);
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2, const string& output_name);
+
+/*
+* Check input dtype and format is supported in supportList from inputNumBeg to inputNumEnd
+* param[in] op  op desc supply by ge
+* param[in] inputNumBeg input index begin, [0, N]
+* param[in] inputNumEnd input index end need to be checked
+* param[in] supportList, support type of ge::DataType and ge::Format
+* return true: check pass
+*        false: check failed
+*/
+template <typename T>
+bool CheckSimilarInputDtypeAndFormat(const Operator& op, std::size_t inputNumBeg, std::size_t inputNumEnd, const std::vector<T>& supportList)
+{
+    for (std::size_t i = inputNumBeg; i < inputNumEnd; i++) {
+        if (std::is_same<typename std::decay<T>::type, ge::DataType>::value) {
+            ge::DataType inType = op.GetInputDesc(i).GetDataType();
+           const auto& findDtype = std::find(supportList.begin(), supportList.end(), inType);
+           if (findDtype == supportList.end()) {
+                return false;
+            }
+        }
+        else if (std::is_same<typename std::decay<T>::type, ge::Format>::value) {
+            ge::Format inType = op.GetInputDesc(i).GetFormat();
+            const auto& findDtype = std::find(supportList.begin(), supportList.end(), inType);
+            if (findDtype == supportList.end()) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+
+/*
+* Check input dtype and format is supported in supportList from inputNumBeg to inputNumEnd
+* param[in] op  op desc supply by ge
+* param[in] indexNeedCheck input index need to be checked
+* param[in] supportList, support type of ge::DataType and ge::Format
+* return true: check pass
+*        false: check failed
+*/
+template <typename T>
+bool CheckSimilarInputDtypeAndFormat(const Operator& op, const std::vector<std::size_t>& indexNeedCheck, const std::vector<T>& supportList)
+{
+    for (auto i : indexNeedCheck) {
+        if (std::is_same<typename std::decay<T>::type, ge::DataType>::value) {
+            ge::DataType inType = op.GetInputDesc(i).GetDataType();
+           const auto& findDtype = std::find(supportList.begin(), supportList.end(), inType);
+           if (findDtype == supportList.end()) {
+                return false;
+            }
+        }
+        else if (std::is_same<typename std::decay<T>::type, ge::Format>::value) {
+            ge::Format inType = op.GetInputDesc(i).GetFormat();
+            const auto& findDtype = std::find(supportList.begin(), supportList.end(), inType);
+            if (findDtype == supportList.end()) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/*
+* get const attr
+* param[in] op op desc supply by ge
+* param[in] attrName list need to be get
+* param[out] attr vector
+* return true: get success
+*        false: get failed
+*/
+template <typename T>
+bool GetConstAttr(const Operator& op, const std::vector<std::string>& attrNameList, std::vector<T>& attrVec)
+{
+    T value;
+    for (auto name : attrNameList) {
+        if (op.GetAttr(name, value) != ge::GRAPH_SUCCESS) {
+            return false;
+        }
+        attrVec.push_back(value);
+    }
+    return true;
+};
+
+/*
+* get const attr list
+* param[in] op op desc supply by ge
+* param[in] attrName list need to be get
+* param[out] attr vector
+* return true: get success
+*        false: get failed
+*/
+template <typename T>
+bool GetConstAttr(const Operator& op, const std::vector<std::string>& attrNameList, std::vector<std::vector<T>>& attrListVec)
+{
+    for (auto name : attrNameList) {
+        std::vector<T> valueList;
+        if (op.GetAttr(name, valueList) != ge::GRAPH_SUCCESS) {
+            return false;
+        }
+        attrListVec.push_back(valueList);
+    }
+    return true;
+};
+
+std::string to_string(const vector<int64_t> &shape);
+std::string to_string(const ge::Shape &shape);
+std::string to_string(const ge::GeShape &shape);
+
+class DynamicShapeInfer {
+  public:
+    std::map<std::string, Format> map_format;
+    std::map<std::string, DataType> map_dtype;
+    std::map<std::string, uint32_t> inputs;
+    std::map<std::string, uint32_t> outputs;
+    Operator& op;
+    OpDescPtr& op_desc;
+
+    DynamicShapeInfer(Operator& op_v, OpDescPtr& opDesc_v):op(op_v),op_desc(opDesc_v){}
+    bool CatchFormatAndShape();
+    bool UpdateFormatAndShape();
+
+    ~DynamicShapeInfer() {
+      UpdateFormatAndShape();
+    }
+};
+
+#define IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(fuction_name)\
+  IMPLEMT_COMMON_INFERFUNC(fuction_name) { \
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op); \
+  DynamicShapeInfer shapeInfer{op, op_desc}; \
+  shapeInfer.CatchFormatAndShape();\
+
+#define IMPLEMT_COMMON_INFERFUNC_HELPER_END() \
+  return GRAPH_SUCCESS; \
+  } \
+
+#define IMPLEMT_INFERFUNC_HELPER_BEGIN(op_name, fuction_name)\
+  IMPLEMT_INFERFUNC(op_name, fuction_name) { \
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op); \
+  DynamicShapeInfer shapeInfer{op, op_desc}; \
+  shapeInfer.CatchFormatAndShape();\
+
+#define IMPLEMT_INFERFUNC_HELPER_END() \
+  return GRAPH_SUCCESS; \
+  } \
+
+bool IsEmptyTensor(const std::vector<int64_t>& dims);
+
+bool IsUnknownRank(const Operator& op, const std::string& tensor_name, const std::string& types="input");
+
+bool IsUnknownRankShape(std::vector<int64_t>& shape_vec);
+
+bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const std::string& types="input");
+
+bool IsUnknownVec(std::vector<int64_t>& shape_vec);
+
+bool MakeUpShapeRange(std::vector<int64_t>& shape, std::vector<std::pair<int64_t,int64_t>>& range);
+
+std::string DataTypeToStringDesc(const ge::DataType& dataType);
+
+}  // namespace ge
+
+#endif //OP_PROTO_UTIL_H_
+
