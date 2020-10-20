@@ -1,27 +1,26 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-rpn_proposals_d_MDC_V200
+rpn_proposals_d_mdc_v200
 """
-
 # pylint: disable=C0302
 # pylint: disable=R0902
 # pylint: disable=R0915
 # pylint: disable=R0914
 # pylint: disable=R0913
 # pylint: disable=R0912
-
-
 from te import tik
 
 
@@ -715,7 +714,6 @@ def tik_topk_4096(tik_instance, data_ub):
                            data_ub_a[CONFIG_TOPK // CONFIG_TWO, 0],
                            CONFIG_UNIT // CONFIG_EIGHT)
 
-    # rep_str = CONFIG_FOUR
     for t_rep in range(0, CONFIG_TWO):
         rep_str = CONFIG_SIXTEEN ** (t_rep + CONFIG_ONE)
         tik_instance.vmrgsort4(data_ub_a,

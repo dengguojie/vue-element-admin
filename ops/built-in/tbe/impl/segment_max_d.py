@@ -1,25 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 segment_max_d
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 
 # the threshold for default stack space
 FIRST_DIM_SIZE_THRESHOLD = 2000
@@ -60,18 +59,19 @@ def _check_segment_ids(shape, segment_ids):
     if len(segment_ids) != shape[0]:
         raise RuntimeError("len(segment_ids) == shape[0]")
 
+
 # pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
-@fusion_manager.register("segment_max_d")
+@tbe_platform.fusion_manager.fusion_manager.register("segment_max_d")
 def segment_max_d_compute(x, y, segment_ids, kernel_name="segment_max_d"):
     """
     compute for tf_segment_max_cce
     """
-    res = te.lang.cce.unsorted_segment_max(x, segment_ids, segment_ids[-1] + 1)
+    res = tbe.unsorted_segment_max(x, segment_ids, segment_ids[-1] + 1)
 
     return res
 
 
-@util.check_input_type(dict, dict, (list, tuple), str)
+@para_check.check_input_type(dict, dict, (list, tuple), str)
 def segment_max_d(x, y, segment_ids, kernel_name="segment_max_d"):
     """
     Operation and Schedule for segment_max
@@ -94,9 +94,9 @@ def segment_max_d(x, y, segment_ids, kernel_name="segment_max_d"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape)
+    para_check.check_shape_size(shape, SHAPE_SIZE_LIMIT)
 
     check_list = ["float16", "float32", "int32"]
     if dtype.lower() not in check_list:
@@ -116,9 +116,9 @@ def segment_max_d(x, y, segment_ids, kernel_name="segment_max_d"):
     input_data = tvm.placeholder(shape, name="input_data", dtype=dtype)
     with tvm.target.cce():
         res = segment_max_d_compute(input_data, y, segment_ids, kernel_name)
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name": kernel_name,
         "tensor_list": [input_data, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

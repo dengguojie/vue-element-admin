@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 transpose_d
 """
 from __future__ import absolute_import
@@ -30,6 +30,7 @@ from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from te.utils.op_utils import *
+from impl.hwc_2_chw import hwc_2_chw
 
 # General limitation of the size for input shape: 2**31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
@@ -23850,6 +23851,27 @@ def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
         two_dim = shape[3]
         shape = [one_dim, two_dim]
         perm = [1, 0]
+
+    elif list(perm) == [2, 3, 1, 0] and shape[0] == 1:
+        one_dim = shape[1]
+        two_dim = shape[2]
+        three_dim = shape[3]
+        shape = [one_dim, two_dim, three_dim]
+        perm = [1, 2, 0]
+    # this branch only for float32 and cloud
+    elif list(perm) == [0, 4, 1, 2, 3] and dtype == "float32" and \
+        cce.cce_conf.intrinsic_check_support("Intrinsic_vconv", "f322s32f") and \
+        not cce.cce_conf.api_check_support("Intrinsic_vbi", "float16") and \
+        list(shape) in (
+            [1, 15, 63, 63, 224], [1, 15, 63, 63, 192],
+            [1, 15, 63, 63, 160], [1, 15, 63, 63, 128],
+            [1, 7, 31, 31, 224], [1, 7, 31, 31, 192],
+            [1, 7, 31, 31, 160], [1, 7, 31, 31, 128]):
+        one_dim = shape[1] * shape[2] * shape[3]
+        two_dim = shape[4]
+        shape = [one_dim, two_dim]
+        hwc_2_chw(shape, dtype, kernel_name)
+        return True
 
     shape_res = _get_perm_shape(shape, perm)
     shape, perm, shape_res = _check_side_one(shape, perm, shape_res)

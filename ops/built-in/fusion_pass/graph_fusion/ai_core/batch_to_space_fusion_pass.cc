@@ -1,12 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2020. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @flie   batch_to_space_fusion_pass.cpp
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief  BatchToSpace fusion pass(BatchToSpace --> BatchToSpaceD)
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file batch_to_space_fusion_pass.cpp
+ * \brief BatchToSpace fusion pass(BatchToSpace --> BatchToSpaceD)
+ */
 #include "batch_to_space_fusion_pass.h"
 
 #include <iostream>
@@ -30,12 +41,11 @@ static const string PATTERN_BATCH = "BatchToSpace";
 vector<FusionPattern*> BatchToSpaceFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
-  FusionPattern *pattern = new (std::nothrow) FusionPattern("BatchToSpaceFusion");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("BatchToSpaceFusion");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
-  pattern->AddOpDesc(PATTERN_BATCH, {"BatchToSpace"})
-      .SetOutput(PATTERN_BATCH);
+  pattern->AddOpDesc(PATTERN_BATCH, {"BatchToSpace"}).SetOutput(PATTERN_BATCH);
 
   patterns.push_back(pattern);
 
@@ -44,30 +54,22 @@ vector<FusionPattern*> BatchToSpaceFusionPass::DefinePatterns() {
 
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
-Status BatchToSpaceFusionPass::Fusion(ge::ComputeGraph &graph,
-                                      Mapping &mapping,
-                                      vector<ge::NodePtr> &fusionNodes)
-{
+Status BatchToSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr batchNode = GetNodeFromMapping(PATTERN_BATCH, mapping);
   FUSION_PASS_CHECK(batchNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNode is null, fusion failed."),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
 
-  std::vector<PassAttrInfo> attr_infos = {
-      {1, "crops", "SetListInt"}
-  };
+  std::vector<PassAttrInfo> attr_infos = {{1, "crops", "SetListInt"}};
   const std::string fusionOpType = "BatchToSpaceD";
-  ge::OpDescPtr fusionDescPtr =
-      PatternFusionUtil::GetFusionOpDesc(batchNode, fusionOpType, attr_infos);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
-           return PARAM_INVALID);
+  ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(batchNode, fusionOpType, attr_infos);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
+                    return PARAM_INVALID);
   FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
-           return NOT_CHANGED);
+                    return NOT_CHANGED);
 
   ge::OpDescPtr batchDesc = batchNode->GetOpDesc();
-  FUSION_PASS_CHECK(batchDesc == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNode's OpDesc is null, fusion failed."),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(batchDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNode's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   vector<int64_t> dims = batchDesc->GetOutputDesc("y").GetShape().GetDims();
   for (int64_t ele : dims) {
     if (ele == UNKNOWN_DIM) {
@@ -76,12 +78,10 @@ Status BatchToSpaceFusionPass::Fusion(ge::ComputeGraph &graph,
     }
   }
 
-  // 第一个输入为非const的value，第二个输入为const的crops
   ge::InDataAnchorPtr spaceVAnchorPtr2 = batchNode->GetInDataAnchor(1);
   ge::OutDataAnchorPtr constAnchorPtr2 = spaceVAnchorPtr2->GetPeerOutAnchor();
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
 
-  // 设置节点的属性(crops)
   ge::ConstGeTensorPtr constTensor2 = nullptr;
   ge::AttrUtils::GetTensor(constNode2->GetOpDesc(), "value", constTensor2);
   size_t constSize2 = constTensor2->GetData().GetSize();
@@ -105,20 +105,18 @@ Status BatchToSpaceFusionPass::Fusion(ge::ComputeGraph &graph,
     ge::AttrUtils::SetListInt(batchDesc, "crops", crops);
   }
 
-  // 删除const节点、输入节点和边
   ge::GraphUtils::RemoveEdge(constAnchorPtr2, spaceVAnchorPtr2);
   ge::NodeUtils::ClearInDataAnchor(batchNode, spaceVAnchorPtr2);
   ge::OpDescUtils::ClearInputDesc(batchDesc, 1);
   if (PatternFusionUtil::GetOutEdgeSize(constNode2) == 0) {
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode2),
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode2->GetName().c_str()),
-            return FAILED);
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode2->GetName().c_str()),
+                      return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode2->GetName().c_str());
   }
   vector<bool> is_input_const = {false};
   batchDesc->SetIsInputConst(is_input_const);
 
-  // 设置算子type
   batchDesc->SetType(fusionOpType);
   fusionNodes.push_back(batchNode);
 
@@ -126,4 +124,4 @@ Status BatchToSpaceFusionPass::Fusion(ge::ComputeGraph &graph,
 }
 
 REGISTER_PASS("BatchToSpace", BUILT_IN_GRAPH_PASS, BatchToSpaceFusionPass);
-}
+}  // namespace fe

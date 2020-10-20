@@ -1,30 +1,30 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-
 from te import platform as cce
 from te import tvm
 from te.platform import operation
 
 from . import pattern_parser
+from . import CompileInfo
 from . import util
+
+CONST = "const"
 
 
 def schedule_cce(outs, option=None):
@@ -36,6 +36,7 @@ def schedule_cce(outs, option=None):
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     pattern = pattern_parser.get_pattern(outs)
     operation.add_compile_info("_pattern", pattern)
+    operation.get_context().set_pattern(pattern)
 
     if util.get_build_cfg() == "disable":
         # prebuild
@@ -68,6 +69,17 @@ def build(schedules_list, config_map=None):
         # prebuild
         return
 
+    pattern = operation.get_context().get_pattern()
+    build_ = operation.get_build(pattern)
+    if build_ is not None:
+        build_["func"](schedules_list, config_map)
+        if build_["break"] is True:
+            return
+
+    _build(schedules_list, config_map)
+
+
+def _build(schedules_list, config_map=None):
     def flatten_sch(_schedules: list):
         for sub_schs in schedules_list:
             if isinstance(sub_schs, list):
@@ -150,7 +162,7 @@ def build(schedules_list, config_map=None):
         var_names = [x.get_name() for x in te_vars]
         compile_vars[sch.tiling_key] = var_names
 
-    operation.add_compile_info("_vars", compile_vars)
+    operation.add_compile_info(CompileInfo.VARS, compile_vars)
 
     build_config_items = {"parse_ddr_args": True,
                           "build_fatbin": True}

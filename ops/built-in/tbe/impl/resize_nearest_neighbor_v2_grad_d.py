@@ -1,22 +1,21 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+resize_nearest_neighbor_v2_grad_d
+"""
 # pylint: disable=too-many-lines
-# !/usr/bin/env python
-# -*- coding:utf-8 -*-
-"""
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-resize_nearest_neighbor_v2_grad
-
-"""
 from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
@@ -343,17 +342,26 @@ def calc_loc_scale(tik_instance, src_loc, dst_loc,
         tik_instance.vconv(tail, cmd, dst_loc[repeat_times * 64],
                            src_loc[repeat_times * 64], 1, 1, 1, 8, 8)
 
-    const_value_int32 = tik_instance.Tensor(
-        "int32", [64], name="const_value", scope=tik.scope_ubuf)
-    tik_instance.vector_dup(64, const_value_int32, bound - 1, 1, 0, 0)
-    if repeat_times > 0:
-        tik_instance.vmin(64, dst_loc, dst_loc, const_value_int32,
-                          repeat_times, 1, 1, 0, 8, 8, 0)
+    if tbe_platform.cce_conf.api_check_support("tik.vmins", "float32"):
+        if repeat_times > 0:
+            tik_instance.vmins(64, dst_loc, dst_loc, bound - 1,
+                              repeat_times, 1, 1, 8, 8)
+        if tail > 0:
+            tik_instance.vmins(tail, dst_loc[repeat_times * 64],
+                              dst_loc[repeat_times * 64], bound - 1,
+                              1, 1, 1, 8, 8)
+    else:
+        const_value_int32 = tik_instance.Tensor(
+            "int32", [64], name="const_value", scope=tik.scope_ubuf)
+        tik_instance.vector_dup(64, const_value_int32, bound - 1, 1, 0, 0)
+        if repeat_times > 0:
+            tik_instance.vmin(64, dst_loc, dst_loc, const_value_int32,
+                              repeat_times, 1, 1, 0, 8, 8, 0)
 
-    if tail > 0:
-        tik_instance.vmin(tail, dst_loc[repeat_times * 64],
-                          dst_loc[repeat_times * 64], const_value_int32,
-                          1, 1, 1, 0, 8, 8, 0)
+        if tail > 0:
+            tik_instance.vmin(tail, dst_loc[repeat_times * 64],
+                              dst_loc[repeat_times * 64], const_value_int32,
+                              1, 1, 1, 0, 8, 8, 0)
 
 
 def calc_scale(grads, y, align_corners):

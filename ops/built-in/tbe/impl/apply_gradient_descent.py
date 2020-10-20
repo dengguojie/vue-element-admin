@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 apply_gradient_descent
 
   Op_description :
@@ -34,21 +32,15 @@ apply_gradient_descent
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("apply_gradient_descent")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_gradient_descent")
 def apply_gradient_descent_compute(var,
                                    alpha,
                                    delta,
@@ -79,7 +71,7 @@ def apply_gradient_descent_compute(var,
                              lambda *indices: delta(*indices) * alpha[0],
                              tag='elewise_single_VS_mul')
     # step 2: calculate var - delta * alpha
-    reuse_var = te.lang.cce.vsub(var, var_change)
+    reuse_var = tbe.vsub(var, var_change)
 
     def _compute(*index):
         return reuse_var(*index), reuse_var(*index)
@@ -87,7 +79,8 @@ def apply_gradient_descent_compute(var,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def apply_gradient_descent(var,
                            alpha,
                            delta,
@@ -122,10 +115,9 @@ def apply_gradient_descent(var,
 
     input_dict = (var, alpha, delta)
 
-    args = ApplyOpConfig.TensorArgs(input_dict,
-                                    apply_gradient_descent_compute, out, 1.5)
-    name = ApplyOpConfig.TensorName(all=("var", "alpha", "delta"),
-                                    scalar=("alpha", ),
-                                    reuse=("var", ))
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict, apply_gradient_descent_compute, out, 1.5)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=("var", "alpha", "delta"),
+                                                           scalar=("alpha", ),
+                                                           reuse=("var", ))
 
-    common_apply_op_process(ApplyOpConfig(args, name), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name), kernel_name)

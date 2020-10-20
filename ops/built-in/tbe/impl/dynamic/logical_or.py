@@ -17,7 +17,8 @@ logical_or
 """
 import te.lang.dynamic
 from te import tvm
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -26,6 +27,7 @@ from te.utils.op_utils import check_op_params
 from te.utils.op_utils import check_elewise_shape_range
 from te.utils.op_utils import variable_shape
 from te.utils.op_utils import broadcast_shapes
+from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 
 
@@ -107,9 +109,7 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
         with te.op.compute():
             shape_x1, shape_x2 = variable_shape([x1, x2],
                                                 support_broadcast=True)
-            shape_x1, shape_x2, _ = broadcast_shapes(shape_x1, shape_x2,
-                                                     param_name_input1="x1",
-                                                     param_name_input2="x2")
+            shape_x1, shape_x2 = refine_shapes_for_broadcast(shape_x1, shape_x2)
             data_x1 = tvm.placeholder(shape_x1, name="data_x1", dtype=dtype_x1)
             data_x2 = tvm.placeholder(shape_x2, name="data_x2", dtype=dtype_x2)
             res = logical_or_compute(data_x1, data_x2, y, kernel_name)

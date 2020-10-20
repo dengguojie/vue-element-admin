@@ -13,23 +13,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic reduce_max_d
 """
-import te
-import te.lang.dynamic
-from te import tvm
-from topi import generic
-from topi.cce import util as cce_util
+import te.lang.dynamic as dynamic
 from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params, check_dtype
-from te.utils.op_utils import REQUIRED_INPUT, REQUIRED_OUTPUT, \
-    REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, KERNEL_NAME
-from te.utils.op_utils import variable_shape
-from te.platform.operation import add_compile_info
-
+from te.utils import para_check
+from te.utils import shape_util
+from te import tvm
 
 NONETYPE = type(None)
 
 
 def fused_reduce_axis(shape, shape_range, reduce_axis):
+    # convert reduce axis
+    for idx, value in enumerate(reduce_axis):
+        if value < 0:
+            reduce_axis[idx] = len(shape) + value
+
     # if all reduce axis is 1, do not del axis which is 1
     is_del_axis = False
     for idx, _ in enumerate(shape):
@@ -127,16 +125,18 @@ def reduce_max_d_compute(x, y, axes=None, keepdims=None,
          output tensor, has the same shape and type as input tensor.
     """
     dtype = x.dtype
-    res_max = te.lang.dynamic.reduce_max(x, axis=axes, keepdims=keepdims)
-    res = te.lang.dynamic.cast_to(res_max, dtype)
+    if dtype == "int8" or "uint8":
+        x = dynamic.cast_to(x, "float32")    
+    res_max = dynamic.reduce_max(x, axis=axes, keepdims=keepdims)
+    res = dynamic.cast_to(res_max, dtype)
 
     return res
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@te.op.register_operator("ReduceMaxD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@tbe_platform.register_operator("ReduceMaxD")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     """
     reduce a tensor on a certain axes based on max.
@@ -165,9 +165,9 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     dtype = x["dtype"]
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8", "int32")
-    check_dtype(dtype_lower, check_list)
+    para_check.check_dtype(dtype_lower, check_list)
 
-    with te.op.compute():
+    with tbe_platform.compute():
         shape = x["shape"]
         shape_range = x["range"]
 
@@ -176,24 +176,24 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
             axes = range(shape_len)
         if hasattr(axes, 'index'):
             axes = list(axes)
-        axes = cce_util.axis_check(shape_len, axes)
+        axes = shape_util.axis_check(shape_len, axes)
 
         shape_new, shape_range_new, axes_new, fused_rel_dic = \
             fused_reduce_axis(shape, shape_range, axes)
-        add_compile_info("fused_rel_dic", fused_rel_dic)
+        tbe_platform.add_compile_info("fused_rel_dic", fused_rel_dic)
 
         x["shape"] = shape_new
         x["range"] = shape_range_new
-        shape_var_new = variable_shape([x])[0]
+        shape_var_new = shape_util.variable_shape([x])[0]
 
         data_input = tvm.placeholder(shape_var_new, name="data_input",
                                      dtype=dtype_lower)
         res = reduce_max_d_compute(data_input, y, axes_new, keepdims)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = dynamic.auto_schedule(res)
 
     # build
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.dynamic.build(sch, config)
+    dynamic.build(sch, config)

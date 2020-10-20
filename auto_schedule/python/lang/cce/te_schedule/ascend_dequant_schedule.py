@@ -1,16 +1,18 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 ascend_dequant
 """
 from functools import reduce as function_reduce
@@ -64,7 +66,7 @@ def _tilling_axis(shape, dtype_size, tensor_num):
     shape_new = list(shape).copy()
     shape_new[2] = (shape_new[2] + 15) // 16 * 16
     total_ele = cceconf.get_soc_spec("UB_SIZE") // \
-                dtype_size // tensor_num // 2
+        dtype_size // tensor_num // 2
     block_num = cceconf.get_soc_spec("CORE_NUM")
     val_cnt = 1
     index_cnt = 0
@@ -75,7 +77,7 @@ def _tilling_axis(shape, dtype_size, tensor_num):
             break
 
     block_size = val_cnt // block_num * \
-                 function_reduce(lambda x, y: x * y, shape_new[index_cnt + 1:])
+        function_reduce(lambda x, y: x * y, shape_new[index_cnt + 1:])
     if 256 <= block_size <= total_ele:
         total_ele = block_size
     total_ele = total_ele // 256 * 256

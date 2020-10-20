@@ -1,50 +1,53 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file swap_co_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#ifndef GE_OP_SWAP_CO_OPS_H_
-#define GE_OP_SWAP_CO_OPS_H_
+
+/*!
+ * \file swap_co_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_SWAP_CO_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_SWAP_CO_OPS_H_
 
 #include "graph/operator_reg.h"
 
 namespace ge {
 
 /**
-*@brief Folds the convolution input weight constant of the preceding layer \n
-* of PSROIPooling to convert the N dimension of the weight from \n
-* (output_dim, group_size*group_size) to \n
+*@brief Folds the convolution input weight constant of the preceding layer
+* of PSROIPooling to convert the N dimension of the weight from
+* (output_dim, group_size*group_size) to
 * (group_size*group_size, int((output_dim+15)/C0)*C0).
 *@see PSROIPooling
 
 *@par Inputs:
 * One input:
-*x: An NCHW tensor of type float16 or float32, describing the weight of\n
-* convolution. Dim N must equal output_dim*group_size*group_size.
+*x: An NCHW tensor of type float16 or float32, describing the weight of
+* convolution. Dim N must equal output_dim*group_size*group_size . \n
 
 *@par Attributes:
-*@li output_dim: A required int32, specifying the number of output channels.\n
+*@li output_dim: A required int32, specifying the number of output channels.
 * Must be greater than "0".
-*@li group_size: A required int32, specifying the number of groups to encode\n
-* position-sensitive score maps. Must be within the range (0, 128).
+*@li group_size: A required int32, specifying the number of groups to encode
+* position-sensitive score maps. Must be within the range (0, 128) . \n
 
 *@par Outputs:
-*y: An NCHW tensor of type float16 or float32, describing the result weight\n
+*y: An NCHW tensor of type float16 or float32, describing the result weight
 * of convolution.
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(SwapCo)
@@ -56,4 +59,4 @@ REG_OP(SwapCo)
 
 }  // namespace ge
 
-#endif  // GE_OP_SWAP_CO_OPS_H_
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_SWAP_CO_OPS_H_

@@ -1,25 +1,26 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 lamb_next_right
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
+import te.platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 
 # pylint: disable=locally-disabled,unused-variable,unused-argument
@@ -42,19 +43,19 @@ def shape_broadcast(data_1, data_2):
     -------
     res : output of the data's divide
     """
-    shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
+    shape_x = shape_util.shape_to_list(data_1.shape)
+    shape_y = shape_util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
-                                                       param_name_input1="data_1",
-                                                       param_name_input2="data_2")
-        data_1 = te.lang.cce.broadcast(data_1, shape_max)
-        data_2 = te.lang.cce.broadcast(data_2, shape_max)
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                                  param_name_input1="data_1",
+                                                                  param_name_input2="data_2")
+        data_1 = tbe.broadcast(data_1, shape_max)
+        data_2 = tbe.broadcast(data_2, shape_max)
 
     return data_1, data_2
 
 
-@fusion_manager.register("lamb_next_right")
+@tbe_platform.fusion_manager.fusion_manager.register("lamb_next_right")
 def lamb_next_right_compute(data_input_square, data_input_mul2, data_mul2_x,
                             data_mul3_x, data_truediv1_recip, data_add2_y,
                             y1, y2, kernel_name="lamb_next_right"):
@@ -90,42 +91,44 @@ def lamb_next_right_compute(data_input_square, data_input_mul2, data_mul2_x,
     # square
     data_input_square, data_input_square = \
         shape_broadcast(data_input_square, data_input_square)
-    square_result = te.lang.cce.vmul(data_input_square, data_input_square)
+    square_result = tbe.vmul(data_input_square, data_input_square)
 
     # mul_3
     square_result, data_mul3_x = shape_broadcast(square_result,
                                                  data_mul3_x)
-    mul_3_result = te.lang.cce.vmul(square_result, data_mul3_x)
+    mul_3_result = tbe.vmul(square_result, data_mul3_x)
 
     # mul_2
     data_input_mul2, data_mul2_x = shape_broadcast(data_input_mul2,
                                                    data_mul2_x)
-    mul_2_result = te.lang.cce.vmul(data_input_mul2, data_mul2_x)
+    mul_2_result = tbe.vmul(data_input_mul2, data_mul2_x)
 
     # add_1
     mul_3_result, mul_2_result = shape_broadcast(mul_3_result, mul_2_result)
-    output0 = te.lang.cce.vadd(mul_2_result, mul_3_result)
+    output0 = tbe.vadd(mul_2_result, mul_3_result)
 
     # truediv_1-->vmul
     data_truediv1_recip, output0 = shape_broadcast(data_truediv1_recip, output0)
-    truediv_1_result = te.lang.cce.vmul(output0, data_truediv1_recip)
+    truediv_1_result = tbe.vmul(output0, data_truediv1_recip)
 
     # sqrt
-    sqrt_result = te.lang.cce.vsqrt(truediv_1_result)
+    sqrt_result = tbe.vsqrt(truediv_1_result)
 
     # add_2
     sqrt_result, data_add2_y = shape_broadcast(sqrt_result,
                                                data_add2_y)
-    output1 = te.lang.cce.vadd(data_add2_y, sqrt_result)
+    output1 = tbe.vadd(data_add2_y, sqrt_result)
 
     res = [output0, output1]
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
                     truediv1_recip, add2_y,
                     y1, y2, kernel_name="lamb_next_right"):
@@ -157,12 +160,12 @@ def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
     -------
     None
     """
-    shape_input_square = util.scalar2tensor_one(input_square.get("shape"))
-    shape_input_mul2 = util.scalar2tensor_one(input_mul2.get("shape"))
-    shape_mul2_x = util.scalar2tensor_one(mul2_x.get("shape"))
-    shape_mul3_x = util.scalar2tensor_one(mul3_x.get("shape"))
-    shape_truediv1_recip = util.scalar2tensor_one(truediv1_recip.get("shape"))
-    shape_add2_y = util.scalar2tensor_one(add2_y.get("shape"))
+    shape_input_square = shape_util.scalar2tensor_one(input_square.get("shape"))
+    shape_input_mul2 = shape_util.scalar2tensor_one(input_mul2.get("shape"))
+    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
+    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
+    shape_truediv1_recip = shape_util.scalar2tensor_one(truediv1_recip.get("shape"))
+    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
 
     dtype_input_square = input_square.get("dtype").lower()
     dtype_input_mul2 = input_mul2.get("dtype").lower()
@@ -174,20 +177,25 @@ def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
 
     # broadcast
     shape_input_square, shape_mul3_x, shape_max_mul3 = \
-        broadcast_shapes(shape_input_square, shape_mul3_x, param_name_input1="input_square",
-                         param_name_input2="mul3_x")
+        shape_util.broadcast_shapes(shape_input_square, shape_mul3_x,
+                                    param_name_input1="input_square",
+                                    param_name_input2="mul3_x")
     shape_input_mul2, shape_mul2_x, shape_max_mul2 = \
-        broadcast_shapes(shape_input_mul2, shape_mul2_x, param_name_input1="input_mul2",
-                         param_name_input2="mul2_x")
+        shape_util.broadcast_shapes(shape_input_mul2, shape_mul2_x,
+                                    param_name_input1="input_mul2",
+                                    param_name_input2="mul2_x")
     shape_max_mul2, shape_max_mul3, shape_max_add1 = \
-        broadcast_shapes(shape_max_mul2, shape_max_mul3, param_name_input1="shape_max_mul2",
-                         param_name_input2="shape_max_mul3")
+        shape_util.broadcast_shapes(shape_max_mul2, shape_max_mul3,
+                                    param_name_input1="shape_max_mul2",
+                                    param_name_input2="shape_max_mul3")
     shape_max_add1, shape_truediv1_recip, shape_max_truediv1 = \
-        broadcast_shapes(shape_max_add1, shape_truediv1_recip, param_name_input1="shape_max_add1",
-                         param_name_input2="truediv1_recip")
+        shape_util.broadcast_shapes(shape_max_add1, shape_truediv1_recip,
+                                    param_name_input1="shape_max_add1",
+                                    param_name_input2="truediv1_recip")
     shape_max_truediv1, shape_add2_y, shape_max_add2 = \
-        broadcast_shapes(shape_max_truediv1, shape_add2_y, param_name_input1="shape_max_truediv1",
-                         param_name_input2="add2_y")
+        shape_util.broadcast_shapes(shape_max_truediv1, shape_add2_y,
+                                    param_name_input1="shape_max_truediv1",
+                                    param_name_input2="add2_y")
 
     data_input_square = tvm.placeholder(shape_input_square,
                                         name="data_input_square",
@@ -217,9 +225,9 @@ def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
                  data_mul3_x, data_truediv1_recip, data_add2_y]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": list(inputlist) + list(res)}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

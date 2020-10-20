@@ -18,19 +18,33 @@ set(_op_tiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   concat.cc
+  conv2d_backprop_filter.cc
+  conv2d_backprop_input.cc
   conv2d.cc
+  conv_tiling.cc
   dynamic_atomic_addr_clean.cc
   eletwise.cc
+  fill.cc
+  gather.cc
   gather_nd.cc
   gather_v2.cc
+  pad_common.cc
+  pad_d.cc
   reduce_tiling.cc
   scatter_add.cc
   scatter_nd.cc
   scatter_sub.cc
   scatter_update.cc
+  slice.cc
   sparse_apply_ftrl_d.cc
   sparse_apply_proximal_adagrad_d.cc
+  split_d.cc
+  strided_slice.cc
+  strided_slice_grad.cc
+  tile_d.cc
   tiling_dispatch.cc
+  transpose_d.cc
+  unpack.cc
   unsorted_segment_sum.cc
 )
 
@@ -44,6 +58,9 @@ target_include_directories(op_tiling PRIVATE
   ${CANN_ROOT}/inc/external/graph
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )

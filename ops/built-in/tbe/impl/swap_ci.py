@@ -1,22 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 swap_ci
 """
+import te.platform as tbe_platform
 
 from te import tik
-from te.utils import op_utils
-from te import platform as tbe_platform
+from te.utils import para_check
 
 # data type of fp16
 FP16 = "float16"
@@ -51,7 +53,7 @@ DIGIT_5 = 5
 DIGIT_128 = 128
 
 
-def ceil_value(value, factor):
+def _ceil_value(value, factor):
     """
     if not divide exactly then plus 1
 
@@ -67,7 +69,7 @@ def ceil_value(value, factor):
     return (value + factor - 1) // factor
 
 
-def align_value(value, factor):
+def _align_value(value, factor):
     """
     Alignment based on factor.
 
@@ -152,31 +154,31 @@ class SwapClass():
     """
     Function: class that execute swap_ci
     """
-    def input_param_check(self, profile):
+    def input_param_check(self):
         """
         check if the inputs are valid
 
         Parameters
         ----------
-        profile: Dprofile, ai_core profile explanation
+        None
 
         Returns
         -------
         None
         """
-        product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        if product_name in ("Ascend310", "Ascend910", "Hi3796CV300ES"):
-            op_utils.check_dtype(self.dtype.lower(), ["float16"], param_name="input_x")
-            op_utils.check_dtype(self.y_dtype.lower(), ["float16"], param_name="input_y")
+        product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if product_name in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
+                            tbe_platform.HI3796CV300CS):
+            para_check.check_dtype(self.dtype.lower(), ["float16"], param_name="input_x")
+            para_check.check_dtype(self.y_dtype.lower(), ["float16"], param_name="input_y")
         else:
-            op_utils.check_dtype(self.dtype.lower(), ["float16", "float32"], param_name="input_x")
-            op_utils.check_dtype(self.y_dtype.lower(), ["float16", "float32"], param_name="input_y")
+            para_check.check_dtype(self.dtype.lower(), ["float16", "float32"], param_name="input_x")
+            para_check.check_dtype(self.y_dtype.lower(), ["float16", "float32"], param_name="input_y")
 
         if self.dtype != self.y_dtype:
             raise RuntimeError("dtype in x and y must be equal")
-        
-        op_utils.check_shape(self.x_shape, param_name="input_x")
-        op_utils.check_shape(self.y_shape, param_name="input_y")
+        para_check.check_shape(self.x_shape, param_name="input_x")
+        para_check.check_shape(self.y_shape, param_name="input_y")
 
         # x must be 4D, NCHW
         if len(self.x_shape) != DIGIT_4:
@@ -191,13 +193,13 @@ class SwapClass():
 
         calc_c = self.output_dim*self.group_size*self.group_size
         if self.x_shape[1] != calc_c and \
-                self.x_shape[1] != align_value(calc_c, C0):
+                self.x_shape[1] != _align_value(calc_c, C0):
             raise RuntimeError("input_param_check, input fm channel number"
                                " does not match layer parameters,", calc_c)
         if self.x_shape[0] != self.y_shape[0] or \
                 self.x_shape[2] != self.y_shape[2] or \
                 self.x_shape[3] != self.y_shape[3] or self.y_shape[1] != \
-                ceil_value(self.output_dim, C0)*self.group_size*self.group_size:
+                _ceil_value(self.output_dim, C0)*self.group_size*self.group_size:
             raise RuntimeError("input params check error,"
                                " x shape and y shape is not match")
 
@@ -229,7 +231,7 @@ class SwapClass():
         self.params = params_obj
 
         profile = tik.Dprofile()
-        self.input_param_check(profile)
+        self.input_param_check()
 
         self.dsize = TYPE_LEN_DICT[self.dtype]
         self.fm_batch = self.x_shape[0]
@@ -243,14 +245,14 @@ class SwapClass():
         self.k2 = self.group_size*self.group_size
         self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
         self.mask = self.vec_elem_num
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         # divide the available UB space into four parts
         one_buf = (self.ub_size - UB_16K_SIZE) // 4
         self.ub_one_buf = one_buf if (one_buf % BLOCK_SIZE == 0) \
             else (one_buf // BLOCK_SIZE*BLOCK_SIZE)
         self.ub_one_buf_elem = self.ub_one_buf // self.dsize
         self.tik_instance = tik.Tik(profile, disable_debug=True)
-        self.aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.x = None
         self.y = None
@@ -271,15 +273,15 @@ class SwapClass():
         """
         self.params.loop_num_out = self.k2
         self.params.src_one_batch_offset = self.fm_c*self.hw
-        self.params.dst_one_batch_offset = self.k2*align_value(self.output_dim,
-                                                               C0)*self.hw
+        self.params.dst_one_batch_offset = self.k2*_align_value(self.output_dim,
+                                                                C0)*self.hw
 
         tail = self.output_dim - self.output_dim // C0*C0
         self.params.s1_tail = tail if tail > 0 else C0
         # size of 16 HW after padding
-        self.params.input_c0_size = align_value(self.hw, \
+        self.params.input_c0_size = _align_value(self.hw, \
                 BLOCK_ELEM_NUM[self.dtype])*C0*self.dsize
-        self.params.input_c1 = ceil_value(self.output_dim, C0)
+        self.params.input_c1 = _ceil_value(self.output_dim, C0)
         self.params.channel_gap = (self.k2 - 1)*self.hw
         # the distance between the first 16 groups and the second 16 groups in
         # the original output_dim groups (each group has k^2 HW)
@@ -321,7 +323,7 @@ class SwapClass():
             params.hw_is_aligned = False
             params.s1_bursts = 1
             params.s1_bursts_l = 1
-            params.s1_burst_len = align_value(self.hw, \
+            params.s1_burst_len = _align_value(self.hw, \
                     BLOCK_ELEM_NUM[self.dtype])*self.dsize // BLOCK_SIZE
             params.s1_burst_len_l = params.s1_burst_len
             params.s1_src_stride = 0
@@ -342,7 +344,7 @@ class SwapClass():
         None
         """
         params = self.params
-        params.inner_loop = ceil_value(params.input_c0_size, self.ub_one_buf)
+        params.inner_loop = _ceil_value(params.input_c0_size, self.ub_one_buf)
         params.loop_num = params.input_c1*params.inner_loop
         params.load_size = self.ub_one_buf
         params.load_size_l = params.load_size \
@@ -669,10 +671,10 @@ class SwapClass():
                 buf_shape = (self.ub_one_buf_elem,)
                 input_buf_ub = self.tik_instance.Tensor(self.dtype, buf_shape,
                                                         name="input_buf_ub",
-                                                        scope=tik.scope_ubuf)
+                                                        scope=tbe_platform.scope_ubuf)
                 output_buf_ub = self.tik_instance.Tensor(self.dtype, buf_shape,
                                                          name="output_buf_ub",
-                                                         scope=tik.scope_ubuf)
+                                                         scope=tbe_platform.scope_ubuf)
 
                 self.process_stage1(batch_id, loop_index, input_buf_ub)
                 self.process_stage2(loop_index, input_buf_ub, output_buf_ub)
@@ -725,9 +727,9 @@ class SwapClass():
         None
         """
         self.x = self.tik_instance.Tensor(self.dtype, self.x_shape, \
-                name="x", scope=tik.scope_gm).reshape((self.x_shape_size,))
+                name="x", scope=tbe_platform.scope_gm).reshape((self.x_shape_size,))
         self.y = self.tik_instance.Tensor(self.dtype, shape=self.y_shape, \
-                name="y", scope=tik.scope_gm).reshape((self.y_shape_size,))
+                name="y", scope=tbe_platform.scope_gm).reshape((self.y_shape_size,))
 
         self.swap_ci_compute()
 
@@ -736,9 +738,9 @@ class SwapClass():
                                    outputs=(self.y,))
 
 
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT, 
-                          op_utils.REQUIRED_ATTR_INT, op_utils.REQUIRED_ATTR_INT,
-                          op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def swap_ci(x_dict, y_dict, output_dim, group_size, kernel_name="swap_ci"):
     """
     swap_ci interface.

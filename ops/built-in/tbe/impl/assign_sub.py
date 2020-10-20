@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 assign_sub
 
   Op_description :
@@ -33,21 +33,14 @@ assign_sub
     [2] All : shape size limit is 2147483648.
 
 """
-
+import functools
 import operator
-from functools import reduce as function_reduce
 
-from impl.util.util_build import set_bool_storage_config
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as cce
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
-from topi.cce import util
+from impl.util import util_build
+from te.utils import para_check
+from te.utils import shape_util
 
 # tiling size
 TILING_SIZE = 32
@@ -89,13 +82,13 @@ def _tilling_axis(shape, dtype):
     tensor_num = 2
 
     # ub_size_bytes is the size of the UB expressed by bytes(mod 8 bits).
-    ub_size_bytes = cce.CceProductParams().getParams("Unified_Buffer")
+    ub_size_bytes = tbe_platform.CceProductParams().getParams("Unified_Buffer")
 
     # dtype_bytes_size for float16 is 2, for float32 is 4
-    dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // BYTES_TO_BITS
+    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // BYTES_TO_BITS
     # total_ele is the maximum amount of data that can be stored in UB.
     if dtype in ("int8", "uint8"):
-        dtype_bytes_size_fp16 = cce.cce_intrin.get_bit_len(
+        dtype_bytes_size_fp16 = tbe_platform.cce_intrin.get_bit_len(
             "float16") // BYTES_TO_BITS
         total_ele = ub_size_bytes // (dtype_bytes_size +
                                       dtype_bytes_size_fp16) // tensor_num
@@ -125,7 +118,7 @@ def _tilling_axis(shape, dtype):
     # by comparing the amount of the elements of the split tensor with
     # the maximum amount of data that can be stored in UB.
     for index, _ in enumerate(shape):
-        ele_cnt = function_reduce(lambda x, y: x * y, shape[index:])
+        ele_cnt = functools.reduce(lambda x, y: x * y, shape[index:])
         if ele_cnt <= total_ele:
             split_axis = index - 1
             split_factor = total_ele // ele_cnt
@@ -178,7 +171,7 @@ def _assign_sub_schedule(schedule_list, res, shape, dtype, data_a):
     sch = tvm.create_schedule(res.op)
 
     for cal_res in schedule_list:
-        sch[cal_res].set_scope(cce.scope_ubuf)
+        sch[cal_res].set_scope(tbe_platform.scope_ubuf)
 
     for cal_res in schedule_list:
         sch[cal_res].double_buffer()
@@ -191,10 +184,10 @@ def _assign_sub_schedule(schedule_list, res, shape, dtype, data_a):
     # if out extent > 1, bind to multi core thread axis
     if out_extent > 1:
         block_index = tvm.thread_axis('blockIdx.x')
-        if out_extent > cce.CceProductParams().getParams("Device_core_num"):
+        if out_extent > tbe_platform.CceProductParams().getParams("Device_core_num"):
             thread_axis, axis_outer = sch[res].split(
                 axis_outer,
-                nparts=cce.CceProductParams().getParams("Device_core_num"))
+                nparts=tbe_platform.CceProductParams().getParams("Device_core_num"))
             sch[res].bind(thread_axis, block_index)
         else:
             sch[res].bind(axis_outer, block_index)
@@ -227,7 +220,7 @@ def _assign_sub_schedule(schedule_list, res, shape, dtype, data_a):
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,unnecessary-lambda
-@fusion_manager.register("assign_sub")
+@tbe_platform.fusion_manager.fusion_manager.register("assign_sub")
 def _assign_sub_compute(data_var, data_value, out, kernel_name='assign_sub'):
     """
     assign_sub compute function
@@ -289,7 +282,8 @@ def _assign_sub_compute(data_var, data_value, out, kernel_name='assign_sub'):
     return sch, res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def assign_sub(var, value, out, kernel_name='assign_sub'):
     """
     Update var by subtracting value from it.
@@ -325,25 +319,25 @@ def assign_sub(var, value, out, kernel_name='assign_sub'):
     # kernel name check: should be unique
 
     # check whether the shape is right
-    check_shape(shape_var, param_name="var")
-    check_shape(shape_value, param_name="value")
+    para_check.check_shape(shape_var, param_name="var")
+    para_check.check_shape(shape_value, param_name="value")
     if not operator.eq(shape_var, shape_value):
         raise RuntimeError("all input shape must be the equal")
 
     # check whether dtypes are fp16, fp32, int8, uint8, int32
     # and whether they are the same
     check_list = ("float16", "float32", "int8", "uint8", "int32")
-    check_dtype(dtype_var, check_list, param_name="var")
-    check_dtype(dtype_value, check_list, param_name="value")
+    para_check.check_dtype(dtype_var, check_list, param_name="var")
+    para_check.check_dtype(dtype_value, check_list, param_name="value")
     dtype_var = dtype_var.lower()
     dtype_value = dtype_value.lower()
     if dtype_var != dtype_value:
         raise RuntimeError("all input dtype must be same")
 
-    shape, _ = refine_shape_axes(shape_var, [])
+    shape, _ = shape_util.refine_shape_axes(shape_var, [])
     data_var = tvm.placeholder(shape, dtype=dtype_var, name='data_var')
     data_value = tvm.placeholder(shape, dtype=dtype_value, name='data_value')
     sch, res = _assign_sub_compute(data_var, data_value, out, kernel_name)
 
-    with set_bool_storage_config():
+    with util_build.set_bool_storage_config():
         tvm.build(sch, [data_var, data_value, res], "cce", name=kernel_name)

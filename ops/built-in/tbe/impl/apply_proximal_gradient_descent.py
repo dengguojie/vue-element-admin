@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 this file achieved the apply_proximal_gradient_descent which is
 a optimizer operator to update weight, this file contains compute and schedule.
 
@@ -39,19 +37,13 @@ apply_proximal_gradient_descent
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from impl.util.util_build import set_bool_storage_config
-from impl.util.util_compute import sign
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
+from impl.util import util_build
+from impl.util import util_compute
 
 CONST_ZERO = 0
 CONST_ONE = 1
@@ -60,7 +52,7 @@ CONST_ONE_NEG = -1
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("apply_proximal_gradient_descent")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_proximal_gradient_descent")
 def apply_proximal_gradient_descent_compute(
         var,
         alpha,
@@ -93,22 +85,22 @@ def apply_proximal_gradient_descent_compute(
     dtype = var.dtype
 
     if dtype == "float16":
-        var = te.lang.cce.cast_to(var, "float32")
-        alpha = te.lang.cce.cast_to(alpha, "float32")
-        l1 = te.lang.cce.cast_to(l1, "float32")
-        l2 = te.lang.cce.cast_to(l2, "float32")
-        delta = te.lang.cce.cast_to(delta, "float32")
+        var = tbe.cast_to(var, "float32")
+        alpha = tbe.cast_to(alpha, "float32")
+        l1 = tbe.cast_to(l1, "float32")
+        l2 = tbe.cast_to(l2, "float32")
+        delta = tbe.cast_to(delta, "float32")
 
-    alpha_broad = te.lang.cce.broadcast(alpha, var.shape)
-    l1_broad = te.lang.cce.broadcast(l1, var.shape)
-    l2_broad = te.lang.cce.broadcast(l2, var.shape)
+    alpha_broad = tbe.broadcast(alpha, var.shape)
+    l1_broad = tbe.broadcast(l1, var.shape)
+    l2_broad = tbe.broadcast(l2, var.shape)
 
     var_out = _compute_process(var, alpha_broad, l1_broad, l2_broad, delta)
 
     if dtype == "float16":
-        var_out = te.lang.cce.cast_to(var_out, "float16")
+        var_out = tbe.cast_to(var_out, "float16")
     else:
-        var_out = te.lang.cce.cast_to(var_out, "float32")
+        var_out = tbe.cast_to(var_out, "float32")
 
     # this compute is for muti output
     def _compute(*index):
@@ -139,23 +131,21 @@ def _compute_process(var, alpha_broad, l1_broad, l2_broad, delta):
     output_data
     """
     # var - alpha * delta
-    alpha_delta = te.lang.cce.vmul(alpha_broad, delta)
-    alpha_delta = te.lang.cce.vmuls(alpha_delta,
-                                    tvm.const(CONST_ONE_NEG, "float32"))
-    prox_v = te.lang.cce.vadd(var, alpha_delta)
+    alpha_delta = tbe.vmul(alpha_broad, delta)
+    alpha_delta = tbe.vmuls(alpha_delta, tvm.const(CONST_ONE_NEG, "float32"))
+    prox_v = tbe.vadd(var, alpha_delta)
 
-    const_zero_tensor = te.lang.cce.broadcast(
-        tvm.const(CONST_ZERO, var.dtype.lower()), delta.shape)
-    situation = te.lang.cce.vcmp(l1_broad, const_zero_tensor, 'gt')
+    const_zero_tensor = tbe.broadcast(tvm.const(CONST_ZERO, var.dtype.lower()), delta.shape)
+    situation = tbe.vcmp(l1_broad, const_zero_tensor, 'gt')
 
     var_res = _compute_positive(prox_v, alpha_broad, l1_broad, l2_broad)
 
     # prox_var / 1 + l2 * alpha
-    l2_lr = te.lang.cce.vmul(l2_broad, alpha_broad)
-    l2_lr_1 = te.lang.cce.vadds(l2_lr, tvm.const(CONST_ONE, "float32"))
-    var_t_neg = te.lang.cce.vdiv(prox_v, l2_lr_1)
+    l2_lr = tbe.vmul(l2_broad, alpha_broad)
+    l2_lr_1 = tbe.vadds(l2_lr, tvm.const(CONST_ONE, "float32"))
+    var_t_neg = tbe.vdiv(prox_v, l2_lr_1)
 
-    var_out = te.lang.cce.vsel(situation, var_res, var_t_neg)
+    var_out = tbe.vsel(situation, var_res, var_t_neg)
 
     return var_out
 
@@ -175,28 +165,28 @@ def _compute_positive(prox_v, alpha_broad, l1_broad, l2_broad):
     Returns
     the value of var_res
     """
-    prox_v_abs = te.lang.cce.vabs(prox_v)
-    prox_v_sign = sign(prox_v)
+    prox_v_abs = tbe.vabs(prox_v)
+    prox_v_sign = util_compute.sign(prox_v)
     # 1+alpha*l2
-    alpha_l2 = te.lang.cce.vmul(alpha_broad, l2_broad)
-    alpha_l2_1 = te.lang.cce.vadds(alpha_l2, tvm.const(CONST_ONE, "float32"))
+    alpha_l2 = tbe.vmul(alpha_broad, l2_broad)
+    alpha_l2_1 = tbe.vadds(alpha_l2, tvm.const(CONST_ONE, "float32"))
     # max{|prox_v|-alpha*l1,0}
-    alpha_l1 = te.lang.cce.vmul(alpha_broad, l1_broad)
-    alpha_l1_neg = te.lang.cce.vmuls(alpha_l1,
-                                     tvm.const(CONST_ONE_NEG, "float32"))
-    prox_v_l1 = te.lang.cce.vadd(prox_v_abs, alpha_l1_neg)
-    max_value = te.lang.cce.vmax(
+    alpha_l1 = tbe.vmul(alpha_broad, l1_broad)
+    alpha_l1_neg = tbe.vmuls(alpha_l1, tvm.const(CONST_ONE_NEG, "float32"))
+    prox_v_l1 = tbe.vadd(prox_v_abs, alpha_l1_neg)
+    max_value = tbe.vmax(
         prox_v_l1,
-        te.lang.cce.broadcast(tvm.const(CONST_ZERO, "float32"), prox_v.shape))
+        tbe.broadcast(tvm.const(CONST_ZERO, "float32"), prox_v.shape))
     # sign(prox_v)/(1+alpha*l2) * max{|prox_v|-alpha*l1,0}
-    res = te.lang.cce.vdiv(prox_v_sign, alpha_l2_1)
-    var_res = te.lang.cce.vmul(res, max_value)
+    res = tbe.vdiv(prox_v_sign, alpha_l2_1)
+    var_res = tbe.vmul(res, max_value)
 
     return var_res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def apply_proximal_gradient_descent(
         var,
         alpha,
@@ -230,18 +220,18 @@ def apply_proximal_gradient_descent(
 
     check_list = ('float16', 'float32')
     dtype = var.get('dtype')
-    check_dtype(dtype, check_list, param_name="var")
+    para_check.check_dtype(dtype, check_list, param_name="var")
     dtype = dtype.lower()
 
     input_dict = (var, alpha, l1, l2, delta)
 
-    args = ApplyOpConfig.TensorArgs(input_dict,
-                                    apply_proximal_gradient_descent_compute,
-                                    out, 5 if dtype == 'float32' else 10)
-    name = ApplyOpConfig.TensorName(all=('var', 'alpha', 'l1', 'l2', 'delta'),
-                                    scalar=('alpha', 'l1', 'l2'),
-                                    reuse=('var', ))
-    options = ApplyOpConfig.TensorOptions(
-        build=set_bool_storage_config())
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict,
+                                                           apply_proximal_gradient_descent_compute,
+                                                           out, 5 if dtype == 'float32' else 10)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'alpha', 'l1', 'l2', 'delta'),
+                                                           scalar=('alpha', 'l1', 'l2'),
+                                                           reuse=('var', ))
+    options = util_apply_op_schedule.ApplyOpConfig.TensorOptions(build=util_build.set_bool_storage_config())
 
-    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name, options),
+                                                   kernel_name)

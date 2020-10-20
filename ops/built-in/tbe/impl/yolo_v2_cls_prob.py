@@ -1,34 +1,28 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+yolo_v2_cls_prob
+"""
 # pylint: disable=import-error,too-many-locals,too-many-statements
-"""
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-yolo_v3_correct_region_box
-"""
-
-
+import te.platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te.utils import op_utils
-from impl.yolo_v2_correct_box import CorrectBoxComputer
-from impl.constant_util import BLOCK_SIZE
-from impl.constant_util import VECTOR_BYTE_SIZE
-from impl.constant_util import STRIDE_ONE
-from impl.constant_util import CLOUD
-from impl.constant_util import HISI_ES
-from impl.constant_util import MINI
-import impl.constant_util as constant
-from impl import common_util as common
-from te import platform as tbe_platform
+from te.utils import para_check
+
+from impl import common_util
+from impl import constant_util as constant
+from impl import yolo_v2_correct_box
 
 # value zero
 VALUE_ZERO = 0
@@ -60,53 +54,48 @@ PRE_NMS_TOPN = 1024
 
 def check_param_range(param_name, min_value, max_value, real_value, op_name='yolo_v2_detection_output_d'):
     
-    error_info = {}
-    error_info['errCode'] = 'E80002'
-    error_info['opname'] = op_name
-    error_info['param_name'] = param_name
-    error_info['min_value'] = str(min_value)
-    error_info['max_value'] = str(max_value)
-    error_info['real_value'] = str(real_value)
+    error_info = {'errCode': 'E80002', 'opname': op_name, 'param_name': param_name, 'min_value': str(min_value),
+                  'max_value': str(max_value), 'real_value': str(real_value)}
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
                        % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                           error_info['max_value'], error_info['real_value']))
 
 
-class ClsProbComputer(CorrectBoxComputer):
+class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
     """
      the class for cls prob compute
     """
     def __init__(self, input_dict):
         super(ClsProbComputer, self).__init__(input_dict)
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             adj_hw = self.get_adj_hw(self.boxes * self.height * self.width)
             self.obj_prob_v200 = self.instance.Tensor(self.dtype,
                                                       (self.batch, adj_hw),
                                                       name="obj_prob_v200",
                                                       is_workspace=True,
-                                                      scope=tik.scope_gm)
+                                                      scope=tbe_platform.scope_gm)
 
     def init_param(self, batch, param):
         """
-          init some parameters
+        init some parameters
 
-          Parameters
-          ----------
-          batch: the sequence of the photo
-          param: param is an empty dict
+        Parameters
+        ----------
+        batch: the sequence of the photo
+        param: param is an empty dict
 
-          Returns
-          -------
-          None
-          """
+        Returns
+        -------
+        None
+        """
         index_ub = None
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
-                                            scope=tik.scope_ubuf)
+                                            scope=tbe_platform.scope_ubuf)
         index_offset = self.instance.Scalar("int32")
         index_offset.set_as(0)
         count = self.instance.Scalar("int32")
@@ -139,18 +128,18 @@ class ClsProbComputer(CorrectBoxComputer):
           """
         param['ub_a'] = self.instance.Tensor(self.dtype,
                                              (self.one_max_size // self.dsize,),
-                                             scope=tik.scope_ubuf, name="ub_a")
+                                             scope=tbe_platform.scope_ubuf, name="ub_a")
         param['ub_b'] = self.instance.Tensor(self.dtype,
                                              (self.one_max_size // self.dsize,),
-                                             scope=tik.scope_ubuf, name="ub_b")
+                                             scope=tbe_platform.scope_ubuf, name="ub_b")
         param['zero_tensor'] = self.instance.Tensor(self.dtype,
-                                                    (VECTOR_BYTE_SIZE,),
-                                                    scope=tik.scope_ubuf,
+                                                    (constant.VECTOR_BYTE_SIZE,),
+                                                    scope=tbe_platform.scope_ubuf,
                                                     name="zero_tensor")
         param['adj_len'] = self.get_adj_hw(self.boxes*self.height*self.width)
         param['burlen'] = self.instance.Scalar()
         param['burlen'].set_as(self.get_burlen(self.boxes*self.width*self.height))
-        param['num'] = VECTOR_BYTE_SIZE // self.dsize
+        param['num'] = constant.VECTOR_BYTE_SIZE // self.dsize
         param['repeat'] = self.get_repeat(self.boxes*self.width*self.height)
 
     def init_bigcls_param(self, loop, param):
@@ -173,23 +162,23 @@ class ClsProbComputer(CorrectBoxComputer):
           """
         param['ub_a'] = self.instance.Tensor(self.dtype,
                                              (self.one_max_size // self.dsize,),
-                                             scope=tik.scope_ubuf, name="ub_a")
+                                             scope=tbe_platform.scope_ubuf, name="ub_a")
 
         param['ub_b'] = self.instance.Tensor(self.dtype,
                                              (self.one_max_size // self.dsize,),
-                                             scope=tik.scope_ubuf, name="ub_b")
+                                             scope=tbe_platform.scope_ubuf, name="ub_b")
         param['zero_tensor'] = self.instance.Tensor(self.dtype,
-                                                    (VECTOR_BYTE_SIZE,),
-                                                    scope=tik.scope_ubuf,
+                                                    (constant.VECTOR_BYTE_SIZE,),
+                                                    scope=tbe_platform.scope_ubuf,
                                                     name="zero_tensor")
         param['last_32b'] = self.instance.Tensor(self.dtype,
-                                                 (BLOCK_SIZE,),
-                                                 scope=tik.scope_ubuf,
+                                                 (constant.BLOCK_SIZE,),
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="last_32b")
 
         param['burlen'] = self.instance.Scalar(name="burlen")
         param['repeat'] = self.instance.Scalar(name="repeat")
-        param['num'] = VECTOR_BYTE_SIZE // self.dsize
+        param['num'] = constant.VECTOR_BYTE_SIZE // self.dsize
         with self.instance.if_scope(loop == param['mov_loop'] - VALUE_ONE):
             param['burlen'].set_as(self.get_burlen(param['last_len']))
             param['repeat'].set_as(self.get_repeat(param['last_len']))
@@ -215,14 +204,14 @@ class ClsProbComputer(CorrectBoxComputer):
           -------
           None
           """
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             sum_mask_ub = self.instance.Tensor(self.dtype, (16,),
                                                name="sum_mask_ub",
-                                               scope=tik.scope_ubuf)
+                                               scope=tbe_platform.scope_ubuf)
             work_tensor_ub = self.instance.Tensor(self.dtype, (16,),
                                                   name="work_tensor_ub",
-                                                  scope=tik.scope_ubuf)
+                                                  scope=tbe_platform.scope_ubuf)
             self.instance.vec_reduce_add(self.mask, sum_mask_ub, param['reduce_mask_ub'], work_tensor_ub, 1, 8)
 
             mask_scalar = self.instance.Scalar("uint16", name="mask_scalar")
@@ -288,7 +277,7 @@ class ClsProbComputer(CorrectBoxComputer):
         self.t_data_move(param['ub_a'], self.obj_prob[batch, 0], param['burlen'])
 
         # The supplemented part is deleted for v200 reduce
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             self.t_data_move(
                 self.obj_prob_v200[param['obj_gm_offset']], param['ub_a'],
@@ -302,19 +291,19 @@ class ClsProbComputer(CorrectBoxComputer):
 
 
         ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
-                                       scope=tik.scope_ubuf)
+                                       scope=tbe_platform.scope_ubuf)
         self.t_vector_dup(ones_ub, 1, 1)
 
         zeros_ub = self.instance.Tensor(self.dtype, (128,), name="zeros_ub",
-                                        scope=tik.scope_ubuf)
+                                        scope=tbe_platform.scope_ubuf)
         self.t_vector_dup(zeros_ub, 0, 1)
 
 
         reduce_mask_ub = self.instance.Tensor(self.dtype, (128,),
                                               name="reduce_mask_ub",
-                                              scope=tik.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
         index_len = self.instance.Scalar("int32")
-        index_len.set_as(VECTOR_BYTE_SIZE // self.dsize)
+        index_len.set_as(constant.VECTOR_BYTE_SIZE // self.dsize)
         last_index_len = self.instance.Scalar("int32")
         last_index_len.set_as(self.obj_num % index_len)
         with self.instance.if_scope(last_index_len == 0):
@@ -323,7 +312,7 @@ class ClsProbComputer(CorrectBoxComputer):
         with self.instance.for_range(VALUE_ZERO, param['repeat']) as cycle:
             sel = self.instance.Tensor("uint16", (8, ),
                                        name="sel",
-                                       scope=tik.scope_ubuf)
+                                       scope=tbe_platform.scope_ubuf)
             self.instance.vec_dup(8, sel, 0, 1, 8)
             self.instance.vec_cmpv_gt(sel,
                                       param['ub_a'][
@@ -338,7 +327,7 @@ class ClsProbComputer(CorrectBoxComputer):
                                param['zero_tensor'], REPEAT_ONE)
             self.instance.vec_sel(self.mask, 0, reduce_mask_ub[0], sel,
                                ones_ub[0], zeros_ub[0], REPEAT_ONE,
-                               STRIDE_ONE)
+                               constant.STRIDE_ONE)
             param['reduce_mask_ub'] = reduce_mask_ub
             with self.instance.if_scope(cycle == param['repeat'] - 1):
                 index_len.set_as(last_index_len)
@@ -353,10 +342,10 @@ class ClsProbComputer(CorrectBoxComputer):
 
             ub_c = self.instance.Tensor(self.dtype,
                                         (self.one_max_size // self.dsize,),
-                                        scope=tik.scope_ubuf, name="ub_c")
+                                        scope=tbe_platform.scope_ubuf, name="ub_c")
             last_32b = self.instance.Tensor(self.dtype,
-                                            (BLOCK_SIZE,),
-                                            scope=tik.scope_ubuf,
+                                            (constant.BLOCK_SIZE,),
+                                            scope=tbe_platform.scope_ubuf,
                                             name="last_32b")
             faces = self.instance.Scalar("int32")
             with self.instance.if_scope(loop_idx != param['loop'] - VALUE_ONE):
@@ -365,7 +354,7 @@ class ClsProbComputer(CorrectBoxComputer):
                 faces.set_as(param['last_loop'])
 
             param['burlen'].set_as(
-                (faces * param['adj_len'] * self.dsize) // BLOCK_SIZE)
+                (faces * param['adj_len'] * self.dsize) // constant.BLOCK_SIZE)
 
             self.t_data_move(
                 ub_c,
@@ -380,7 +369,7 @@ class ClsProbComputer(CorrectBoxComputer):
                 param['ub_d'] =\
                     self.instance.Tensor(self.dtype,
                                          (self.one_max_size // self.dsize,),
-                                         scope=tik.scope_ubuf,
+                                         scope=tbe_platform.scope_ubuf,
                                          name="ub_d")
                 start_idx = self.instance.Scalar("int32")
                 start_idx.set_as(loop * param['adj_len'])
@@ -390,7 +379,7 @@ class ClsProbComputer(CorrectBoxComputer):
                 self.t_vmul(param['ub_d'], ub_c[start_idx], param['ub_a'],
                             param['repeat'])
 
-                if (self.obj_num*self.dsize) % BLOCK_SIZE != 0 and \
+                if (self.obj_num*self.dsize) % constant.BLOCK_SIZE != 0 and \
                         self.block_num > 1:
                     with self.instance.if_scope(co_id == self.classes - 1):
                         param['burlen'].set_as(param['burlen'] - 1)
@@ -460,14 +449,14 @@ class ClsProbComputer(CorrectBoxComputer):
 
             reduce_mask_ub = self.instance.Tensor(self.dtype, (128,),
                                                   name="reduce_mask_ub",
-                                                  scope=tik.scope_ubuf)
+                                                  scope=tbe_platform.scope_ubuf)
 
             ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
-                                           scope=tik.scope_ubuf)
+                                           scope=tbe_platform.scope_ubuf)
             self.t_vector_dup(ones_ub, 1, 1)
 
             zeros_ub = self.instance.Tensor(self.dtype, (128,), name="zeros_ub",
-                                            scope=tik.scope_ubuf)
+                                            scope=tbe_platform.scope_ubuf)
             self.t_vector_dup(zeros_ub, 0, 1)
 
 
@@ -480,7 +469,7 @@ class ClsProbComputer(CorrectBoxComputer):
             with self.instance.if_scope(last_index_len == 0):
                 last_index_len.set_as(index_len)
 
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ( \
+            if tbe_platform.get_soc_spec("SOC_VERSION") not in ( \
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
                 self.t_data_move(
                     self.obj_prob_v200[param['obj_gm_offset']],
@@ -496,7 +485,7 @@ class ClsProbComputer(CorrectBoxComputer):
             with self.instance.for_range(VALUE_ZERO, param['repeat']) as cycle:
                 sel = self.instance.Tensor("uint16", (8, ),
                                            name="sel",
-                                           scope=tik.scope_ubuf)
+                                           scope=tbe_platform.scope_ubuf)
                 self.instance.vec_dup(8, sel, 0, 1, 8)
                 self.instance.vec_cmpv_gt(sel,
                                           param['ub_a'][
@@ -524,7 +513,7 @@ class ClsProbComputer(CorrectBoxComputer):
 
                 param['ub_c'] = self.instance.Tensor(self.dtype,
                                                      (shape,),
-                                                     scope=tik.scope_ubuf,
+                                                     scope=tbe_platform.scope_ubuf,
                                                      name="ub_c")
 
                 # move classes data to ub c
@@ -536,7 +525,7 @@ class ClsProbComputer(CorrectBoxComputer):
                 self.t_vmul(param['ub_c'], param['ub_a'], param['ub_c'],
                             param['repeat'])
 
-                if (self.obj_num*self.dsize) % BLOCK_SIZE != 0 and self.block_num > 1:
+                if (self.obj_num*self.dsize) % constant.BLOCK_SIZE != 0 and self.block_num > 1:
                     with self.instance.if_scope(
                             tik.all(co_id == self.classes - 1,
                                     loop == param['mov_loop'] - 1)):
@@ -621,21 +610,17 @@ def check_param(input_dict):
       None
       """
     pre_nms_topn = input_dict.get("pre_nms_topn")
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ( \
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
-        op_utils.check_dtype(input_dict.get("dtype"), ["float16"], param_name="windex")
+        para_check.check_dtype(input_dict.get("dtype"), ["float16"], param_name="windex")
     else:
-        op_utils.check_dtype(input_dict.get("dtype"), ["float16", "float32"], param_name="windex")
-    util.check_kernel_name(input_dict.get("kernel_name"))
+        para_check.check_dtype(input_dict.get("dtype"), ["float16", "float32"], param_name="windex")
+    para_check.check_kernel_name(input_dict.get("kernel_name"))
     coords = input_dict.get("coords")
     post_nms_topn = input_dict.get("post_nms_topn")
     if coords != 4:
-        error_info = {}
-        error_info['errCode'] = 'E80017'
-        error_info['opname'] = 'yolo_v2_detection_output_d'
-        error_info['param_name'] = 'coords'
-        error_info['expect_value'] = '4'
-        error_info['real_value'] = str(coords)
+        error_info = {'errCode': 'E80017', 'opname': 'yolo_v2_detection_output_d', 'param_name': 'coords',
+                      'expect_value': '4', 'real_value': str(coords)}
         raise RuntimeError(error_info,
             "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
             % (error_info['opname'], error_info['param_name'], error_info['expect_value'],
@@ -643,7 +628,7 @@ def check_param(input_dict):
 
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("dtype")
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS") \
             or dtype == constant.DATA_TYPE_FP32:
         if pre_nms_topn > PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:
@@ -656,7 +641,7 @@ def check_param(input_dict):
         check_param_range("max_box_number_per_batch", 1, PRE_NMS_TOPN,
                           max_box_number_per_batch)
 
-    dsize = common.get_data_size(input_dict.get("dtype"))
+    dsize = common_util.get_data_size(input_dict.get("dtype"))
     height = input_dict.get("height")
     width = input_dict.get("width")
     if height * width * dsize < constant.BLOCK_SIZE:

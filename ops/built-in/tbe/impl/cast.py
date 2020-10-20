@@ -1,29 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-cast_cce
+cast
 """
-import te.lang.cce
-from te import platform as tbe_platform
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
-from functools import reduce as reduceIns
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 MAX_SUPPORT_SHAPE = 1 << 30 # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000 # Limit of one dim
@@ -85,20 +83,20 @@ def _int8_uint8_process(data, dst_type):
     deal with src dtype=int8 and uint8 case
     """
     if dst_type == "float16":
-        return te.lang.cce.cast_to(data, "float16")
+        return tbe.cast_to(data, "float16")
 
     if dst_type == "float32":
-        data_fp16 = te.lang.cce.cast_to(data, "float16")
-        return te.lang.cce.cast_to(data_fp16, "float32")
+        data_fp16 = tbe.cast_to(data, "float16")
+        return tbe.cast_to(data_fp16, "float32")
 
     if dst_type == "int32":
-        data_fp16 = te.lang.cce.cast_to(data, "float16")
-        return te.lang.cce.cast_to(data_fp16, "int32")
+        data_fp16 = tbe.cast_to(data, "float16")
+        return tbe.cast_to(data_fp16, "int32")
 
     if dst_type == "uint8":
-        data_fp16 = te.lang.cce.cast_to(data, "float16")
-        abs_fp16 = te.lang.cce.vabs(data_fp16)
-        return te.lang.cce.cast_to(abs_fp16, "uint8")
+        data_fp16 = tbe.cast_to(data, "float16")
+        abs_fp16 = tbe.vabs(data_fp16)
+        return tbe.cast_to(abs_fp16, "uint8")
 
     raise RuntimeError("The cast_cce_aicore only support int8/uint8"
                        "cast to float16,float32,int32,uint8.")
@@ -110,38 +108,38 @@ def _int32_process(data, dst_type):
     """
     if dst_type == "bool":
         const_one = tvm.const(1.0, "float16")
-        shape_data = te.lang.cce.util.shape_to_list(data.shape)
-        const_broad = te.lang.cce.broadcast(const_one, shape_data)
+        shape_data = shape_util.shape_to_list(data.shape)
+        const_broad = tbe.broadcast(const_one, shape_data)
 
-        data = te.lang.cce.cast_to(data, "float16", True)
-        x_abs = te.lang.cce.vabs(data)
-        x_min = te.lang.cce.vmin(x_abs, const_broad)
-        y_abs = te.lang.cce.vabs(x_min)
-        return te.lang.cce.cast_to(y_abs, "int8", True)
+        data = tbe.cast_to(data, "float16", True)
+        x_abs = tbe.vabs(data)
+        x_min = tbe.vmin(x_abs, const_broad)
+        y_abs = tbe.vabs(x_min)
+        return tbe.cast_to(y_abs, "int8", True)
 
     if dst_type == "int8":
-        data_fp16 = te.lang.cce.cast_to(data, "float16")
-        tensor_0 = te.lang.cce.vmuls(data_fp16, 0)
-        tensor_256 = te.lang.cce.vadds(tensor_0, 256)
-        result = te.lang.cce.vadds(data_fp16, 128)
-        result = te.lang.cce.vmod(result, tensor_256)
-        result = te.lang.cce.vadds(result, -128)
-        result = te.lang.cce.cast_to(result, "float16")
-        return te.lang.cce.cast_to(result, "int8", True)
+        data_fp16 = tbe.cast_to(data, "float16")
+        tensor_0 = tbe.vmuls(data_fp16, 0)
+        tensor_256 = tbe.vadds(tensor_0, 256)
+        result = tbe.vadds(data_fp16, 128)
+        result = tbe.vmod(result, tensor_256)
+        result = tbe.vadds(result, -128)
+        result = tbe.cast_to(result, "float16")
+        return tbe.cast_to(result, "int8", True)
 
     if dst_type == "uint8":
-        data_fp16 = te.lang.cce.cast_to(data, "float16")
-        tensor_0 = te.lang.cce.vmuls(data_fp16, 0)
-        tensor_256 = te.lang.cce.vadds(tensor_0, 256)
-        result = te.lang.cce.vmod(data_fp16, tensor_256)
-        result = te.lang.cce.cast_to(result, "float16")
-        return te.lang.cce.cast_to(result, "uint8", True)
+        data_fp16 = tbe.cast_to(data, "float16")
+        tensor_0 = tbe.vmuls(data_fp16, 0)
+        tensor_256 = tbe.vadds(tensor_0, 256)
+        result = tbe.vmod(data_fp16, tensor_256)
+        result = tbe.cast_to(result, "float16")
+        return tbe.cast_to(result, "uint8", True)
 
     if dst_type == "float32":
-        return te.lang.cce.cast_to(data, "float32")
+        return tbe.cast_to(data, "float32")
 
     if dst_type == "float16":
-        return te.lang.cce.cast_to(data, "float16")
+        return tbe.cast_to(data, "float16")
 
     raise RuntimeError("The cast_cce_aicore only support int32"
                        "cast to bool,int8,uint8,float32,float16.")
@@ -152,10 +150,10 @@ def _float32_process(data, dst_type):
     deal with src dtype=float32 case
     """
     if dst_type == "int32":
-        return te.lang.cce.cast_to(data, "int32")
+        return tbe.cast_to(data, "int32")
 
     if dst_type == "float16":
-        return te.lang.cce.cast_to(data, "float16")
+        return tbe.cast_to(data, "float16")
 
     raise RuntimeError("The cast_cce_aicore only support float32"
                        "cast to int32,float16.")
@@ -169,22 +167,22 @@ def _float16_process(data, dst_type):
         return data
 
     if dst_type == "float32":
-        return te.lang.cce.cast_to(data, "float32")
+        return tbe.cast_to(data, "float32")
 
     if dst_type == "int32":
-        return te.lang.cce.cast_to(data, "int32")
+        return tbe.cast_to(data, "int32")
 
     if dst_type == "uint8":
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in \
-            ("Ascend310", "Hi3796CV300ES"):
-            return te.lang.cce.cast_to(data, "uint8", True)
-        data_int32 = te.lang.cce.cast_to(data, "int32")
-        data_fp16 = te.lang.cce.cast_to(data_int32, "float16")
-        tensor_0 = te.lang.cce.vmuls(data_fp16, 0)
-        tensor_256 = te.lang.cce.vadds(tensor_0, 256)
-        result = te.lang.cce.vmod(data_fp16, tensor_256)
-        result = te.lang.cce.cast_to(result, "float16")
-        return te.lang.cce.cast_to(result, "uint8", True)
+            ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
+            return tbe.cast_to(data, "uint8", True)
+        data_int32 = tbe.cast_to(data, "int32")
+        data_fp16 = tbe.cast_to(data_int32, "float16")
+        tensor_0 = tbe.vmuls(data_fp16, 0)
+        tensor_256 = tbe.vadds(tensor_0, 256)
+        result = tbe.vmod(data_fp16, tensor_256)
+        result = tbe.cast_to(result, "float16")
+        return tbe.cast_to(result, "uint8", True)
 
     raise RuntimeError("The cast_cce_aicore only support float16"
                        "cast to float32,int32,uint8.")
@@ -248,7 +246,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("cast")
+@tbe_platform.fusion_manager.fusion_manager.register("cast")
 def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
     core func of tensor casting. cast a tensor form src data type to dst data
@@ -284,8 +282,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
         the compute result tensor with type dst_type
     """
     src_data_type = data.dtype
-    check_dtype(src_data_type,
-                          ("float16", "float32", "int8", "uint8", "int32"), param_name="input_x")
+    para_check.check_dtype(src_data_type, ("float16", "float32", "int8", "uint8", "int32"), param_name="input_x")
 
     if src_data_type in ("int8", "uint8"):
         return _int8_uint8_process(data, dst_type)
@@ -302,7 +299,8 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     raise RuntimeError("The cast_cce_aicore don't support this situation")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def cast(input_x, output_y, dst_type, kernel_name="cast"):
     """
     cast a tensor/scaler with input shape form src data type to dst data
@@ -342,19 +340,19 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
     -------
     None
     """
-    shape = util.scalar2tensor_one(input_x.get("shape"))
+    shape = shape_util.scalar2tensor_one(input_x.get("shape"))
     src_type = input_x.get("dtype").lower()
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
 
     if src_type == "bool":
         src_type = "int8"
 
     dst_type = _cast_dsttype_conversion(dst_type)
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=src_type)
     if src_type == "int64":
-        check_dtype(dst_type, ("float32", "int32"), param_name="dst_type")
+        para_check.check_dtype(dst_type, ("float32", "int32"), param_name="dst_type")
         res = tvm.extern(
             [fuseshape], [data],
             lambda ins, outs: _kernel_ir(outs, ins, dst_type, "int64"),
@@ -362,15 +360,15 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
             dtype=dst_type)
         tensor_list = [data, res]
         schedule = tvm.create_schedule(res.op)
-        with build_config:
+        with tbe_platform.cce_build.build_config:
             tvm.build(schedule, tensor_list, "cce", name=kernel_name)
     else:
         with tvm.target.cce():
             res = cast_compute(data, output_y, dst_type, kernel_name)
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         config = {
             "print_ir": False,
             "name": kernel_name,
             "tensor_list": [data, res]
         }
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

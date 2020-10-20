@@ -1,3 +1,23 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file spp_fusion_pass.cpp
+ * \brief
+ */
 #include <iostream>
 #include <vector>
 #include <string>
@@ -21,11 +41,10 @@ using namespace ge;
 
 namespace fe {
 static const string PATTERN_SPP = "SPP";
-static const char *SPP = "SPP";
+static const char* SPP = "SPP";
 
-Status SPPPass::MakePoolingLayer(ge::OpDescPtr &poolingOpDesc,
-                        const ge::GeTensorDesc &inputDesc,
-                        int64_t hyramidLevel, int64_t poolMethod) {
+Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc, int64_t hyramidLevel,
+                                 int64_t poolMethod) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make pooling layer");
   vector<int64_t> shapeDims = inputDesc.GetOriginShape().GetDims();
   if (shapeDims.empty()) {
@@ -122,9 +141,7 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr &poolingOpDesc,
   return SUCCESS;
 }
 
-Status SPPPass::MakeConcatLayer(ge::OpDescPtr &concatOpDesc,
-                       vector<ge::OpDescPtr> fatherOp,
-                       int64_t concatDims) {
+Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPtr> fatherOp, int64_t concatDims) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make concat layer");
   uint64_t bottomSize = fatherOp.size();
   int64_t batchNum = 0;
@@ -171,14 +188,12 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr &concatOpDesc,
   return SUCCESS;
 }
 
-
-vector<FusionPattern *> SPPPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
+vector<FusionPattern*> SPPPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
   // define Fusion
-  FusionPattern *pattern = new (std::nothrow) FusionPattern("SPPPass");
-  FUSION_PASS_CHECK(pattern == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("SPPPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_SPP, {SPP}).SetOutput(PATTERN_SPP);
 
@@ -187,22 +202,18 @@ vector<FusionPattern *> SPPPass::DefinePatterns() {
   return patterns;
 }
 
-Status SPPPass::Fusion(ge::ComputeGraph &graph,
-                       Mapping &mapping,
-                       vector<ge::NodePtr> &newNodes)
-{
+Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into SPPPass");
   // diag node
   ge::NodePtr sppNode = GetNodeFromMapping(PATTERN_SPP, mapping);
-  FUSION_PASS_CHECK(sppNode == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "sppNode is null, fusion failed."),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(sppNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sppNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-  //Get Input Node
+  // Get Input Node
   ge::InDataAnchorPtr oriInAnchorPtr0 = sppNode->GetInDataAnchor(0);
   ge::OutDataAnchorPtr oriBottomPeerAnchorPtr0 = oriInAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputNode = oriBottomPeerAnchorPtr0->GetOwnerNode();
-  //Get Output Node
+  // Get Output Node
   ge::OutDataAnchorPtr oriOutAnchorPtr0 = sppNode->GetOutDataAnchor(0);
   auto oriTopPeerAnchors = oriOutAnchorPtr0->GetPeerInDataAnchors();
 
@@ -230,10 +241,10 @@ Status SPPPass::Fusion(ge::ComputeGraph &graph,
 
   int64_t sppHyramidHeight = 1;
   int64_t sppPoolMethod = 0;
-  if(!ge::AttrUtils::GetInt(sppOpDesc, "pyramid_height", sppHyramidHeight)) {
+  if (!ge::AttrUtils::GetInt(sppOpDesc, "pyramid_height", sppHyramidHeight)) {
     sppHyramidHeight = 1;
   }
-  if(!ge::AttrUtils::GetInt(sppOpDesc, "pool_method", sppPoolMethod)) {
+  if (!ge::AttrUtils::GetInt(sppOpDesc, "pool_method", sppPoolMethod)) {
     sppPoolMethod = 0;
   }
 
@@ -241,31 +252,31 @@ Status SPPPass::Fusion(ge::ComputeGraph &graph,
     ge::OpDescPtr singlePoolingOp;
     ge::NodePtr singlePoolingNode;
     FUSION_PASS_MAKE_SHARED((singlePoolingOp = std::make_shared<ge::OpDesc>("spp_pooling", "SppPooling")),
-                    return INTERNAL_ERROR);
+                            return INTERNAL_ERROR);
 
-    FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(singlePoolingOp, sppInputDesc,0, sppPoolMethod),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(singlePoolingOp, sppInputDesc, 0, sppPoolMethod),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
 
     singlePoolingNode = graph.AddNode(singlePoolingOp);
 
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0,
-                                                singlePoolingNode->GetInDataAnchor(0)),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                     inputNode->GetName().c_str(), singlePoolingNode->GetName().c_str()),
-             return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, singlePoolingNode->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                inputNode->GetName().c_str(), singlePoolingNode->GetName().c_str()),
+        return FAILED);
 
     for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
       ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
       ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(singlePoolingNode->GetOutDataAnchor(0),
-                                                  oriTopPeerAnchorPtri),
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                       singlePoolingNode->GetName().c_str(), outputNode->GetName().c_str()),
-               return FAILED);
+      FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(singlePoolingNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                  singlePoolingNode->GetName().c_str(), outputNode->GetName().c_str()),
+          return FAILED);
     }
 
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sppNode),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "remove spp node failed"), return FAILED);
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove spp node failed"), return FAILED);
 
     return SUCCESS;
   }
@@ -276,56 +287,50 @@ Status SPPPass::Fusion(ge::ComputeGraph &graph,
     string strName = "spp_pooling" + std::to_string(i);
     ge::OpDescPtr tmpOp;
     ge::NodePtr tmpNode;
-    FUSION_PASS_MAKE_SHARED((tmpOp = std::make_shared<ge::OpDesc>(strName, "SppPooling")),
-                   return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((tmpOp = std::make_shared<ge::OpDesc>(strName, "SppPooling")), return INTERNAL_ERROR);
     poolingOp.push_back(tmpOp);
 
-    FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(poolingOp[i], sppInputDesc,
-                                         i, sppPoolMethod),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(poolingOp[i], sppInputDesc, i, sppPoolMethod),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
     tmpNode = graph.AddNode(poolingOp[i]);
-    FUSION_PASS_CHECK(tmpNode == nullptr,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode[%d] is null, fusion failed.", i),
-             return PARAM_INVALID);
+    FUSION_PASS_CHECK(tmpNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode[%d] is null, fusion failed.", i),
+                      return PARAM_INVALID);
     poolingNode.push_back(tmpNode);
 
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0,
-                                                poolingNode[i]->GetInDataAnchor(0)),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                     inputNode->GetName().c_str(), poolingNode[i]->GetName().c_str()),
-             return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, poolingNode[i]->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              inputNode->GetName().c_str(), poolingNode[i]->GetName().c_str()),
+                      return FAILED);
   }
 
   ge::OpDescPtr concatOp;
   ge::NodePtr concatNode;
-  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>("concat", "ConcatD")),
-                 return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>("concat", "ConcatD")), return INTERNAL_ERROR);
   int64_t concatDim = 1;
   FUSION_PASS_CHECK(SUCCESS != MakeConcatLayer(concatOp, poolingOp, concatDim),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
 
   concatNode = graph.AddNode(concatOp);
 
   for (uint64_t i = 0; i < poolingNode.size(); i++) {
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(poolingNode[i]->GetOutDataAnchor(0),
-                                                concatNode->GetInDataAnchor(i)),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                     poolingNode[i]->GetName().c_str(), concatNode->GetName().c_str()),
-             return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(poolingNode[i]->GetOutDataAnchor(0), concatNode->GetInDataAnchor(i)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                poolingNode[i]->GetName().c_str(), concatNode->GetName().c_str()),
+        return FAILED);
   }
 
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0),
-                                                oriTopPeerAnchorPtri),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                     concatNode->GetName().c_str(), outputNode->GetName().c_str()),
-             return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              concatNode->GetName().c_str(), outputNode->GetName().c_str()),
+                      return FAILED);
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sppNode),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "remove spp node failed"), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove spp node failed"), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "SPPPass success!!!!");
 
@@ -333,4 +338,4 @@ Status SPPPass::Fusion(ge::ComputeGraph &graph,
 }
 
 REGISTER_PASS("SPPPass", BUILT_IN_GRAPH_PASS, SPPPass);
-}
+}  // namespace fe

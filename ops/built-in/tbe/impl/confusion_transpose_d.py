@@ -1,29 +1,25 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 confusion_transpose_d
 """
-from __future__ import absolute_import
-
-from topi.cce import util
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from impl.transpose_d import transpose_d
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
 
 SIZE_SIXTEEN = 16
 
@@ -453,7 +449,7 @@ def _division_sixteen(shape):
 
 
 def _condition(x, perm, shape, transpose_first):
-    shape_x = util.scalar2tensor_one(x.get("ori_shape"))
+    shape_x = shape_util.scalar2tensor_one(x.get("ori_shape"))
 
     if transpose_first:
         shape_reshapein = _shape_after_transpose(shape_x, perm)
@@ -496,76 +492,84 @@ def op_select_format(x, y, perm, shape, transpose_first,
 
     if condition:
         # NZ+ND
-        input0 = gen_param(classify="input0", name="x",
-                           datatype="float16,float,int8,int16,int32,int64,"
-                                    "uint8,uint16,uint32,uint64,"
-                                    "float16,float,int8,int16,int32,int64,"
-                                    "uint8,uint16,uint32,uint64",
-                           format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
-                                  "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
-                                  "FRACTAL_NZ,FRACTAL_NZ,"
-                                  "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
-        output0 = gen_param(classify="output0", name="y",
-                            datatype="float16,float,int8,int16,int32,int64,"
-                                     "uint8,uint16,uint32,uint64,"
-                                     "float16,float,int8,int16,int32,int64,"
-                                     "uint8,uint16,uint32,uint64",
-                            format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
-                                   "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
-                                   "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
-                                   "FRACTAL_NZ,"
-                                   "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype="float16,float,int8,int16,int32,int64,"
+                                                        "uint8,uint16,uint32,uint64,"
+                                                        "float16,float,int8,int16,int32,int64,"
+                                                        "uint8,uint16,uint32,uint64",
+                                               format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
+                                                      "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
+                                                      "FRACTAL_NZ,FRACTAL_NZ,"
+                                                      "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float,int8,int16,int32,int64,"
+                                                         "uint8,uint16,uint32,uint64,"
+                                                         "float16,float,int8,int16,int32,int64,"
+                                                         "uint8,uint16,uint32,uint64",
+                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
+                                                       "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
+                                                       "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
+                                                       "FRACTAL_NZ,"
+                                                       "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
     else:
         # ND+ND
-        input0 = gen_param(classify="input0", name="x",
-                           datatype="float16,float,int8,int16,int32,int64,"
-                                    "uint8,uint16,uint32,uint64",
-                           format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
-        output0 = gen_param(classify="output0", name="y",
-                            datatype="float16,float,int8,int16,int32,int64,"
-                                     "uint8,uint16,uint32,uint64",
-                            format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype="float16,float,int8,int16,int32,int64,"
+                                                        "uint8,uint16,uint32,uint64",
+                                               format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float,int8,int16,int32,int64,"
+                                                         "uint8,uint16,uint32,uint64",
+                                                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
 
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
 
 # pylint: disable=too-many-boolean-expressions
-def _is_bert_case(y, perm, shape, transpose_first):
-    "check if it is case of bert"
+def _is_matmul_fusion_case(y, perm, shape, transpose_first):
+    "check if it is case of fusion with matmul"
     if isinstance(y, dict) and\
             (isinstance(perm, (list, tuple))) and \
             (isinstance(shape, (list, tuple))) and \
-            not transpose_first and \
             tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
-        if (list(y.get("shape")) == [128, 16, 4, 8, 16, 16] and
-                list(perm) == [0, 2, 1, 3] and list(shape) == [128, 128, 16, 64]) or \
-                (list(y.get("shape")) == [160, 16, 4, 8, 16, 16] and
-                 list(perm) == [0, 2, 1, 3] and list(shape) == [160, 128, 16, 64]) or \
-                (list(y.get("shape")) == [16, 16, 4, 32, 16, 16] and
-                 list(perm) == [0, 2, 1, 3] and list(shape) == [16, 512, 16, 64]) or \
-                (list(y.get("shape")) == [24, 16, 4, 32, 16, 16] and
-                 list(perm) == [0, 2, 1, 3] and list(shape) == [24, 512, 16, 64]):
-            return True
+        if not transpose_first:
+            if (list(y.get("shape")) == [128, 16, 4, 8, 16, 16] and
+                    list(perm) == [0, 2, 1, 3] and list(shape) == [128, 128, 16, 64]) or \
+                    (list(y.get("shape")) == [160, 16, 4, 8, 16, 16] and
+                     list(perm) == [0, 2, 1, 3] and list(shape) == [160, 128, 16, 64]) or \
+                    (list(y.get("shape")) == [16, 16, 4, 32, 16, 16] and
+                     list(perm) == [0, 2, 1, 3] and list(shape) == [16, 512, 16, 64]) or \
+                    (list(y.get("shape")) == [24, 16, 4, 32, 16, 16] and
+                     list(perm) == [0, 2, 1, 3] and list(shape) == [24, 512, 16, 64]):
+                return True
+        else:
+            if (list(y.get("shape")) == [64, 1280, 16, 16] and
+                    list(perm) == [0, 2, 1, 3] and list(shape) == [20480, 1024]) or \
+                   (list(y.get("shape")) == [64, 768, 16, 16] and
+                    list(perm) == [0, 2, 1, 3] and list(shape) == [12288, 1024]) or \
+                   (list(y.get("shape")) == [64, 1024, 16, 16] and
+                    list(perm) == [0, 2, 1, 3] and list(shape) == [16384, 1024]):
+                return True
 
     return False
 
 
-@fusion_manager.register("confusion_transpose_d")
+@tbe_platform.fusion_manager.fusion_manager.register("confusion_transpose_d")
 def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
                                   kernel_name="confusion_transpose_d"):
     "compute for matmul + confusion_transpose_d fusion"
-    if _is_bert_case(y, perm, shape, transpose_first):
+    if _is_matmul_fusion_case(y, perm, shape, transpose_first):
         setattr(x, "matmul_with_transpose", True)
     else:
-        raise RuntimeError("This case does not support fusion now.")
+        raise RuntimeError("This case does not support fusion with matmul now.")
 
     return x
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
-                 REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def confusion_transpose_d(x, y, perm, shape, transpose_first,
                           kernel_name="confusion_transpose_d"):
     """
@@ -597,11 +601,11 @@ def confusion_transpose_d(x, y, perm, shape, transpose_first,
     input_format = x.get("format")
     input_ori_format = x.get("ori_format")
 
-    check_shape(input_shape, param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
 
     check_list = ("int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="x")
+    para_check.check_dtype(input_dtype, check_list, param_name="x")
 
     if input_format == "FRACTAL_NZ":
         nd_shape = []
@@ -630,4 +634,4 @@ def confusion_transpose_d(x, y, perm, shape, transpose_first,
               "format": input_format, "ori_format": input_ori_format,
               "dtype": input_dtype}
     transpose_d(x, x_dict, perm, kernel_name)
-    fusion_manager.set_current_op_pattern("confusiontranspose")
+    tbe_platform.fusion_manager.fusion_manager.set_current_op_pattern("confusiontranspose")

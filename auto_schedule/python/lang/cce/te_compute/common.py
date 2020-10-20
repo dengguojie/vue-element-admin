@@ -1,29 +1,38 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2020 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+common
 """
 from __future__ import absolute_import
 from te import tvm
 from te.platform import intrinsic_check_support
 import te.platform.cce_params as cce_params
 from .depthwise_conv2d_compute import DepthwiseConv2dParam
-from .elewise_compute import vadds, vmuls, vmax, vmin, vabs, vmul, vrec
+from .elewise_compute import vadds
+from .elewise_compute import vmuls
+from .elewise_compute import vmax
+from .elewise_compute import vmin
+from .elewise_compute import vabs
+from .elewise_compute import vmul
+from .elewise_compute import vrec
 from .broadcast_compute import broadcast
 # pylint: disable=redefined-builtin
-from .cast_compute import _cast, floor, round, round_d
+from .cast_compute import _cast
+from .cast_compute import floor
+from .cast_compute import round
+from .cast_compute import round_d
 from .util import check_input_tensor_shape
 from .util import DTYPE_MAP
 
@@ -178,7 +187,7 @@ def img2col(input_img,
         pad_top, _, pad_left, pad_right = pad
 
         output_w = (fmap_w.value + pad_left + pad_right - filter_w) \
-                   // stride_w + 1
+            // stride_w + 1
 
         img_n_index = col_n
         img_c1_index = col_c1
@@ -226,7 +235,7 @@ def img2col_with_block_pad(img_tensor, filter_h, filter_w, output_h, output_w,
     col = img2col(img_tensor, col_shape, filter_h, filter_w, pad, stride)
 
     output_hw_pad = (output_hw + BLOCK_SIZE - 1) \
-                    // BLOCK_SIZE * BLOCK_SIZE
+        // BLOCK_SIZE * BLOCK_SIZE
     col_pad_shape = (img_shape[0], output_hw_pad, img_shape[1], filter_h,
                      filter_w, img_shape[4])
     col_pad = tvm.compute(
@@ -267,7 +276,7 @@ def im2col_6d(input_img,
         pad_top, _, pad_left, pad_right = pad
 
         output_w = (fmap_w.value + pad_left + pad_right - filter_w) \
-                   // stride_w + 1
+            // stride_w + 1
 
         img_n_index = col_n
         img_c1_index = col_c1
@@ -279,7 +288,7 @@ def im2col_6d(input_img,
         input_memory_type = DepthwiseConv2dParam.fusion_para.get(
             "input_memory_type")
         offset_w = slice_offset[2] if (
-                slice_offset and input_memory_type == 1) else 0
+            slice_offset and input_memory_type == 1) else 0
         if sixd_flag == 1:
             return tvm.select(
                 tvm.any(img_h_index < pad_top,
@@ -291,18 +300,17 @@ def im2col_6d(input_img,
                           img_h_index - pad_top + offset_w,
                           img_w_index - pad_left,
                           img_c0_index))
-        else:
-            return tvm.select(
-                tvm.any(img_h_index < pad_top,
-                        img_h_index > fmap_h.value + pad_top - 1,
-                        img_w_index < pad_left,
-                        img_w_index > fmap_w.value + pad_left - 1),
-                tvm.const(padding_value, input_img.dtype),
-                input_img(img_n_index,
-                          col_cg,
-                          img_h_index - pad_top + offset_w,
-                          img_w_index - pad_left,
-                          img_c0_index))
+        return tvm.select(
+            tvm.any(img_h_index < pad_top,
+                    img_h_index > fmap_h.value + pad_top - 1,
+                    img_w_index < pad_left,
+                    img_w_index > fmap_w.value + pad_left - 1),
+            tvm.const(padding_value, input_img.dtype),
+            input_img(img_n_index,
+                      col_cg,
+                      img_h_index - pad_top + offset_w,
+                      img_w_index - pad_left,
+                      img_c0_index))
 
     return tvm.compute(
         col_shape,
@@ -388,7 +396,7 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
         tag='im2col_fractal')
 
 
-def mad(mad_shape, in_a, in_b, res_type):
+def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
     """
     mad
     """
@@ -404,12 +412,13 @@ def mad(mad_shape, in_a, in_b, res_type):
         crmode = 'f162f16'
     else:
         crmode = 'f162f32'
+    offset_x = offset_x if v200_flag else 0
     return tvm.compute(
         mad_shape,
-        lambda n, cg, j1, i, j0: tvm.sum(in_a[
-            n, cg, i // BLOCK_SIZE, r_k1, i % BLOCK_SIZE, r_k0].astype(
+        lambda n, cg, j1, i, j0: tvm.sum((in_a[
+            n, cg, i // BLOCK_SIZE, r_k1, i % BLOCK_SIZE, r_k0] - offset_x).astype(
                 res_type) * in_b[cg, r_k1, j1, j0, r_k0].astype(res_type),
-                                         axis=[r_k1, r_k0]),
+            axis=[r_k1, r_k0]),
         name='mad',
         tag='gemm',
         attrs={'mode': crmode})

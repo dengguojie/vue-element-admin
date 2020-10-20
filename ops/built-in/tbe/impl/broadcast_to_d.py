@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 broadcast_to_d
 
   Op_description :
@@ -34,27 +32,20 @@ broadcast_to_d
     [1] All : `shape` must be an 1-D 'int' tensor.
     [2] All : shape size limit is 2147483648.
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 NUM_ONE = 1
 
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("broadcast_to_d")
-def broadcast_to_compute(x,
-                         y,
-                         shape,
-                         kernel_name='broadcast_to_d'):
+@tbe_platform.fusion_manager.fusion_manager.register("broadcast_to_d")
+def broadcast_to_compute(x, y, shape, kernel_name='broadcast_to_d'):
     """
     Process broadcast_to operator.
 
@@ -72,32 +63,31 @@ def broadcast_to_compute(x,
     -------
     output_tensor : tensor after broadcast_to.
     """
-
     dtype = x.dtype
     shape_in = x.shape
 
-    # te.lang.cce.broadcast supports float16, float32, int32.
+    # tbe.broadcast supports float16, float32, int32.
     # so convert int8, uint8 to float16
     if dtype in ('int8', 'uint8'):
-        x = te.lang.cce.cast_to(x, 'float16')
+        x = tbe.cast_to(x, 'float16')
 
-    python_shape_in = [int(x) for x in shape_in]
+    python_shape_in = shape_util.shape_to_list(shape_in)
     if list(python_shape_in) == list(shape):
         if dtype == "int32":
-            # te.lang.cce.vmuls supports float16, float32. int8, uint8, int32 will
+            # tbe.vmuls supports float16, float32. int8, uint8, int32 will
             # be converted to float16. This will cause the data to be truncated.
-            # so use te.lang.cce.vmul.
+            # so use tbe.vmul.
             value_one = tvm.const(NUM_ONE, dtype=dtype)
-            value_one_tensor = te.lang.cce.broadcast(value_one, shape)
-            output_tensor = te.lang.cce.vmul(x, value_one_tensor)
+            value_one_tensor = tbe.broadcast(value_one, shape)
+            output_tensor = tbe.vmul(x, value_one_tensor)
         else:
-            output_tensor = te.lang.cce.vmuls(x, NUM_ONE)
+            output_tensor = tbe.vmuls(x, NUM_ONE)
     else:
-        output_tensor = te.lang.cce.broadcast(x, shape, dtype)
+        output_tensor = tbe.broadcast(x, shape, dtype)
 
     # convert float16 back to int8, uint8
     if dtype in ('int8', 'uint8'):
-        return te.lang.cce.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
+        return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
 
     return output_tensor
 
@@ -118,21 +108,23 @@ def _check_shape_compatibility(shape_in, shape):
     """
 
     try:
-        comp_shape_in, comp_shape, shape_max = broadcast_shapes(
+        comp_shape_in, comp_shape, shape_max = shape_util.broadcast_shapes(
             shape_in, shape, param_name_input1="x", param_name_input2="shape")
         if comp_shape != shape_max:
-            raise ValueError('shape_in is not compatible with shape_out.')
+            error_detail = "shape_in is not compatible with shape_out"
+            error_manager_vector.raise_err_two_input_shape_invalid("broadcast_to_d", "shape_in", "shape_out",
+                                                                   error_detail)
     except RuntimeError:
-        raise ValueError('shape_in is not compatible with shape_out.')
+        error_detail = "shape_in is not compatible with shape_out"
+        error_manager_vector.raise_err_two_input_shape_invalid("broadcast_to_d", "shape_in", "shape_out",
+                                                               error_detail)
 
     return comp_shape_in
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
-def broadcast_to_d(x,
-                   y,
-                   shape,
-                   kernel_name="broadcast_to_d"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
+def broadcast_to_d(x, y, shape, kernel_name="broadcast_to_d"):
     """
     Broadcast an array for a compatible shape.
 
@@ -150,25 +142,21 @@ def broadcast_to_d(x,
     -------
     None
     """
-
-
+    inp_dtype = x.get('dtype').lower()
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
-    dtype = x.get('dtype')
-    check_dtype(dtype, check_list, param_name="x")
-    inp_dtype = dtype.lower()
+    para_check.check_dtype(inp_dtype, check_list, param_name="x")
 
-    shape_in = x.get('shape')
-    check_shape(shape_in, param_name="x")
-    check_shape(shape, param_name="shape")
+    shape_x = x.get('shape')
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape, param_name="shape")
 
-    compatible_shape_in = _check_shape_compatibility(shape_in, shape)
+    compatible_shape_in = _check_shape_compatibility(shape_x, shape)
 
-    var = tvm.placeholder(compatible_shape_in, inp_dtype, name='data_input')
+    var = tvm.placeholder(compatible_shape_in, inp_dtype, name='data_x')
 
+    res = broadcast_to_compute(var, y, shape, kernel_name)
     with tvm.target.cce():
-        res = broadcast_to_compute(var, y, shape, kernel_name)
-
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name, "tensor_list": [var, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

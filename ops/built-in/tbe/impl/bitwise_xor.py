@@ -1,31 +1,29 @@
-﻿#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bitwise_xor
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals
-@fusion_manager.register("bitwise_xor")
+@tbe_platform.fusion_manager.fusion_manager.register("bitwise_xor")
 def bitwise_xor_compute(x1, x2, y, kernel_name="bitwise_xor"):
     """
     calculating data's bitwise xor
@@ -46,25 +44,26 @@ def bitwise_xor_compute(x1, x2, y, kernel_name="bitwise_xor"):
     -------
     result : y of the data's bitwise xor
     """
-    shape_x = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(x2.shape)
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
-                                                   shape_y,
-                                                   param_name_input1="x1",
-                                                   param_name_input2="x2")
+    shape_x = tbe.util.shape_to_list(x1.shape)
+    shape_y = tbe.util.shape_to_list(x2.shape)
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                              shape_y,
+                                                              param_name_input1="x1",
+                                                              param_name_input2="x2")
 
-    data_x = te.lang.cce.broadcast(x1, shape_max)
-    data_y = te.lang.cce.broadcast(x2, shape_max)
+    data_x = tbe.broadcast(x1, shape_max)
+    data_y = tbe.broadcast(x2, shape_max)
 
-    data_and = te.lang.cce.vand(data_x, data_y)
-    data_not = te.lang.cce.vnot(data_and)
-    data_or = te.lang.cce.vor(data_x, data_y)
-    result = te.lang.cce.vand(data_or, data_not)
+    data_and = tbe.vand(data_x, data_y)
+    data_not = tbe.vnot(data_and)
+    data_or = tbe.vor(data_x, data_y)
+    result = tbe.vand(data_or, data_not)
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     """
     algorithm: bitwise_xor
@@ -89,21 +88,21 @@ def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     dtype_x = x1.get("dtype").lower()
     dtype_y = x2.get("dtype").lower()
 
-    check_shape(shape_x, param_name="x1")
-    check_shape(shape_y, param_name="x2")
+    para_check.check_shape(shape_x, param_name="x1")
+    para_check.check_shape(shape_y, param_name="x2")
 
     check_tuple = ("int16", "uint16", "int32")
     input_data_type = dtype_x.lower()
-    check_dtype(input_data_type, check_tuple, param_name="x1")
+    para_check.check_dtype(input_data_type, check_tuple, param_name="x1")
 
     if dtype_x != dtype_y:
         raise RuntimeError("two input type must be the same")
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
-                                                   shape_y,
-                                                   param_name_input1="x1",
-                                                   param_name_input2="x2")
-    shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                              shape_y,
+                                                              param_name_input1="x1",
+                                                              param_name_input2="x2")
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
     if input_data_type == "int32":
         input_data_type = "int16"
@@ -116,9 +115,9 @@ def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     result = bitwise_xor_compute(data_x, data_y, y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {
         "name": kernel_name,
         "tensor_list": [data_x, data_y, result]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

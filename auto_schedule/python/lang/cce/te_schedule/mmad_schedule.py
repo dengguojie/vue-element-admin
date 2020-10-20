@@ -1,22 +1,23 @@
-#!/usr/bin/env python # pylint: disable=import-error, too-many-lines
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 mmad schedule
 """
 from __future__ import absolute_import
 from math import ceil
+
 import te.platform.cce_params as cce
 import te.platform.cce_conf as conf
 from te.platform.cce_conf import CceProductParams as pver
@@ -26,7 +27,8 @@ from te.platform import cce_emitinsn_params
 import tvm
 from . import util
 
-DTYPE_WIDTH_MAP = {"float16": 1,
+DTYPE_WIDTH_MAP = {"uint64": 4,
+                   "float16": 1,
                    "float32": 2,
                    "int32": 2,
                    "int16": 1,
@@ -35,6 +37,12 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "uint8": 0.5,
                    "bool": 0.5}
 
+# need to process when cal width
+DEQ_SCALE_CHILD_LIST = [
+    "dequant",
+    "dequant_scale",
+    "dequant_sqrt",
+]
 
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     """
@@ -70,7 +78,7 @@ def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
             "input block param should not be less than 0: actual (block_m, "
             "block_n, block_k) = (%d, %d, %d)" % (block_m, block_n, block_k))
     if ((block_m % 16 != 0) or (block_n % 16 != 0) or (
-                    block_k % 16 != 0)) and block_m != 1 and block_n != 1:
+            block_k % 16 != 0)) and block_m != 1 and block_n != 1:
         raise RuntimeError(
             "input shape block_m or block_k or block_n should be multiple of "
             "16: actual (block_m, block_k, block_n) = (%d, %d, %d)" %
@@ -88,11 +96,45 @@ def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
             "(block_ml, block_nl, block_kl) = (%d, %d, %d)" %
             (block_ml, block_nl, block_kl))
     if ((block_ml % 16 != 0) or (block_nl % 16 != 0) or (
-                    block_kl % 16 != 0)) and block_ml != 1 and block_nl != 1:
+            block_kl % 16 != 0)) and block_ml != 1 and block_nl != 1:
         raise RuntimeError(
             "input shape block_ml or block_kl or block_nl should be multiple "
             "of 16: actual (block_ml, block_kl, block_nl) = (%d, %d, %d)" %
             (block_ml, block_kl, block_nl))
+
+
+def _add_res_ub(dequant_activation_tensor, res, sch):
+    """
+    add res_ub tensor to dequant_activation_tensor.
+    """
+    for tensor in dequant_activation_tensor:
+        if tensor == res:
+            res_ub = sch.cache_write(res, cce.scope_ubuf)
+            dequant_activation_tensor.remove(tensor)
+            dequant_activation_tensor.append(res_ub)
+
+
+def _get_header_tensor_in_dequant_ew_fusion(dequant_activation_tensor,
+                                            placeholder_tensors, sch):
+    """
+    add header_ub tensor to dequant_activation_tensor.
+    """
+    header_set = set(placeholder_tensors)
+    header_ub_tensors = list()
+    comm_2_elwt = dict()
+    for ten_i in dequant_activation_tensor:
+        common_tensors = header_set & set(ten_i.op.input_tensors)
+        for common_tensor in common_tensors:
+            if common_tensor in comm_2_elwt:
+                comm_2_elwt[common_tensor].append(ten_i)
+            else:
+                comm_2_elwt[common_tensor] = [ten_i]
+    for common_tensor, ten_in_list in comm_2_elwt.items():
+        common_tensor_ub = sch.cache_read(
+            common_tensor, cce.scope_ubuf, ten_in_list)
+        header_ub_tensors.append(common_tensor_ub)
+    dequant_activation_tensor += header_ub_tensors
+    return header_ub_tensors
 
 
 def _shape_to_list(shape):
@@ -113,7 +155,7 @@ def get_special_l0_factor(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     k_shape = src_shape[1]
     n_shape = src_shape[2]
     if m_shape * n_shape * k_shape == m_l0_shape * n_l0_shape * k_l0_shape and \
-                    m_l0_shape != 1:
+            m_l0_shape != 1:
         m_l0_shape = int((m_l0_shape // 2))
         if int((m_l0_shape % 16)) != 0:
             m_l0_shape = int((m_l0_shape + 15) // 16 * 16)
@@ -152,10 +194,10 @@ def get_batch_factors(tensor_a_shape,  # pylint: disable=too-many-arguments
         block_in = cce.BLOCK_IN
         block_out = cce.BLOCK_OUT
         if m_shape != 1:
-            core_inner_m = (((m_shape + block_in - 1) // block_in + \
+            core_inner_m = (((m_shape + block_in - 1) // block_in +
                              (m_factors - 1)) // m_factors) * block_in
         if n_nparts_mode:
-            core_inner_n = (((n_shape + block_out - 1) // block_out + \
+            core_inner_n = (((n_shape + block_out - 1) // block_out +
                              (n_factors - 1)) // n_factors) * block_out
         else:
             # in quant fsuion factor mode, n_factors means each block
@@ -169,30 +211,42 @@ def get_shape_map():
     """
     the knowledge of matmul schedule tiling
     """
-    shape_map = {(1664, 4096, 1024, 2): "176_320_176_176_80_176_2_2",
-                 (1664, 4096, 1024, 4): "176_320_176_176_80_176_2_2",
-                 (1664, 1024, 4096, 2): "240_512_128_240_64_128_2_2",
-                 (1664, 1024, 4096, 8): "240_512_64_240_64_64_2_2",
-                 (1664, 16, 1024, 2):"832_16_128_832_16_32_1_2",
-                 (1664, 1024, 1024, 2): "240_512_128_240_64_128_2_2",
-                 (1664, 1024, 1024, 4): "240_512_128_240_64_128_2_2",
-                 (832, 4096, 1024, 2): "176_320_176_176_80_176_2_2",
-                 (832, 4096, 1024, 4): "176_320_176_176_80_176_2_2",
-                 (832, 1024, 4096, 2): "240_512_128_240_64_128_2_2",
-                 (832, 1024, 4096, 8): "240_512_64_240_64_64_2_2",
-                 (832, 1024, 1024, 2): "240_512_128_240_64_128_2_2",
-                 (832, 1024, 1024, 4): "240_512_128_240_64_128_2_2",
-                 (832, 16, 1024, 2): "832_16_128_832_16_32_1_2",
-                 (1280, 16, 768, 2): "640_16_192_640_16_48_1_2",
-                 (1280, 768, 768, 2): "336_384_96_336_48_96_2_2",
-                 (320, 64, 320, 2): "320_64_192_320_48_96_1_2",
-                 (1280, 768, 3072, 2): "336_384_96_336_48_96_2_2",
-                 (1280, 16, 768, 2): "640_16_192_640_16_48_1_2",
-                 (320, 64, 320, 2): "320_64_192_320_48_96_1_2",
-                 (1280, 768, 768, 4): "320_384_96_320_48_96_2_2"
+    shape_map = {(1664, 4096, 1024, -1, 2): "176_320_176_176_80_176_2_2",
+                 (1664, 4096, 1024, -1, 4): "176_320_176_176_80_176_2_2",
+                 (1664, 1024, 4096, -1, 2): "240_512_128_240_64_128_2_2",
+                 (1664, 1024, 4096, -1, 8): "240_512_64_240_64_64_2_2",
+                 (1664, 16, 1024, -1, 2): "832_16_128_832_16_32_1_2",
+                 (1664, 1024, 1024, -1, 2): "240_512_128_240_64_128_2_2",
+                 (1664, 1024, 1024, -1, 4): "240_512_128_240_64_128_2_2",
+                 (832, 4096, 1024, -1, 2): "176_320_176_176_80_176_2_2",
+                 (832, 4096, 1024, -1, 4): "176_320_176_176_80_176_2_2",
+                 (832, 1024, 4096, -1, 2): "240_512_128_240_64_128_2_2",
+                 (832, 1024, 4096, -1, 8): "240_512_64_240_64_64_2_2",
+                 (832, 1024, 1024, -1, 2): "240_512_128_240_64_128_2_2",
+                 (832, 1024, 1024, -1, 4): "240_512_128_240_64_128_2_2",
+                 (832, 16, 1024, -1, 2): "832_16_128_832_16_32_1_2",
+                 (1280, 16, 768, -1, 2): "640_16_192_640_16_48_1_2",
+                 (1280, 768, 768, -1, 2): "336_384_96_336_48_96_2_2",
+                 (320, 64, 320, -1, 2): "320_64_192_320_48_96_1_2",
+                 (1280, 768, 3072, -1, 2): "336_384_96_336_48_96_2_2",
+                 (1280, 16, 768, -1, 2): "640_16_192_640_16_48_1_2",
+                 (320, 64, 320, -1, 2): "320_64_192_320_48_96_1_2",
+                 (1280, 768, 768, -1, 4): "320_384_96_320_48_96_2_2",
+                 (16, -1, 4096, 0, 2): "16_16_1024_16_16_1024_2_2"
                  }
 
     return shape_map
+
+
+def get_mini_frac_shape_map():
+    """
+    the knowledge of matmul schedule tiling
+    """
+    shape_map = {(304, -1, 4096, -1, 2): "304_80_192_304_80_192_2_2"
+                 }
+
+    return shape_map
+
 
 def get_l1fusion_device_core_num(is_l1fusion):
     """
@@ -205,6 +259,19 @@ def get_l1fusion_device_core_num(is_l1fusion):
     else:
         device_core_num = conf.getValue("Device_core_num")
     return device_core_num
+
+
+def _get_ub_res_byte(_get_out_tensors_width, dequant_activation_tensor,
+                    fusion_ele, res, ub_res_byte):
+    """
+    计算ub的复用情况.
+    """
+    if fusion_ele or dequant_activation_tensor:
+        width = _get_out_tensors_width(res)
+        if ub_res_byte < width * 2:
+            ub_res_byte = width * 2
+    return ub_res_byte
+
 
 def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
                          n_shape, k_shape, l1_fusion_type):
@@ -234,19 +301,11 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
     m_factor = 1
     n_factor = 1
 
-    exp = 1
-    if core_num == 32:
-        # the exp for 32, 2^(6-1)
-        exp = 6
-    elif core_num == 2:
-        # the exp for 2, 2^(2-1)
-        exp = 2
-    elif core_num == 8:
-        # the exp for 2, 2^(2-1)
-        exp = 4
-
-    for i in (2 ** e for e in range(0, exp)):
+    for i in range(1, core_num+1):
         # judge cur_factor
+        if core_num % i != 0:
+            continue
+
         cur_m_factor = i
         cur_n_factor = core_num // i
         if cur_m_factor > m_axis_outer or (m_axis_outer // cur_m_factor) == 0:
@@ -255,7 +314,7 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
             continue
 
         cur_copy_size = cur_n_factor * tensor_a_size + cur_m_factor * \
-                                                       tensor_b_size
+            tensor_b_size
         temp_m_shape = m_shape
         temp_n_shape = n_shape
         if m_axis_outer % m_factor != 0:
@@ -267,7 +326,7 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
                             cur_n_factor) * frac_size
 
         cur_copy_size = cur_n_factor * (temp_m_shape * k_shape) + \
-                        cur_m_factor * (temp_n_shape * k_shape)
+            cur_m_factor * (temp_n_shape * k_shape)
         if cur_copy_size < min_copy_size:
             min_copy_size = cur_copy_size
             m_factor = cur_m_factor
@@ -302,14 +361,37 @@ def is_lhisi_cs_version():
     return False
 
 
-def get_knowledge_tiling(shape_map, shape_tiling_args, is_b_nz, tiling_shape):
+def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
     """
     get knowledge tiling for matmul schedule
     """
+    m_shape, k_shape, n_shape, b_trans, ub_res_byte = shape_tiling_args
+    b_trans_val = -1
+    if b_trans is not None:
+        b_trans_val = 1 if b_trans else 0
+    shape_args = (m_shape, k_shape, n_shape, b_trans_val, ub_res_byte)
+
+    shape_map = {}
     mini_core = check_mini_core_num()
-    if is_b_nz and mini_core:
-        if shape_map.get(shape_tiling_args) is not None:
-            tiling_shape = shape_map[shape_tiling_args]
+    if mini_core:
+        if is_b_nz:
+            shape_map = get_shape_map()
+        else:
+            shape_map = get_mini_frac_shape_map()
+    if shape_map.get(shape_args) is not None:
+        tiling_shape = shape_map[shape_args]
+    else:
+        shape_args = (m_shape, k_shape, n_shape, -1, ub_res_byte)
+        if shape_map.get(shape_args) is not None:
+            tiling_shape = shape_map[shape_args]
+        else:
+            shape_args = (m_shape, -1, n_shape, b_trans_val, ub_res_byte)
+            if shape_map.get(shape_args) is not None:
+                tiling_shape = shape_map[shape_args]
+            else:
+                shape_args = (m_shape, -1, n_shape, -1, ub_res_byte)
+                if shape_map.get(shape_args) is not None:
+                    tiling_shape = shape_map[shape_args]
 
     return tiling_shape
 
@@ -360,8 +442,8 @@ def get_tensor_c_axis(is_fractal_a, is_fractal_b, tensor_a_reuse_local,
             tensor_c_l1_reuse_axis_outter = l1_n_outer
             tensor_c_l1_reuse_axis_inner = l1_m_outer
     else:
-        tensor_c_l1_reuse_axis_outter = l1_n_outer
-        tensor_c_l1_reuse_axis_inner = l1_m_outer
+        tensor_c_l1_reuse_axis_outter = l1_m_outer
+        tensor_c_l1_reuse_axis_inner = l1_n_outer
 
     return tensor_c_l1_reuse_axis_outter, tensor_c_l1_reuse_axis_inner
 
@@ -387,8 +469,8 @@ def get_res_axis(tensor_a_reuse_local, tensor_b_reuse_local, m_outer, n_outer):
 
 def allocate_axis(sch, batch_double, double_once, tensor_a_reuse_local,
                   tensor_b_reuse_local, tensor_a_l1, tensor_b_l1,
-                  tensor_c, res, n_outer,
-                  m_outer, l1_k_outer, in_addr_type, input_l1_flag, l1_fusion_and_l1_size_0):  # pylint: too-many-arguments
+                  tensor_c, res, n_outer, m_outer, l1_k_outer, in_addr_type,
+                  input_l1_flag, l1_fusion_and_l1_size_0):  # pylint: too-many-arguments
     """
     allocate_axis_for tensor_a and tensor_b
     """
@@ -415,7 +497,7 @@ def allocate_axis(sch, batch_double, double_once, tensor_a_reuse_local,
                 sch[tensor_a_l1].allocate_at(sch[res], n_outer, run_once_axes=[n_outer])
                 sch[tensor_a_l1].mem_unique()
 
-        def  _tensor_b_l1_allocate2():
+        def _tensor_b_l1_allocate2():
             if tensor_b_reuse_local != 0:
                 sch[tensor_b_l1].allocate_at(sch[res], m_outer, run_once_axes=[m_outer])
                 sch[tensor_b_l1].mem_unique()
@@ -437,7 +519,7 @@ def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
     tensor_b = 0
 
     size = get_soc_spec("L1_SIZE") // dtype_byte // 2
-    n_max_num = ((core_inner_n + n_l1_shape - 1)// n_l1_shape) * n_l1_shape
+    n_max_num = ((core_inner_n + n_l1_shape - 1) // n_l1_shape) * n_l1_shape
 
     m_max_num = ((core_inner_m + m_l1_shape - 1) // m_l1_shape) * m_l1_shape
     if k_shape >= size:
@@ -532,13 +614,14 @@ def check_placeholders_shared(fusion_ele, tensor_a, tensor_b,
     if tensor_a in in_out_tensor_map:
         for ten_i in in_out_tensor_map[tensor_a]:
             if ten_i not in matmul_tensors:
-                raise RuntimeError("matmul placeholders can't be shared " \
+                raise RuntimeError("matmul placeholders can't be shared "
                                    "with elementwise op")
     if tensor_b in in_out_tensor_map:
         for ten_i in in_out_tensor_map[tensor_b]:
             if ten_i not in matmul_tensors:
-                raise RuntimeError("matmul placeholders can't be shared "\
+                raise RuntimeError("matmul placeholders can't be shared "
                                    "with elementwise op")
+
 
 def get_output_format(tensor):
     """
@@ -585,69 +668,27 @@ def get_weigths_and_compress_index(tensors):
     return b_l1, comp_index
 
 
-def get_compress_block_info(tight_mode, # pylint: disable=too-many-locals
-                            tensor_w, core_shape_n, tile_k, tile_n):
+def get_compress_block_info(tight_mode,  # pylint: disable=too-many-locals
+                            tensor_w, tile_k, tile_n):
     """
     get weigths compress info, like, block size, index size
     """
     block_size_max = 32 * 1024
     block_unit = 512
 
-    dtype = tensor_w.dtype
-    byte_unit = int(DTYPE_WIDTH_MAP[dtype] * 2)
-    all_blocks = []
-    shape_w = tensor_w.shape
-    dim_k = shape_w[0].value*shape_w[3].value
-    dim_n = (shape_w[1].value*shape_w[2].value)
-    k_shape = shape_w[3].value
-    n_shape = shape_w[2].value
-
-    all_blocks.append(tile_k * tile_n * block_unit)
-    all_blocks.append(tile_k * k_shape * (dim_n % (tile_n * n_shape)))
-    all_blocks.append((dim_k % (tile_k * k_shape)) * tile_n * n_shape)
-    all_blocks.append((dim_k % (tile_k * k_shape)) * (dim_n % (tile_n * n_shape)))
-
-    n_blocks = []
-    n_blocks.append(tile_n * block_unit)
-    if dim_n % (tile_n * n_shape) != 0:
-        n_blocks.append(dim_n % (tile_n * n_shape) * k_shape)
+    data_size = tile_k * tile_n * block_unit
 
     size_max = block_size_max
-    for dim in all_blocks:
-        if 0 < dim < size_max:
-            size_max = dim
+    if 0 < data_size < size_max:
+        size_max = data_size
 
     block_size = block_unit
     for block_idx in range(size_max, 0, block_unit*(-1)):
-        flag = True
-        for block in all_blocks:
-            if block % block_idx != 0:
-                flag = False
-                break
-        for block in n_blocks:
-            if block_idx % block != 0:
-                flag = False
-                break
-        if flag or block_idx < tile_n * block_unit:
+        if data_size % block_idx == 0:
             block_size = block_idx
             break
 
-    if block_size < tile_n * block_unit:
-        block_size = 0
-        index_size = \
-            (dim_k // k_shape) * (((dim_n // n_shape) + tile_n - 1) // tile_n)
-    else:
-        total_size = byte_unit
-        for dim in shape_w:
-            total_size = total_size * dim.value
-        index_size = total_size // block_size
-
-    tight_len = 2
-    if tight_mode == 1:
-        tight_len = 8
-    index_size = index_size * tight_len
-
-    return int(block_size), int(index_size)
+    return int(block_size)
 
 
 def emit_insn_func(sche, insn_tensor, insn_axis, insn_tag):
@@ -665,9 +706,9 @@ def emit_insn_func(sche, insn_tensor, insn_axis, insn_tag):
         sche[insn_tensor].emit_insn(insn_axis, insn_tag)
 
 
-def set_compress_info(sch, # pylint: disable=R0913, R0914
+def set_compress_info(sch,  # pylint: disable=R0913, R0914
                       compress_tensor, compress_index,
-                      block_n_shape, tile_k, tile_n, out_axis):
+                      tile_k, tile_n, out_axis):
     """
     set weigths compress info
     """
@@ -681,29 +722,27 @@ def set_compress_info(sch, # pylint: disable=R0913, R0914
     dim_k = compress_tensor.shape[0].value
     dim_n = compress_tensor.shape[1].value
 
-    if tile_n < dim_n:
-        tile_mode_value = 1
-    else:
-        tile_mode_value = 0
-
     tile_k_value = compress_tensor.op.attrs["tile_L1_k"]
     tile_n_value = compress_tensor.op.attrs["tile_L1_n"]
-    tile_mode = compress_tensor.op.attrs["tile_mode"]
-    block_size_var = compress_tensor.op.attrs["block_size"]
 
-    block_size, index_size = get_compress_block_info(mode, \
-        compress_tensor, block_n_shape, tile_k, tile_n)
+    block_size = get_compress_block_info(mode,
+                                         compress_tensor, tile_k, tile_n)
 
-    sch.set_var_range(index_shape[0], int(index_size), int(index_size))
-    if block_size == 0:
-        k_value = 1
-    else:
-        k_value = block_size // (tile_n * frac_size)
+    k_value = block_size // (tile_n * frac_size)
 
     sch.set_var_range(tile_k_value, k_value, k_value)
     sch.set_var_range(tile_n_value, tile_n, tile_n)
-    sch.set_var_range(tile_mode, tile_mode_value, tile_mode_value)
-    sch.set_var_range(block_size_var, block_size, block_size)
+
+    k_block_num = (dim_k + k_value - 1) // k_value
+    n_block_num = (dim_n + tile_n - 1) // tile_n
+    index_size = k_block_num * n_block_num
+
+    tight_len = 2
+    if mode == 1:
+        tight_len = 8
+    index_size = index_size * tight_len
+
+    sch.set_var_range(index_shape[0], int(index_size), int(index_size))
 
     conflict = tvm.make.Call("int32", "tvm_tuple",
                              (block_size, index_size, mode, engine,
@@ -712,20 +751,13 @@ def set_compress_info(sch, # pylint: disable=R0913, R0914
     sch[compress_tensor].pragma(compress_tensor.op.axis[0],
                                 "json_info_compress_parameters", conflict)
     tensor_len = len(compress_tensor.shape)
-    # len-3 can make sure data continous
-    if block_size == 0:
-        # not transform data
-        sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - 3],
-                                   "unzip",
-                                   {"compress_mode": mode,
-                                    "hoist_axis": out_axis})
-    else:
-        # transform data to continue by block_size
-        sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - 4],
+    # transform data to continue by block_size
+    sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - 4],
                                    "unzip",
                                    {"compress_mode": mode,
                                     "block_size": block_size,
                                     "hoist_axis": out_axis})
+
 
 def mmad_schedule(res, sch_list):
     """
@@ -754,14 +786,13 @@ def mmad_schedule(res, sch_list):
     sch = sch_list[0]
     sqrt_flag = False
     gemv_flag = False
-    overload_flag = False
     placeholder_tensors = []  # to list placeholder type tensor
     compute_tensors = []  # to list compute type tensor
     compute_tensors_local = []
     batch_double = False
     double_once = 0
-    in_addr_type = 0 # 0:DDR;1:L1
-    out_addr_type = 0 # 0:DDR;1:L1
+    in_addr_type = 0  # 0:DDR;1:L1
+    out_addr_type = 0  # 0:DDR;1:L1
     l1_fusion_and_l1_size_0 = False
 
     def get_placeholder_tensor(tensor):
@@ -911,19 +942,17 @@ def mmad_schedule(res, sch_list):
             quant = i
             quant_fusion = True
             round_mode = i.op.attrs['round_mode']
-        if 'reform_by_vadds' in i.op.name:
-            tensor_reform_by_vadds = i
-        if 'reform_by_vmuls' in i.op.name:
-            tensor_reform_by_vmuls = i
         if 'input_ub' in i.op.name:
             tensor_input_ub = i
-        if i.op.tag == 'requant_scale':
+        if i.op.tag == 'requant_scale' or i.op.tag == 'requant_vector':
             requant_fusion = True
             requant_scale = i
         if i.op.tag == 'requant_data_transfer':
             requant_data_transfer = i
         if i.op.tag == 'matmul_gemv':
             gemv_flag = True
+    tensor_reform_by_vadds = match_and_get_tensor(compute_tensors, 'reform_by_vadds')
+    tensor_reform_by_vmuls = match_and_get_tensor(compute_tensors, 'reform_by_vmuls')
 
     do_cache_write_flag = dequant_nd_fract and not quant_fusion
     if do_cache_write_flag:
@@ -984,6 +1013,7 @@ def mmad_schedule(res, sch_list):
 
     dequant_activation_tensor = []
     compute_tensors_local = []
+
     def _get_matmul_dequant_activation_tensor():
         if dequant_tensor is None:
             return None
@@ -1003,7 +1033,9 @@ def mmad_schedule(res, sch_list):
             dequant_activation_tensor.remove(res)
         return None
     _get_matmul_dequant_activation_tensor()
-
+    _add_res_ub(dequant_activation_tensor, res, sch)
+    header_ub_tensors = _get_header_tensor_in_dequant_ew_fusion(
+        dequant_activation_tensor, placeholder_tensors, sch)
 
     def _get_reform_tensor(tensor_reform_by_vadds, tensor_reform_by_vmuls, requant_data_transfer):
         if tensor_reform_by_vadds is not None:
@@ -1071,7 +1103,6 @@ def mmad_schedule(res, sch_list):
     l1_fusion_and_l1_size_0 = \
         _get_l1_fusion_and_l1_size_0_flag(tensor_b, l1_fusion_type)
 
-
     if is_with_bias:
         tensor_c_add_bias = tensor_c_ub.op.input_tensors[0]
         tensor_bias_l0c = tensor_c_add_bias.op.input_tensors[0]
@@ -1104,15 +1135,23 @@ def mmad_schedule(res, sch_list):
         is_gemv = True
 
     def _fc_tensor_a_l1_inline():
+        inline_flag = False
         if ((in_addr_type == 1 or input_l1_flag == 1) and is_fractal_a) or \
                 l1_fusion_and_l1_size_0:
             sch[tensor_a_l1].compute_inline()
-    _fc_tensor_a_l1_inline()
+            inline_flag = True
+        return inline_flag
+
+    a_l1_inline_flag = _fc_tensor_a_l1_inline()
 
     def _fc_tensor_b_l1_inline():
+        inline_flag = False
         if l1_fusion_and_l1_size_0 and is_fractal_b:
             sch[tensor_b_l1].compute_inline()
-    _fc_tensor_b_l1_inline()
+            inline_flag = True
+        return inline_flag
+
+    b_l1_inline_flag = _fc_tensor_b_l1_inline()
 
     if matmul_end_tensor.op.tag == 'matmul_gemv' or gemv_flag:
         block_in = cce.BLOCK_VECTOR
@@ -1153,6 +1192,7 @@ def mmad_schedule(res, sch_list):
     date_transfer_fusion = quant_fusion or requant_fusion
     # matmul + quant ub fusion, it need to ensure that the number of
     # fractal blocks processed by each core is even
+
     def _is_used_nparts_mode(date_transfer_fusion, n_factors):
         if not date_transfer_fusion:
             return True, n_factors
@@ -1180,7 +1220,7 @@ def mmad_schedule(res, sch_list):
     batch, core_inner_m, core_inner_n = get_batch_factors(
         tensor_a_shape, tensor_a_l0a, tensor_b_l0b, m_var, n_var, is_gemv,
         n_nparts_mode)
-
+    cce_emitinsn_params.cceEmitParamsIns.insert_param("batch", batch)
     m_factors, n_factors = get_refresh_core_factors(m_factors, n_factors, batch)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_m_blk",
                                                       m_factors)
@@ -1222,9 +1262,14 @@ def mmad_schedule(res, sch_list):
                         if all_out and (tens not in visited_list):  # pylint: disable=W0640
                             visited_list.append(tens)  # pylint: disable=W0640
                             stack.remove(tens)  # pylint: disable=W0640
-                            for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
-                                if in_ten not in stack and in_ten != matmul_end_tensor:
-                                    stack.append(in_ten)
+                            # the shape of deq_scale is very small
+                            if tens.op.tag not in DEQ_SCALE_CHILD_LIST:
+                                for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
+                                    if in_ten not in stack and \
+                                            in_ten != matmul_end_tensor:
+                                        stack.append(in_ten)
+                            else:
+                                stack.append(tens.op.input_tensors[0])
                             width_local = 0
                             cast_flag = False
                             for ele in stack:
@@ -1287,9 +1332,9 @@ def mmad_schedule(res, sch_list):
     a_ub_byte = get_scope_byte_size(tensor_a_ub, tensor_a_ub_fract)
     b_ub_byte = get_scope_byte_size(tensor_b_ub, tensor_b_ub_fract)
     ub_res_byte = get_scope_byte_size(tensor_c_ub, tensor_c_ub_fract)
-    if fusion_ele:
-        width = _get_out_tensors_width(res)
-        ub_res_byte = ub_res_byte * width
+    ub_res_byte = _get_ub_res_byte(_get_out_tensors_width,
+                                   dequant_activation_tensor, fusion_ele, res,
+                                   ub_res_byte)
 
     if is_gemv:
         tmp = a_ub_byte  # pylint: disable=R1712
@@ -1319,9 +1364,18 @@ def mmad_schedule(res, sch_list):
                                     ub_res_byte, ub_reserve_buff,
                                     n_cut_even, is_b_nz)
 
-    shape_map = get_shape_map()
-    shape_tiling_args = (m_shape, k_shape, n_shape, ub_res_byte)
-    tiling_shape = get_knowledge_tiling(shape_map, shape_tiling_args, is_b_nz, tiling_shape)
+    def get_tensor_trans_info(tensor_in):
+        """
+        get tensor transform info
+        """
+        b_trans = None
+        if 'trans_b' in tensor_in.op.attrs:
+            b_trans = tensor_in.op.attrs['trans_b'].value
+        return b_trans
+
+    b_trans = get_tensor_trans_info(tensor_b)
+    shape_tiling_args = (m_shape, k_shape, n_shape, b_trans, ub_res_byte)
+    tiling_shape = get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape)
 
     if tiling_shape.find('_') == -1:
         raise RuntimeError(tiling_shape)
@@ -1344,11 +1398,11 @@ def mmad_schedule(res, sch_list):
     n_l1_shape = n_l0_shape
 
     tensor_a_reuse, \
-    tensor_b_reuse, \
-    batch_double, \
-    double_once = get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
-                                   m_l1_shape, k_l1_shape, n_l1_shape,
-                                   l1a_byte)
+        tensor_b_reuse, \
+        batch_double, \
+        double_once = get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
+                                       m_l1_shape, k_l1_shape, n_l1_shape,
+                                       l1a_byte)
 
     def _get_m_l1_double_buffer(m_l1_shape, m_shape, k_l1_shape, k_shape):
         if m_l1_shape == m_shape and k_l1_shape == k_shape:
@@ -1429,22 +1483,10 @@ def mmad_schedule(res, sch_list):
         """
         set all tensors buffer scope
         """
-        def __tensor_a_l1_set_scope():
-            if in_addr_type == 1:
-                set_tensor_scope(tensor_a, cce.scope_cbuf_fusion)
-                if not is_fractal_a and not l1_fusion_and_l1_size_0:
-                    set_tensor_scope(tensor_a_l1, cce.scope_cbuf)
-
-            if in_addr_type != 1 and not l1_fusion_and_l1_size_0:
-                set_tensor_scope(tensor_a_l1, cce.scope_cbuf)
-
-        __tensor_a_l1_set_scope()
-
-        def __tensor_b_l1_set_scope():
-            if not l1_fusion_and_l1_size_0:
-                set_tensor_scope(tensor_b_l1, cce.scope_cbuf)
-
-        __tensor_b_l1_set_scope()
+        if in_addr_type == 1:
+            set_tensor_scope(tensor_a, cce.scope_cbuf_fusion)
+        set_tensor_scope(tensor_a_l1, cce.scope_cbuf)
+        set_tensor_scope(tensor_b_l1, cce.scope_cbuf)
 
         def __res_set_scope():
             if out_addr_type == 1:
@@ -1480,7 +1522,7 @@ def mmad_schedule(res, sch_list):
         gm_ub = None
         ele_header_ub_tensors = []
         if not fusion_ele:
-            return gm_ub, ele_header_ub_tensors
+            return gm_ub, ele_header_ub_tensors, dict()
         in_out_tensor_map = {}
         _gen_in_out_tensor_map(res, in_out_tensor_map)
         # multi output fusion with elementwise
@@ -1497,18 +1539,39 @@ def mmad_schedule(res, sch_list):
                 tensor_ele_ub.append(ele_ub)
                 ele_header_ub_tensors.append(ele_ub)
 
-        for ten_i in elemwise_tensors:
-            ele_ub = sch.cache_write(ten_i, cce.scope_ubuf)
-            tensor_ele_ub.append(ele_ub)
-            sch[ten_i].compute_inline()
+        axpy_2_parent = _get_elewise_ub_tensors(tensor_ele_ub)
+
 
         elemwise_tensors.clear()
         for ten_i in tensor_ele_ub:
             elemwise_tensors.append(ten_i)
 
-        return gm_ub, ele_header_ub_tensors
+        return gm_ub, ele_header_ub_tensors, axpy_2_parent
 
-    gm_ub, ele_header_ub_tensors = set_scope_buffer_type(placeholder_tensors)
+    def _get_elewise_ub_tensors(tensor_ele_ub):
+        """
+        get axpy_ub to axpy_parents[1]_ub dict, in order to set reused_by.
+        """
+        axpy_and_parent = list()
+        for ten_i in elemwise_tensors:
+            if "elewise_binary_scalar_axpy" in ten_i.op.tag:
+                axpy_and_parent.append([ten_i, ten_i.op.input_tensors[1]])
+
+        for ten_i in elemwise_tensors:
+            ele_ub = sch.cache_write(ten_i, cce.scope_ubuf)
+            for index, (axpy, parent) in enumerate(axpy_and_parent):
+                if ten_i == axpy:
+                    axpy_and_parent[index][0] = ele_ub
+                if ten_i == parent:
+                    axpy_and_parent[index][1] = ele_ub
+            tensor_ele_ub.append(ele_ub)
+            sch[ten_i].compute_inline()
+        if axpy_and_parent:
+            return dict(axpy_and_parent)
+        return dict()
+
+    gm_ub, ele_header_ub_tensors, axpy_2_parent = \
+        set_scope_buffer_type(placeholder_tensors)
 
     def set_tensor_buffer_align(gm_pattern):
         """
@@ -1609,7 +1672,6 @@ def mmad_schedule(res, sch_list):
                                                   nparts=batch_factor)
         thread_block = tvm.thread_axis("blockIdx.x")
         sch[res].bind(batch_outer, thread_block)
-        overload_flag = True
 
     emit_insn_map = {"elewise_single_cast": "vector_conv",
                      "elewise_single_round_d": "vector_conv_round",
@@ -1650,7 +1712,7 @@ def mmad_schedule(res, sch_list):
                      "elewise_multiple_madd": "vector_multiple",
                      "elewise_multiple_maddrelu": "vector_multiple",
                      "elewise_multiple_sel": "vector_select_bool",
-                     "elewise_binary_scalar_axpy": "vector_multiple",
+                     "elewise_binary_scalar_axpy": "vector_axpy",
                      "elewise_binary_cmpsel": "vector_cmpsel",
                      "broadcast": "vector_dup",
                      "emit_insn_elewise_multiple_sel": "elewise_multiple_sel",
@@ -1749,22 +1811,30 @@ def mmad_schedule(res, sch_list):
         if axis_block is not None:
             sch[c_ub].compute_at(sch[res], axis_block)
 
+        dequant_emit_axis, deq_scale_mode = (1, "vector") \
+            if "vector" in dequant_tensor.op.tag else (0, "scalar")
         if pver().is_1951_version() or is_lhisi_cs_version():
-            sch[dequant_tensor].emit_insn(dequant_tensor.op.axis[0],
-                                          'dma_copy')
+            sch[dequant_tensor].emit_insn(
+                dequant_tensor.op.axis[dequant_emit_axis], 'dma_copy')
         else:
-            sch[dequant_tensor].pragma(dequant_tensor.op.axis[0],
-                                       'deq_scale', 'scalar')
+            sch[dequant_tensor].pragma(
+                dequant_tensor.op.axis[dequant_emit_axis], 'deq_scale',
+                deq_scale_mode)
             if sqrt_flag:
                 sch[tensor_sqrt].emit_insn(tensor_sqrt.op.axis[0],
                                            'vector_auto')
         sch[tensor_c_ub].compute_inline()
         sch[tensor_c_gm].compute_inline()
-        if quant_fusion:
-            if dequant_nz is not None:
-                sch[dequant_nz].compute_inline()
-            if dequant_nd is not None:
-                sch[dequant_nd].compute_inline()
+        _compute_inline_dequant_output()
+
+    def _compute_inline_dequant_output():
+        """
+        compute inline dequant output tensor when dequant is not the last op.
+        """
+        if dequant_nz is not None and res != dequant_nz:
+            sch[dequant_nz].compute_inline()
+        if dequant_nd is not None and res != dequant_nd:
+            sch[dequant_nd].compute_inline()
 
     def _quant_fusion_proc():
         sch[tensor_input_ub].compute_inline()
@@ -1796,7 +1866,54 @@ def mmad_schedule(res, sch_list):
                 emit_insn_str = "vector_conv"
         return emit_insn_str
 
-    def schedule_l1_mkn_l0_k_tiling(overload_flag):
+    def split_c_ub_tensor(c_ub_tensor, block_value, factor_value, tile_value):
+        """
+        split c ub tensor and return emit insn axis
+        """
+        if c_ub_tensor is None:
+            return None
+
+        block_in, block_out = block_value
+        m_factor, n_factor = factor_value
+        m_tile, n_tile = tile_value
+
+        ten_len = len(c_ub_tensor.shape)
+
+        m_outer, m_inner = sch[c_ub_tensor].split(
+            c_ub_tensor.op.axis[ten_len - 2], factor=block_in)
+        n_outer, n_inner = sch[c_ub_tensor].split(
+            c_ub_tensor.op.axis[ten_len - 1], factor=block_out)
+
+        m_outer_group = sch[c_ub_tensor].split(m_outer, factor=m_factor)
+        n_outer_group = sch[c_ub_tensor].split(n_outer, factor=n_factor)
+
+        l0_m_outer, l0_m_inner = sch[c_ub_tensor].split(
+            m_outer_group[1], factor=m_tile)
+        l0_n_outer, l0_n_inner = sch[c_ub_tensor].split(
+            n_outer_group[1], factor=n_tile)
+        sch[c_ub_tensor].reorder(m_outer_group[0], n_outer_group[0],
+                                 l0_m_outer, l0_n_outer,
+                                 l0_n_inner, l0_m_inner,
+                                 m_inner, n_inner)
+        return l0_n_inner
+
+    def get_block_split_factor(tensor_out, n_nparts_mode, m_factors, n_factors):
+        if len(tensor_out.shape) < 4:
+            raise RuntimeError(
+                "res shape error, should be >= 4, curr is ", tensor_out.shape)
+        m_factor = (tensor_out.shape[-3].value + m_factors - 1) // m_factors
+        m_cnt = m_factors
+        n_cnt = 0
+        if n_nparts_mode:
+            n_factor = (tensor_out.shape[-4].value + n_factors - 1) // n_factors
+            n_cnt = n_factors
+        else:
+            n_factor = n_factors
+            n_cnt = (tensor_out.shape[-4].value + n_factor - 1) // n_factor
+
+        return m_factor, n_factor, m_cnt, n_cnt
+
+    def schedule_l1_mkn_l0_k_tiling():
         """
         CUT73 schedule method
         """
@@ -1817,29 +1934,6 @@ def mmad_schedule(res, sch_list):
         l0_k_outer, l0_k_inner = sch[tensor_c].split(l1_k_inner,
                                                      factor=k_l0_tile)
 
-
-        def get_k_outer_factor(compress_tensor,
-                               k_l1_tile, n_l0_tile, k_l0_tile, ub_flag):
-            """
-            split k outer for compress function, not split while no compress
-            """
-            if compress_tensor is None or ub_flag:
-                return 1
-
-            # 128KB used for lhisi ES chip compress performance
-            total_size = 128 * 1024
-            frac_size = 512
-            k_factor = total_size // n_l0_tile // k_l0_tile // frac_size
-
-            return k_factor
-
-        a_b_ub_flag = (tensor_a_ub is not None) or (tensor_b_ub is not None)
-        k1_factor = get_k_outer_factor(compress_index, k_l1_tile,
-                                       n_l0_tile, k_l0_tile, a_b_ub_flag)
-
-        l1_k_outer_o, l1_k_outer_i = sch[tensor_c].split(l1_k_outer,
-                                                         factor=k1_factor)
-
         # |---gm_n---|     |--------gm_n-------|
         # nGM, mGM, kGM, n_l1_tile, m_l1_tile, k_l1_tile, n_l0_tile,
         # |------------------Nz--------------------|
@@ -1853,30 +1947,30 @@ def mmad_schedule(res, sch_list):
         tensor_c_l1_reuse_axis_outter = l1_n_outer
         tensor_c_l1_reuse_axis_inner = l1_m_outer
         tensor_c_l1_reuse_axis_outter, \
-        tensor_c_l1_reuse_axis_inner = get_tensor_c_axis(is_fractal_a, is_fractal_b,
-                                                         tensor_a_reuse_local,
-                                                         tensor_b_reuse_local,
-                                                         l1_n_outer, l1_m_outer)
+            tensor_c_l1_reuse_axis_inner = get_tensor_c_axis(is_fractal_a, is_fractal_b,
+                                                             tensor_a_reuse_local,
+                                                             tensor_b_reuse_local,
+                                                             l1_n_outer, l1_m_outer)
 
         sch[tensor_c].reorder(tensor_c_l1_reuse_axis_outter,
                               tensor_c_l1_reuse_axis_inner,
-                              l1_k_outer_o, l1_k_outer_i,
-                              l0_n_outer, l0_m_outer, l0_k_outer,
+                              l1_k_outer,
+                              l0_m_outer, l0_n_outer, l0_k_outer,
                               l0_n_inner, l0_m_inner,
                               tensor_c.op.axis[tensor_len_c - 2],
                               tensor_c.op.axis[tensor_len_c - 1],
                               l0_k_inner, tensor_c.op.reduce_axis[1])
 
         if tensor_a_ub is not None:
-            sch[tensor_a_ub].compute_at(sch[tensor_c], l1_k_outer_o)
+            sch[tensor_a_ub].compute_at(sch[tensor_c], l1_k_outer)
         if tensor_b_ub is not None:
-            sch[tensor_b_ub].compute_at(sch[tensor_c], l1_k_outer_o)
+            sch[tensor_b_ub].compute_at(sch[tensor_c], l1_k_outer)
 
         def _do_tensor_ub_fract():
             if tensor_a_ub_fract is not None:
-                sch[tensor_a_ub_fract].compute_at(sch[tensor_c], l1_k_outer_o)
+                sch[tensor_a_ub_fract].compute_at(sch[tensor_c], l1_k_outer)
             if tensor_b_ub_fract is not None:
-                sch[tensor_b_ub_fract].compute_at(sch[tensor_c], l1_k_outer_o)
+                sch[tensor_b_ub_fract].compute_at(sch[tensor_c], l1_k_outer)
 
         _do_tensor_ub_fract()
 
@@ -1887,18 +1981,14 @@ def mmad_schedule(res, sch_list):
         axis_block = batch_outer
         res_ub = None
         gm_instn = None
-        block_n_shape = None
         index_at_axis = None
 
         if is_fractal_a and is_fractal_b:
-            def sche_l1_mkn_l0_k_frac_frac(overload_flag):
+            def sche_l1_mkn_l0_k_frac_frac():
                 """
                 fractail schedule config
                 """
                 axis_block = batch_outer
-                factor_max = n_l1_tile
-                inner_factor_m = m_l1_tile
-                inner_factor_n = fusion_n_l1_tile
                 res_ub = None
                 if fusion_ele:
                     if gm_ub is None:
@@ -1906,82 +1996,53 @@ def mmad_schedule(res, sch_list):
                     res_ub = sch.cache_write(res, cce.scope_ubuf)
                     elemwise_tensors.append(res_ub)
 
-                    def get_inner_factor(res, tensor_c_gm, m_tile, n_tile, n_parts_value):
-                        """
-                        calcute L0C to UB split factor
-                        """
-                        # deal with width and cube size
-                        width = _get_out_tensors_width(res)
-                        un_max = get_soc_spec("UB_SIZE")
-                        gm_width = DTYPE_WIDTH_MAP[tensor_c_gm.dtype] * 2
-                        cube_size = block_in * block_out * gm_width
-                        width = width // DTYPE_WIDTH_MAP[tensor_c_gm.dtype]
-
-                        cube_size = cube_size * m_tile
-                        factor_max = un_max // 2 // cube_size // width
-                        factor_n = n_tile
-                        factor_m = m_tile
-                        if factor_max == 0:
-                            factor_n = n_tile
-                            factor_m = 1
-                        elif factor_max < n_tile:
-                            factor_n = 1
-                            if (res.shape[tensor_len_c - 4].value) % n_parts_value == 0:
-                                n_value = (res.shape[tensor_len_c - 4].value) // n_parts_value
-                                if n_value % n_tile == 0:
-                                    for idx in range(1, n_tile):
-                                        if n_tile % idx == 0 and \
-                                                                factor_n < idx < (factor_max + 1):
-                                            factor_n = idx
-                            factor_n = factor_max
-                        return factor_max, factor_m, factor_n
-
-                    factor_max, inner_factor_m, inner_factor_n = \
-                        get_inner_factor(res, tensor_c_gm, m_l1_tile, n_l1_tile, n_factors)
-                    _check_fusion_split_tail(inner_factor_m, m_l1_tile,
-                                             inner_factor_n, n_l1_tile)
+                m_factor, n_factor, m_part_cnt, n_part_cnt = get_block_split_factor(
+                    res, n_nparts_mode, m_factors, n_factors)
 
                 m_outer_group = sch[res].split(
-                    res.op.axis[tensor_len_c - 3], nparts=m_factors)
-                if n_nparts_mode:
-                    n_outer_group = sch[res].split(
-                        res.op.axis[tensor_len_c - 4], nparts=n_factors)
-                else:
-                    n_outer_group = sch[res].split(
-                        res.op.axis[tensor_len_c - 4], factor=n_factors)
+                    res.op.axis[tensor_len_c - 3], factor=m_factor)
+                n_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 4], factor=n_factor)
 
                 n_outer, n_inner = sch[res].split(n_outer_group[1],
                                                   factor=fusion_n_l1_tile)
                 m_outer, m_inner = sch[res].split(m_outer_group[1],
                                                   factor=m_l1_tile)
-                index_at_axis = m_outer
+                index_at_axis = m_outer if m_l1_tile * 2 < m_factor else -1
+
                 tensor_a_reuse_local = tensor_a_reuse
                 tensor_b_reuse_local = tensor_b_reuse
                 l1_reuse_axis_outter = n_outer
                 l1_reuse_axis_inner = m_outer
 
                 l1_reuse_axis_outter, \
-                l1_reuse_axis_inner = get_res_axis(tensor_a_reuse_local,
-                                                   tensor_b_reuse_local,
-                                                   m_outer, n_outer)
+                    l1_reuse_axis_inner = get_res_axis(tensor_a_reuse_local,
+                                                       tensor_b_reuse_local,
+                                                       m_outer, n_outer)
 
-                if factor_max == 0:
-                    # axit m is too large, need to split inner m
-                    n_inner_outer, n_inner_inner = sch[res].split(n_inner, factor=inner_factor_n)
-                    m_inner_outer, m_inner_inner = sch[res].split(m_inner, factor=inner_factor_m)
-                    sch[res].reorder(n_outer_group[0], m_outer_group[0],
-                                     n_outer, m_outer,
-                                     m_inner_outer, n_inner_outer,
-                                     n_inner_inner, m_inner_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
+                fuse_list = []
+                if m_part_cnt > n_part_cnt:
+                    fuse_list.append(n_outer_group[0])
+                    fuse_list.append(m_outer_group[0])
                 else:
-                    n_inner_outer, n_inner_inner = sch[res].split(n_inner, factor=inner_factor_n)
-                    sch[res].reorder(n_outer_group[0], m_outer_group[0],
-                                     l1_reuse_axis_outter, l1_reuse_axis_inner,
-                                     n_inner_outer, n_inner_inner, m_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
+                    fuse_list.append(m_outer_group[0])
+                    fuse_list.append(n_outer_group[0])
+
+                sch[res].reorder(*fuse_list,
+                                 l1_reuse_axis_outter, l1_reuse_axis_inner,
+                                 n_inner, m_inner,
+                                 res.op.axis[tensor_len_c - 2],
+                                 res.op.axis[tensor_len_c - 1])
+
+                if axis_block is None:
+                    axis_block = sch[res].fuse(*fuse_list)
+                if axis_block is not None:
+                    thread_block = tvm.thread_axis("blockIdx.x")
+                    sch[res].bind(axis_block, thread_block)
+
+                overload_flag = False
+                if n_part_cnt > 1:
+                    overload_flag = True
 
                 gm_n_inner = None
                 if gm_ub is not None:
@@ -1996,19 +2057,13 @@ def mmad_schedule(res, sch_list):
                                              tensor_c_gm.op.axis[tensor_len_c - 1])
 
                 c_at_axis = l1_reuse_axis_inner
-                c_ub_at_axis = n_inner_outer
-                res_insn_axis = n_inner_inner
+                c_ub_at_axis = l1_reuse_axis_inner
+                res_insn_axis = n_inner
 
                 sch[tensor_c].compute_at(sch[res], c_at_axis)
 
-                def __fc_compute_at():
-                    if in_addr_type == 1:
-                        sch[tensor_a].compute_at(sch[tensor_c], l1_k_outer_o)
-                    else:
-                        if not l1_fusion_and_l1_size_0 and input_l1_flag != 1:
-                            sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer_o)
-
-                __fc_compute_at()
+                if not a_l1_inline_flag:
+                    sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer)
 
                 allocate_axis(sch, batch_double, double_once,
                               tensor_a_reuse_local,
@@ -2016,7 +2071,7 @@ def mmad_schedule(res, sch_list):
                               tensor_a_l1, tensor_b_l1,
                               tensor_c, res,
                               n_outer, m_outer,
-                              l1_k_outer_o, in_addr_type,
+                              l1_k_outer, in_addr_type,
                               input_l1_flag, l1_fusion_and_l1_size_0)
 
                 def _do_frac_bias_compurt_at():
@@ -2031,50 +2086,20 @@ def mmad_schedule(res, sch_list):
                             sch[tensor_bias_ub].double_buffer()
                 _do_frac_bias_compurt_at()
 
-                def __overload_op(overload_flag):
-                    if n_factors * m_factors > 1:
-                        overload_flag = True
-                    return overload_flag
+                def _do_allocate_at(axis_nmk):
+                    a_overload = axis_nmk
+                    if repeat_a and not a_l1_inline_flag:
+                        a_overload = False
+                        sch[tensor_a_l1].allocate_at(
+                            sch[tensor_c], l1_m_outer, run_once_axes=[n_outer])
+                    if repeat_b and not b_l1_inline_flag:
+                        sch[tensor_b_l1].allocate_at(
+                            sch[tensor_c], l1_n_outer, run_once_axes=[m_outer])
+                    return a_overload
 
-                # multi kernel axis must be > 1
-                if axis_block is None:
-                    # modify there
-                    def _do_allocate_at():
-                        if repeat_a:
-                            if in_addr_type == 0 and \
-                                    not l1_fusion_and_l1_size_0 and \
-                                    input_l1_flag != 1:
-                                sch[tensor_a_l1].allocate_at(sch[tensor_c], l1_m_outer,
-                                                             run_once_axes=[n_outer])
-                        if repeat_b and not l1_fusion_and_l1_size_0:
-                            sch[tensor_b_l1].allocate_at(
-                                sch[tensor_c], l1_n_outer,
-                                run_once_axes=[m_outer])
-
-                    _do_allocate_at()
-
-                    fuse_list = []
-                    fuse_list.append(n_outer_group[0])
-                    fuse_list.append(m_outer_group[0])
-                    axis_block = sch[res].fuse(*fuse_list)
-
-                    def _do_multi_core(overload_flag):
-                        if axis_block is not None:
-                            overload_flag = __overload_op(overload_flag)
-                            thread_block = tvm.thread_axis("blockIdx.x")
-                            sch[res].bind(axis_block, thread_block)
-                        return overload_flag
-
-                    overload_flag = _do_multi_core(overload_flag)
-
-                def __overload_op_agine(overload_flag):
-                    if not overload_flag:
-                        if tensor_c.shape[tensor_len_c - 4].value // n_l1_tile > 1 or \
-                                        n_l1_tile > 1:
-                            overload_flag = True
-                    return overload_flag
-
-                overload_flag = __overload_op_agine(overload_flag)
+                axis_nmk = l1_reuse_axis_outter == n_outer
+                a_overload = _do_allocate_at(axis_nmk)
+                overload_flag = overload_flag or a_overload
 
                 def _do_fusion_compute_at(tensor_c_ub):
                     if tensor_c_ub is not None:
@@ -2103,46 +2128,34 @@ def mmad_schedule(res, sch_list):
                     sch[tensor_c_gm].compute_at(sch[res], c_ub_at_axis)
                     sch[tensor_c_ub].reused_by(gm_ub)
 
-                return axis_block, res_ub, res_insn_axis, gm_n_inner, overload_flag, index_at_axis
+                set_overload_flag(overload_flag, sch[res], res_insn_axis)
 
-            axis_block, res_ub, res_insn_axis, gm_instn, overload_flag, index_at_axis = \
-                sche_l1_mkn_l0_k_frac_frac(overload_flag)
-            set_overload_flag(overload_flag, sch[res], res_insn_axis)
+                return axis_block, res_ub, res_insn_axis, gm_n_inner, index_at_axis
 
-            block_n_shape = core_inner_n
+            axis_block, res_ub, res_insn_axis, gm_instn, index_at_axis = \
+                sche_l1_mkn_l0_k_frac_frac()
 
         else:
-            def _tensor_l1_comput_at():
-                if not l1_fusion_and_l1_size_0:
-                    sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer_o)
-                    sch[tensor_b_l1].compute_at(sch[tensor_c], l1_k_outer_o)
+            if not a_l1_inline_flag:
+                sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer)
+            if not b_l1_inline_flag:
+                sch[tensor_b_l1].compute_at(sch[tensor_c], l1_k_outer)
 
-            _tensor_l1_comput_at()
-
-            factor_max = n_l1_tile
-            inner_factor_m = m_l1_tile
-            inner_factor_n = fusion_n_l1_tile
             if fusion_ele:
                 sch[tensor_c_gm].compute_inline()
                 res_ub = sch.cache_write(res, cce.scope_ubuf)
                 elemwise_tensors.append(res_ub)
 
-                factor_max, inner_factor_m, inner_factor_n = get_inner_factor(
-                    res, tensor_c_gm, m_l1_tile, n_l1_tile, n_factors)
-                _check_fusion_split_tail(inner_factor_m, m_l1_tile,
-                                         inner_factor_n, n_l1_tile)
-
             res_len = len(res.shape)
+            m_factor, n_factor, m_part_cnt, n_part_cnt = get_block_split_factor(
+                tensor_c, n_nparts_mode, m_factors, n_factors)
             if format_out == "FRACTAL_NZ":
-                if n_nparts_mode:
-                    n_outer_group = sch[res].split(
-                        res.op.axis[tensor_len_c - 4], nparts=n_factors)
-                else:
-                    n_outer_group = sch[res].split(
-                        res.op.axis[tensor_len_c - 4], factor=n_factors)
 
-                m_outer_group = sch[res].split(res.op.axis[tensor_len_c - 3],
-                                               nparts=m_factors)
+                m_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 3], factor=m_factor)
+                n_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 4], factor=n_factor)
+
                 m_outer, m_inner = sch[res].split(m_outer_group[1],
                                                   factor=m_l1_tile)
                 n_outer, n_inner = sch[res].split(n_outer_group[1],
@@ -2154,83 +2167,49 @@ def mmad_schedule(res, sch_list):
                 c_ub_n_outer, c_ub_n_inner = sch[res].split(
                     res.op.axis[res_len - 1], factor=block_out)
 
-                m_outer_group = sch[res].split(c_ub_m_outer, nparts=m_factors)
-                n_outer_group = sch[res].split(c_ub_n_outer, nparts=n_factors)
+                m_outer_group = sch[res].split(c_ub_m_outer, factor=m_factor)
+                n_outer_group = sch[res].split(c_ub_n_outer, factor=n_factor)
 
                 m_outer, m_inner = sch[res].split(m_outer_group[1],
                                                   factor=m_l1_tile)
                 n_outer, n_inner = sch[res].split(n_outer_group[1],
                                                   factor=n_l1_tile)
-            index_at_axis = m_outer
+            index_at_axis = m_outer if m_l1_tile * 2 < m_factor else -1
 
-            if tensor_c_ub_fract is not None:
-                c_ub_fract_m_outer, c_ub_fract_m_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        tensor_c_ub_fract.op.axis[res_len - 2], factor=block_in)
-                c_ub_fract_n_outer, c_ub_fract_n_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        tensor_c_ub_fract.op.axis[res_len - 1],
-                        factor=block_out)
-
-            block_n_shape = core_inner_n
-            m_inner_inner = None
-            block_value = []
-            if factor_max == 0:
-                # axit m is too large, need to split inner m
-                n_inner_outer, n_inner_inner = sch[res].split(
-                    n_inner, factor=inner_factor_n)
-                m_inner_outer, m_inner_inner = sch[res].split(
-                    m_inner, factor=inner_factor_m)
-                if format_out == "FRACTAL_NZ":
-                    sch[res].reorder(n_outer_group[0], m_outer_group[0],
-                                     n_outer, m_outer,
-                                     m_inner_outer, n_inner_outer,
-                                     n_inner_inner, m_inner_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
-                    block_value.append(n_outer_group[0])
-                    block_value.append(m_outer_group[0])
-                else:
-                    sch[res].reorder(m_outer_group[0], n_outer_group[0],
-                                     m_outer, n_outer,
-                                     m_inner_outer, n_inner_outer,
-                                     m_inner_inner, n_inner_inner,
-                                     c_ub_m_inner, c_ub_n_inner)
-                    block_value.append(m_outer_group[0])
-                    block_value.append(n_outer_group[0])
+            fuse_list = []
+            if m_part_cnt > n_part_cnt:
+                fuse_list.append(n_outer_group[0])
+                fuse_list.append(m_outer_group[0])
             else:
-                n_inner_outer, n_inner_inner = sch[res].split(
-                    n_inner, factor=inner_factor_n)
-                if format_out == "FRACTAL_NZ":
-                    sch[res].reorder(n_outer_group[0], m_outer_group[0],
-                                     m_outer, n_outer,  n_inner_outer,
-                                     n_inner_inner, m_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
-                    block_value.append(n_outer_group[0])
-                    block_value.append(m_outer_group[0])
-                else:
-                    sch[res].reorder(m_outer_group[0], n_outer_group[0],
-                                     m_outer, n_outer, n_inner_outer,
-                                     m_inner, n_inner_inner,
-                                     c_ub_m_inner, c_ub_n_inner)
-                    block_value.append(m_outer_group[0])
-                    block_value.append(n_outer_group[0])
-
-            c_at_axis = n_outer
-            c_ub_at_axis = n_inner_outer
-
-            def _get_res_insn_axis(factor_max, m_inner_inner, m_inner):
-                if factor_max == 0:
-                    return m_inner_inner
-                return m_inner
+                fuse_list.append(m_outer_group[0])
+                fuse_list.append(n_outer_group[0])
 
             if format_out == "FRACTAL_NZ":
-                res_insn_axis = _get_res_insn_axis(factor_max, n_inner_inner,
-                                                   n_inner_inner)
+                sch[res].reorder(*fuse_list,
+                                 m_outer, n_outer,
+                                 n_inner, m_inner,
+                                 res.op.axis[tensor_len_c - 2],
+                                 res.op.axis[tensor_len_c - 1])
             else:
-                res_insn_axis = _get_res_insn_axis(factor_max, m_inner_inner,
-                                                   m_inner)
+                sch[res].reorder(*fuse_list,
+                                 m_outer, n_outer,
+                                 n_inner, m_inner,
+                                 c_ub_m_inner, c_ub_n_inner)
+
+            overload_flag = False
+            if n_part_cnt > 1:
+                overload_flag = True
+
+            # multi kernel axis must be > 1
+            if axis_block is None:
+                axis_block = sch[res].fuse(*fuse_list)
+            if axis_block is not None:
+                thread_block = tvm.thread_axis("blockIdx.x")
+                sch[res].bind(axis_block, thread_block)
+
+            c_at_axis = n_outer
+            c_ub_at_axis = n_outer
+            res_insn_axis = n_inner
 
             sch[tensor_c].compute_at(sch[res], c_at_axis)
 
@@ -2245,21 +2224,12 @@ def mmad_schedule(res, sch_list):
                         sch[tensor_bias_ub].preload()
                         sch[tensor_bias_ub].double_buffer()
             _do_nd_bias_compurt_at()
-            if tensor_c_ub_fract is not None:
-                fract_m_outer, fract_m_inner = sch[tensor_c_ub_fract].split(
-                    c_ub_fract_m_outer, factor=m_l1_tile)
-                fract_n_outer, fract_n_inner = sch[tensor_c_ub_fract].split(
-                    c_ub_fract_n_outer, factor=n_l1_tile)
-                sch[tensor_c_ub_fract].reorder(fract_m_outer, fract_n_outer,
-                                               fract_m_inner, fract_n_inner,
-                                               c_ub_fract_m_inner,
-                                               c_ub_fract_n_inner)
 
             if tensor_c_ub_fract is not None:
                 sch[tensor_c_ub_fract].compute_at(sch[res], c_ub_at_axis)
 
-            def _do_fusion_compute_at(tensor_c_ub, c_ub_at_axis):
-                if tensor_c_ub is not None:
+            def _do_fusion_compute_at(quant_flag, tensor_c_ub, c_ub_at_axis):
+                if not quant_flag:
                     sch[tensor_c_ub].compute_at(sch[res], c_ub_at_axis)
                 for ten_in in elemwise_tensors:
                     sch[ten_in].compute_at(sch[res], c_ub_at_axis)
@@ -2276,53 +2246,42 @@ def mmad_schedule(res, sch_list):
                     sch[requant_data_transfer].compute_at(sch[res],
                                                           c_ub_at_axis)
 
-            update_tensor_c_ub = \
-                _update_compute_at_tensor_c_ub(tensor_c_ub)
-            _do_fusion_compute_at(update_tensor_c_ub, c_ub_at_axis)
+            quant_fusion = requant_fusion or dequant_fusion
+            _do_fusion_compute_at(quant_fusion, tensor_c_ub, c_ub_at_axis)
 
-            # multi kernel axis must be > 1
-            if axis_block is None:
-                overload_flag = True
-                axis_block = sch[res].fuse(*block_value)
-                thread_block = tvm.thread_axis("blockIdx.x")
-                sch[res].bind(axis_block, thread_block)
-
-            def __overload_op(overload_flag):
-                if not overload_flag:
-                    if tensor_c.shape[tensor_len_c - 4].value // n_l1_tile > 1 or \
-                                    n_l1_tile > 1:
-                        overload_flag = True
-                return overload_flag
-
-            overload_flag = __overload_op(overload_flag)
             set_overload_flag(overload_flag, sch[res], res_insn_axis)
 
-        sch[tensor_a_l0a].emit_insn(tensor_a_l0a.op.axis[l0_tensor_len_a - 4],
-                                    'dma_copy')
-        sch[tensor_b_l0b].emit_insn(tensor_b_l0b.op.axis[l0_tensor_len_b - 4],
-                                    'dma_copy')
+        emit_insn_func(sch, tensor_a_l0a, None, 'dma_copy')
 
-        def __fm_emit_insn():
-            if not l1_fusion_and_l1_size_0:
-                if input_l1_flag == 1 and is_fractal_a:
-                    sch[tensor_a_l1].emit_insn(tensor_a_l1.op.axis[tensor_len_a - 4],
-                                               'phony_insn')
-                elif in_addr_type == 0 or not is_fractal_a:
-                    sch[tensor_a_l1].emit_insn(tensor_a_l1.op.axis[tensor_len_a - 4],
-                                               'dma_copy')
-        __fm_emit_insn()
+        in_tensor = tensor_a_l1.op.input_tensors[0]
+        scope_val = sch[in_tensor].scope
+        l1_scope_val = sch[tensor_a_l1].scope
 
-        def __tensor_b_l1_emit_insn(host_axis):
-            if not l1_fusion_and_l1_size_0:
-                if compress_index is not None:
+        if scope_val == l1_scope_val:
+            emit_insn_func(sch, tensor_a_l1, None, 'phony_insn')
+        else:
+            emit_insn_func(sch, tensor_a_l1, None, 'dma_copy')
+
+        def __tensor_weights_emit_insn(host_axis):
+            """
+            tensor_b_l1 emit insn operation for compress or not
+            """
+            if compress_index is not None:
+                if not b_l1_inline_flag:
                     set_compress_info(sch, tensor_b_l1, compress_index,
-                                      block_n_shape, k_l1_tile*k1_factor,
-                                      n_l1_tile, host_axis)
+                                      k_l1_tile, n_l1_tile, host_axis)
+                    emit_insn_func(sch, tensor_b_l0b, None, 'dma_copy')
                 else:
-                    emit_insn_func(sch, tensor_b_l1,
-                                   tensor_b_l1.op.axis[tensor_len_b - 4], 'dma_copy')
+                    tensor_b_l0b.op.attrs["tile_L1_k"] = tensor_b_l1.op.attrs["tile_L1_k"]
+                    tensor_b_l0b.op.attrs["tile_L1_n"] = tensor_b_l1.op.attrs["tile_L1_n"]
+                    set_compress_info(sch, tensor_b_l0b, compress_index,
+                                      k_l0_tile, n_l0_tile, host_axis)
+            else:
+                if not b_l1_inline_flag:
+                    emit_insn_func(sch, tensor_b_l1, None, 'dma_copy')
+                emit_insn_func(sch, tensor_b_l0b, None, 'dma_copy')
 
-        __tensor_b_l1_emit_insn(index_at_axis)
+        __tensor_weights_emit_insn(index_at_axis)
 
         def _tensor_a_l1_workspace_emit():
             if input_l1_flag == 1:
@@ -2344,7 +2303,7 @@ def mmad_schedule(res, sch_list):
         _emit_insn_fract()
 
         mad_dict = {"mad_pattern": mad_pattern,
-                    "k_outer": [l1_k_outer_o, l1_k_outer_i, l0_k_outer]}
+                    "k_outer": [l1_k_outer, l0_k_outer]}
         if is_with_bias:
             sch[tensor_bias_ub].emit_insn(tensor_bias_ub.op.axis[0],
                                           'dma_copy')
@@ -2398,9 +2357,16 @@ def mmad_schedule(res, sch_list):
 
         _choose_dma_copy(sch, res, with_transpose, res_insn_axis)
 
-        if tensor_c_ub_fract is not None:
-            emit_insn_func(sch, tensor_c_ub_fract,
-                           fract_m_outer, 'vector_auto')
+        m_factor, n_factor, _, _ = get_block_split_factor(
+            tensor_c, n_nparts_mode, m_factors, n_factors)
+
+        block_value = [block_in, block_out]
+        factor_value = [m_factor, n_factor]
+        tile_value = [m_l0_tile, n_l0_tile]
+        emit_axis = split_c_ub_tensor(
+            tensor_c_ub_fract, block_value, factor_value, tile_value)
+
+        emit_insn_func(sch, tensor_c_ub_fract, emit_axis, 'vector_auto')
 
         def dequant_activation_emit_insn_simple():
             if dequant_fusion:
@@ -2410,8 +2376,12 @@ def mmad_schedule(res, sch_list):
                         insn = emit_insn_map.get(str_list[0])
                     else:
                         insn = emit_insn_map.get(ten_in.op.tag)
+                    if ten_in in header_ub_tensors:
+                        insn = "dma_copy"
                     if insn is None:
                         insn = 'vector_auto'
+                    if "elewise_binary_scalar_axpy" in ten_in.op.tag:
+                        sch[ten_in].reused_by(ten_in.op.input_tensors[1])
                     sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
 
         def emit_insn_simple():
@@ -2428,6 +2398,9 @@ def mmad_schedule(res, sch_list):
                     sch[ten_in].emit_insn(ten_in.op.axis[2], insn)
                 else:
                     sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
+
+            for axpy, parent in axpy_2_parent.items():
+                sch[parent].reused_by(axpy)
 
             for ten_in in elemwise_tensors:
                 if ten_in.op.tag.find("|") != -1:
@@ -2451,24 +2424,18 @@ def mmad_schedule(res, sch_list):
         def open_double_buffer():
             def _open_double_buffer_for_batch_double():
                 if double_once == 0:
-                    if in_addr_type == 1 and is_fractal_a:
-                        sch[tensor_a].double_buffer()
-                    else:
-                        if not l1_fusion_and_l1_size_0 and not (is_fractal_a and input_l1_flag == 1):
-                            sch[tensor_a_l1].double_buffer()
-                    if not l1_fusion_and_l1_size_0:
+                    if not a_l1_inline_flag:
+                        sch[tensor_a_l1].double_buffer()
+                    if not b_l1_inline_flag:
                         sch[tensor_b_l1].double_buffer()
 
             def _open_double_buffer_for_not_batch_double():
                 if m_l1_double_buffer == 2 and tensor_a_reuse == 0:
-                    if in_addr_type == 1 and is_fractal_a:
-                        sch[tensor_a].double_buffer()
-                    else:
-                        if not l1_fusion_and_l1_size_0 and not (is_fractal_a and input_l1_flag == 1):
-                            sch[tensor_a_l1].double_buffer()
-                if n_l1_double_buffer == 2 and tensor_b_reuse == 0 and \
-                        not l1_fusion_and_l1_size_0:
-                    sch[tensor_b_l1].double_buffer()
+                    if not a_l1_inline_flag:
+                        sch[tensor_a_l1].double_buffer()
+                if n_l1_double_buffer == 2 and tensor_b_reuse == 0:
+                    if not b_l1_inline_flag:
+                        sch[tensor_b_l1].double_buffer()
 
             # double buffer
             def open_batch_double_buffer():
@@ -2486,7 +2453,7 @@ def mmad_schedule(res, sch_list):
 
                 if not quantify_fusion:
                     if tensor_c_ub.op.tag != 'matmul' and \
-                                    tensor_c_ub.op.tag != 'matmul_gemv':
+                            tensor_c_ub.op.tag != 'matmul_gemv':
                         sch[tensor_c_ub].double_buffer()
 
                 if gm_ub is not None:
@@ -2508,46 +2475,7 @@ def mmad_schedule(res, sch_list):
 
         open_double_buffer()
 
-    def get_inner_factor(res, tensor_c_gm, m_tile, n_tile, n_parts_value):
-        """
-        calcute L0C to UB split factor
-        """
-        # deal with width and cube size
-        width = _get_out_tensors_width(res)
-        un_max = get_soc_spec("UB_SIZE")
-        gm_width = DTYPE_WIDTH_MAP[tensor_c_gm.dtype] * 2
-        cube_size = block_in * block_out * gm_width
-        width = width // DTYPE_WIDTH_MAP[tensor_c_gm.dtype]
-
-        cube_size = cube_size * m_tile
-        factor_max = un_max // 2 // cube_size // width
-        factor_n = n_tile
-        factor_m = m_tile
-        if factor_max == 0:
-            factor_n = n_tile
-            factor_m = 1
-        elif factor_max < n_tile:
-            factor_n = 1
-            if (res.shape[-1].value // 16) % n_parts_value == 0:
-                n_value = (res.shape[-1].value // 16) // n_parts_value
-                if n_value % n_tile == 0:
-                    for idx in range(1, n_tile):
-                        if n_tile % idx == 0 and \
-                                                factor_n < idx < (factor_max + 1):
-                            factor_n = idx
-            factor_n = factor_max
-        return factor_max, factor_m, factor_n
-
-    def _check_fusion_split_tail(inner_factor_m, m_l1_tile,
-                                 inner_factor_n, n_l1_tile):
-        support_split_tail = True
-        if inner_factor_m < m_l1_tile or inner_factor_n < n_l1_tile:
-            # set to False while need to disable fusion for split tail
-            support_split_tail = True
-        if not support_split_tail:
-            raise RuntimeError("Not support fusion while spliting tail.")
-
-    def schedule_l1mn_l0_mkn_tiling(overload_flag):
+    def schedule_l1mn_l0_mkn_tiling():
         """
         CUT37 schedule method
         """
@@ -2566,7 +2494,7 @@ def mmad_schedule(res, sch_list):
         # nL0TileOuter, mL0TileOuter, kL0TileOuter,
         # nL0TileInner, mL0TileInner,
         # mBurstSize, nBurstSize, kL0TileInner, kBurstSize
-        sch[tensor_c].reorder(l0_n_outer, l0_m_outer, l0_k_outer,
+        sch[tensor_c].reorder(l0_m_outer, l0_n_outer, l0_k_outer,
                               l0_n_inner, l0_m_inner,
                               tensor_c.op.axis[tensor_len_c - 2],
                               tensor_c.op.axis[tensor_len_c - 1],
@@ -2575,22 +2503,34 @@ def mmad_schedule(res, sch_list):
         sch[tensor_a_l0a].compute_at(sch[tensor_c], l0_k_outer)
         sch[tensor_b_l0b].compute_at(sch[tensor_c], l0_k_outer)
 
+        if tensor_a_ub is not None:
+            sch[tensor_a_ub].compute_at(sch[tensor_c], l0_k_outer)
+        if tensor_b_ub is not None:
+            sch[tensor_b_ub].compute_at(sch[tensor_c], l0_k_outer)
+
+        if tensor_a_ub_fract is not None:
+            sch[tensor_a_ub_fract].compute_at(sch[tensor_c], l0_k_outer)
+        if tensor_b_ub_fract is not None:
+            sch[tensor_b_ub_fract].compute_at(sch[tensor_c], l0_k_outer)
+
+        if not a_l1_inline_flag:
+            sch[tensor_a_l1].compute_at(sch[tensor_c], l0_k_outer)
+        if not b_l1_inline_flag:
+            sch[tensor_b_l1].compute_at(sch[tensor_c], l0_k_outer)
+
         # tiling C
-        no_tail = True
         axis_block = batch_outer
         res_ub = None
-        fuse_list = []
-        block_n_shape = None
+        c_at_axis = None
+        c_ub_at_axis = None
+        res_insn_axis = None
 
         if is_fractal_out:
-            def sche_l1mn_l0_mkn_frac_frac(overload_flag):
+            def sche_l1mn_l0_mkn_frac_frac():
                 """
                 fractal schedule config
                 """
                 axis_block = batch_outer
-                factor_max = n_l0_tile
-                inner_factor_m = m_l0_tile
-                inner_factor_n = fusion_n_l0_tile
                 res_ub = None
                 if fusion_ele:
                     res_ub = sch.cache_write(res, cce.scope_ubuf)
@@ -2599,75 +2539,48 @@ def mmad_schedule(res, sch_list):
                     if gm_ub is None:
                         sch[tensor_c_gm].compute_inline()
 
-                    def get_inner_factor(res, tensor_c_gm,
-                                         n_tile_l1, m_tile_l0, n_tile_l0):
-                        """
-                        calcute L0C to UB split factor
-                        """
-                        # deal with width and cube size
-                        width = _get_out_tensors_width(res)
-                        un_max = get_soc_spec("UB_SIZE")
-                        gm_width = int(DTYPE_WIDTH_MAP[tensor_c_gm.dtype] * 2)
-                        cube_size = block_in * block_out * gm_width
-                        width = width // DTYPE_WIDTH_MAP[tensor_c_gm.dtype]
-                        cube_size = cube_size * m_tile_l0
-                        factor_max = un_max // 2 // cube_size // width
+                m_factor, n_factor, m_part_cnt, n_part_cnt = get_block_split_factor(
+                    res, n_nparts_mode, m_factors, n_factors)
 
-                        inner_factor_m = m_tile_l0
-                        inner_factor_n = n_tile_l0
-                        if factor_max == 0:
-                            inner_factor_m = 1
-                            inner_factor_n = n_tile_l0
-                        elif factor_max < n_tile_l0:
-                            inner_factor_n = 1
-                            if (res.shape[tensor_len_c - 4].value) % n_tile_l1 == 0:
-                                n_value = (res.shape[tensor_len_c - 4].value) // n_tile_l1
-                                if n_value % n_tile_l0 == 0:
-                                    for idx in range(1, n_tile_l0):
-                                        if n_tile_l0 % idx == 0 and \
-                                                                inner_factor_n < idx < (factor_max + 1):
-                                            inner_factor_n = idx
-                            inner_factor_n = factor_max
-                        return factor_max, inner_factor_m, inner_factor_n
+                m_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 3], factor=m_factor)
+                n_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 4], factor=n_factor)
 
-                    factor_max, inner_factor_m, inner_factor_n = \
-                        get_inner_factor(res, tensor_c_gm,
-                                         n_l1_tile, m_l0_tile, n_l0_tile)
-                    _check_fusion_split_tail(inner_factor_m, m_l1_tile,
-                                             inner_factor_n, n_l1_tile)
-
-                c_l1_n_outer, c_l1_n_inner = sch[res].split(
-                    res.op.axis[tensor_len_c - 4], factor=fusion_n_l1_tile)
-                c_l1_m_outer, c_l1_m_inner = sch[res].split(
-                    res.op.axis[tensor_len_c - 3], factor=m_l1_tile)
                 c_l0_n_outer, c_l0_n_inner = sch[res].split(
-                    c_l1_n_inner, factor=fusion_n_l0_tile)
+                    n_outer_group[1], factor=fusion_n_l0_tile)
                 c_l0_m_outer, c_l0_m_inner = sch[res].split(
-                    c_l1_m_inner, factor=m_l0_tile)
+                    m_outer_group[1], factor=m_l0_tile)
 
-                if factor_max == 0:
-                    # axit m is too large, need to split inner m
-                    c_n_inner_outer, c_n_inner_inner = \
-                        sch[res].split(c_l0_n_inner, factor=inner_factor_n)
-                    c_m_inner_outer, c_m_inner_inner = \
-                        sch[res].split(c_l0_m_inner, factor=inner_factor_m)
-
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_n_outer, c_l0_m_outer,
-                                     c_m_inner_outer, c_n_inner_outer,
-                                     c_n_inner_inner, c_m_inner_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
+                fuse_list = []
+                if m_part_cnt > n_part_cnt:
+                    fuse_list.append(n_outer_group[0])
+                    fuse_list.append(m_outer_group[0])
                 else:
-                    c_n_inner_outer, c_n_inner_inner = \
-                        sch[res].split(c_l0_n_inner, factor=inner_factor_n)
+                    fuse_list.append(m_outer_group[0])
+                    fuse_list.append(n_outer_group[0])
+                sch[res].reorder(*fuse_list,
+                                 c_l0_m_outer, c_l0_n_outer,
+                                 c_l0_n_inner, c_l0_m_inner,
+                                 res.op.axis[tensor_len_c - 2],
+                                 res.op.axis[tensor_len_c - 1])
+                index_at_axis = c_l0_m_outer if m_l0_tile * 2 < m_factor else -1
 
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_n_outer, c_l0_m_outer,
-                                     c_n_inner_outer, c_n_inner_inner,
-                                     c_l0_m_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
+                overload_flag = False
+                if n_part_cnt > 1:
+                    overload_flag = True
+
+                if axis_block is None:
+                    axis_block = sch[res].fuse(*fuse_list)
+                if axis_block is not None:
+                    thread_block = tvm.thread_axis("blockIdx.x")
+                    sch[res].bind(axis_block, thread_block)
+
+                c_at_axis = c_l0_n_outer
+                c_ub_at_axis = c_l0_n_outer
+                res_insn_axis = c_l0_n_inner
+
+                sch[tensor_c].compute_at(sch[res], c_at_axis)
 
                 gm_n_inner = None
                 if gm_ub is not None:
@@ -2681,15 +2594,11 @@ def mmad_schedule(res, sch_list):
                                              tensor_c_gm.op.axis[tensor_len_c - 2],
                                              tensor_c_gm.op.axis[tensor_len_c - 1])
 
-                c_at_axis = c_l0_m_outer
-                c_ub_at_axis = c_n_inner_outer
-                res_insn_axis = c_n_inner_inner
-
-                def out_ub_compute_at_sch(ten_c_ub, ten_ele_map, comp_at_axis):
+                def out_ub_compute_at_sch(quant_flag, ten_c_ub, ten_ele_map, comp_at_axis):
                     """
                     C_UB tensor compute at res
                     """
-                    if ten_c_ub is not None:
+                    if not quant_flag:
                         sch[ten_c_ub].compute_at(sch[res], comp_at_axis)
                     for ten_in in ten_ele_map:
                         sch[ten_in].compute_at(sch[res], comp_at_axis)
@@ -2709,135 +2618,15 @@ def mmad_schedule(res, sch_list):
                     for tensor_list in tensor_fusion_list:
                         sch[tensor_list].compute_at(sch[res], comp_at_axis)
                     if requant_data_transfer is not None:
-                        sch[requant_data_transfer].compute_at(sch[res],
-                                                              comp_at_axis)
+                        sch[requant_data_transfer].compute_at(sch[res], comp_at_axis)
 
                 _do_fusion_compute_at(c_ub_at_axis)
 
-                # multi kernel axis must be > 1
-                if axis_block is None:
-                    n_block_cnt = (res.shape[tensor_len_c - 4].value +
-                                   n_l1_tile - 1) // fusion_n_l1_tile
-                    m_block_cnt = (res.shape[tensor_len_c - 4].value +
-                                   m_l1_tile - 1) // m_l1_tile
-                    if n_block_cnt > core_thres:
-                        def __tensor_l1_compute_at_for_case1():
-                            if in_addr_type == 1 and is_fractal_a:
-                                sch[tensor_a].compute_at(sch[res], c_l0_m_outer)
-                            else:
-                                if not l1_fusion_and_l1_size_0 and input_l1_flag != 1:
-                                    sch[tensor_a_l1].compute_at(sch[res], c_l0_m_outer)
-                            if not l1_fusion_and_l1_size_0:
-                                sch[tensor_b_l1].compute_at(sch[res], c_l0_n_outer)
-
-                        __tensor_l1_compute_at_for_case1()
-
-                        update_tensor_c_ub = \
-                            _update_compute_at_tensor_c_ub(tensor_c_ub)
-                        out_ub_compute_at_sch(update_tensor_c_ub,
-                                              elemwise_tensors,
-                                              c_ub_at_axis)
-
-                        axis_block = c_l1_n_outer
-                        overload_flag = True
-                        if check_mini_core_num():
-                            # just for mini config
-                            temp_core = axis_block
-                            axis_block, axis_var = sch[res].split(temp_core, nparts=2)
-
-                    elif n_block_cnt > 1 or m_block_cnt > 1:
-                        fuse_list.append(c_l1_n_outer)
-                        fuse_list.append(c_l1_m_outer)
-                        axis_block = sch[res].fuse(*fuse_list)
-                        overload_flag = True
-                        c_l1_n_outer = None
-                        c_l1_m_outer = None
-
-                        def __tensor_l1_compute_at_for_case2():
-                            if in_addr_type == 1 and is_fractal_a:
-                                sch[tensor_a].compute_at(sch[tensor_c], l0_m_outer)
-                            else:
-                                if not l1_fusion_and_l1_size_0 and input_l1_flag != 1:
-                                    sch[tensor_a_l1].compute_at(sch[tensor_c], l0_m_outer)
-                            if not l1_fusion_and_l1_size_0:
-                                sch[tensor_b_l1].compute_at(sch[tensor_c], l0_n_outer)
-
-                        __tensor_l1_compute_at_for_case2()
-
-                        update_tensor_c_ub = \
-                            _update_compute_at_tensor_c_ub(tensor_c_ub)
-                        out_ub_compute_at_sch(update_tensor_c_ub,
-                                              elemwise_tensors,
-                                              c_ub_at_axis)
-                    else:
-                        fuse_list.append(c_l1_n_outer)
-                        fuse_list.append(c_l1_m_outer)
-                        fuse_list.append(c_l0_n_outer)
-                        fuse_list.append(c_l0_m_outer)
-                        axis_block = sch[res].fuse(*fuse_list)
-
-                        def __overload_op():
-                            overload_flag = bool((tensor_c.shape[tensor_len_c - 4].value //
-                                                  n_l0_tile > 1) or (n_l0_tile > 1))
-                            return overload_flag
-
-                        overload_flag = __overload_op()
-
-                        c_l1_n_outer = None
-                        c_l1_m_outer = None
-                        c_l0_n_outer = None
-                        c_l0_m_outer = None
-                        c_at_axis = axis_block
-
-                        def __tensor_l1_compute_at_for_case3():
-                            if in_addr_type == 1 and is_fractal_a:
-                                sch[tensor_a].compute_at(sch[tensor_c], l0_k_outer)
-                            else:
-                                if not l1_fusion_and_l1_size_0 and input_l1_flag != 1:
-                                    sch[tensor_a_l1].compute_at(sch[tensor_c], l0_k_outer)
-                            if not l1_fusion_and_l1_size_0:
-                                sch[tensor_b_l1].compute_at(sch[tensor_c], l0_k_outer)
-
-                        __tensor_l1_compute_at_for_case3()
-
-                        update_tensor_c_ub = \
-                            _update_compute_at_tensor_c_ub(tensor_c_ub)
-                        out_ub_compute_at_sch(update_tensor_c_ub,
-                                              elemwise_tensors,
-                                              c_ub_at_axis)
-
-                    thread_block = tvm.thread_axis("blockIdx.x")
-                    sch[res].bind(axis_block, thread_block)
-
-                else:
-                    def get_compute_axis(batch_double, double_once):
-                        result = None
-                        if batch_double and double_once == 0:
-                            result = c_l1_n_outer
-                        else:
-                            result = c_l0_m_outer
-
-                        return result
-
-                    def __tensor_l1_compute_at_for_case4():
-                        if in_addr_type == 1 and is_fractal_a:
-                            sch[tensor_a].compute_at(sch[res], c_l0_m_outer)
-                        else:
-                            if not l1_fusion_and_l1_size_0 and input_l1_flag != 1:
-                                sch[tensor_a_l1].compute_at(sch[res], c_l0_m_outer)
-                        compute_res_axis = get_compute_axis(batch_double, double_once)
-                        if not l1_fusion_and_l1_size_0:
-                            sch[tensor_b_l1].compute_at(sch[res], compute_res_axis)
-
-                    __tensor_l1_compute_at_for_case4()
-
-                    update_tensor_c_ub = \
-                        _update_compute_at_tensor_c_ub(tensor_c_ub)
-                    out_ub_compute_at_sch(update_tensor_c_ub, elemwise_tensors,
-                                          c_ub_at_axis)
-
+                quant_fusion = requant_fusion or dequant_fusion
+                out_ub_compute_at_sch(quant_fusion, tensor_c_ub, elemwise_tensors,
+                                      c_ub_at_axis)
                 # config compute_at just by c_at_axis for fractal mode
-                sch[tensor_c].compute_at(sch[res], c_at_axis)
+
                 def _do_k_frac_bias_compurt_at():
                     if is_with_bias:
                         sch[tensor_c_add_bias].compute_at(sch[res], c_at_axis)
@@ -2850,147 +2639,99 @@ def mmad_schedule(res, sch_list):
                             sch[tensor_bias_ub].double_buffer()
                 _do_k_frac_bias_compurt_at()
 
-                return axis_block, c_l1_n_outer, c_l1_m_outer, res_ub, \
-                       res_insn_axis, gm_n_inner, overload_flag
+                set_overload_flag(overload_flag, sch[res], res_insn_axis)
 
-            axis_block, c_l1_n_outer, c_l1_m_outer, res_ub, res_insn_axis, gm_insn, \
-            overload_flag = sche_l1mn_l0_mkn_frac_frac(overload_flag)
-            set_overload_flag(overload_flag, sch[res], res_insn_axis)
+                return res_ub, res_insn_axis, gm_n_inner, index_at_axis
 
-            block_n_shape = n_l1_shape
+            res_ub, res_insn_axis, gm_insn, index_at_axis = \
+                sche_l1mn_l0_mkn_frac_frac()
 
         else:
-            res_len = len(res.shape)
-            no_tail = (res.shape[res_len - 2].value % cce.BLOCK_IN) == 0
-            if mad_pattern == cce.GEVM_MODE:
-                no_tail = True
-            if tensor_c_ub_fract is not None:
-                c_ub_fract_m_outer, c_ub_fract_m_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        tensor_c_ub_fract.op.axis[res_len - 2],
-                        factor=block_in)
-                c_ub_fract_n_outer, c_ub_fract_n_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        tensor_c_ub_fract.op.axis[res_len - 1],
-                        factor=block_out)
-
-                c_l1_fract_m_outer, c_l1_fract_m_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        c_ub_fract_m_outer, factor=m_l1_tile)
-                c_l1_fract_n_outer, c_l1_fract_n_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        c_ub_fract_n_outer, factor=n_l1_tile)
-                c_l0_fract_m_outer, c_l0_fract_m_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        c_l1_fract_m_inner, factor=m_l0_tile)
-                c_l0_fract_n_outer, c_l0_fract_n_inner = \
-                    sch[tensor_c_ub_fract].split(
-                        c_l1_fract_n_inner, factor=n_l0_tile)
-                block_n_shape = n_l1_shape
-
-                sch[tensor_c_ub_fract].reorder(
-                    c_l1_fract_n_outer, c_l1_fract_m_outer,
-                    c_l0_fract_m_outer, c_l0_fract_n_outer,
-                    c_l0_fract_n_inner, c_l0_fract_m_inner,
-                    c_ub_fract_m_inner, c_ub_fract_n_inner)
-
-            factor_max = n_l0_tile
-            inner_factor_m = m_l0_tile
-            inner_factor_n = fusion_n_l0_tile
             res_ub = None
             if fusion_ele:
                 res_ub = sch.cache_write(res, cce.scope_ubuf)
                 elemwise_tensors.append(res_ub)
                 sch[tensor_c_gm].compute_inline()
 
-                factor_max, inner_factor_m, inner_factor_n = get_inner_factor(
-                    res, tensor_c_gm, m_l1_tile, n_l1_tile, n_factors)
-                _check_fusion_split_tail(inner_factor_m, m_l1_tile,
-                                         inner_factor_n, n_l1_tile)
+            m_factor, n_factor, m_part_cnt, n_part_cnt = get_block_split_factor(
+                tensor_c, n_nparts_mode, m_factors, n_factors)
+
+            overload_flag = False
+            if n_part_cnt > 1:
+                overload_flag = True
 
             if format_out == "FRACTAL_NZ":
-                c_l1_m_outer, c_l1_m_inner = sch[res].split(
-                    res.op.axis[res_len - 3], factor=m_l1_tile)
-                c_l1_n_outer, c_l1_n_inner = sch[res].split(
-                    res.op.axis[res_len - 4], factor=fusion_n_l1_tile)
+                m_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 3], factor=m_factor)
+                n_outer_group = sch[res].split(
+                    res.op.axis[tensor_len_c - 4], factor=n_factor)
+
                 c_l0_m_outer, c_l0_m_inner = sch[res].split(
-                    c_l1_m_inner, factor=m_l0_tile)
+                    m_outer_group[1], factor=m_l0_tile)
                 c_l0_n_outer, c_l0_n_inner = sch[res].split(
-                    c_l1_n_inner, factor=fusion_n_l0_tile)
+                    n_outer_group[1], factor=fusion_n_l0_tile)
+
+                fuse_list = []
+                if m_part_cnt > n_part_cnt:
+                    fuse_list.append(n_outer_group[0])
+                    fuse_list.append(m_outer_group[0])
+                else:
+                    fuse_list.append(m_outer_group[0])
+                    fuse_list.append(n_outer_group[0])
+
+                sch[res].reorder(*fuse_list,
+                                 c_l0_m_outer, c_l0_n_outer,
+                                 c_l0_n_inner, c_l0_m_inner,
+                                 res.op.axis[tensor_len_c - 2],
+                                 res.op.axis[tensor_len_c - 1])
+                if axis_block is None:
+                    axis_block = sch[res].fuse(*fuse_list)
             else:
+                res_len = len(res.shape)
                 c_ub_m_outer, c_ub_m_inner = sch[res].split(
                     res.op.axis[res_len - 2], factor=block_in)
                 c_ub_n_outer, c_ub_n_inner = sch[res].split(
                     res.op.axis[res_len - 1], factor=block_out)
-                c_l1_m_outer, c_l1_m_inner = sch[res].split(
-                    c_ub_m_outer, factor=m_l1_tile)
-                c_l1_n_outer, c_l1_n_inner = sch[res].split(
-                    c_ub_n_outer, factor=n_l1_tile)
-                c_l0_m_outer, c_l0_m_inner = sch[res].split(c_l1_m_inner,
-                                                            factor=m_l0_tile)
-                c_l0_n_outer, c_l0_n_inner = sch[res].split(c_l1_n_inner,
-                                                            factor=n_l0_tile)
 
-            block_n_shape = n_l1_shape
+                m_outer_group = sch[res].split(c_ub_m_outer, factor=m_factor)
+                n_outer_group = sch[res].split(c_ub_n_outer, factor=n_factor)
 
-            if factor_max == 0:
-                # axis m is too large, need to split inner m
-                c_n_inner_outer, c_n_inner_inner = \
-                    sch[res].split(c_l0_n_inner, factor=inner_factor_n)
-                c_m_inner_outer, c_m_inner_inner = \
-                    sch[res].split(c_l0_m_inner, factor=inner_factor_m)
+                c_l0_m_outer, c_l0_m_inner = sch[res].split(
+                    m_outer_group[1], factor=m_l0_tile)
+                c_l0_n_outer, c_l0_n_inner = sch[res].split(
+                    n_outer_group[1], factor=n_l0_tile)
 
-                if format_out == "FRACTAL_NZ":
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_m_outer, c_l0_n_outer,
-                                     c_m_inner_outer, c_n_inner_outer,
-                                     c_n_inner_inner, c_m_inner_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
+                fuse_list = []
+                if m_part_cnt > n_part_cnt:
+                    fuse_list.append(n_outer_group[0])
+                    fuse_list.append(m_outer_group[0])
                 else:
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_m_outer, c_l0_n_outer,
-                                     c_m_inner_outer, c_n_inner_outer,
-                                     c_n_inner_inner, c_m_inner_inner,
-                                     c_ub_m_inner, c_ub_n_inner)
-            else:
-                c_n_inner_outer, c_n_inner_inner = \
-                    sch[res].split(c_l0_n_inner, factor=inner_factor_n)
-                if format_out == "FRACTAL_NZ":
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_m_outer, c_l0_n_outer,
-                                     c_n_inner_outer, c_n_inner_inner,
-                                     c_l0_m_inner,
-                                     res.op.axis[tensor_len_c - 2],
-                                     res.op.axis[tensor_len_c - 1])
-                else:
-                    sch[res].reorder(c_l1_n_outer, c_l1_m_outer,
-                                     c_l0_m_outer, c_l0_n_outer,
-                                     c_n_inner_outer, c_n_inner_inner,
-                                     c_l0_m_inner,
-                                     c_ub_m_inner, c_ub_n_inner)
+                    fuse_list.append(m_outer_group[0])
+                    fuse_list.append(n_outer_group[0])
+                sch[res].reorder(*fuse_list,
+                                 c_l0_m_outer, c_l0_n_outer,
+                                 c_l0_n_inner, c_l0_m_inner,
+                                 c_ub_m_inner, c_ub_n_inner)
 
-            def _get_res_insn_axis(no_tail, c_n_inner_inner, c_ub_m_inner):
-                if no_tail:
-                    return c_n_inner_inner
-                if format_out == "FRACTAL_NZ":
-                    return c_ub_m_inner
-                return c_ub_m_inner
+                if axis_block is None:
+                    axis_block = sch[res].fuse(*fuse_list)
+            index_at_axis = c_l0_m_outer if m_l0_tile * 2 < m_factor else -1
 
-            if format_out == "FRACTAL_NZ":
-                res_insn_axis = _get_res_insn_axis(
-                    no_tail, c_n_inner_inner, res.op.axis[tensor_len_c - 2])
-            else:
-                res_insn_axis = _get_res_insn_axis(
-                    no_tail, c_n_inner_inner, c_ub_m_inner)
+            if axis_block is not None:
+                thread_block = tvm.thread_axis("blockIdx.x")
+                sch[res].bind(axis_block, thread_block)
 
-            sch[tensor_c].compute_at(sch[res], c_l0_m_outer)
+            c_at_axis = c_l0_n_outer
+            c_ub_at_axis = c_l0_n_outer
+            res_insn_axis = c_l0_n_inner
+
+            sch[tensor_c].compute_at(sch[res], c_at_axis)
 
             def _do_k_nd_bias_compurt_at():
                 if is_with_bias:
-                    sch[tensor_c_add_bias].compute_at(sch[res], c_l0_m_outer)
-                    sch[tensor_bias_l0c].compute_at(sch[res], c_l0_m_outer)
-                    sch[tensor_bias_ub].compute_at(sch[res], c_l0_m_outer)
+                    sch[tensor_c_add_bias].compute_at(sch[res], c_at_axis)
+                    sch[tensor_bias_l0c].compute_at(sch[res], c_at_axis)
+                    sch[tensor_bias_ub].compute_at(sch[res], c_at_axis)
                     if not dequant_fusion:
                         sch[tensor_bias_l0c].preload()
                         sch[tensor_bias_l0c].double_buffer()
@@ -2998,105 +2739,52 @@ def mmad_schedule(res, sch_list):
                         sch[tensor_bias_ub].double_buffer()
             _do_k_nd_bias_compurt_at()
 
-            def _do_fusion_compute_at(c_n_inner_outer):
+            def _do_fusion_compute_at(at_axis):
                 if dequant_tensor is not None:
-                    sch[dequant_tensor].compute_at(sch[res], c_n_inner_outer)
+                    sch[dequant_tensor].compute_at(sch[res], at_axis)
                 if dequant_fusion and sqrt_flag:
-                    sch[tensor_sqrt].compute_at(sch[res], c_n_inner_outer)
+                    sch[tensor_sqrt].compute_at(sch[res], at_axis)
                 if dequant_fusion:
                     for tensor in dequant_activation_tensor:
-                        sch[tensor].compute_at(sch[res], c_n_inner_outer)
+                        sch[tensor].compute_at(sch[res], at_axis)
                 for ten_in in elemwise_tensors:
-                    sch[ten_in].compute_at(sch[res], c_n_inner_outer)
+                    sch[ten_in].compute_at(sch[res], at_axis)
                 for tensor_list in tensor_fusion_list:
-                    sch[tensor_list].compute_at(sch[res], c_n_inner_outer)
+                    sch[tensor_list].compute_at(sch[res], at_axis)
                 if requant_data_transfer is not None:
-                    sch[requant_data_transfer].compute_at(sch[res],
-                                                          c_n_inner_outer)
+                    sch[requant_data_transfer].compute_at(sch[res], at_axis)
 
-            _do_fusion_compute_at(c_n_inner_outer)
+            _do_fusion_compute_at(c_ub_at_axis)
 
-            if axis_block is None:
-                # multi kernel axis must be > 1
-                overload_flag_temp = False
-                if _is_multicore_bind_naxis(res, format_out, tensor_len_c,
-                                            fusion_n_l1_tile, block_out):
-                    axis_block = c_l1_n_outer
-                    c_l1_n_outer = None
-                    overload_flag_temp = True
-                elif _is_multicore_bind_maxis(res, format_out, tensor_len_c,
-                                              m_l1_tile, block_in):
-                    axis_block = c_l1_m_outer
-                    c_l1_n_outer = None
-                    c_l1_m_outer = None
-                    overload_flag_temp = bool((tensor_c.shape[tensor_len_c - 4].value //
-                                               n_l0_tile > 1) or (n_l0_tile > 1))
-
-                if axis_block is not None:
-                    thread_block = tvm.thread_axis("blockIdx.x")
-                    sch[res].bind(axis_block, thread_block)
-                    overload_flag = overload_flag_temp
-
-            def __overload_op(overload_flag):
-                if not overload_flag:
-                    overload_flag = bool((tensor_c.shape[tensor_len_c - 4].value //
-                                          n_l0_tile > 1) or (n_l0_tile > 1))
-                return overload_flag
-
-            overload_flag = __overload_op(overload_flag)
             set_overload_flag(overload_flag, sch[res], res_insn_axis)
 
-        def _get_m_outer_axis(c_l1_m_outer):
-            if c_l1_m_outer is not None:
-                return c_l1_m_outer
-            return axis_block
-
-        m_outer_axis = _get_m_outer_axis(c_l1_m_outer)
-
-        def _get_n_outer_axis(c_l1_n_outer):
-            if c_l1_n_outer is not None:
-                return c_l1_n_outer
-            return axis_block
-
-        n_outer_axis = _get_n_outer_axis(c_l1_n_outer)
-
-        if tensor_a_ub is not None:
-            sch[tensor_a_ub].compute_at(sch[res], m_outer_axis)
-        if tensor_b_ub is not None:
-            sch[tensor_b_ub].compute_at(sch[res], n_outer_axis)
-
-        if tensor_a_ub_fract is not None:
-            sch[tensor_a_ub_fract].compute_at(sch[res], m_outer_axis)
-        if tensor_b_ub_fract is not None:
-            sch[tensor_b_ub_fract].compute_at(sch[res], n_outer_axis)
-        if not is_fractal_out:
             if not quantify_fusion:
-                sch[tensor_c_ub].compute_at(sch[res], c_l0_m_outer)
+                sch[tensor_c_ub].compute_at(sch[res], c_at_axis)
+
             if tensor_c_ub_fract is not None:
-                sch[tensor_c_ub_fract].compute_at(sch[res], c_l0_m_outer)
-
-            def __tensor_l1_compute_at_for_case5():
-                if in_addr_type == 1 and is_fractal_a:
-                    sch[tensor_a].compute_at(sch[res], m_outer_axis)
-                else:
-                    if not l1_fusion_and_l1_size_0 and not (is_fractal_a and input_l1_flag == 1):
-                        sch[tensor_a_l1].compute_at(sch[res], m_outer_axis)
-                if not l1_fusion_and_l1_size_0:
-                    sch[tensor_b_l1].compute_at(sch[res], n_outer_axis)
-
-            __tensor_l1_compute_at_for_case5()
+                sch[tensor_c_ub_fract].compute_at(sch[res], c_at_axis)
 
         # emit_insn
-        def __tensor_b_l1_emit_insn():
-            if not l1_fusion_and_l1_size_0:
-                if compress_index is not None:
+        def __tensor_weights_emit_insn(host_axis):
+            """
+            tensor_b_l1 emit insn operation for compress or not
+            """
+            if compress_index is not None:
+                if not b_l1_inline_flag:
                     set_compress_info(sch, tensor_b_l1, compress_index,
-                                      block_n_shape, k_l1_tile, n_l1_tile, -1)
+                                      k_l1_tile, n_l1_tile, host_axis)
+                    emit_insn_func(sch, tensor_b_l0b, None, 'dma_copy')
                 else:
-                    sch[tensor_b_l1].emit_insn(tensor_b_l1.op.axis[tensor_len_b - 4],
-                                               'dma_copy')
+                    tensor_b_l0b.op.attrs["tile_L1_k"] = tensor_b_l1.op.attrs["tile_L1_k"]
+                    tensor_b_l0b.op.attrs["tile_L1_n"] = tensor_b_l1.op.attrs["tile_L1_n"]
+                    set_compress_info(sch, tensor_b_l0b, compress_index,
+                                      k_l0_tile, n_l0_tile, host_axis)
+            else:
+                if not b_l1_inline_flag:
+                    emit_insn_func(sch, tensor_b_l1, None, 'dma_copy')
+                emit_insn_func(sch, tensor_b_l0b, None, 'dma_copy')
 
-        __tensor_b_l1_emit_insn()
+        __tensor_weights_emit_insn(index_at_axis)
 
         def _tensor_a_l1_workspace_emit():
             if input_l1_flag == 1:
@@ -3104,25 +2792,26 @@ def mmad_schedule(res, sch_list):
 
         _tensor_a_l1_workspace_emit()
 
-        def __fc_emit_insn():
-            if (in_addr_type == 0 or not is_fractal_a) \
-                    and not l1_fusion_and_l1_size_0 \
-                    and not (is_fractal_a and input_l1_flag == 1):
-                emit_insn_func(sch, tensor_a_l1,
-                               tensor_a_l1.op.axis[tensor_len_a - 4], 'dma_copy')
-        __fc_emit_insn()
+        if not a_l1_inline_flag:
+            emit_insn_func(sch, tensor_a_l1, None, 'dma_copy')
 
-        emit_insn_func(sch, tensor_a_l0a,
-                       tensor_a_l0a.op.axis[l0_tensor_len_a - 4], 'dma_copy')
-        emit_insn_func(sch, tensor_b_l0b,
-                       tensor_b_l0b.op.axis[l0_tensor_len_b - 4], 'dma_copy')
+        emit_insn_func(sch, tensor_a_l0a, None, 'dma_copy')
+
         emit_insn_func(sch, tensor_a_ub, None, 'dma_copy')
         emit_insn_func(sch, tensor_b_ub, None, 'dma_copy')
         emit_insn_func(sch, tensor_a_ub_fract, None, 'vector_auto')
         emit_insn_func(sch, tensor_b_ub_fract, None, 'vector_auto')
-        if tensor_c_ub_fract is not None:
-            emit_insn_func(sch, tensor_c_ub_fract,
-                           c_l0_fract_n_inner, 'vector_auto')
+
+        m_factor, n_factor, _, _ = get_block_split_factor(
+            tensor_c, n_nparts_mode, m_factors, n_factors)
+
+        block_value = [block_in, block_out]
+        factor_value = [m_factor, n_factor]
+        tile_value = [m_l0_tile, n_l0_tile]
+        emit_axis = split_c_ub_tensor(
+            tensor_c_ub_fract, block_value, factor_value, tile_value)
+
+        emit_insn_func(sch, tensor_c_ub_fract, emit_axis, 'vector_auto')
 
         mad_dict = {"mad_pattern": mad_pattern, "k_outer": l0_k_outer}
         if is_with_bias:
@@ -3164,7 +2853,14 @@ def mmad_schedule(res, sch_list):
 
         _quantify_fusion_entry(axis_block)
 
-        sch[res].emit_insn(res_insn_axis, 'dma_copy')
+        def _choose_dma_copy(sch, res, with_transpose, res_insn_axis):
+            "choose dma copy pattern"
+            if with_transpose:
+                sch[res].emit_insn(res_insn_axis, 'dma_copy_matmul_transpose')
+            else:
+                sch[res].emit_insn(res_insn_axis, 'dma_copy')
+
+        _choose_dma_copy(sch, res, with_transpose, res_insn_axis)
 
         def dequant_activation_emit_insn_simple():
             if dequant_fusion:
@@ -3174,8 +2870,12 @@ def mmad_schedule(res, sch_list):
                         insn = emit_insn_map.get(str_list[0])
                     else:
                         insn = emit_insn_map.get(ten_in.op.tag)
+                    if ten_in in header_ub_tensors:
+                        insn = "dma_copy"
                     if insn is None:
                         insn = 'vector_auto'
+                    if "elewise_binary_scalar_axpy" in ten_in.op.tag:
+                        sch[ten_in].reused_by(ten_in.op.input_tensors[1])
                     sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
 
         def emit_insn_simple():
@@ -3192,6 +2892,9 @@ def mmad_schedule(res, sch_list):
                     sch[ten_in].emit_insn(ten_in.op.axis[2], insn)
                 else:
                     sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
+
+            for axpy, parent in axpy_2_parent.items():
+                sch[parent].reused_by(axpy)
 
             for ten_in in elemwise_tensors:
                 if ten_in.op.tag.find("|") != -1:
@@ -3218,26 +2921,18 @@ def mmad_schedule(res, sch_list):
             """
             def _open_double_buffer_for_batch_double():
                 if double_once == 0:
-                    if in_addr_type == 1 and is_fractal_a:
-                        sch[tensor_a].double_buffer()
-                    else:
-                        if not l1_fusion_and_l1_size_0 \
-                                and not (is_fractal_a and input_l1_flag == 1):
-                            sch[tensor_a_l1].double_buffer()
-                    if not l1_fusion_and_l1_size_0:
+                    if not a_l1_inline_flag:
+                        sch[tensor_a_l1].double_buffer()
+                    if not b_l1_inline_flag:
                         sch[tensor_b_l1].double_buffer()
 
             def _open_double_buffer_for_not_batch_double():
                 if m_l1_double_buffer == 2 and tensor_a_reuse == 0:
-                    if in_addr_type == 1 and is_fractal_a:
-                        sch[tensor_a].double_buffer()
-                    else:
-                        if not l1_fusion_and_l1_size_0 \
-                                and not (is_fractal_a and input_l1_flag == 1):
-                            sch[tensor_a_l1].double_buffer()
-                if n_l1_double_buffer == 2 and tensor_b_reuse == 0 and \
-                        not l1_fusion_and_l1_size_0:
-                    sch[tensor_b_l1].double_buffer()
+                    if not a_l1_inline_flag:
+                        sch[tensor_a_l1].double_buffer()
+                if n_l1_double_buffer == 2 and tensor_b_reuse == 0:
+                    if not b_l1_inline_flag:
+                        sch[tensor_b_l1].double_buffer()
 
             def open_batch_double_buffer():
                 if batch_double:
@@ -3253,7 +2948,7 @@ def mmad_schedule(res, sch_list):
                 sch[tensor_c].double_buffer()
                 if not quantify_fusion:
                     if tensor_c_ub.op.tag != 'matmul' and \
-                                    tensor_c_ub.op.tag != 'matmul_gemv':
+                            tensor_c_ub.op.tag != 'matmul_gemv':
                         sch[tensor_c_ub].double_buffer()
 
                 if gm_ub is not None:
@@ -3276,9 +2971,9 @@ def mmad_schedule(res, sch_list):
         open_double_buffer()
 
     if k_shape == k_l1_shape:
-        schedule_l1mn_l0_mkn_tiling(overload_flag)
+        schedule_l1mn_l0_mkn_tiling()
     elif m_l0_shape == m_l1_shape and n_l0_shape == n_l1_shape:
-        schedule_l1_mkn_l0_k_tiling(overload_flag)
+        schedule_l1_mkn_l0_k_tiling()
     else:
         raise RuntimeError("unhandled tiling")
     return True

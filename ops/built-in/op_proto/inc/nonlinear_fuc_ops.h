@@ -1,32 +1,31 @@
 /**
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use
- * this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file nonlinear_fuc_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef GE_OP_NONLINEAR_FUC_OPS_H
-#define GE_OP_NONLINEAR_FUC_OPS_H
+/*!
+ * \file nonlinear_fuc_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
 
 #include "graph/operator_reg.h"
 
 namespace ge {
 /**
-*@brief Computes the for the gelu of "x".
+*@brief Computes the for the gelu of "x" . \n
 
 *@par Inputs:
 *Two inputs, including:
@@ -43,13 +42,13 @@ REG_OP(Gelu)
     .OP_END_FACTORY_REG(Gelu)
 
 /**
-*@brief Computes the gradient for the gelu of "x".
+*@brief Computes the gradient for the gelu of "x" . \n
 
 *@par Inputs:
 *Three inputs, including:
 * @li dy: A Tensor. Must be one of the following types: float16, float32
 * @li x: A Tensor of the same type as "dy".
-* @li y: A Tensor of the same type as "dy".
+* @li y: A Tensor of the same type as "dy" . \n
 
 *@par Outputs:
 *z: A Tensor. Has the same type as "dy".
@@ -64,13 +63,50 @@ REG_OP(GeluGrad)
     .OP_END_FACTORY_REG(GeluGrad)
 
 /**
-*@brief Computes the gradient for the tanh of "x".
+*@brief Computes the for the fast_gelu of "x" . \n
+
+*@par Inputs:
+*Two inputs, including:
+* @li x: A Tensor. Must be one of the following types: float16, float32
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x".
+*@par Third-party framework compatibility
+*Compatible with the TensorFlow operator FastGelu
+*/
+REG_OP(FastGelu)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(FastGelu)
+
+/**
+*@brief Computes the gradient for the fast_gelu of "x" . \n
+
+*@par Inputs:
+*Three inputs, including:
+* @li dy: A Tensor. Must be one of the following types: float16, float32
+* @li x: A Tensor of the same type as "dy" . \n
+
+*@par Outputs:
+*z: A Tensor. Has the same type as "dy".
+*@par Third-party framework compatibility
+*Compatible with the TensorFlow operator FastGeluGrad
+*/
+REG_OP(FastGeluGrad)
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(z, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(FastGeluGrad)
+
+
+/**
+*@brief Computes the gradient for the tanh of "x" . \n
 
 *@par Inputs:
 *Two inputs, including:
 * @li y: A Tensor. Must be one of the following types: float16, float32,
 *     double, complex64, complex128.
-* @li dy: A Tensor of the same type as "y".
+* @li dy: A Tensor of the same type as "y" . \n
 
 *@par Outputs:
 *z: A Tensor. Has the same type as "y".
@@ -84,14 +120,14 @@ REG_OP(TanhGrad)
     .OP_END_FACTORY_REG(TanhGrad)
 
 /**
-*@brief: Computes hyperbolic tangent of "x" element-wise.
+*@brief: Computes hyperbolic tangent of "x" element-wise . \n
 
 *@par Inputs:
 *One input:
-*x: A Tensor. Must be one of the following types: float16, float32, complex64, complex128, double.
+*x: A Tensor. Must be one of the following types: float16, float32, complex64, complex128, double . \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as "x".
+*y: A Tensor. Has the same type as "x" . \n
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow operator Tanh.
@@ -105,7 +141,7 @@ REG_OP(Tanh)
 * @brief Computes rectified linear: "max(x, 0)".
 *
 * @par Inputs:
-* x: A tensor. Must be one of the following types: float32, float64, int32, uint8,\n
+* x: A tensor. Must be one of the following types: float32, float64, int32, uint8,
 *     int16, int8, int64, uint16, float16, qint8.
 *
 * @par Outputs:
@@ -127,13 +163,13 @@ REG_OP(Relu)
 
 /**
 * @brief Computes rectified linear 6.
-* activations = min(max(x, 0), 6).
+* activations = min(max(x, 0), 6) . \n
 
 * @par Inputs:
-* x: A Tensor of type RealNumberType.
+* x: A Tensor of type RealNumberType . \n
 
 * @par Outputs:
-* y: A Tensor of type RealNumberType.
+* y: A Tensor of type RealNumberType . \n
 
 * @par Third-party framework compatibility
 * Compatible with the TensorFlow operator Relu6.
@@ -145,19 +181,22 @@ REG_OP(Relu6)
 
 /**
 * @brief Computes rectified linear 6*scale.
-* activations = min(max(x, 0), 6*scale).
+* activations = min(max(x, 0), 6*scale) . \n
 
 * @par Inputs:
-* x: A Tensor of type RealNumberType.
+* x: A Tensor of type RealNumberType . \n
 
 * @par Attributes:
-* epsilon: A required scalar. The data type is float32.
+* epsilon: A required scalar. The data type is float32 . \n
 
 * @par Outputs:
-* y: A Tensor of type RealNumberType.
+* y: A Tensor of type RealNumberType . \n
 
 * @par Third-party framework compatibility
 * Compatible with the TensorFlow operator Relu6.
+*
+*@par Restrictions:
+*Warning: THIS FUNCTION IS DEPRECATED. Please use Relu6 instead.
 */
 REG_OP(Relu6D)
     .INPUT(x, TensorType::RealNumberType())
@@ -167,14 +206,14 @@ REG_OP(Relu6D)
 
 /**
 * @brief Computes rectified linear 6 gradients for a Relu6 operation.
-*     backprops = gradients * (features > 0) * (features < 6).
+*     backprops = gradients * (features > 0) * (features < 6) . \n
 
 * @par Inputs:
 * @li features: A Tensor of type RealNumberType.
-* @li gradients: A Tensor of type RealNumberType.
+* @li gradients: A Tensor of type RealNumberType . \n
 
 * @par Outputs:
-* backprops: A Tensor of type RealNumberType.
+* backprops: A Tensor of type RealNumberType . \n
 
 * @par Third-party framework compatibility
 * Compatible with the TensorFlow operator Relu6Grad.
@@ -186,13 +225,13 @@ REG_OP(Relu6Grad)
     .OP_END_FACTORY_REG(Relu6Grad)
 
 /**
-* @brief Compute sigmoid of "x" element-wise.
+* @brief Compute sigmoid of "x" element-wise . \n
 
 * @par Inputs:
-* A Tensor of type complex64, complex128, float16, float32 or double.
+* A Tensor of type complex64, complex128, float16, float32 or double . \n
 
 * @par Outputs:
-* A Tensor. Has the same type as "x".
+* A Tensor. Has the same type as "x" . \n
 
 * @see Relu()
 
@@ -205,11 +244,11 @@ REG_OP(Sigmoid)
     .OP_END_FACTORY_REG(Sigmoid)
 
 /**
-* @brief Computes z = (y - y*y)*dy.
+* @brief Computes z = (y - y*y)*dy . \n
 
 * @par Inputs:
 * @li y: The input is Tensor, dtype is UnaryDataType.
-* @li dy: The input is Tensor, dtype is UnaryDataType.
+* @li dy: The input is Tensor, dtype is UnaryDataType . \n
 
 * @par Outputs:
 * z: The shape of output, dtype is UnaryDataType.
@@ -221,14 +260,14 @@ REG_OP(SigmoidGrad)
     .OP_END_FACTORY_REG(SigmoidGrad)
 
 /**
-*@brief Computes the binomial normal log likelihood (BNLL) output:\n
-*if x>0, x+log(1+exp(-x)); otherwise log(1+exp(x)).
+*@brief Computes the binomial normal log likelihood (BNLL) output:
+*if x>0, x+log(1+exp(-x)); otherwise log(1+exp(x)) . \n
 
 *@par Inputs:
-*x: A Tensor of type double, float16 or float32.
+*x: A Tensor of type double, float16 or float32 . \n
 
 *@par Outputs:
-*y: A tensor. Has the same type and format as input "x".
+*y: A tensor. Has the same type and format as input "x" . \n
 
 *@par Third-party framework compatibility
 * Compatible with the Caffe operator BNLL.
@@ -239,11 +278,11 @@ REG_OP(BNLL)
     .OP_END_FACTORY_REG(BNLL)
 
 /**
-*@brief Computes softplus: log(exp(x) + 1).
+*@brief Computes softplus: log(exp(x) + 1) . \n
 
 *@par Inputs:
-* One input:\n
-*x: A Tensor of type float16 or float32. Up to 8D.
+* One input:
+*x: A Tensor of type float16 or float32. Up to 8D . \n
 
 *@par Outputs:
 *y: The activations tensor. Has the same type and format as input "x"
@@ -257,7 +296,7 @@ REG_OP(Softplus)
     .OP_END_FACTORY_REG(Softplus)
 
 /**
-*@brief Computes softplus gradients for a softplus operation.
+*@brief Computes softplus gradients for a softplus operation . \n
 
 *@par Inputs:
 *Two inputs:
@@ -266,7 +305,7 @@ REG_OP(Softplus)
 
 
 *@par Outputs:
-*backprops: A Tensor. Has the same type and format as input "gradients".
+*backprops: A Tensor. Has the same type and format as input "gradients" . \n
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator SoftplusGrad.
@@ -278,11 +317,11 @@ REG_OP(SoftplusGrad)
     .OP_END_FACTORY_REG(SoftplusGrad)
 
 /**
-*@brief Computes softsign: x/(abs(x) + 1).
+*@brief Computes softsign: x/(abs(x) + 1) . \n
 
 *@par Inputs:
-* One input:\n
-*x: A Tensor of type float16 or float32. Up to 8D.
+* One input:
+*x: A Tensor of type float16 or float32. Up to 8D . \n
 
 *@par Outputs:
 *y: The activations tensor. Has the same type and format as "x"
@@ -296,15 +335,15 @@ REG_OP(Softsign)
     .OP_END_FACTORY_REG(Softsign)
 
 /**
-*@brief Computes scaled exponential linear: scale * alpha * (exp(x) - 1).
+*@brief Computes scaled exponential linear: scale * alpha * (exp(x) - 1) . \n
 
 *@par Inputs:
 * One input:
 *x: A Tensor. Must be one of the following types: float16, float, double
- * int32, int8. format:ND, NC1HWC0.
+ * int32, int8. format:ND, NC1HWC0 . \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type and format as input "x". format:ND, NC1HWC0.
+*y: A Tensor. Has the same type and format as input "x". format:ND, NC1HWC0 . \n
 
 *@see Region()
 
@@ -319,7 +358,7 @@ REG_OP(Selu)
     .OP_END_FACTORY_REG(Selu)
 
 /**
-*@brief Computes rectified linear gradients for a ReLU operation.
+*@brief Computes rectified linear gradients for a ReLU operation . \n
 
 *@par Inputs:
 * Two inputs, including:
@@ -329,10 +368,10 @@ REG_OP(Selu)
  * int32, int8, int16, int64, uint16, float16, uint32, uint64
 
 *@par Outputs:
-*backprops: A Tensor. Must have the same type as"gradients".
+*backprops: A Tensor. Must have the same type as"gradients" . \n
 
 *@attention Constraints:
-* The corresponding Relu operator needs to be called before using this operator on the network.
+* The corresponding Relu operator needs to be called before using this operator on the network . \n
 
 *@see Relu
 
@@ -346,18 +385,18 @@ REG_OP(ReluGrad)
     .OP_END_FACTORY_REG(ReluGrad)
 
 /**
-*@brief Computes rectified linear gradients for a ReLU operation.
+*@brief Computes rectified linear gradients for a ReLU operation . \n
 
 *@par Inputs:
 * Two inputs, including:
-*@li gradients: A Tensor. Must be one of the following types: float32, double, int32, int8, int16,\n int8, int64, uint16, float16, uint32, uint64
+*@li gradients: A Tensor. Must be one of the following types: float32, double, int32, int8, int16,  int8, int64, uint16, float16, uint32, uint64
 *@li mask: A Tensor. Must be the following types: uint8
 
 *@par Outputs:
-*backprops: A Tensor. Must have the same type as"gradients".
+*backprops: A Tensor. Must have the same type as"gradients" . \n
 
 *@attention Constraints:
-* The corresponding Relu operator needs to be called before using this operator on the network.
+* The corresponding Relu operator needs to be called before using this operator on the network . \n
 
 *@see Relu
 
@@ -373,7 +412,7 @@ REG_OP(ReluGradV2)
 /**
 *@brief Computes rectified linear: "max(x, 0)".
 *
-*@attention Constraints:\n
+*@attention Constraints:
 * The last dimension must be divisible by 8.
 * The second output "mask" is "1" (for y >= 0) or "0" ( for y < 0).
 *
@@ -396,15 +435,15 @@ REG_OP(ReluV2)
     .OP_END_FACTORY_REG(ReluV2)
 
 /**
-*@brief Performs parametric ReLU.
+*@brief Performs parametric ReLU . \n
 
 *@par Inputs:
-* Two inputs, including: \n
+* Two inputs, including:
 *@li x: A multi-dimensional Tensor of type float16 or float32.
-*@li weight: A Scalar or 1D Tensor of type float16 or float32, specifying the weight, the initial value of "a". The number of dimensions must be the same as the number of channels.
+*@li weight: A Scalar or 1D Tensor of type float16 or float32, specifying the weight, the initial value of "a". The number of dimensions must be the same as the number of channels . \n
 
 *@par Outputs:
-*y: An activated Tensor. Has the same dimensions with "x".
+*y: An activated Tensor. Has the same dimensions with "x" . \n
 
 *@par Third-party framework compatibility
 * Compatible with PyTorch and Caffe operator PReLU.
@@ -416,17 +455,17 @@ REG_OP(PRelu)
     .OP_END_FACTORY_REG(PRelu)
 
 /**
-*@brief Performs the backpropagation of PRelu for training scenarios.
+*@brief Performs the backpropagation of PRelu for training scenarios . \n
 
 *@par Inputs:
-* Three inputs, including: \n
+* Three inputs, including:
 *@li grads: Input gradient. Multi-dimensional Tensors are supported. The data type can be float16 or float32.
 *@li features: A multi-dimensional Tensor of type float16 or float32.
-*@li weights: A Scalar or 1D Tensor of type float16 or float32, specifying the weight. The number of dimensions must be the same as the number of channels.
+*@li weights: A Scalar or 1D Tensor of type float16 or float32, specifying the weight. The number of dimensions must be the same as the number of channels . \n
 
 *@par Outputs:
 *@li dx: Reverse gradient of "features". Has the same dimensions and type as "features".
-*@li da: Reverse gradient of "weight". Has the same dimensions and type as "features".
+*@li da: Reverse gradient of "weight". Has the same dimensions and type as "features" . \n
 
 *@par Third-party framework compatibility
 * Compatible with PyTorch operator PReluGrad.
@@ -441,19 +480,19 @@ REG_OP(PReluGrad)
 
 /**
 *@brief Activation function fused from sigmoid and ReLU, with soft saturation
-*    on the left and no saturation on the right.
+*    on the left and no saturation on the right . \n
 
 *@par Inputs:
-*x: A float16, float32 or double, for the input data type.
+*x: A float16, float32 or double, for the input data type . \n
 
 *@par Attributes:
-*alpha: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0".
+*alpha: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
 
 *@par Outputs:
-*y: A float16, float32 or double, for the normalized result.
+*y: A float16, float32 or double, for the normalized result . \n
 
 *@attention Constraints:
-*@li The input is of type float16 or float32.
+*@li The input is of type float16 or float32 . \n
 
 *@par Multiple batches supported or not
 *Supported
@@ -492,7 +531,7 @@ REG_OP(EluGrad)
     .OP_END_FACTORY_REG(EluGrad)
 
 /**
-*@brief Computes the output as x if x > 0 and negative_slope * x if x <= 0.
+*@brief Computes the output as x if x > 0 and negative_slope * x if x <= 0 . \n
 
 *@par Inputs:
 * One input:
@@ -513,18 +552,18 @@ REG_OP(LeakyRelu)
     .OP_END_FACTORY_REG(LeakyRelu)
 
 /**
-*@brief Computes the output as gradients if features > 0 and negative_slope * gradients if features <= 0.
+*@brief Computes the output as gradients if features > 0 and negative_slope * gradients if features <= 0 . \n
 
 *@par Inputs:
 * Two inputs, including:
 * @li gradients: A Tensor. Must be one of the following types: float16, float32, double.
-* @li features: A Tensor. Has the same type as "gradients".
+* @li features: A Tensor. Has the same type as "gradients" . \n
 
 *@par Attributes:
-*negative_slope: A float32. Defaults to "0.0".
+*negative_slope: A float32. Defaults to "0.0" . \n
 
 *@par Outputs:
-*backprops: A Tensor. Has the same type as "gradients".
+*backprops: A Tensor. Has the same type as "gradients" . \n
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator LeakyReluGrad.
@@ -537,17 +576,20 @@ REG_OP(LeakyReluGrad)
     .OP_END_FACTORY_REG(LeakyReluGrad)
 
 /**
-*@brief Thresholds grad each element of the input Tensor.
+*@brief Thresholds grad each element of the input Tensor . \n
 
 *@par Inputs:
-* @li gradients: A Tensor shape and dtype of input gradients. Support float16, float32, int8, uint8, int32.
-* @li features: A Tensor shape and dtype of input features. Support float16, float32, int8, uint8, int32.
+* @li gradients: A Tensor shape and dtype of input gradients. Support float16, int32.
+* @li features: A Tensor shape and dtype of input features. Support float16, int32 . \n
 
 *@par Attributes:
-*threshold: A float32 scale value to threshold at.
+*threshold: A float32 scale value to threshold at . \n
 
 *@par Outputs:
-*backprops: A Tensor of shape and dtype of output backprops, should be same shape and type as inputs.
+*backprops: A Tensor of shape and dtype of output backprops, should be same shape and type as inputs . \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(ThresholdGradV2D)
     .INPUT(gradients, TensorType({DT_INT32, DT_FLOAT16}))
@@ -557,17 +599,20 @@ REG_OP(ThresholdGradV2D)
     .OP_END_FACTORY_REG(ThresholdGradV2D)
 
 /**
-*@brief Thresholds each element of the input Tensor y = (x > threshold) ? x : value.
+*@brief Thresholds each element of the input Tensor y = (x > threshold) ? x : value . \n
 
 *@par Inputs:
-*x: A Tensor dtype of float16, float32, int8, uint8, int32.
+*x: A Tensor dtype of real number . \n
 
 *@par Attributes:
 *@li threshold: A float32 scale value to threshold at.
-*@li value: A float32 scale value to replace with.
+*@li value: A float32 scale value to replace with . \n
 
 *@par Outputs:
-*y: A Tensor of shape and dtype of output, should be same shape and type as input.
+*y: A Tensor of shape and dtype of output, should be same shape and type as input . \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(ThresholdV2D)
     .INPUT(x, TensorType::RealNumberType())
@@ -577,14 +622,14 @@ REG_OP(ThresholdV2D)
     .OP_END_FACTORY_REG(ThresholdV2D)
 
 /**
-*@brief: Computes hyperbolic tangent of "x" element-wise.
+*@brief: Computes hyperbolic tangent of "x" element-wise . \n
 
 *@par Inputs:
 *One input:
-*x: A Tensor. Must be one of the following types: float16, float32.
+*x: A Tensor. Must be one of the following types: float16, float32 . \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as "x".
+*y: A Tensor. Has the same type as "x" . \n
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow operator Mish.
@@ -597,4 +642,4 @@ REG_OP(Mish)
 
 } // namespace ge
 
-#endif // GE_OP_NONLINEAR_FUC_OPS_H
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_

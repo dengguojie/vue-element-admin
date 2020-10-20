@@ -1,21 +1,20 @@
-#!/usr/bin/env python # pylint: disable=too-many-lines
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_reduce
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from functools import reduce as functools_reduce
@@ -25,6 +24,7 @@ from te import platform as cceconf
 from te.platform import log
 from .util import get_emit_insn_map
 from .util import DTYPE_WIDTH_MAP
+
 
 def get_max_ub_count(cast_dtype, reduce_len):
     """
@@ -234,7 +234,7 @@ def _cut_no_reduce_axis_sch_do_cache(
     _cut_no_reduce_axis_schedule do
     cache_read/write and compute_inlie
     """
-    ## cache_read/write
+    # cache_read/write
     for key in input_tensor_dst_tensor_map:
         read_buffer = sch.cache_read(key, cce.scope_ubuf,
                                      input_tensor_dst_tensor_map[key])
@@ -289,7 +289,7 @@ def _cut_no_reduce_axis_sch_do_tiling(
             compute_at_axis = rf_ub_outer
             res_emit_insn_axis = rf_ub_inner
     else:
-        ## split compute_at
+        # split compute_at
         res_block_outer, res_block_inner = \
             sch[res_tensor].split(sch[res_tensor].op.axis[block_axis],
                                   factor=block_factor)
@@ -302,8 +302,9 @@ def _cut_no_reduce_axis_sch_do_tiling(
         res_emit_insn_axis = res_ub_inner
 
     return barrier_tensor, compute_at_axis, res_emit_insn_axis, \
-           res_tensor_gm, res_tensor_rf_ub, \
-           bind_block_tensor, bind_block_axis
+        res_tensor_gm, res_tensor_rf_ub, \
+        bind_block_tensor, bind_block_axis
+
 
 def _cut_no_reduce_axis_sch_do_compute_at(
         sch, barrier_tensor, compute_at_axis,
@@ -330,7 +331,7 @@ def _cut_no_reduce_axis_sch_do_emit_insn(
     """
     cut_no_reduce_axis_schedule do emit_insn
     """
-    ## emit_insn
+    # emit_insn
     for i in input_tensor_buffer_tensor_map:
         buffer_tensor = input_tensor_buffer_tensor_map[i]
         sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], "dma_copy")
@@ -389,8 +390,8 @@ def cosine_embedding_loss_schedule_cut_no_reduce_axis(
         tiling_params
 
     barrier_tensor, compute_at_axis, res_emit_insn_axis, \
-    res_tensor_gm, res_tensor_rf_ub, \
-    bind_block_tensor, bind_block_axis = \
+        res_tensor_gm, res_tensor_rf_ub, \
+        bind_block_tensor, bind_block_axis = \
         _cut_no_reduce_axis_sch_do_tiling(
             sch, res_tensor, is_reduce_output, shape_x,
             block_axis, block_factor, ub_factor)
@@ -410,11 +411,11 @@ def cosine_embedding_loss_schedule_cut_no_reduce_axis(
     if is_reduce_output:
         res[0] = res_tensor_gm
 
-    ## double buffer
+    # double buffer
     for tensor in double_buffer_tensors:
         sch[tensor].double_buffer()
 
-    ## bind
+    # bind
     block = tvm.thread_axis("blockIdx.x")
     sch[bind_block_tensor].bind(bind_block_axis, block)
     return sch, []
@@ -550,11 +551,11 @@ def _cut_notfirst_axis_sch_do_tiling(
         bind_block_tensor = res_tensor_gm
 
         sch[res_tensor_gm].reorder(
-            *(res_tensor_gm.op.reduce_axis[:] + \
+            *(res_tensor_gm.op.reduce_axis[:] +
               res_tensor_gm.op.axis[:]))
 
         rf_ub_reduce_axis = [res_tensor_rf_ub.op.reduce_axis[-1]] + \
-                            res_tensor_rf_ub.op.reduce_axis[0:-1]
+            res_tensor_rf_ub.op.reduce_axis[0:-1]
 
         res_block_inner_outer, res_block_inner_inner = \
             sch[res_tensor_rf_ub].split(rf_ub_reduce_axis[0],
@@ -565,7 +566,7 @@ def _cut_notfirst_axis_sch_do_tiling(
             split_axis = ub_axis - 1
             res_ub_factor = ub_factor
             res_ub_outer_size = \
-                (shape_x[ub_axis] +  ub_factor - 1) // ub_factor
+                (shape_x[ub_axis] + ub_factor - 1) // ub_factor
             if ub_axis == 1:
                 split_axis = 1
                 res_ub_factor = shape_x[2]
@@ -596,10 +597,10 @@ def _cut_notfirst_axis_sch_do_tiling(
             compute_at_axis = res_block_inner_outer
             res_emit_insn_axis = res_block_inner_inner
             res_ub_outer_size = \
-                (shape_x[block_axis] +  block_factor - 1) // block_factor\
+                (shape_x[block_axis] + block_factor - 1) // block_factor\
                 // block_inner_factor
     else:
-        ## split compute_at
+        # split compute_at
         res_block_outer, res_block_inner = \
             sch[res_tensor].split(sch[res_tensor].op.axis[block_axis],
                                   factor=block_factor)
@@ -661,10 +662,10 @@ def _cut_notfirst_axis_sch_do_tiling(
         reduce_tensor_buffer_emit_axis_map)
 
     return barrier_tensor, compute_at_axis, res_emit_insn_axis, \
-           res_tensor_gm, res_tensor_rf_ub, res_ub_outer_size, \
-           bind_block_tensor, bind_block_axis, \
-           workspace_node_emit_axis_map, \
-           reduce_tensor_buffer_emit_axis_map
+        res_tensor_gm, res_tensor_rf_ub, res_ub_outer_size, \
+        bind_block_tensor, bind_block_axis, \
+        workspace_node_emit_axis_map, \
+        reduce_tensor_buffer_emit_axis_map
 
 
 def _cut_notfirst_axis_sch_do_inline(
@@ -703,11 +704,11 @@ def _cut_notfirst_axis_sch_do_cache_read(
         workspace_input_tensor_buffer_map[tensor] = read_buffer
         double_buffer_tensors.append(read_buffer)
 
-    ## cache_read/write
+    # cache_read/write
     input_tensor_buffer_tensor_map = {}
     for key in input_tensor_dst_tensor_map:
         if key not in reduce_tensor_placeholder_list +\
-            wk_tensor_placeholder_list:
+                wk_tensor_placeholder_list:
             read_buffer = sch.cache_read(
                 key, cce.scope_ubuf,
                 input_tensor_dst_tensor_map[key])
@@ -731,7 +732,7 @@ def _cut_notfirst_axis_sch_do_cache_read(
             double_buffer_tensors.append(read_buffer)
 
     return double_buffer_tensors, workspace_input_tensor_buffer_map, \
-           input_tensor_buffer_tensor_map, reduce_tensor_placeholder_buffer_map
+        input_tensor_buffer_tensor_map, reduce_tensor_placeholder_buffer_map
 
 
 def _cut_notfirst_axis_sch_do_cache_write(
@@ -762,8 +763,8 @@ def _cut_notfirst_axis_sch_do_cache_write(
         write_buffer = sch.cache_write(res_tensor, cce.scope_ubuf)
         mid_tensor_buffer_map[res_tensor] = write_buffer
 
-    return  workspace_node_buffer_map, workspace_mid_tensor_buffer_map, \
-            mid_tensor_buffer_map
+    return workspace_node_buffer_map, workspace_mid_tensor_buffer_map, \
+        mid_tensor_buffer_map
 
 
 def _cut_notfirst_axis_sch_do_compute_at(
@@ -814,7 +815,7 @@ def _cut_notfirst_axis_sch_do_emit_insn(
     """
     cut_notfirst_axis_schedule do emit_insn
     """
-    ## emit_insn
+    # emit_insn
     for i in workspace_tensor_input_map:
         buffer_tensor = workspace_input_tensor_buffer_map[i]
         sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], "dma_copy")
@@ -933,8 +934,8 @@ def _get_reduce_input_info_with_workspace(
         tensor_list_before_reduce = []
         _get_node_list(reduce_tensor, tensor_list_before_reduce)
         tensor_list_before_reduce = \
-            [i for i in tensor_list_before_reduce \
-             if i not in workspace_tensor_input_list + \
+            [i for i in tensor_list_before_reduce
+             if i not in workspace_tensor_input_list +
              workspace_tensor_placeholder_list]
 
         reduce_tensor_input_map[reduce_tensor] = \
@@ -956,7 +957,7 @@ def _get_reduce_input_info_with_workspace(
                     reduce_tensor_input_list.append(tensor)
 
     return reduce_tensor_input_map, reduce_tensor_placeholder_map, \
-           reduce_tensor_placeholder_list, reduce_tensor_input_list
+        reduce_tensor_placeholder_list, reduce_tensor_input_list
 
 
 def _get_reduce_input_info(
@@ -978,7 +979,7 @@ def _get_reduce_input_info(
         # if the workspace exist, reduce node's
         # input node will be workspace node
         reduce_tensor_input_map, reduce_tensor_placeholder_map, \
-        reduce_tensor_placeholder_list, reduce_tensor_input_list = \
+            reduce_tensor_placeholder_list, reduce_tensor_input_list = \
             _get_reduce_input_info_with_workspace(
                 reduce_tensor_map, workspace_node_list,
                 workspace_tensor_input_list,
@@ -1001,7 +1002,7 @@ def _get_reduce_input_info(
                         reduce_tensor_input_list.append(tensor)
 
     return reduce_tensor_input_map, reduce_tensor_placeholder_map, \
-           reduce_tensor_placeholder_list, reduce_tensor_input_list
+        reduce_tensor_placeholder_list, reduce_tensor_input_list
 
 
 def cosine_embedding_loss_schedule_cut_notfirst_axis(
@@ -1049,7 +1050,7 @@ def cosine_embedding_loss_schedule_cut_notfirst_axis(
             workspace_tensor_input_list)
 
     reduce_tensor_input_map, reduce_tensor_placeholder_map, \
-    reduce_tensor_placeholder_list, reduce_tensor_input_list = \
+        reduce_tensor_placeholder_list, reduce_tensor_input_list = \
         _get_reduce_input_info(
             reduce_tensor_map,
             is_need_workspace,
@@ -1058,8 +1059,8 @@ def cosine_embedding_loss_schedule_cut_notfirst_axis(
             workspace_tensor_placeholder_list)
 
     double_buffer_tensors, workspace_input_tensor_buffer_map, \
-    input_tensor_buffer_tensor_map, \
-    reduce_placeholder_buffer_map = \
+        input_tensor_buffer_tensor_map, \
+        reduce_placeholder_buffer_map = \
         _cut_notfirst_axis_sch_do_cache_read(
             sch, workspace_tensor_placeholder_map,
             input_tensor_dst_tensor_map,
@@ -1071,7 +1072,7 @@ def cosine_embedding_loss_schedule_cut_notfirst_axis(
         )
 
     workspace_node_buffer_map, workspace_mid_tensor_buffer_map, \
-    mid_tensor_buffer_map = \
+        mid_tensor_buffer_map = \
         _cut_notfirst_axis_sch_do_cache_write(
             sch, res_tensor, is_reduce_output,
             workspace_node_list,
@@ -1094,10 +1095,10 @@ def cosine_embedding_loss_schedule_cut_notfirst_axis(
         _get_block_inner_tiling(cast_dtype, shape_x, block_factor)
 
     barrier_tensor, compute_at_axis, res_emit_insn_axis, \
-    res_tensor_gm, res_tensor_rf_ub, res_ub_outer_size, \
-    bind_block_tensor, bind_block_axis, \
-    workspace_node_emit_axis_map, \
-    reduce_tensor_buffer_emit_axis_map = \
+        res_tensor_gm, res_tensor_rf_ub, res_ub_outer_size, \
+        bind_block_tensor, bind_block_axis, \
+        workspace_node_emit_axis_map, \
+        reduce_tensor_buffer_emit_axis_map = \
         _cut_notfirst_axis_sch_do_tiling(
             sch, res_tensor, is_reduce_output, shape_x,
             block_axis, block_factor, ub_axis, ub_factor,
@@ -1128,11 +1129,11 @@ def cosine_embedding_loss_schedule_cut_notfirst_axis(
         reduce_tensor_map, reduce_tensor_buffer_emit_axis_map
     )
 
-    ## double buffer
+    # double buffer
     for tensor in double_buffer_tensors:
         sch[tensor].double_buffer()
 
-    ## bind
+    # bind
     block = tvm.thread_axis("blockIdx.x")
     sch[bind_block_tensor].bind(bind_block_axis, block)
 
@@ -1239,7 +1240,7 @@ def _check_sch_support(dtype, shape_x, tiling_parmas):
 
     is_not_aligned = \
         reduce_outer_size > 1 and \
-        (one_core_reduce_nums*dtype_byte_size % 32 != 0 or \
+        (one_core_reduce_nums*dtype_byte_size % 32 != 0 or
          tail_nums*dtype_byte_size % 32 != 0)
     if is_not_aligned:
         return False

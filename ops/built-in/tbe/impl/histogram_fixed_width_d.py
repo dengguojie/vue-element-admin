@@ -1,19 +1,19 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-histogram_fixed_width
+histogram_fixed_width_d
 """
 from te import platform as tbe_platform
 import te.lang.cce
@@ -777,10 +777,10 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
     # init tensor: output tensor, len=nbins
     kernel_api.kernel_vector_dup_fuc(
         params.ir_builder, [params.des_output_ub, 0], SCALAR_ZERO,
-        [params.nbins, params.output_vec_align_len])
+        [params.out_num_per_core, params.output_vec_align_len])
     kernel_api.kernel_vector_dup_fuc(
         params.ir_builder, [params.des_tmp_output_ub, 0], SCALAR_ZERO,
-        [params.nbins, params.output_vec_align_len])
+        [params.out_num_per_core, params.output_vec_align_len])
     # copy data_range from out to ub
     kernel_api.kernel_cp_fuc(
         params.ir_builder, [[params.range_src_ub, 0], [data_range, 0]],
@@ -983,3 +983,4 @@ def histogram_fixed_width_d(x,
     sch = tvm.create_schedule(res.op)
     with build_config:
         tvm.build(sch, [data, range_data, res], "cce", name=kernel_name)
+

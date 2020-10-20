@@ -19,10 +19,9 @@ import math
 from functools import reduce as reduceIns
 import te.lang.dynamic
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from impl.util import fusion_util
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -30,8 +29,8 @@ from te.utils.op_utils import OPTION_ATTR_FLOAT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
 from te import platform as tbe_platform
+from te.utils.error_manager import error_manager_vector
 
 
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -42,7 +41,6 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
-
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
                 kernel_name="exp"):
     """
@@ -121,17 +119,10 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     input_dtype = dtype.lower()
     check_dtype(input_dtype, check_list, param_name="input_x")
     if base <= 0 and (not isclose(base, -1.0)):
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'base'
-        error_info['op_name'] = 'exp'
-        error_info['expect_value'] = "strictly positive or -1"
-        error_info['real_value'] = base
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should "
-                                       "be [%s],but actually is [%s]." % (
-                               error_info['op_name'], error_info['param_name'],
-                               error_info['expect_value'],
-                               error_info['real_value']))
+        expect_value = "strictly positive or -1"
+        real_value = "base < 0 or base notequal with -1"
+        error_manager_vector.raise_err_input_value_invalid(
+            kernel_name, "base", expecte_value, real_value)
     ins = classify([input_x], Mode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
@@ -143,7 +134,6 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
                                          dtype=input_dtype)
             res = exp_compute(data_input, output_y, base, scale, shift,
                               kernel_name)
-
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = generic.auto_schedule(res)

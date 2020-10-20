@@ -1,36 +1,32 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 softplus_grad
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("softplus_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("softplus_grad")
 def softplus_grad_compute(input_gradients, input_features, output_backprops,
                           kernel_name="softplus_grad"):
     """
@@ -54,50 +50,51 @@ def softplus_grad_compute(input_gradients, input_features, output_backprops,
     res: TVM tensor
         output tensor. has the same type as "input_gradients".
     """
-    shape_dy = te.lang.cce.util.shape_to_list(input_gradients.shape)
-    shape_x = te.lang.cce.util.shape_to_list(input_features.shape)
+    shape_dy = shape_util.shape_to_list(input_gradients.shape)
+    shape_x = shape_util.shape_to_list(input_features.shape)
     dtype = input_gradients.dtype
 
     if list(shape_dy) != list(shape_x):
-        shape_dy, shape_x, shape_max = broadcast_shapes(shape_dy, shape_x,
-                                                        param_name_input1="input_gradients",
-                                                        param_name_input2="input_features")
-        input_gradients = te.lang.cce.broadcast(input_gradients, shape_max, dtype)
-        input_features = te.lang.cce.broadcast(input_features, shape_max, dtype)
+        shape_dy, shape_x, shape_max = \
+            shape_util.broadcast_shapes(shape_dy, shape_x,
+                                        param_name_input1="input_gradients",
+                                        param_name_input2="input_features")
+        input_gradients = tbe.broadcast(input_gradients, shape_max, dtype)
+        input_features = tbe.broadcast(input_features, shape_max, dtype)
     else:
         shape_max = shape_dy
 
     if dtype != "float32":
-        input_gradients = te.lang.cce.cast_to(input_gradients, "float32")
-        input_features = te.lang.cce.cast_to(input_features, "float32")
+        input_gradients = tbe.cast_to(input_gradients, "float32")
+        input_features = tbe.cast_to(input_features, "float32")
 
-    data_exp_tmp = te.lang.cce.vexp(input_features)
-    data_add_tmp = te.lang.cce.vadds(data_exp_tmp, SCALAR_ONE)
-    data_div_tmp = te.lang.cce.vdiv(data_exp_tmp, data_add_tmp)
-    res_tmp = te.lang.cce.vmul(input_gradients, data_div_tmp)
+    data_exp_tmp = tbe.vexp(input_features)
+    data_add_tmp = tbe.vadds(data_exp_tmp, SCALAR_ONE)
+    data_div_tmp = tbe.vdiv(data_exp_tmp, data_add_tmp)
+    res_tmp = tbe.vmul(input_gradients, data_div_tmp)
 
     if dtype == "float16":
-        res = te.lang.cce.cast_to(res_tmp, "float16")
+        res = tbe.cast_to(res_tmp, "float16")
     elif dtype in ("int32", "int8", "uint8"):
-        data_zero = te.lang.cce.broadcast(tvm.const(0, "float16"),
-                                          shape_max, "float16")
-        res_min = te.lang.cce.vmin(res_tmp, data_zero)
-        res_max = te.lang.cce.vmax(res_tmp, data_zero)
-        res_max_int = te.lang.cce.floor(res_max)
-        res_min_int = te.lang.cce.ceil(res_min)
-        res = te.lang.cce.vadd(res_max_int, res_min_int)
+        data_zero = tbe.broadcast(tvm.const(0, "float16"), shape_max, "float16")
+        res_min = tbe.vmin(res_tmp, data_zero)
+        res_max = tbe.vmax(res_tmp, data_zero)
+        res_max_int = tbe.floor(res_max)
+        res_min_int = tbe.ceil(res_min)
+        res = tbe.vadd(res_max_int, res_min_int)
     else:
         res = res_tmp
 
     if dtype == "int8":
-        res = te.lang.cce.cast_to(res, "int8")
+        res = tbe.cast_to(res, "int8")
     elif dtype == "uint8":
-        res = te.lang.cce.cast_to(res, "uint8")
+        res = tbe.cast_to(res, "uint8")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def softplus_grad(input_gradients, input_features, output_backprops,
                   kernel_name="softplus_grad"):
     """
@@ -131,16 +128,17 @@ def softplus_grad(input_gradients, input_features, output_backprops,
              while the types are different")
     dtype = dtype_dy
 
-    check_shape(shape_dy, param_name="input_gradients")
-    check_shape(shape_x, param_name="input_features")
+    para_check.check_shape(shape_dy, param_name="input_gradients")
+    para_check.check_shape(shape_x, param_name="input_features")
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     input_dtype = dtype.lower()
-    check_dtype(input_dtype, check_list, param_name="input_gradients")
-    shape_dy, shape_x, shape_max = broadcast_shapes(shape_dy, shape_x,
-                                                    param_name_input1="input_gradients",
-                                                    param_name_input2="input_features")
-    reshape_dy, reshape_x = refine_shapes_for_broadcast(shape_dy, shape_x)
+    para_check.check_dtype(input_dtype, check_list, param_name="input_gradients")
+    shape_dy, shape_x, shape_max = \
+        shape_util.broadcast_shapes(shape_dy, shape_x,
+                                    param_name_input1="input_gradients",
+                                    param_name_input2="input_features")
+    reshape_dy, reshape_x = shape_util.refine_shapes_for_broadcast(shape_dy, shape_x)
 
     data_dy = tvm.placeholder(reshape_dy, name="data_dy", dtype=input_dtype)
     data_x = tvm.placeholder(reshape_x, name="data_x", dtype=input_dtype)
@@ -148,9 +146,9 @@ def softplus_grad(input_gradients, input_features, output_backprops,
     res = softplus_grad_compute(data_dy, data_x, output_backprops,
                                 kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name": kernel_name,
         "tensor_list": [data_dy, data_x, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

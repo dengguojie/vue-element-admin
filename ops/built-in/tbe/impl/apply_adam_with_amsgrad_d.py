@@ -1,37 +1,35 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_adam_with_amsgrad_d
 """
-
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.lang.cce
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
-from topi.cce import util
+from te.lang import cce as tbe
+from te.utils import operate_shape
+from te.utils import para_check
 
 NUM_ONE = 1.0
 NUM_N_ONE = -1.0
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# pylint: disable=unused-argument
-@fusion_manager.register("apply_adam_with_amsgrad_d")
+# pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
+@tbe_platform.fusion_manager.fusion_manager.register("apply_adam_with_amsgrad_d")
 def apply_adam_with_amsgrad_d_compute(var,
                                       m,
                                       v,
@@ -60,50 +58,48 @@ def apply_adam_with_amsgrad_d_compute(var,
     """
     inp_dtype = var.dtype
     # check the instruction supports or not
-    vmul_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vmul", "float32")
+    vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
-        raise RuntimeError(
-            "Input dtype is float32, but do not support on the platform")
+        raise RuntimeError("Input dtype is float32, but do not support on the platform")
 
     one = tvm.const(NUM_ONE, "float32")
     neg_one = tvm.const(NUM_N_ONE, "float32")
 
-    beta1_power = te.lang.cce.broadcast(beta1_power, var.shape)
-    beta2_power = te.lang.cce.broadcast(beta2_power, var.shape)
-    lr = te.lang.cce.broadcast(lr, var.shape)
+    beta1_power = tbe.broadcast(beta1_power, var.shape)
+    beta2_power = tbe.broadcast(beta2_power, var.shape)
+    lr = tbe.broadcast(lr, var.shape)
 
     # update lr
-    beta1_power_neg = te.lang.cce.vmuls(beta1_power, neg_one)
-    beta2_power_neg = te.lang.cce.vmuls(beta2_power, neg_one)
-    beta1_power_tmp = te.lang.cce.vadds(beta1_power_neg, one)
-    beta2_power_tmp = te.lang.cce.vadds(beta2_power_neg, one)
-    beta_sqrt = te.lang.cce.vsqrt(beta2_power_tmp)
-    lr_sqrt = te.lang.cce.vmul(lr, beta_sqrt)
-    lr_t = te.lang.cce.vdiv(lr_sqrt, beta1_power_tmp)
+    beta1_power_neg = tbe.vmuls(beta1_power, neg_one)
+    beta2_power_neg = tbe.vmuls(beta2_power, neg_one)
+    beta1_power_tmp = tbe.vadds(beta1_power_neg, one)
+    beta2_power_tmp = tbe.vadds(beta2_power_neg, one)
+    beta_sqrt = tbe.vsqrt(beta2_power_tmp)
+    lr_sqrt = tbe.vmul(lr, beta_sqrt)
+    lr_t = tbe.vdiv(lr_sqrt, beta1_power_tmp)
 
     # update m
-    m_mul = te.lang.cce.vmuls(m, beta1)
+    m_mul = tbe.vmuls(m, beta1)
     beta1_negadd = beta1 * neg_one + one
-    m_grad = te.lang.cce.vmuls(grad, beta1_negadd)
-    m_t = te.lang.cce.vadd(m_mul, m_grad)
+    m_grad = tbe.vmuls(grad, beta1_negadd)
+    m_t = tbe.vadd(m_mul, m_grad)
 
     # update v
-    beta2_t = te.lang.cce.vmuls(v, beta2)
+    beta2_t = tbe.vmuls(v, beta2)
     beta2_negadd = beta2 * neg_one + one
-    grad_pow = te.lang.cce.vmul(grad, grad)
-    beta2_grad = te.lang.cce.vmuls(grad_pow, beta2_negadd)
-    v_t = te.lang.cce.vadd(beta2_t, beta2_grad)
+    grad_pow = tbe.vmul(grad, grad)
+    beta2_grad = tbe.vmuls(grad_pow, beta2_negadd)
+    v_t = tbe.vadd(beta2_t, beta2_grad)
 
     # update vhat
-    vhat_t = te.lang.cce.vmax(vhat, v_t)
+    vhat_t = tbe.vmax(vhat, v_t)
 
     # update var
-    var_m = te.lang.cce.vmul(lr_t, m_t)
-    var_sqrt = te.lang.cce.vsqrt(vhat_t)
-    var_epsilon = te.lang.cce.vadds(var_sqrt, epsilon)
-    var_div = te.lang.cce.vdiv(var_m, var_epsilon)
-    var_t = te.lang.cce.vsub(var, var_div)
+    var_m = tbe.vmul(lr_t, m_t)
+    var_sqrt = tbe.vsqrt(vhat_t)
+    var_epsilon = tbe.vadds(var_sqrt, epsilon)
+    var_div = tbe.vdiv(var_m, var_epsilon)
+    var_t = tbe.vsub(var, var_div)
 
     return var_t, m_t, v_t, vhat_t
 
@@ -114,38 +110,32 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
     var_dtype = input_dict["var"].get("dtype")
     list_placeholder = []
     for key, value in input_dict.items():
-        shape = util.scalar2tensor_one(value.get("shape"))
-        op_utils.check_shape(shape)
+        shape = operate_shape.scalar2tensor_one(value.get("shape"))
+        para_check.check_shape(shape)
         if value in scalar_input:
-            if not util.is_scalar(shape):
+            if not para_check.is_scalar(shape):
                 raise RuntimeError("The shape of ", key, " must be scalar")
         if value in tensor_input:
             if shape != var_shape:
-                raise RuntimeError("The shape of", key,
-                                   "must be the same as the var")
+                raise RuntimeError("The shape of", key, "must be the same as the var")
 
         dtype = value.get("dtype").lower()
-        op_utils.check_dtype(dtype, check_list, param_name="var")
+        para_check.check_dtype(dtype, check_list, param_name="var")
         if dtype != var_dtype:
-            raise RuntimeError("The dtype of", key,
-                               "must be the same as the var")
+            raise RuntimeError("The dtype of", key, "must be the same as the var")
 
-        shape_refine = (functools_reduce(operator.mul, shape), )
-        list_placeholder.append(
-            tvm.placeholder(shape=shape_refine, name=key, dtype=dtype))
+        shape_refine = (functools.reduce(operator.mul, shape), )
+        list_placeholder.append(tvm.placeholder(shape=shape_refine, name=key, dtype=dtype))
     return list_placeholder
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,
-# pylint: disable=unbalanced-tuple-unpacking
-@op_utils.check_op_params(
-    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-    op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_FLOAT,
-    op_utils.REQUIRED_ATTR_FLOAT, op_utils.REQUIRED_ATTR_FLOAT,
-    op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+# pylint: disable=too-many-arguments,unused-argument,too-many-locals,unbalanced-tuple-unpacking
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_adam_with_amsgrad_d(var,
                               m,
                               v,
@@ -229,34 +219,23 @@ def apply_adam_with_amsgrad_d(var,
     }
     scalar_input = (lr, beta1_power, beta2_power, epsilon)
     tensor_input = (var, m, v, vhat, grad)
-    var_input, m_input, v_input, vhat_input, \
-    beta1_power, beta2_power, lr_input, grad_input = \
-        _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict)
+    var_input, m_input, v_input, vhat_input, beta1_power, beta2_power, lr_input, grad_input =\
+         _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict)
 
-    var_output, m_output, \
-    v_output, vhat_output = apply_adam_with_amsgrad_d_compute(var_input,
-                                                              m_input,
-                                                              v_input,
-                                                              vhat_input,
-                                                              beta1_power,
-                                                              beta2_power,
-                                                              lr_input,
-                                                              beta1,
-                                                              beta2,
-                                                              epsilon,
-                                                              grad_input,
-                                                              kernel_name)
+    var_output, m_output, v_output, vhat_output = apply_adam_with_amsgrad_d_compute(var_input, m_input, v_input,
+                                                                                    vhat_input, beta1_power,
+                                                                                    beta2_power, lr_input, beta1, beta2,
+                                                                                    epsilon, grad_input, kernel_name)
     with tvm.target.cce():
-        schedule = generic.auto_schedule(
-            [var_output, m_output, v_output, vhat_output])
+        schedule = tbe.auto_schedule([var_output, m_output, v_output, vhat_output])
 
     config = {
         "name":
         kernel_name,
         "tensor_list": [
-            var_input, m_input, v_input, vhat_input, beta1_power, beta2_power,
-            lr_input, grad_input, var_output, m_output, v_output, vhat_output
+            var_input, m_input, v_input, vhat_input, beta1_power, beta2_power, lr_input, grad_input, var_output,
+            m_output, v_output, vhat_output
         ]
     }
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)

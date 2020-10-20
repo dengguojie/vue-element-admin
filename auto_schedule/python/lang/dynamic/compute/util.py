@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 compute util
 """
 from decorator import decorator
@@ -226,6 +224,7 @@ def dsl_check_support(dsl_api, dtype=None):
 
     return True
 
+
 def refine_axis(axis, shape):
     """
     refine_axis
@@ -246,6 +245,7 @@ def refine_axis(axis, shape):
         res_axis.append(laxis)
     return sorted(res_axis)
 
+
 def _axis_value_type_check(shape_len, value):
     """
     Check the value of the axis
@@ -259,6 +259,7 @@ def _axis_value_type_check(shape_len, value):
     if value < 0:
         value = shape_len + value
     return value
+
 
 def reduce_axis_check(shape_len, axis):
     """
@@ -338,6 +339,7 @@ def get_tvm_scalar(scalar, dtype):
         scalar = tvm.const(scalar, dtype=dtype)
 
     return scalar
+
 
 def get_vcmpsel_input_type(rhs, slhs, srhs):
     type_strs = []

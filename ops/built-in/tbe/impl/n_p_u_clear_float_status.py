@@ -1,31 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-NPUClearFloatStatus
+n_p_u_clear_float_status
 """
-
-from te import platform as tbe_platform
-from topi.cce import util
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te.utils.op_utils import *
 
-#constant 8
+# constant 8
 NUM_EIGHT = 8
 
 # pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def n_p_u_clear_float_status(addr, data, kernel_name="n_p_u_clear_float_status"):
     """
     the main function of npu_clear_float_status
@@ -41,7 +39,7 @@ def n_p_u_clear_float_status(addr, data, kernel_name="n_p_u_clear_float_status")
     tik_instance: tik_instance
     """
     tik_instance = tik.Tik()
-    aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
     output_data = tik_instance.Tensor("float32", (NUM_EIGHT,),
                                       name="output_data", scope=tik.scope_gm)

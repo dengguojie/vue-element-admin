@@ -1,30 +1,27 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 normalize_sum
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-
+from te.utils import para_check
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("normalize_sum")
+@tbe_platform.fusion_manager.fusion_manager.register("normalize_sum")
 def normalize_sum_compute(x1, y, data_format, across_spatial=True,
                           kernel_name="normalize_sum"):
     """
@@ -50,7 +47,7 @@ def normalize_sum_compute(x1, y, data_format, across_spatial=True,
     """
 
     # set intermediate dtype
-    if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32"):
+    if not tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         # hisi es, cs
         intermediate_dtype = "float16"
         dtype_cast_mapping = {"int8": "float16"}
@@ -61,24 +58,25 @@ def normalize_sum_compute(x1, y, data_format, across_spatial=True,
     x1_cast = x1
     if intermediate_dtype != x1.dtype:
         while x1_cast.dtype in dtype_cast_mapping:
-            x1_cast = te.lang.cce.cast_to(x1_cast,
+            x1_cast = tbe.cast_to(x1_cast,
                                           dtype_cast_mapping[x1_cast.dtype])
 
-    x1_cast_sqr = te.lang.cce.vmul(x1_cast, x1_cast)
+    x1_cast_sqr = tbe.vmul(x1_cast, x1_cast)
 
     if across_spatial:
-        x1_cast_sqr_sum = te.lang.cce.sum(x1_cast_sqr, axis=[1, 2, 3],
+        x1_cast_sqr_sum = tbe.sum(x1_cast_sqr, axis=[1, 2, 3],
                                           keepdims=True)
     elif data_format == "NCHW":
-        x1_cast_sqr_sum = te.lang.cce.sum(x1_cast_sqr, axis=[1], keepdims=True)
+        x1_cast_sqr_sum = tbe.sum(x1_cast_sqr, axis=[1], keepdims=True)
     elif data_format == "NHWC":
-        x1_cast_sqr_sum = te.lang.cce.sum(x1_cast_sqr, axis=[3], keepdims=True)
+        x1_cast_sqr_sum = tbe.sum(x1_cast_sqr, axis=[3], keepdims=True)
 
     return x1_cast_sqr_sum
 
 
 # pylint: disable=locally-disabled,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     """
     calculating data
@@ -104,18 +102,24 @@ def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     dtype_1 = x1.get("dtype").lower()
     data_format = x1.get("format")
 
-    check_shape(shape_1, param_name="x1")
+    if len(list(shape_1)) == 2:
+        if data_format == "NCHW":
+            shape_1 = [shape_1[0], shape_1[1], 1, 1]
+        elif data_format == "NHWC":
+            shape_1 = [shape_1[0], 1, 1, shape_1[1]]
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    para_check.check_shape(shape_1, param_name="x1")
+
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         # hisi es, cs
-        check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
+        para_check.check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
     else:
-        check_dtype(dtype_1, ("int8", "float16", "float32",), param_name="x1")
+        para_check.check_dtype(dtype_1, ("int8", "float16", "float32",), param_name="x1")
 
-    check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
+    para_check.check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
 
-    check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
+    para_check.check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
 
     data_x1 = tvm.placeholder(shape_1, name="data_1", dtype=dtype_1)
     res = normalize_sum_compute(data_x1, y, data_format, across_spatial,
@@ -123,11 +127,11 @@ def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
 
     # pylint: disable=no-member
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "need_build": True,
               "name": kernel_name,
               "tensor_list": [data_x1, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

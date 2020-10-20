@@ -1,30 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 floor_mod
 """
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import refine_shapes_for_broadcast
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
-@fusion_manager.register("floor_mod")
+@tbe_platform.fusion_manager.fusion_manager.register("floor_mod")
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """
     Compute remainder of division
@@ -48,44 +47,47 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """
     # calculate result, using float32 for better precision
     dtype = x1.dtype
-    shape_x = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(x2.shape)
-    shape_x, shape_y, shape = broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
+    shape_x = shape_util.shape_to_list(x1.shape)
+    shape_y = shape_util.shape_to_list(x2.shape)
+    shape_x, shape_y, shape = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                         param_name_input1="x1",
+                                                         param_name_input2="x2")
 
     has_improve_precision = False
     input_x_fp32 = x1
     input_y_fp32 = x2
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
-        input_x_fp32 = te.lang.cce.cast_to(x1, "float32")
-        input_y_fp32 = te.lang.cce.cast_to(x2, "float32")
+        input_x_fp32 = tbe.cast_to(x1, "float32")
+        input_y_fp32 = tbe.cast_to(x2, "float32")
         has_improve_precision = True
 
-    input_x_fp32 = te.lang.cce.broadcast(input_x_fp32, shape)
-    input_y_fp32 = te.lang.cce.broadcast(input_y_fp32, shape)
+    input_x_fp32 = tbe.broadcast(input_x_fp32, shape)
+    input_y_fp32 = tbe.broadcast(input_y_fp32, shape)
 
-    res = te.lang.cce.vdiv(input_x_fp32, input_y_fp32)
+    res = tbe.vdiv(input_x_fp32, input_y_fp32)
 
-    res = te.lang.cce.floor(res)
+    res = tbe.floor(res)
 
     if dtype != "int32":
         if has_improve_precision:
-            res = te.lang.cce.cast_to(res, "float32")
+            res = tbe.cast_to(res, "float32")
         else:
-            res = te.lang.cce.cast_to(res, "float16")
-        res = te.lang.cce.vmul(res, input_y_fp32)
-        res = te.lang.cce.vsub(input_x_fp32, res)
+            res = tbe.cast_to(res, "float16")
+        res = tbe.vmul(res, input_y_fp32)
+        res = tbe.vsub(input_x_fp32, res)
         if has_improve_precision:
-            res = te.lang.cce.cast_to(res, dtype)
+            res = tbe.cast_to(res, dtype)
     else:
-        x2_broad = te.lang.cce.broadcast(x2, shape)
-        x1_broad = te.lang.cce.broadcast(x1, shape)
-        res = te.lang.cce.vmul(res, x2_broad)
-        res = te.lang.cce.vsub(x1_broad, res)
+        x2_broad = tbe.broadcast(x2, shape)
+        x1_broad = tbe.broadcast(x1, shape)
+        res = tbe.vmul(res, x2_broad)
+        res = tbe.vsub(x1_broad, res)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     """
     calculate the remainder of division, support fp16,fp32,int32
@@ -117,26 +119,28 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     shape_y = x2.get("shape")
 
     # check_kernel_name & shape
-    check_shape(shape_x, param_name="x1")
-    check_shape(shape_y, param_name="x2")
+    para_check.check_shape(shape_x, param_name="x1")
+    para_check.check_shape(shape_y, param_name="x2")
 
     # check input tensor data_type
     check_list = ("float16", "float32", "int32")
-    check_dtype(dtype_x, check_list, param_name="x1")
-    check_dtype(dtype_y, check_list, param_name="x2")
+    para_check.check_dtype(dtype_x, check_list, param_name="x1")
+    para_check.check_dtype(dtype_y, check_list, param_name="x2")
 
     if dtype_x != dtype_y:
         raise RuntimeError("the type of dtype in two dict is not the same")
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
-    shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                              param_name_input1="x1",
+                                                              param_name_input2="x2")
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
     input_data_x = tvm.placeholder(shape_x, name="input_data_x", dtype=dtype_x)
     input_data_y = tvm.placeholder(shape_y, name="input_data_y", dtype=dtype_y)
     res = floor_mod_compute(input_data_x, input_data_y, y, kernel_name)
     with tvm.target.cce():
-        auto_sch = generic.auto_schedule(res)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_data_x, input_data_y, res]}
-    te.lang.cce.cce_build_code(auto_sch, config)
+    tbe.cce_build_code(auto_sch, config)

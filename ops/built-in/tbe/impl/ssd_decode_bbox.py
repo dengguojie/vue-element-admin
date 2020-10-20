@@ -1,24 +1,25 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-ssd_detection_out
+ssd_decode_bbox
 """
 # pylint: disable=too-many-lines
-
 import math
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
 from impl import constant_util as constant
 from impl import common_util
 
@@ -44,8 +45,8 @@ class SSDDectionParamInit():
         self.dtype = input_dict.get("mbox_loc").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
 
-        self.ascend_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ascend_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         ub_capacity = self.ub_size // self.dsize
 
         self.burnest_len = constant.BLOCK_SIZE // self.dsize
@@ -66,7 +67,6 @@ class SSDDectionParamInit():
 class SSDDecodeBBox(SSDDectionParamInit):
     """
     define SSDDecodeBBox class
-
     """
     def __init__(self, input_dict, tik_instance):
         """
@@ -87,49 +87,46 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         # input data
         add_tail_num = 256
-        mbox_loc_len = self.get_shape_total_number(
-            input_dict.get("mbox_loc").get("shape"))
-        self.mbox_loc_gm = self.instance.Tensor(self.dtype, (mbox_loc_len+add_tail_num, ),
+        mbox_loc_len = self.get_shape_total_number(input_dict.get("mbox_loc").get("shape"))
+        self.mbox_loc_gm = self.instance.Tensor(self.dtype, (mbox_loc_len + add_tail_num, ),
                                                 name="mbox_loc_gm",
-                                                scope=tik.scope_gm)
+                                                scope=tbe_platform.scope_gm)
 
         mbox_conf_len = self.get_shape_total_number(
             input_dict.get("mbox_conf").get("shape"))
-        self.mbox_conf_gm = self.instance.Tensor(self.dtype, (mbox_conf_len+add_tail_num, ),
+        self.mbox_conf_gm = self.instance.Tensor(self.dtype, (mbox_conf_len + add_tail_num,),
                                                  name="mbox_conf_gm",
-                                                 scope=tik.scope_gm)
-
+                                                 scope=tbe_platform.scope_gm)
 
         mbox_priorbox_len = self.get_shape_total_number(
             input_dict.get("mbox_priorbox").get("shape"))
         self.mbox_prior_gm = self.instance.Tensor(self.dtype,
-                                                  (mbox_priorbox_len+add_tail_num, ),
+                                                  (mbox_priorbox_len + add_tail_num, ),
                                                   name="mbox_prior_gm",
-                                                  scope=tik.scope_gm)
+                                                  scope=tbe_platform.scope_gm)
 
         # parser input data
-        # loc_coord_num_align = self.loc_coord + self.burnest_len
         loc_coord_num_align = math.ceil(self.loc_coord / 16) * 16 + self.burnest_len
         self.loc_data_parser_gm = self.instance.Tensor(
             self.dtype,
             (self.batch, 4, loc_coord_num_align),
             name="loc_data_parser_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
         self.conf_data_parser_gm = self.instance.Tensor(
             self.dtype,
             (self.batch, self.num_classes, loc_coord_num_align),
             name="conf_data_parser_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
         self.prior_bbox_parser_gm = self.instance.Tensor(
             self.dtype,
             (self.batch, 4, loc_coord_num_align),
             name="prior_bbox_parser_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
         if not self.variance_encoded_in_target:
             self.prior_variance_parser_gm = self.instance.Tensor(
@@ -137,7 +134,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                 (self.batch, 4, loc_coord_num_align),
                 name="prior_variance_parser_gm",
                 is_workspace=True,
-                scope=tik.scope_gm)
+                scope=tbe_platform.scope_gm)
 
         # decode bbox out data
         self.decode_bbox_out_gm = self.instance.Tensor(
@@ -145,7 +142,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             (self.batch, self.num_classes, loc_coord_num_align, 8),
             name="decode_bbox_out_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
     def init_decode_bbox_args(self, input_dict):
         """
@@ -184,8 +181,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-        #block_num = tik.Dprofile().get_aicore_num()
-        block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         if block_num > self.batch:
             outer_loop = 1
             block_num = self.batch
@@ -207,7 +203,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         Returns
         -------
-        None
+        total_number
         """
         total_number = len(shape)
         if total_number == 0:
@@ -265,17 +261,17 @@ class SSDDecodeBBox(SSDDectionParamInit):
         loc_dst_ub = self.instance.Tensor(self.dtype,
                                           (4, self.handle_each_dst),
                                           name="loc_dst_ub",
-                                          scope=tik.scope_ubuf)
+                                          scope=tbe_platform.scope_ubuf)
 
         self.get_loc_data(batch, data_offset, loc_dst_ub, is_tail)
 
         # 2. get prior bbox data
         prior_bbox_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_bbox_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         prior_var_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_var_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
 
         self.get_priorbox_data((batch, data_offset, prior_bbox_dest_ub,
                                 prior_var_dest_ub), is_tail)
@@ -315,27 +311,27 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         Returns
         -------
-        None
+        prior_width, prior_height, prior_center_x, prior_center_y, prior_var_dest_ub
         """
         # 1. get bbox
         prior_bbox_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_bbox_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         prior_var_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_var_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
 
         self.get_priorbox_data((batch, data_offset, prior_bbox_dest_ub,
                                 prior_var_dest_ub), is_tail)
 
         prior_width = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                           name="prior_width", scope=tik.scope_ubuf)
+                                           name="prior_width", scope=tbe_platform.scope_ubuf)
         prior_height = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                            name="prior_height", scope=tik.scope_ubuf)
+                                            name="prior_height", scope=tbe_platform.scope_ubuf)
         prior_center_x = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                              name="prior_center_x", scope=tik.scope_ubuf)
+                                              name="prior_center_x", scope=tbe_platform.scope_ubuf)
         prior_center_y = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                              name="prior_center_y", scope=tik.scope_ubuf)
+                                              name="prior_center_y", scope=tbe_platform.scope_ubuf)
 
         handle_each_dst_loops = self.handle_each_dst // self.mask
 
@@ -380,7 +376,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         Returns
         -------
-        None
+        decode_bbox_center_x, decode_bbox_center_y, decode_bbox_width, decode_bbox_height
         """
         prior_width = prior_data[0]
         prior_height = prior_data[1]
@@ -391,27 +387,26 @@ class SSDDecodeBBox(SSDDectionParamInit):
         loc_dst_ub = self.instance.Tensor(self.dtype,
                                           (4, self.handle_each_dst),
                                           name="loc_dst_ub",
-                                          scope=tik.scope_ubuf)
+                                          scope=tbe_platform.scope_ubuf)
 
         self.get_loc_data(batch, data_offset, loc_dst_ub, is_tail)
 
-        #2.2
+        # 2.2
         decode_bbox_center_x = self.instance.Tensor(
             self.dtype, (self.handle_each_dst, ), name="decode_bbox_center_x",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         decode_bbox_center_y = self.instance.Tensor(
             self.dtype, (self.handle_each_dst, ), name="decode_bbox_center_y",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         decode_bbox_width = self.instance.Tensor(
             self.dtype, (self.handle_each_dst, ), name="decode_bbox_width",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         decode_bbox_height = self.instance.Tensor(
             self.dtype, (self.handle_each_dst, ), name="decode_bbox_height",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         decode_bbox_vexp = self.instance.Tensor(
             self.dtype, (self.handle_each_dst, ), name="decode_bbox_vexp",
-            scope=tik.scope_ubuf)
-
+            scope=tbe_platform.scope_ubuf)
 
         handle_each_dst_loops = self.handle_each_dst // self.mask
 
@@ -521,8 +516,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                prior_height,
                                handle_each_dst_loops, 1, 1, 1, 8, 8, 8)
 
-        return decode_bbox_center_x, decode_bbox_center_y, decode_bbox_width, \
-               decode_bbox_height
+        return decode_bbox_center_x, decode_bbox_center_y, decode_bbox_width, decode_bbox_height
 
     def compute_decode_bbox_coord_center_size(self, decode_bbox_data,
                                               decode_bbox_ori):
@@ -538,7 +532,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-
         decode_bbox_center_x = decode_bbox_data[0]
         decode_bbox_center_y = decode_bbox_data[1]
         decode_bbox_width = decode_bbox_data[2]
@@ -561,7 +554,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
                            decode_bbox_center_y,
                            decode_bbox_height,
                            handle_each_dst_loops, 1, 1, 1, 8, 8, 8)
-
 
         self.instance.vadd(self.mask, decode_bbox_ori[2, 0],
                            decode_bbox_center_x,
@@ -593,26 +585,26 @@ class SSDDecodeBBox(SSDDectionParamInit):
         loc_dst_ub = self.instance.Tensor(self.dtype,
                                           (4, self.handle_each_dst),
                                           name="loc_dst_ub",
-                                          scope=tik.scope_ubuf)
+                                          scope=tbe_platform.scope_ubuf)
 
         self.get_loc_data(batch, data_offset, loc_dst_ub, is_tail)
 
         # 2. get prior bbox data
         prior_bbox_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_bbox_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         prior_var_dest_ub = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="prior_var_dest_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
 
         self.get_priorbox_data((batch, data_offset, prior_bbox_dest_ub,
                                 prior_var_dest_ub), is_tail)
 
         # 3. prior width and height
         prior_width = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                           name="prior_width", scope=tik.scope_ubuf)
+                                           name="prior_width", scope=tbe_platform.scope_ubuf)
         prior_height = self.instance.Tensor(self.dtype, (self.handle_each_dst, ),
-                                            name="prior_height", scope=tik.scope_ubuf)
+                                            name="prior_height", scope=tbe_platform.scope_ubuf)
 
         handle_each_dst_loops = self.handle_each_dst // self.mask
         self.instance.vsub(self.mask, prior_width,
@@ -696,9 +688,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
         None
         """
         val_0_ub = self.instance.Tensor(self.dtype, (self.mask,),
-                                        name="val_0_ub", scope=tik.scope_ubuf)
+                                        name="val_0_ub", scope=tbe_platform.scope_ubuf)
         val_1_ub = self.instance.Tensor(self.dtype, (self.mask,),
-                                        name="val_1_ub", scope=tik.scope_ubuf)
+                                        name="val_1_ub", scope=tbe_platform.scope_ubuf)
         self.instance.vector_dup(self.mask, val_0_ub, 0, 1, 1, 8)
         self.instance.vector_dup(self.mask, val_1_ub, 1, 1, 1, 8)
 
@@ -774,10 +766,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
         """
         decode_bbox_ori = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="decode_bbox_ori",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
         decode_bbox_clip = self.instance.Tensor(
             self.dtype, (4, self.handle_each_dst), name="decode_bbox_clip",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
 
         with self.instance.if_scope(self.code_type == 1):
             self.compute_decode_bbox_coord_corner(batch, data_offset, is_tail,
@@ -803,7 +795,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             self.compute_decode_bbox_coord_corner_size(batch, data_offset,
                                                        is_tail, decode_bbox_ori)
 
-        if self.ascend_name in ("Ascend610", "Ascend710"):
+        if self.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
             self.clip_bbox_v200(decode_bbox_ori, decode_bbox_clip)
         else:
             self.clip_bbox(decode_bbox_ori, decode_bbox_clip)
@@ -827,7 +819,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
         """
         init_val = self.instance.Scalar(self.dtype, "init_val", 0)
         decode_bbox_output_tail = self.instance.Tensor(
-            self.dtype, (16, 8), name="decode_bbox_output_tail", scope=tik.scope_ubuf)
+            self.dtype, (16, 8), name="decode_bbox_output_tail", scope=tbe_platform.scope_ubuf)
         self.instance.vector_dup(self.mask, decode_bbox_output_tail, 0, 16 * 8 // self.mask, 1, 8)
 
         with self.instance.for_range(0, self.num_classes) as class_index:
@@ -867,7 +859,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
         """
         decode_bbox_out_ub = self.instance.Tensor(
             self.dtype, (self.handle_each_dst*8, ), name="decode_bbox_out_ub",
-            scope=tik.scope_ubuf)
+            scope=tbe_platform.scope_ubuf)
 
         handle_each_vconcat_num = self.handle_each_dst // 16
         burst_val = self.handle_each_dst * 8 // self.burnest_len
@@ -908,10 +900,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
         # vconcat conf data
         with self.instance.for_range(0, self.num_classes) as class_index:
             with self.instance.if_scope(class_index != self.background_label_id):
-                #paser conf
+                # paser conf
                 conf_dst_ub = self.instance.Tensor(
                     self.dtype, (self.handle_each_dst,), name="conf_dst_ub",
-                    scope=tik.scope_ubuf)
+                    scope=tbe_platform.scope_ubuf)
 
                 self.get_conf_data((batch, class_index, data_offset, conf_dst_ub),
                                    is_tail)
@@ -962,7 +954,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                     self.mbox_loc_gm[loc_gm_start+gm_start],
                                     0, 1, 1, 0, 0)
         # 2. vnchwconv
-        tail_loop_times = ((length*16)//(16*16)) % 255
+        tail_loop_times = ((length * 16) // (16 * 16)) % 255
         dst_rep_stride = 16
         src_rep_stride = 16
         if tail_loop_times == 1:
@@ -1008,9 +1000,9 @@ class SSDDecodeBBox(SSDDectionParamInit):
             loc_handle_loops = self.loc_num // handle_num
 
             loc_ub = self.instance.Tensor(
-                self.dtype, (handle_num * 4,), name="loc_ub", scope=tik.scope_ubuf)
+                self.dtype, (handle_num * 4,), name="loc_ub", scope=tbe_platform.scope_ubuf)
             loc_vnch_ub = self.instance.Tensor(
-                self.dtype, (handle_num * 4,), name="loc_vnch_ub", scope=tik.scope_ubuf)
+                self.dtype, (handle_num * 4,), name="loc_vnch_ub", scope=tbe_platform.scope_ubuf)
 
             with self.instance.for_range(0, loc_handle_loops) as loc_handle_index:
                 loc_gm_start = batch * self.loc_num + loc_handle_index * handle_num
@@ -1049,21 +1041,19 @@ class SSDDecodeBBox(SSDDectionParamInit):
         handle_num = self.ub_capacity // 5 // self.burnest_len * self.burnest_len
         handle_loops = self.loc_num // (4 * handle_num)
         handle_tails = self.loc_num % (4 * handle_num)
-        print("---->loc: ", handle_num, (4 * handle_num), self.ub_capacity)
         with self.instance.new_stmt_scope():
             loc_ub = self.instance.Tensor(
-                self.dtype, (4 * handle_num,), name="loc_ub", scope=tik.scope_ubuf)
+                self.dtype, (4 * handle_num,), name="loc_ub", scope=tbe_platform.scope_ubuf)
             loc_dst_ub = self.instance.Tensor(
-                self.dtype, (handle_num,), name="loc_dst_ub", scope=tik.scope_ubuf)
+                self.dtype, (handle_num,), name="loc_dst_ub", scope=tbe_platform.scope_ubuf)
             get_x1_scalar = self.instance.Scalar("int64", "get_x1_scalar", 3)
             get_y1_scalar = self.instance.Scalar("int64", "get_y1_scalar", 4)
             get_x2_scalar = self.instance.Scalar("int64", "get_x2_scalar", 5)
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                loc_gm_offset = batch * self.loc_num + \
-                                loc_handle_index * 4 * handle_num
-                self.instance.data_move(loc_ub, self.mbox_loc_gm[loc_gm_offset],
+                loc_gm_offset = loc_handle_index * 4 * handle_num
+                self.instance.data_move(loc_ub, self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset],
                                         0, 1, 4 * handle_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, loc_dst_ub, loc_ub,
@@ -1095,13 +1085,12 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     loc_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                loc_gm_offset = batch * self.loc_num + \
-                                handle_loops * 4 * handle_num
-                loc_data_tail_num = self.loc_num - handle_loops * handle_num
+                loc_gm_offset = handle_loops * 4 * handle_num
+                loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 
                 self.instance.data_move(loc_ub,
-                                        self.mbox_loc_gm[loc_gm_offset], 0, 1,
+                                        self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset], 0, 1,
                                         loc_data_tail_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, loc_dst_ub, loc_ub,
@@ -1148,7 +1137,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-
         loc_burst_val = self.handle_each_dst // self.burnest_len
         if is_tail:
             loc_burst_val = \
@@ -1181,10 +1169,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         with self.instance.new_stmt_scope():
             conf_ub = self.instance.Tensor(self.dtype, (parser_num,),
-                                           name="conf_ub", scope=tik.scope_ubuf)
+                                           name="conf_ub", scope=tbe_platform.scope_ubuf)
             conf_vnch_ub = self.instance.Tensor(self.dtype, (parser_num,),
                                                 name="conf_vnch_ub",
-                                                scope=tik.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
             conf_move_loops = self.instance.Scalar("int32", "conf_move_loops", 16)
 
             with self.instance.for_range(0, parser_times) as parser_index:
@@ -1235,7 +1223,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         Parameters
         ----------
-        batch: batch
         conf_info: conf info
         is_tail: whether tail
 
@@ -1297,7 +1284,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-
         with self.instance.new_stmt_scope():
             handle_unit_num = self.ub_size // (256 * 4 * 4 * self.dsize)
             prior_handle_num = math.ceil(self.loc_num / 256)
@@ -1309,10 +1295,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             prior_bbox_ub = self.instance.Tensor(self.dtype, (handle_num * 4,),
                                                  name="prior_bbox_ub",
-                                                 scope=tik.scope_ubuf)
+                                                 scope=tbe_platform.scope_ubuf)
             prior_bbox_vnch_ub = self.instance.Tensor(self.dtype, (handle_num * 4,),
                                                       name="prior_bbox_vnch_ub",
-                                                      scope=tik.scope_ubuf)
+                                                      scope=tbe_platform.scope_ubuf)
 
             with self.instance.for_range(0, priorbox_handle_loops) as \
                     priorbox_handle_index:
@@ -1367,7 +1353,6 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-
         with self.instance.new_stmt_scope():
             handle_unit_num = self.ub_size // (256 * 4 * 4 * self.dsize)
             prior_handle_num = math.ceil(self.loc_num / 256)
@@ -1377,13 +1362,12 @@ class SSDDecodeBBox(SSDDectionParamInit):
                 handle_num = 256 * prior_handle_num
             priorbox_handle_loops = self.loc_num // handle_num
 
-
             prior_var_ub = self.instance.Tensor(self.dtype, (handle_num * 4,),
                                                 name="prior_var_ub",
-                                                scope=tik.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
             prior_var_vnch_ub = self.instance.Tensor(self.dtype, (handle_num * 4,),
                                                      name="prior_var_vnch_ub",
-                                                     scope=tik.scope_ubuf)
+                                                     scope=tbe_platform.scope_ubuf)
 
             with self.instance.for_range(0, priorbox_handle_loops) as \
                     priorbox_handle_index:
@@ -1405,13 +1389,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                            self.prior_variance_parser_gm))
 
             if self.loc_num % handle_num > 0:
-                priorbox_data_tail_num = self.loc_num - \
-                                         priorbox_handle_loops * handle_num
-                var_gm_start = self.loc_num + \
-                               priorbox_handle_loops * handle_num
+                priorbox_data_tail_num = self.loc_num - priorbox_handle_loops * handle_num
+                var_gm_start = self.loc_num + priorbox_handle_loops * handle_num
                 if self.priorbox_batch != 1:
-                    var_gm_start += \
-                        batch * self.loc_num * self.priorbox_shape_1
+                    var_gm_start += batch * self.loc_num * self.priorbox_shape_1
 
                 length = math.ceil(priorbox_data_tail_num / 64) * 64 * 4 // 16
                 priorbox_gm_offset = priorbox_handle_loops * handle_num // 4
@@ -1524,10 +1505,10 @@ class SSDDecodeBBox(SSDDectionParamInit):
         with self.instance.new_stmt_scope():
             prior_bbox_ub = self.instance.Tensor(
                 self.dtype, (4 * handle_num,), name="prior_bbox_ub",
-                scope=tik.scope_ubuf)
+                scope=tbe_platform.scope_ubuf)
             prior_bbox_dst_ub = self.instance.Tensor(
                 self.dtype, (handle_num,), name="prior_bbox_dst_ub",
-                scope=tik.scope_ubuf)
+                scope=tbe_platform.scope_ubuf)
             get_x1_scalar = self.instance.Scalar("int64", "get_x1_scalar", 3)
             get_y1_scalar = self.instance.Scalar("int64", "get_y1_scalar", 4)
             get_x2_scalar = self.instance.Scalar("int64", "get_x2_scalar", 5)
@@ -1535,10 +1516,11 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
                 prior_bbox_gm_offset = loc_handle_index * 4 * handle_num
+                src_prior_bbox_gm_offset = prior_bbox_gm_offset
                 if self.priorbox_batch != 1:
-                    prior_bbox_gm_offset += batch * self.loc_num
+                    src_prior_bbox_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 self.instance.data_move(prior_bbox_ub,
-                                        self.mbox_prior_gm[prior_bbox_gm_offset],
+                                        self.mbox_prior_gm[src_prior_bbox_gm_offset],
                                         0, 1, 4 * handle_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, prior_bbox_dst_ub,
@@ -1571,13 +1553,14 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             if handle_tails > 0:
                 prior_bbox_gm_offset = handle_loops * 4 * handle_num
+                src_prior_bbox_gm_offset = prior_bbox_gm_offset
                 if self.priorbox_batch != 1:
-                    prior_bbox_gm_offset += batch * self.loc_num
-                loc_data_tail_num = self.loc_num - handle_loops * handle_num
+                    src_prior_bbox_gm_offset += batch * self.loc_num * self.priorbox_shape_1
+                loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 
                 self.instance.data_move(prior_bbox_ub,
-                                        self.mbox_prior_gm[prior_bbox_gm_offset],
+                                        self.mbox_prior_gm[src_prior_bbox_gm_offset],
                                         0, 1, loc_data_tail_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, prior_bbox_dst_ub,
@@ -1620,17 +1603,16 @@ class SSDDecodeBBox(SSDDectionParamInit):
         -------
         None
         """
-
         handle_num = self.ub_capacity // 5 // self.burnest_len * self.burnest_len
         handle_loops = self.loc_num // (4 * handle_num)
         handle_tails = self.loc_num % (4 * handle_num)
         with self.instance.new_stmt_scope():
             prior_var_ub = self.instance.Tensor(
                 self.dtype, (4 * handle_num,), name="prior_var_ub",
-                scope=tik.scope_ubuf)
+                scope=tbe_platform.scope_ubuf)
             prior_var_dst_ub = self.instance.Tensor(
                 self.dtype, (handle_num,), name="prior_var_dst_ub",
-                scope=tik.scope_ubuf)
+                scope=tbe_platform.scope_ubuf)
             get_x1_scalar = self.instance.Scalar("int64", "get_x1_scalar", 3)
             get_y1_scalar = self.instance.Scalar("int64", "get_y1_scalar", 4)
             get_x2_scalar = self.instance.Scalar("int64", "get_x2_scalar", 5)
@@ -1638,10 +1620,11 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
                 prior_var_gm_offset = loc_handle_index * 4 * handle_num
+                src_prior_var_gm_offset = prior_var_gm_offset
                 if self.priorbox_batch != 1:
-                    prior_var_gm_offset += batch * self.loc_num
+                    src_prior_var_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 self.instance.data_move(prior_var_ub,
-                                        self.mbox_prior_gm[prior_var_gm_offset + self.loc_num],
+                                        self.mbox_prior_gm[src_prior_var_gm_offset + self.loc_num],
                                         0, 1, 4 * handle_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, prior_var_dst_ub, prior_var_ub,
@@ -1670,13 +1653,14 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             if handle_tails > 0:
                 prior_var_gm_offset = handle_loops * 4 * handle_num
+                src_prior_var_gm_offset = prior_var_gm_offset
                 if self.priorbox_batch != 1:
-                    prior_var_gm_offset += batch * self.loc_num
-                loc_data_tail_num = self.loc_num - handle_loops * handle_num
+                    src_prior_var_gm_offset += batch * self.loc_num * self.priorbox_shape_1
+                loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 
                 self.instance.data_move(prior_var_ub,
-                                        self.mbox_prior_gm[prior_var_gm_offset + self.loc_num],
+                                        self.mbox_prior_gm[src_prior_var_gm_offset + self.loc_num],
                                         0, 1, loc_data_tail_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, prior_var_dst_ub, prior_var_ub,

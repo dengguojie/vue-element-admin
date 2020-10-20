@@ -1,45 +1,47 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 fused_mul_apply_momentum_extern
 
   Op_description :
     Update '*var' according to the ApplyMomentum algorithm.
 """
 
-import te.lang.cce
-from impl.util.util_apply_op_schedule import (ApplyOpConfig,
-                                              common_apply_op_process)
+import te.platform as tbe_platform
+from impl.util.util_apply_op_schedule import ApplyOpConfig
+from impl.util.util_apply_op_schedule import common_apply_op_process
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("fused_mul_apply_momentum_extern")
-def _fused_mul_apply_momentum_extern_compute(var,
-                                             accum,
-                                             lr,
-                                             x1,
-                                             momentum,
-                                             x2,
-                                             var_copy,
-                                             out_fp32,
-                                             out_fp16,
-                                             out_accum,
-                                             use_nesterov,
-                                             kernel_name="fused_mul_apply_"
-                                             "momentum_extern"):
+@tbe_platform.fusion_manager.fusion_manager.register("fused_mul_apply_momentum_extern")
+def fused_mul_apply_momentum_extern_compute(var,
+                                            accum,
+                                            lr,
+                                            x1,
+                                            momentum,
+                                            x2,
+                                            var_copy,
+                                            out_fp32,
+                                            out_fp16,
+                                            out_accum,
+                                            use_nesterov,
+                                            kernel_name="fused_mul_apply_"
+                                            "momentum_extern"):
     """
     Update '*var' according to the ApplyMomentum algorithm.
 
@@ -84,70 +86,56 @@ def _fused_mul_apply_momentum_extern_compute(var,
     # cast to float32 for higher accuracy
     dtype = accum.dtype
     if dtype == "float16":
-        accum = te.lang.cce.cast_to(accum, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        x1 = te.lang.cce.cast_to(x1, "float32")
-        x2 = te.lang.cce.cast_to(x2, "float32")
-        momentum = te.lang.cce.cast_to(momentum, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        x1 = tbe.cast_to(x1, "float32")
+        x2 = tbe.cast_to(x2, "float32")
+        momentum = tbe.cast_to(momentum, "float32")
 
     # calc grad
-    grad = tvm.compute(x1.shape,
-                       lambda *indice: x1(*indice) * x2[0],
-                       tag='elewise_single_VS_mul')
+    grad = tvm.compute(x1.shape, lambda *indice: x1(*indice) * x2[0], tag='elewise_single_VS_mul')
     # update accum
-    accum_delta = tvm.compute(accum.shape,
-                              lambda *indice: accum(*indice) * momentum[0],
-                              tag='elewise_single_VS_mul')
-    accum_t = te.lang.cce.vadd(accum_delta, grad)
+    accum_delta = tvm.compute(accum.shape, lambda *indice: accum(*indice) * momentum[0], tag='elewise_single_VS_mul')
+    accum_t = tbe.vadd(accum_delta, grad)
 
     # update var
     if use_nesterov:
-        var_delta = tvm.compute(grad.shape,
-                                lambda *indice: grad(*indice) * lr[0],
-                                tag='elewise_single_VS_mul')
-        var_delta_2 = tvm.compute(
-            accum_t.shape,
-            lambda *indice: accum_t(*indice) * momentum[0],
-            tag='elewise_single_VS_mul')
+        var_delta = tvm.compute(grad.shape, lambda *indice: grad(*indice) * lr[0], tag='elewise_single_VS_mul')
+        var_delta_2 = tvm.compute(accum_t.shape,
+                                  lambda *indice: accum_t(*indice) * momentum[0],
+                                  tag='elewise_single_VS_mul')
         var_delta_2 = tvm.compute(var_delta_2.shape,
                                   lambda *indice: var_delta_2(*indice) * lr[0],
                                   tag='elewise_single_VS_mul')
-        var_delta = te.lang.cce.vadd(var_delta, var_delta_2)
-        var_t_fp32 = te.lang.cce.vsub(var, var_delta)
+        var_delta = tbe.vadd(var_delta, var_delta_2)
+        var_t_fp32 = tbe.vsub(var, var_delta)
 
-        var_delta_fp16 = te.lang.cce.cast_to(var_delta, "float16")
-        var_t_fp16 = te.lang.cce.vsub(var_copy, var_delta_fp16)
+        var_delta_fp16 = tbe.cast_to(var_delta, "float16")
+        var_t_fp16 = tbe.vsub(var_copy, var_delta_fp16)
     else:
-        var_delta = tvm.compute(accum_t.shape,
-                                lambda *indice: accum_t(*indice) * lr[0],
-                                tag='elewise_single_VS_mul')
-        var_t_fp32 = te.lang.cce.vsub(var, var_delta)
-        var_delta_fp16 = te.lang.cce.cast_to(var_delta, "float16")
-        var_t_fp16 = te.lang.cce.vsub(var_copy, var_delta_fp16)
+        var_delta = tvm.compute(accum_t.shape, lambda *indice: accum_t(*indice) * lr[0], tag='elewise_single_VS_mul')
+        var_t_fp32 = tbe.vsub(var, var_delta)
+        var_delta_fp16 = tbe.cast_to(var_delta, "float16")
+        var_t_fp16 = tbe.vsub(var_copy, var_delta_fp16)
 
     if dtype == "float16":
-        accum_t = te.lang.cce.cast_to(accum_t, "float16")
-    var_out_fp32 = te.lang.cce.vadds(var_t_fp32,
-                                     tvm.const(0.0, var_t_fp32.dtype))
-    var_out_fp16 = te.lang.cce.vadds(var_t_fp16,
-                                     tvm.const(0.0, var_t_fp16.dtype))
-    var_out_accum = te.lang.cce.vadds(accum_t, tvm.const(0.0, accum_t.dtype))
+        accum_t = tbe.cast_to(accum_t, "float16")
+    var_out_fp32 = tbe.vadds(var_t_fp32, tvm.const(0.0, var_t_fp32.dtype))
+    var_out_fp16 = tbe.vadds(var_t_fp16, tvm.const(0.0, var_t_fp16.dtype))
+    var_out_accum = tbe.vadds(accum_t, tvm.const(0.0, accum_t.dtype))
 
     def _compute(*index):
-        return accum_t(*index), var_t_fp32(*index), var_t_fp16(
-            *index), var_out_fp32(*index), var_out_fp16(*index), var_out_accum(
-                *index)
+        return accum_t(*index), var_t_fp32(*index), var_t_fp16(*index), var_out_fp32(*index), var_out_fp16(
+            *index), var_out_accum(*index)
 
     return tvm.compute(accum.shape, _compute, name="outputs")
 
 
-# pylint: disable=too-many-arguments,too-many-locals
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+# pylint: disable=too-many-arguments
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def fused_mul_apply_momentum_extern(var,
                                     accum,
                                     lr,
@@ -201,24 +189,21 @@ def fused_mul_apply_momentum_extern(var,
     None
     """
     var_dtype = var.get("dtype")
-    op_utils.check_dtype(var_dtype, ("float32", ), param_name="var")
+    para_check.check_dtype(var_dtype, ("float32", ), param_name="var")
     var_copy_dtype = var_copy.get("dtype")
-    op_utils.check_dtype(var_copy_dtype, ("float16", ), param_name="var_copy")
+    para_check.check_dtype(var_copy_dtype, ("float16", ), param_name="var_copy")
     input_dict = (var, accum, lr, x1, momentum, x2, var_copy)
     outputs = [out_fp32, out_fp16, out_accum]
 
     args = ApplyOpConfig.TensorArgs(
         input_dict,
-        _fused_mul_apply_momentum_extern_compute,
+        fused_mul_apply_momentum_extern_compute,
         outputs,
         10 if use_nesterov else 8,
     )
-    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'x1',
-                                         'momentum', 'x2', 'var_copy'),
+    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'x1', 'momentum', 'x2', 'var_copy'),
                                     scalar=('lr', 'momentum', 'x2'),
                                     reuse=('accum', 'var', 'var_copy'))
     options = ApplyOpConfig.TensorOptions(attrs=use_nesterov)
 
-    common_apply_op_process(ApplyOpConfig(args, name, options),
-                            kernel_name,
-                            same_flag=False)
+    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name, same_flag=False)

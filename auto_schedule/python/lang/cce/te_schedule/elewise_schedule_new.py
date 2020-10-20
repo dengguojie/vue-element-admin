@@ -1,23 +1,24 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 elewise schedule
 """
 # pylint: disable=import-error, unused-import
 import math
-from functools import reduce
+import functools
+
 from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
@@ -26,6 +27,7 @@ from . import util
 from .vector_schedule import VectorSchedule
 from .cce_schedule_mappings import OpSubPatterns
 from .cce_schedule_mappings import OpSpecTypes
+
 DTYPE_WIDTH_MAP = {"float16": 1,
                    "float32": 2,
                    "int32": 2,
@@ -119,13 +121,13 @@ class ElewiseSchedule(VectorSchedule):
              "vector_sub": "vector_sub_with_broadcast_enhance",
              "vector_min": "vector_min_with_broadcast_enhance",
              "vector_max": "vector_max_with_broadcast_enhance"
-            }
+             }
         self._non_32align_broadcast_insn_map = \
             {"vector_mul": "vector_mul_with_broadcast_non_32align",
              "vector_div": "vector_div_with_broadcast_non_32align",
              "vector_add": "vector_add_with_broadcast_non_32align",
              "vector_sub": "vector_sub_with_broadcast_non_32align",
-            }
+             }
 
         # For (x <= 32, 100, 1, 4) to (x <= 32, 100, 2, 4) broadcasting
         self._less_32_core_middle_broadcast_scene = False
@@ -294,14 +296,14 @@ class ElewiseSchedule(VectorSchedule):
         visited_list : list
             record tensors which has been visited.
         """
-        # get output tensor L1 fusion params
-        self.get_l1_fusion_params(tensor)
+        # get read_select tensor
+        self.get_read_select_tensor(tensor)
 
         for in_tensor in list(tensor.op.input_tensors):
-            # get other tensor L1 fusion params
-            self.get_l1_fusion_params(in_tensor)
+            # get read_select tensor
+            self.get_read_select_tensor(tensor)
 
-            if not (in_tensor in self._spec_node_list \
+            if not (in_tensor in self._spec_node_list
                     or isinstance(in_tensor.op, tvm.tensor.PlaceholderOp)):
                 if in_tensor not in self._mid_tensor_dst_tensor_map.keys():
                     self._mid_tensors.append(in_tensor)
@@ -340,26 +342,8 @@ class ElewiseSchedule(VectorSchedule):
                                               visited_list)
             tensor_list.append(in_tensor)
 
-    def get_l1_fusion_params(self, in_tensor):
-        """get L1 fusion params"""
-        if "ele_fusion_params" in in_tensor.op.attrs:
-            fusion_params_map = in_tensor.op.attrs["ele_fusion_params"]
-            if fusion_params_map:
-                for key, value in fusion_params_map.items():
-                    if hasattr(value, "value"):
-                        self._fusion_params[key] = value.value
-                    else:
-                        self._fusion_params[key] = value
-
-        # fused_op: l1 fusion info should get from fused_op output
-        # so need to update out_l1_flag
-        is_fused_compute = self._fusion_params.get("is_fused_compute", False)
-        if is_fused_compute:
-            res = self._last_output_tensor
-            revise_out_l1_flag = res.op.attrs["addr_type"].value == 1 \
-                    if "addr_type" in res.op.attrs else False
-            self._fusion_params["out_l1_flag"] = revise_out_l1_flag
-
+    def get_read_select_tensor(self, in_tensor):
+        """get read_select tensor"""
         # read_select+eltwise fusion: compute_inline this tensor
         if in_tensor.op.name.find("output_ub_5d") >= 0:
             self._cache_write_exclude_tensors.append(in_tensor)
@@ -473,7 +457,7 @@ class ElewiseSchedule(VectorSchedule):
         dtype = self._last_output_tensor.dtype.lower()
 
         # L1 fusion will not bind multi core
-        self._need_multi_core = not self._is_l1fusion
+        self._need_multi_core = self._need_multi_core and not self._is_l1fusion
 
         if self._need_multi_core:
             multi_core_threshold = self._get_multi_core_threshold(shape, dtype)
@@ -482,7 +466,7 @@ class ElewiseSchedule(VectorSchedule):
             if __is_block_tiling_use_nparts_mode(shape, block_split_axis):
                 self.block_tiling_use_nparts_mode = True
                 block_split_inner_size = shape[block_split_axis] // \
-                                         block_split_outer_size
+                    block_split_outer_size
         else:
             block_split_axis = 0
             block_split_inner_size = shape[block_split_axis]
@@ -545,18 +529,36 @@ class ElewiseSchedule(VectorSchedule):
         ub_tiling_para = {"axis": ub_split_axis, "factor": ub_split_inner}
 
         self._tiling_para["block_tiling"] = block_tiling_para
+
+        # calculate multi_core num
+        enable_multi_core_flag = self._need_multi_core
+        if enable_multi_core_flag:
+            actual_multi_core = block_split_outer_size
+            for axis in range(0, block_split_axis):
+                actual_multi_core *= shape[axis]
+            if actual_multi_core == 1:
+                enable_multi_core_flag = False
+
+        def __modify_ub_factor_for_multi_outputs(enable_multi_core_flag, ub_tiling_para, block_tiling_para):
+            """ If there are more than one tensors, check if ub_tiling_factor is smaller than align factor """
+            if len(self._mid_output_tensors) > 1 and enable_multi_core_flag:
+                for tensor in self._mid_output_tensors:
+                    size = 1
+                    minimum_size = int(
+                        ALIGN_FACTOR // (DTYPE_WIDTH_MAP[tensor.dtype] * 2))
+                    size *= ub_tiling_para["factor"]
+                    for axis in range(ub_tiling_para["axis"] + 1,
+                                      len(tensor.shape)):
+                        size *= tensor.shape[axis]
+                    if int(size) < minimum_size:
+                        ub_tiling_para["factor"] = minimum_size
+                        while ub_tiling_para["factor"] > int(tensor.shape[ub_tiling_para["axis"]]) and \
+                                ub_tiling_para["axis"] > block_tiling_para["axis"]:
+                            ub_tiling_para["axis"] -= 1
+
         # If there are more than one tensors, check if ub_tiling_factor is smaller than align factor
-        if len(self._mid_output_tensors) > 1:
-            for tensor in self._mid_output_tensors:
-                size = 1
-                minimum_size = int(
-                    ALIGN_FACTOR // (DTYPE_WIDTH_MAP[tensor.dtype] * 2))
-                size *= ub_tiling_para["factor"]
-                for axis in range(ub_tiling_para["axis"] + 1,
-                                  len(tensor.shape)):
-                    size *= tensor.shape[axis]
-                if int(size) < minimum_size:
-                    ub_tiling_para["factor"] = minimum_size
+        # one core is good
+        __modify_ub_factor_for_multi_outputs(enable_multi_core_flag, ub_tiling_para, block_tiling_para)
 
         self._tiling_para["ub_tiling"] = ub_tiling_para
 
@@ -786,8 +788,7 @@ class ElewiseSchedule(VectorSchedule):
 
         return False
 
-
-    def _calculate_tiling_core(self, # pylint: disable=too-many-locals
+    def _calculate_tiling_core(self,  # pylint: disable=too-many-locals
                                shape, dtype, block_split_axis,
                                block_split_inner_size, max_ub_count):
         """
@@ -839,7 +840,7 @@ class ElewiseSchedule(VectorSchedule):
 
         def __is_special_non_last_broadcast_factor16_scene(ub_split_axis):
             if ub_split_axis != 0 and \
-                self._is_special_factor16_broadcast_sence():
+                    self._is_special_factor16_broadcast_sence():
                 return True
             return False
 
@@ -852,7 +853,7 @@ class ElewiseSchedule(VectorSchedule):
         def __shape_mul(shape):
             if not shape:
                 return 1
-            return reduce(lambda x, y: x * y, shape)
+            return functools.reduce(lambda x, y: x * y, shape)
 
         def __do_mix_broadcast_of_last_axis_broadcast_ub_tiling():
             if shape[-1] > BROADCAST_LAST_AXIS_THRESHOLD:
@@ -1160,7 +1161,6 @@ class ElewiseSchedule(VectorSchedule):
             self._schedule[res].pragma(fused_axis,
                                        "json_info_batchBindOnly", 1)
 
-
     def _calculate_multi_core(self):
         """
         Calculate fuse and bind axis of multicore
@@ -1321,7 +1321,7 @@ class ElewiseSchedule(VectorSchedule):
                 shape, block_split_axis, block_split_inner_size, ub_split_axis,
                 ub_split_inner)
 
-    def _calculate_emit_insn(self): # pylint: disable=too-many-locals
+    def _calculate_emit_insn(self):  # pylint: disable=too-many-locals
         """
         Calculate the instruction map of tensor
 
@@ -1497,7 +1497,7 @@ class ElewiseSchedule(VectorSchedule):
         cache_buffer = tensor
         read_buffer = tensor.op.input_tensors[0]
         if read_buffer.dtype == "int32":
-            if  cache_buffer.dtype == "float32":
+            if cache_buffer.dtype == "float32":
                 return False
         return True
 
@@ -2114,13 +2114,12 @@ class ElewiseSchedule(VectorSchedule):
             return __is_shape_len_3_case(original_shape, broadcast_shape)
         return False
 
-
     def _is_inner_32lign_broadcast_out(self, block_split_axis, block_split_inner_size,
                                        shape, max_ub_count):
         def __maxis_mul(maxis):
             if not maxis:
                 return 1
-            return reduce(lambda x, y: x * y, maxis)
+            return functools.reduce(lambda x, y: x * y, maxis)
 
         def __get_loop_cout(ub_split_axis, ub_split_factor):
             loop_count = 1
@@ -2188,7 +2187,6 @@ class ElewiseSchedule(VectorSchedule):
                 else:
                     return False
             return True
-
 
         def __is_real_32align_broadcast_out():
             if not __is_broadcast_correct_tensor():
@@ -2336,8 +2334,7 @@ class ElewiseSchedule(VectorSchedule):
                         continue
                     elif original_shape[i] != 1:
                         # process like (32,1,4) (32,68,4) scene
-                        if self._is_multicore_satisfy_pattern\
-                                    (i, block_split_axis, block_split_factor):
+                        if self._is_multicore_satisfy_pattern(i, block_split_axis, block_split_factor):
                             continue
                         # process like (32,32,32,3,2) (1,1,1,3,2) scene
                         elif self._is_last_two_dim_pattern(i, original_shape,
@@ -2958,8 +2955,6 @@ class ElewiseSchedule(VectorSchedule):
                 return True
         return False
 
-
-    # (a,b,c,d,e), (a,b,1,d,1), max_broadcast_axis is 3
     def _find_max_broadcast_axis_of_mix_broadcast(self):
         """
         Find the largest broadcast axis of the mix axis broadcast
@@ -3162,7 +3157,7 @@ class ElewiseSchedule(VectorSchedule):
         else:
             ub_tiling_outer_loop = shape[ub_axis] // ub_tiling_inner_loop
             one_core_loop_number = block_tiling_inner_loop * \
-                                   ub_tiling_outer_loop
+                ub_tiling_outer_loop
 
         for i in range(block_axis + 1, ub_axis, 1):
             one_core_loop_number = one_core_loop_number * shape[i]

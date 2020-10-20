@@ -1,24 +1,24 @@
-#!/usr/bin/env python # pylint: disable=too-many-lines, unused-import
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_reduce
 """
 from __future__ import absolute_import
 from __future__ import division
 import math
-from functools import reduce
+import functools
 
 import te.lang.cce
 from te import tvm
@@ -181,6 +181,7 @@ def get_max_ub_count(dtype, shape):
 
     return max_ub_count
 
+
 # pylint: disable=too-many-locals, too-many-branches
 def get_ub_tiling(shape, block_tiling_axis,
                   block_tiling_inner_loop, max_ub_count):
@@ -202,8 +203,8 @@ def get_ub_tiling(shape, block_tiling_axis,
     c0_size = shape[4]
 
     if max_ub_count // (h_size*w_size*c0_size) >= 2 \
-            and ((c1_size >= core_num and c1_size % core_num == 0) \
-                or (n_size >= core_num and n_size % core_num == 0)):
+            and ((c1_size >= core_num and c1_size % core_num == 0)
+                 or (n_size >= core_num and n_size % core_num == 0)):
         # ub utilization ratio is small, so use "model parallel"
         # c1_size axis as block_axis and n_size axis as ub split axis
         # can raise dma copy data size and dichotomy efficiency
@@ -253,7 +254,7 @@ def get_ub_tiling(shape, block_tiling_axis,
         split_size = block_tiling_inner_loop
 
     if split_axis == block_tiling_axis \
-                      and split_size > block_tiling_inner_loop:
+            and split_size > block_tiling_inner_loop:
         split_size = block_tiling_inner_loop
 
     ub_split_inner = split_size
@@ -433,7 +434,7 @@ def _do_emit_insn(sch_list, input_tensor_buffer_map,
         buffer_tensor = mid_tensor_buffer_map[tensor]
         if buffer_tensor in broadcast_tensor_buffers:
             shape = tensor.shape
-            shape_size = reduce(lambda i, j: i * j, shape)
+            shape_size = functools.reduce(lambda i, j: i * j, shape)
             if shape_size.value // (batch * c1_size * c0_size) == 1 or \
                     (ub_split_axis == 3 and split_factor == 1):
                 insn = _get_emit_insn_map(tensor)
@@ -550,7 +551,6 @@ def schedule_cut_h_or_w_twice(
     # pylint: disable=consider-using-enumerate
     for i in range(0, len(final_out_tensor_global_list)):
         res[final_tensors_index_res[i]] = final_out_tensor_global_list[i]
-
 
     sch[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
 
@@ -774,7 +774,8 @@ def schedule_fuse_h_n(sch_list, res, shape_input, split_factor,
 def schedule_cut_c1(sch_list, shape_input, ub_split_axis, split_factor,
                     input_tensor_buffer_map, mid_out_read_buffer_map,
                     mid_tensor_buffer_map, final_out_tensor_list,
-                    broadcast_tensor_buffers, is_keep_dim, is_do_double_buffer):
+                    broadcast_tensor_buffers, is_keep_dim,
+                    is_do_double_buffer, max_ub_count):
     '''
     bn_update_grad schedule for cut c1
     '''
@@ -786,19 +787,13 @@ def schedule_cut_c1(sch_list, shape_input, ub_split_axis, split_factor,
     final_out_tensor = final_out_tensor_list[0]
     final_out_buffer = final_out_buffer_list[0]
 
-    if is_keep_dim:
-        sum_x_c1_axis = final_out_tensor.op.axis[1]
-        sum_x_c0_axis = final_out_tensor.op.axis[4]
-        sum_x_ub_n_axis = final_out_buffer.op.axis[0]
-        sum_x_ub_c1_axis = final_out_buffer.op.axis[1]
-        sum_x_ub_h_axis = final_out_buffer.op.axis[2]
-        sum_x_ub_w_axis = final_out_buffer.op.axis[3]
-        sum_x_ub_c0_axis = final_out_buffer.op.axis[4]
-    else:
-        sum_x_c1_axis = final_out_tensor.op.axis[0]
-        sum_x_c0_axis = final_out_tensor.op.axis[1]
-        sum_x_ub_c1_axis = final_out_buffer.op.axis[0]
-        sum_x_ub_c0_axis = final_out_buffer.op.axis[1]
+    sum_x_c1_axis = final_out_tensor.op.axis[1]
+    sum_x_c0_axis = final_out_tensor.op.axis[4]
+    sum_x_ub_n_axis = final_out_buffer.op.axis[0]
+    sum_x_ub_c1_axis = final_out_buffer.op.axis[1]
+    sum_x_ub_h_axis = final_out_buffer.op.axis[2]
+    sum_x_ub_w_axis = final_out_buffer.op.axis[3]
+    sum_x_ub_c0_axis = final_out_buffer.op.axis[4]
 
     sum_x_ub_n_reduce_axis = final_out_buffer.op.reduce_axis[0]
     sum_x_ub_h_reduce_axis = final_out_buffer.op.reduce_axis[1]
@@ -815,9 +810,15 @@ def schedule_cut_c1(sch_list, shape_input, ub_split_axis, split_factor,
         sch[final_out_tensor].split(sum_x_c1_axis, nparts=core_num)
 
     c1_size = shape_input[1]
-    is_need_mte3_opt = False
-    if c1_size % core_num == 0 and c1_size // core_num > 1:
-        is_need_mte3_opt = True
+    c0_size = 16
+    block_factor = (c1_size + core_num - 1) // core_num
+    is_mean_bound = block_factor * c0_size * 2 > max_ub_count
+
+    is_need_mte3_opt = \
+        c1_size % core_num == 0 and c1_size // core_num > 1 and \
+        not is_mean_bound
+
+    if is_need_mte3_opt:
         sum_x_block_inner_outer, sum_x_block_inner_inner = \
             sch[final_out_tensor].split(sum_x_block_inner, nparts=1)
 
@@ -834,64 +835,47 @@ def schedule_cut_c1(sch_list, shape_input, ub_split_axis, split_factor,
         raise RuntimeError("Batch normalization only support 5D format.")
 
     if ub_split_axis == 0:
-        if is_keep_dim:
-            sch[final_out_buffer].reorder(sum_x_ub_n_axis,
-                                          sum_x_ub_c1_axis,
-                                          sum_x_ub_h_axis,
-                                          sum_x_ub_w_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_h_reduce_axis,
-                                          sum_x_ub_w_reduce_axis,
-                                          sum_x_ub_c0_axis)
-        else:
-            sch[final_out_buffer].reorder(sum_x_ub_c1_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_h_reduce_axis,
-                                          sum_x_ub_w_reduce_axis,
-                                          sum_x_ub_c0_axis)
+        sch[final_out_buffer].reorder(sum_x_ub_n_axis,
+                                      sum_x_ub_c1_axis,
+                                      sum_x_ub_h_axis,
+                                      sum_x_ub_w_axis,
+                                      sum_x_ub_outer,
+                                      sum_x_ub_inner,
+                                      sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_w_reduce_axis,
+                                      sum_x_ub_c0_axis)
     elif ub_split_axis == 2:
-        if is_keep_dim:
-            sch[final_out_buffer].reorder(sum_x_ub_n_axis,
-                                          sum_x_ub_c1_axis,
-                                          sum_x_ub_n_reduce_axis,
-                                          sum_x_ub_h_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_w_axis,
-                                          sum_x_ub_w_reduce_axis,
-                                          sum_x_ub_c0_axis)
-        else:
-            sch[final_out_buffer].reorder(sum_x_ub_c1_axis,
-                                          sum_x_ub_n_reduce_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_w_reduce_axis,
-                                          sum_x_ub_c0_axis)
+        sch[final_out_buffer].reorder(sum_x_ub_n_axis,
+                                      sum_x_ub_c1_axis,
+                                      sum_x_ub_n_reduce_axis,
+                                      sum_x_ub_h_axis,
+                                      sum_x_ub_outer,
+                                      sum_x_ub_inner,
+                                      sum_x_ub_w_axis,
+                                      sum_x_ub_w_reduce_axis,
+                                      sum_x_ub_c0_axis)
     else:
-        if is_keep_dim:
-            sch[final_out_buffer].reorder(sum_x_ub_n_axis,
-                                          sum_x_ub_c1_axis,
-                                          sum_x_ub_n_reduce_axis,
-                                          sum_x_ub_h_axis,
-                                          sum_x_ub_h_reduce_axis,
-                                          sum_x_ub_w_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_c0_axis)
+        sch[final_out_buffer].reorder(sum_x_ub_n_axis,
+                                      sum_x_ub_c1_axis,
+                                      sum_x_ub_n_reduce_axis,
+                                      sum_x_ub_h_axis,
+                                      sum_x_ub_h_reduce_axis,
+                                      sum_x_ub_w_axis,
+                                      sum_x_ub_outer,
+                                      sum_x_ub_inner,
+                                      sum_x_ub_c0_axis)
+
+    compute_at_axis = sum_x_block_outer
+    if is_mean_bound:
+        if is_need_mte3_opt:
+            compute_at_axis = sum_x_block_inner_inner
         else:
-            sch[final_out_buffer].reorder(sum_x_ub_c1_axis,
-                                          sum_x_ub_n_reduce_axis,
-                                          sum_x_ub_h_reduce_axis,
-                                          sum_x_ub_outer,
-                                          sum_x_ub_inner,
-                                          sum_x_ub_c0_axis)
+            compute_at_axis = sum_x_block_inner
 
     _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
                    mid_out_read_buffer_map, mid_tensor_buffer_map,
                    [final_out_buffer, final_out_tensor],
-                   [sum_x_ub_outer, sum_x_block_outer])
+                   [sum_x_ub_outer, compute_at_axis])
 
     if is_need_mte3_opt:
         sch[final_out_buffer].compute_at(sch[final_out_tensor], sum_x_block_inner_outer)
@@ -1105,7 +1089,6 @@ def schedule_cut_batch_model_para(
     sch[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
 
     final_out_tensor_global = final_out_tensor_global_list[0]
-
 
     if is_keep_dim:
         rf_c1_outer, rf_c1_inner = \
@@ -1517,12 +1500,12 @@ def bn_update_grad_schedule(res, input_tensors):
     if c1_size >= core_num:
         pass
     elif ub_split_axis in (2, 3)\
-        and outer_loop >= core_num \
-        and shape_x[ub_split_axis] % core_num == 0:
+            and outer_loop >= core_num \
+            and shape_x[ub_split_axis] % core_num == 0:
         pass
     elif ub_split_axis == 2 and shape_x[ub_split_axis] >= half_core_num \
-        and shape_x[ub_split_axis] % half_core_num == 0 \
-        and shape_x[0] < core_num:
+            and shape_x[ub_split_axis] % half_core_num == 0 \
+            and shape_x[0] < core_num:
         pass
     elif batch >= core_num:
         pass
@@ -1579,10 +1562,10 @@ def bn_update_grad_schedule(res, input_tensors):
                         input_tensor_buffer_map, mid_out_read_buffer_map,
                         mid_tensor_buffer_map, final_out_tensor_list,
                         broadcast_tensor_buffers, is_keep_dim,
-                        is_do_double_buffer)
+                        is_do_double_buffer, max_ub_count)
     elif ub_split_axis in (2, 3)\
-        and outer_loop >= core_num \
-        and shape_x[ub_split_axis] % core_num == 0:
+            and outer_loop >= core_num \
+            and shape_x[ub_split_axis] % core_num == 0:
         schedule_cut_h_or_w_twice(
             sch_list, res, shape_x, ub_split_axis, split_factor,
             input_tensor_buffer_map, mid_out_read_buffer_map,
@@ -1590,8 +1573,8 @@ def bn_update_grad_schedule(res, input_tensors):
             broadcast_tensor_buffers,
             is_keep_dim)
     elif ub_split_axis == 2 and shape_x[ub_split_axis] >= half_core_num \
-        and shape_x[ub_split_axis] % half_core_num == 0 \
-        and shape_x[0] < core_num:
+            and shape_x[ub_split_axis] % half_core_num == 0 \
+            and shape_x[0] < core_num:
         schedule_fuse_h_n(sch_list, res, shape_x, split_factor,
                           input_tensor_buffer_map, mid_out_read_buffer_map,
                           mid_tensor_buffer_map, final_out_tensor_list,

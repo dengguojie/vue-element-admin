@@ -1,17 +1,30 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-auto_schedule distribution rules
-
 Add your rules to pattern mapping here so cce auto_schedule can distribute your operators
 to corresponding schedule correctly
 """
 from te import tvm
 
-from .cce_schedule_distribution_rules import OpPatternRules, OpSubPatternRules, OpSpecialRules
-from .cce_schedule_declarations import OpFlags, OpPatterns, OpSubPatterns, OpSpecTypes
+from .cce_schedule_distribution_rules import OpPatternRules
+from .cce_schedule_distribution_rules import OpSubPatternRules
+from .cce_schedule_distribution_rules import OpSpecialRules
+from .cce_schedule_declarations import OpFlags
+from .cce_schedule_declarations import OpPatterns
+from .cce_schedule_declarations import OpSubPatterns
+from .cce_schedule_declarations import OpSpecTypes
 
 
 # Define all rules for the pattern here
@@ -35,7 +48,7 @@ from .cce_schedule_declarations import OpFlags, OpPatterns, OpSubPatterns, OpSpe
 # simple_pattern_rule is a built_in rule used for one-step pattern setup     #
 # As its name, the logic is simple:                                          #
 # If any of the computeOp tag matched your pattern's simple mapping flag     #
-# (Which is configured in cce_schedule_mappings.SIMPLE_MAPPING)              #
+# Which is configured in cce_schedule_mappings.SIMPLE_MAPPING                #
 # simple_pattern_rule will return True for your pattern                      #
 ##############################################################################
 
@@ -135,12 +148,14 @@ SIMPLE_MAPPING = {
     OpPatterns.CONV3D_PATTERN: OpFlags.conv3d_flag,
     OpPatterns.SEGMENT_PATTERN: OpFlags.segment_flag,
     OpPatterns.INPLACE_PATTERN: OpFlags.inplace_flag,
-    OpPatterns.PURE_BROADCAST_PATTERN:OpFlags.broadcast_flag,
+    OpPatterns.PURE_BROADCAST_PATTERN: OpFlags.broadcast_flag,
     OpPatterns.READ_SELECT_PATTERN: OpFlags.read_select_flag,
     OpPatterns.WRITE_SELECT_PATTERN: OpFlags.write_select_flag,
     OpPatterns.STRIDED_READ_PATTERN: OpFlags.strided_read_flag,
     OpPatterns.STRIDED_WRITE_PATTERN: OpFlags.strided_write_flag,
-    OpSubPatterns.CMPSEL_PATTERN: OpFlags.cmpsel_flag,
+    OpSubPatterns.CMPSEL_PATTERN: (OpFlags.cmpsel_flag,
+                                   OpFlags.cmp_flag,
+                                   OpFlags.sel_flag),
     OpPatterns.CONV3D_BACKPROP_FILTER_PATTERN:
     OpFlags.conv3d_backprop_filter_flag
 }

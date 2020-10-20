@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Ir Build kernel Api
 """
 from __future__ import absolute_import
@@ -22,6 +22,7 @@ from te import tvm
 
 # the max value int 64bit, 2**64 - 1
 MAX_VALUE_UINT64 = 18446744073709551615
+
 
 def get_loopnum_and_masklist(data_len, align_len):
     """get_loopnum_and_masklist
@@ -259,6 +260,7 @@ def kernel_cp_fuc(_ib, addr_info_list, data_info_list, fuc_type):
                                      _des_addr.access_ptr("rw", offset=_des_offset),
                                      _src_addr.access_ptr("r", offset=_src_offset),
                                      0, 1, mask_paras[0] + mask_paras[1], 0, 0, 0))
+
 
 # pylint: disable=too-many-locals
 def kernel_cast_to_fuc(_ib, addr_info_list, data_info_list, fuc_type):

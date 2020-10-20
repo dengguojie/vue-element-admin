@@ -1,26 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bounding_box_decode
 """
-from functools import reduce as functools_reduce
-from topi.cce import util
+import functools
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
+from te.utils import para_check
 from impl import constant_util as constant
-from te.utils.op_utils import *
 
 
 # The maximum number of float16 data that can be
@@ -74,10 +74,10 @@ def _check_param(rois, deltas, kernel_name):
     rois_dtype = rois.get("dtype").lower()
     deltas_shape = deltas.get("shape")
     deltas_dtype = deltas.get("dtype").lower()
-    check_shape(rois_shape, param_name="rois")
-    check_dtype(rois_dtype, ("float16", "float32"), param_name="rois")
-    check_shape(deltas_shape, param_name="deltas")
-    check_dtype(deltas_dtype, ("float16", "float32"), param_name="deltas")
+    para_check.check_shape(rois_shape, param_name="rois")
+    para_check.check_dtype(rois_dtype, ("float16", "float32"), param_name="rois")
+    para_check.check_shape(deltas_shape, param_name="deltas")
+    para_check.check_dtype(deltas_dtype, ("float16", "float32"), param_name="deltas")
     if rois_dtype != deltas_dtype:
         raise RuntimeError("rois type and deltas type must be the same")
 
@@ -91,8 +91,9 @@ def _check_param(rois, deltas, kernel_name):
 
 # pylint: disable=too-many-arguments, too-many-instance-attributes
 # pylint: disable=unused-argument, too-many-locals, too-many-lines
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_FLOAT,
-                 OPTION_ATTR_LIST_FLOAT, OPTION_ATTR_LIST_INT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bounding_box_decode(rois,
                         deltas,
                         bboxes,
@@ -221,7 +222,7 @@ class BoundingBoxDecode(object):
         -------
         gm_element_number: the size of input data
         """
-        return int(functools_reduce(lambda i, j: i * j, self.rois_shape))
+        return int(functools.reduce(lambda i, j: i * j, self.rois_shape))
 
     def get_core_param(self):
         """
@@ -1025,10 +1026,8 @@ class BoundingBoxDecode(object):
                                          denorm_rois_dst_ub)
         else:
             loop_input = block_id * self.each_core_start_address
-            with self.tik_instance.for_range(
-                    0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
-                loop_input = loop_input + cycle * self.start_block_addrss * \
-                             self.rois_data_each_block
+            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
+                loop_input = loop_input + cycle * self.start_block_addrss * self.rois_data_each_block
                 rois_src_ub, deltas_src_ub = self.data_move_mte2_function(
                     loop_input, self.block_number)
                 denorm_rois_dst_ub = self.bounding_box_decode_compute(
@@ -1047,8 +1046,7 @@ class BoundingBoxDecode(object):
         -------
         None
         """
-        with self.tik_instance.for_range(
-                0, self.core_num, block_num=self.core_num) as block_id:
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             self.calculation_process(block_id)
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,

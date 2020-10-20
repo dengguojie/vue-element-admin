@@ -1,25 +1,25 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file lookup_ops_shape_fns.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef LOOKUP_OPS_SHAPE_FNS_H
-#define LOOKUP_OPS_SHAPE_FNS_H
+/*!
+ * \file lookup_ops_shape_fns.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_UTIL_LOOKUP_OPS_SHAPE_FNS_H_
+#define OPS_BUILT_IN_OP_PROTO_UTIL_LOOKUP_OPS_SHAPE_FNS_H_
 
 #include <vector>
 #include "graph/tensor.h"
@@ -34,11 +34,8 @@ namespace ge {
  * @param is_lookup if is lookup
  * @return status whether this operation success
  */
-graphStatus ValidateTableResourceHandle(
-    Shape keys,
-    std::vector<ShapeAndType> handleData,
-    ShapeAndType &output_shape_and_type,
-    bool is_lookup, const char* op_name);
-}   // namespace ge
+graphStatus ValidateTableResourceHandle(Shape keys, std::vector<ShapeAndType> handleData,
+                                        ShapeAndType& output_shape_and_type, bool is_lookup, const char* op_name);
+}  // namespace ge
 
-#endif  // LOOKUP_OPS_SHAPE_FNS_H
+#endif  // OPS_BUILT_IN_OP_PROTO_UTIL_LOOKUP_OPS_SHAPE_FNS_H_

@@ -1,17 +1,31 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
 Query the tiling of conv
 """
-import json
 import os
 import math
 import numpy as np
+import json
 from te import tvm
 from te.platform import CUBE_MKN
 from te.platform.cce_conf import get_soc_spec
 from te.domain.tiling.tiling_helper import TILING_INSTANCE
 from te import platform as cce
 from te.domain.tiling.auto_tiling_log import AUTOTILINGLOG
+from te.domain.tiling.get_tiling import BANK_CACHE
 
 AUTO_TILING_TYPE = 0
 CCE_TILING_TYPE = 1
@@ -20,7 +34,6 @@ PRIORITY_TILING_TYPE = 3
 CUSTOM_TILING_TYPE = 4
 COST_MODEL_TILING_TYPE = 5
 TUNING_TILING_TYPE = 6
-
 
 MINI_FLAG = 1
 CLOUD_FLAG = 2
@@ -56,7 +69,8 @@ OP_TYPE_DICT = {'conv2d': 0, 'conv2d_backprop_input': 1, \
                 'depthwise_conv2d_forward': 3, 'depthwise_bp_input': 4,
                 'depthwise_bp_filter': 5, 'depthwise_conv2d_native_v200': 6,
                 'matmul': 7, 'convolution': 0, 'convolution_3d': 8,
-                'conv3d_backprop_input': 9, 'conv3d_backprop_filter': 10}
+                'conv3d_backprop_input': 9, 'conv3d_backprop_filter': 10
+}
 
 # define the support tiling type
 SUPPORT_TILING_TYPE = {
@@ -70,13 +84,17 @@ SUPPORT_TILING_TYPE = {
 }
 
 def get_platform_info():
-    """Get the information of hardware
-        Parameters
-        ----------
-        Returns
-        -------
-        platform_type : num
-        The platform type.
+    """
+    get the information of hardware
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    platform_type: int
+        the platform type
     """
     # version
     version_dict = {
@@ -87,120 +105,173 @@ def get_platform_info():
         "Ascend610": 5,
         "Ascend910Lite": 6,
         "Ascend910Pro": 7,
-        "Hi3796CV300CS": 8
+        "Hi3796CV300CS": 8,
+        "Ascend615": 9,
+        "Ascend710Pro": 10,
     }
     return version_dict[get_soc_spec("SOC_VERSION")]
 
 
 def is_conv3d_op_tag(op_tag):
-    """Check if Conv3D type"""
+    """
+    Check if Conv3D type
+
+    Parameters
+    ----------
+    op_tag: str
+        the platform type
+
+    Returns
+    -------
+    flag: bool
+        whether the input op_tag is conv3d
+    """
     return op_tag in OP_TYPE_DICT and \
            (OP_TYPE_DICT[op_tag] >= OP_TYPE_DICT['convolution_3d']) and \
            (OP_TYPE_DICT[op_tag] <= OP_TYPE_DICT['conv3d_backprop_filter'])
 
-
-def tiling_query(a_shape, b_shape, c_shape=None, a_dtype='float16', \
-                 b_dtype='float16', c_dtype='float16', mad_dtype='float16', \
-                 padl=0, padr=0, padu=0, padd=0, strideh=1, stridew=1, \
-                 strideh_expand=1, stridew_expand=1, dilationh=1, \
-                 dilationw=1, group=1, fused_double_operand_num=0, \
-                 bias_flag=False, op_tag='conv2d', \
-                 fused_coefficient=None, \
-                 fused_channel_wise=None, \
-                 padf=0, padb=0, strided=0, kernel_name="kernel_name"):
-    """Query the tiling of convolution/convolution 3d from module
+def bank_cache_get(kernel_name):
+    """
+    get the tiling from bank_cache
 
     Parameters
     ----------
-    A_shape: 5D/6D shape information of feature map
-        Input argument.
+    kernel_name: str
 
-    B_shape: 5D/6D shape information of filter
-        Input argument
+    Returns
+    -------
+    ret: bool
+    tiling: dict
+        the result
+    """
+    bank_cache_dict = {}
+    if BANK_CACHE:
+        try:
+            bank_cache_dict = json.loads(BANK_CACHE)
+        except json.decoder.JSONDecodeError:
+            AUTOTILINGLOG.warn(
+                "GA BANK_CACHE: {} must be json format!".format(BANK_CACHE))
+    else:
+        return False, {}
 
-    C_shape: 5D/6D shape information of output
-        Input argument
+    # bank_cache kernel_name like
+    # te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea_56f30_3_0051498
+    # get te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea to compare
+    b_kernel_name = bank_cache_dict.get("kernel_name", "").rsplit('_', 3)[0]
+    if isinstance(kernel_name, tvm.expr.StringImm):
+        kernel_name = kernel_name.value
 
-    A_dtype, B_dtype, C_dtype, mad_dtype: type of data
-        0 represent uint8; 1 represent int8; 2 represent float16,
-        3 represent float32
+    # kernel_name like
+    # te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea_56f30
+    # get te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea to compare
+    i_kernel_name = kernel_name.rsplit('_', 1)[0]
+    if b_kernel_name == i_kernel_name and \
+        bank_cache_dict.get("tuning_mode", "") == "GA":
+        tiling = bank_cache_dict["tiling_dict"]
+        return True, tiling
+    else:
+        return False, {}
 
-    padl,  padr, padu, padd, padf, padb: the pad of six direction
+def tiling_query(a_shape, b_shape, c_shape=None, a_dtype='float16', \
+                b_dtype='float16', c_dtype='float16', mad_dtype='float16', \
+                padl=0, padr=0, padu=0, padd=0, strideh=1, stridew=1, \
+                strideh_expand=1, stridew_expand=1, dilationh=1, \
+                dilationw=1, group=1, fused_double_operand_num=0, \
+                bias_flag=False, op_tag='conv2d', \
+                fused_coefficient=None, fused_channel_wise=None, \
+                padf=0, padb=0, strided=0, kernel_name="kernel_name"):
+    """
+    query the tiling of convolution/convolution 3d from module
+
+    Parameters
+    ----------
+    a_shape: list
+        5D/6D shape information of feature map
+
+    b_shape: list
+        5D/6D shape information of filter
+
+    c_shape: list
+        5D/6D shape information of output
+
+    a_dtype, b_dtype, c_dtype, mad_dtype: str
+        type of data
+        0 represent uint8; 1 represent int8;
+        2 represent float16; 3 represent float32
+
+    padl, padr, padu, padd, padf, padb: int
+        the pad of six direction
         padl, padr = padW
         padu, padd = padH
         padf, padb = padD
 
-    strideH, strideW, strideD: the stride of three direction
-        Input argument
+    strideh, stridew, strided: int
+        the stride of three direction
 
-    dilationH, dilationW: the dilation param of
-        H and W direction of dilation convolution
-        Input argument
+    dilationh, dilationw: int
+        the dilation param of H and W direction of dilation convolution
 
-    strideH_expand, strideW_expand: the param of expansion on
-        H and W direction of A_shape
-        Input argument
+    strideh_expand, stridew_expand: int
+        the param of expansion on H and W direction of a_shape
 
-    group: the param of group convolution
-        Input argument
+    group: int
+        the param of group convolution
 
-    fused_double_operand_num: the param of num of
-        fused double operand vector operator
-        Input argument
+    fused_double_operand_num:
+        the param of num of fused double operand vector operator
 
-    bias_flag: whether there is bias
-        bool value
+    bias_flag: bool
+        whether there is bias bool value
 
-    op_tag: the tag of operator
-        string: see OP_TYPE_DICT
+    op_tag: str
+        the tag of operator, see OP_TYPE_DICT
 
-    fused_coefficient: the params of num of
-        fused double operand vector operator
-        list value
+    fused_coefficient: list
+        the params of num of fused double operand vector operator
 
-    fused_channel_wise: the params of num of LOA,LOB,LOC in chanel direction
-        list value
+    fused_channel_wise: list
+        the params of num of LOA, LOB, LOC in channel direction
 
     Returns
     -------
-    tiling : dict
-        The result.
+    tiling: dict
+        the result
     """
     # preprocess the param
-    fused_coefficient = ([0, 0, 0]
-                         if fused_coefficient is None else fused_coefficient)
-    fused_channel_wise = ([0, 0, 0] if fused_channel_wise is None else
-                          fused_channel_wise)
+    fused_coefficient = ([0, 0, 0] if fused_coefficient is None else fused_coefficient)
+    fused_channel_wise = ([0, 0, 0] if fused_channel_wise is None else fused_channel_wise)
     _, _, fused_loc_coefficient = list(fused_coefficient)
     _, _, fused_loc_channel_wise = list(fused_channel_wise)
-    fused_double_operand_num = fused_double_operand_num + \
-                    fused_loc_channel_wise + fused_loc_coefficient
+    fused_double_operand_num = fused_double_operand_num + fused_loc_channel_wise + fused_loc_coefficient
 
     platform = get_platform_info()
     params_in = {"A_shape": a_shape, "B_shape": b_shape, "C_shape": c_shape,
-                 "A_dtype": a_dtype, "B_dtype": b_dtype, "C_dtype": c_dtype,
-                 "mad_dtype": mad_dtype,
-                 "padl": padl, "padr": padr, "padu": padu, "padd": padd,
-                 "padf": padf, "padb": padb,
-                 "strideH": strideh, "strideW": stridew, "strideD": strided,
-                 "strideH_expand": strideh_expand,
-                 "strideW_expand": stridew_expand,
-                 "dilationH": dilationh, "dilationW": dilationw,
-                 "group": group,
-                 "fused_double_operand_num": fused_double_operand_num,
-                 "bias_flag": bias_flag, "op_type": op_tag,
-                 "platform": platform, "kernel_name": kernel_name}
+                "A_dtype": a_dtype, "B_dtype": b_dtype, "C_dtype": c_dtype,
+                "mad_dtype": mad_dtype,
+                "padl": padl, "padr": padr, "padu": padu, "padd": padd,
+                "padf": padf, "padb": padb,
+                "strideH": strideh, "strideW": stridew, "strideD": strided,
+                "strideH_expand": strideh_expand,
+                "strideW_expand": stridew_expand,
+                "dilationH": dilationh, "dilationW": dilationw,
+                "group": group,
+                "fused_double_operand_num": fused_double_operand_num,
+                "bias_flag": bias_flag, "op_type": op_tag,
+                "platform": platform, "kernel_name": kernel_name}
 
     check_params_in(params_in)
     shape_encode_array = encode_array(params_in)
     tiling_type = TILING_INSTANCE.get_tiling_type()
-    # End to end scene, the tiling type is used to query
-    # the tiling from repository
-    tiling = obtain_tiling(shape_encode_array, tiling_type,
-                           params_in)
+    ret, tiling = bank_cache_get(kernel_name)
+    if ret:
+        # if ret is true, return tiling from bank_cache
+        return tiling
+    else:
+        # End to end scene, the tiling type is used to query
+        # the tiling from repository
+        tiling = obtain_tiling(shape_encode_array, tiling_type, params_in)
     AUTOTILINGLOG.debug("[auto_tiling]params_in:{}".format(params_in))
-    AUTOTILINGLOG.debug("[auto_tiling]tiling:{}, "\
-        "tiling_type:{}".format(tiling, tiling_type))
+    AUTOTILINGLOG.debug("[auto_tiling]tiling:{}, tiling_type:{}".format(tiling, tiling_type))
     return tiling
 
 
@@ -210,13 +281,16 @@ def check_params_in(params_in):
 
     Parameters
     ----------
-    params_in: the input params
+    params_in: dict
+        include all information of shape
 
     Returns
     -------
+    None
     """
     def check_param_type(param, type_list):
-        """check whether the type of param is correct
+        """
+        check whether the type of param is correct
 
         Parameters
         ----------
@@ -224,15 +298,19 @@ def check_params_in(params_in):
             the instance to check
         type_list: type
             type of data
+
+        Returns
+        -------
+        None
         """
         check_list = tuple(type_list)
         if not isinstance(param, check_list):
-            raise TypeError("the type of param is error, \
-                only support %s, but the type of param is %s" % \
+            raise TypeError("the type of param is error, only support %s, but the type of param is %s" % \
                 (str(type_list), type(param)))
 
     def check_param_length(param, length_list):
-        """check whether the length of param is correct
+        """
+        check whether the length of param is correct
 
         Parameters
         ----------
@@ -240,14 +318,18 @@ def check_params_in(params_in):
             the instance to check
         length_list: list
             length of data
+
+        Returns
+        -------
+        None
         """
-        if not len(param) in length_list:
-            raise ValueError("the length of param is error, \
-                only support %s, but the length of param is %s" % \
+        if len(param) not in length_list:
+            raise ValueError("the length of param is error, only support %s, but the length of param is %s" % \
                 (str(length_list), len(param)))
 
     def check_support_range(param, support_dict):
-        """check whether the range of param is correct
+        """
+        check whether the range of param is correct
 
         Parameters
         ----------
@@ -255,10 +337,13 @@ def check_params_in(params_in):
             the instance to check
         support_dict: dict
             support context of data
+
+        Returns
+        -------
+        None
         """
-        if not param in support_dict.keys():
-            raise ValueError("the input param is error, \
-                only support %s,  but the param is %s" % \
+        if param not in support_dict.keys():
+            raise ValueError("the input param is error, only support %s,  but the param is %s" % \
                 (str(support_dict.keys()), param))
 
     # check the type of param
@@ -267,14 +352,11 @@ def check_params_in(params_in):
     check_param_type(params_in.get('B_shape'), [list])
     # check the type and value and C_shape
     if isinstance(params_in.get('C_shape'), list):
-        if not (len(params_in.get('C_shape')) in \
-            [SHAPE_LENGTH4, SHAPE_LENGTH5, SHAPE_LENGTH6]):
-            raise ValueError("the length of param is error, \
-                only support 4 or 5")
+        if (len(params_in.get('C_shape')) not in [SHAPE_LENGTH4, SHAPE_LENGTH5, SHAPE_LENGTH6]):
+            raise ValueError("the length of param is error, only support 4, 5 or 6")
     elif params_in.get('C_shape') is not None:
-        raise TypeError("the type of param is error, \
-                only support list tuple or None, but the type of param \
-                is %s" % type(params_in.get('C_shape')))
+        raise TypeError("the type of param is error, only support list tuple or None, but the type of param is %s" % \
+            type(params_in.get('C_shape')))
     # check the type of param
     check_param_type(params_in.get('A_dtype'), [str])
     check_param_type(params_in.get('B_dtype'), [str])
@@ -297,10 +379,8 @@ def check_params_in(params_in):
     check_param_type(params_in.get('platform'), [int])
 
     # check the length of param
-    check_param_length(params_in.get('A_shape'),
-                       [SHAPE_LENGTH5, SHAPE_LENGTH6])
-    check_param_length(params_in.get('B_shape'),
-                       [SHAPE_LENGTH5, SHAPE_LENGTH6])
+    check_param_length(params_in.get('A_shape'), [SHAPE_LENGTH5, SHAPE_LENGTH6])
+    check_param_length(params_in.get('B_shape'), [SHAPE_LENGTH5, SHAPE_LENGTH6])
     check_support_range(params_in.get('A_dtype'), DTYPE_DICT)
     check_support_range(params_in.get('B_dtype'), DTYPE_DICT)
     check_support_range(params_in.get('C_dtype'), DTYPE_DICT)
@@ -309,20 +389,25 @@ def check_params_in(params_in):
 
 
 def obtain_tiling(shape_encode_array, tiling_type, params_in):
-    """Get tilling
+    """
+    get tilling
 
     Parameters
     ----------
-    shape_encode_array: encoded shape info
-    tiling_type: tiling type
+    shape_encode_array: tvm.nd.array
+        encoded shape info
+    tiling_type: str
+        tiling type
+    params_in: dict
+        include all information of shape
 
     Returns
     -------
-    tiling
+    tiling: dict
+        return tiling
     """
     if tiling_type not in SUPPORT_TILING_TYPE:
-        raise ValueError(
-            'tiling_type: {} is not supported.'.format(tiling_type))
+        raise ValueError('tiling_type: {} is not supported.'.format(tiling_type))
     tiling_type_num = SUPPORT_TILING_TYPE[tiling_type]
     if tiling_type_num != TUNING_TILING_TYPE:
         tiling_result = tvm.get_global_func("_tiling_query")
@@ -337,17 +422,18 @@ def obtain_tiling(shape_encode_array, tiling_type, params_in):
 
 
 def encode_array(params_in):
-    """encode the information of shape to the list of uint32 digit
+    """
+    encode the information of shape to the list of uint32 digit
 
     Parameters
     ----------
-    params_in: dict of params
+    params_in: dict
         include all information of shape
 
     Returns
     -------
     shape_encode_array : tvm.nd.array
-        The encoded params, array
+        the encoded params, array
     """
     _ca0 = params_in["A_shape"][-1]
     if _ca0 != C04:
@@ -355,11 +441,9 @@ def encode_array(params_in):
         _ca0 = config['mac'][1]
 
     params_dict = {}
-    if (params_in['op_type'] == 'conv2d_backprop_filter' or\
-       params_in['op_type'] == 'conv2d_backprop_input'):
+    if (params_in['op_type'] == 'conv2d_backprop_filter' or params_in['op_type'] == 'conv2d_backprop_input'):
         params_dict['batchA'] = params_in["A_shape"][0]
-        params_dict['ca1'] = ((params_in["A_shape"][1]
-                               * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
+        params_dict['ca1'] = ((params_in["A_shape"][1] * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
         params_dict['ca0'] = _ca0
         params_dict['ha'] = params_in["A_shape"][2]
         params_dict['wa'] = params_in["A_shape"][3] & 0xFFFF
@@ -388,15 +472,13 @@ def encode_array(params_in):
         if is_conv3d_op_tag(params_in['op_type']):
             params_dict['batchA'] = params_in["A_shape"][0]
             params_dict['da'] = params_in["A_shape"][1]
-            params_dict['ca1'] = ((params_in["A_shape"][2]
-                                * params_in["A_shape"][5]) + _ca0 - 1) // _ca0
+            params_dict['ca1'] = ((params_in["A_shape"][2] * params_in["A_shape"][5]) + _ca0 - 1) // _ca0
             params_dict['ca0'] = _ca0
             params_dict['ha'] = params_in["A_shape"][3]
             params_dict['wa'] = params_in["A_shape"][4]
             params_dict['batchB'] = params_in['B_shape'][0]
             params_dict['db'] = params_in["B_shape"][1]
-            params_dict['cb'] = params_in['B_shape'][2] *\
-                            params_in['B_shape'][5]
+            params_dict['cb'] = params_in['B_shape'][2] * params_in['B_shape'][5]
             params_dict['hb'] = params_in['B_shape'][3]
             params_dict['wb'] = params_in['B_shape'][4]
             params_dict['padf'] = params_in['padf']
@@ -405,15 +487,13 @@ def encode_array(params_in):
         else:
             params_dict['batchA'] = params_in["A_shape"][0]
             params_dict['da'] = 0
-            params_dict['ca1'] = ((params_in["A_shape"][1]
-                                * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
+            params_dict['ca1'] = ((params_in["A_shape"][1] * params_in["A_shape"][4]) + _ca0 - 1) // _ca0
             params_dict['ca0'] = _ca0
             params_dict['ha'] = params_in["A_shape"][2]
             params_dict['wa'] = params_in["A_shape"][3]
             params_dict['batchB'] = params_in['B_shape'][0]
             params_dict['db'] = 0
-            params_dict['cb'] = params_in['B_shape'][1] *\
-                            params_in['B_shape'][4]
+            params_dict['cb'] = params_in['B_shape'][1] * params_in['B_shape'][4]
             params_dict['hb'] = params_in['B_shape'][2]
             params_dict['wb'] = params_in['B_shape'][3]
             params_dict['padf'] = 0
@@ -424,14 +504,13 @@ def encode_array(params_in):
         params_dict['hc'] = 0
         params_dict['wc'] = 0
         if params_in['op_type'] == 'depthwise_bp_filter':
-                params_dict['hc'] = params_in['C_shape'][2]
-                params_dict['wc'] = params_in['C_shape'][3]
+            params_dict['hc'] = params_in['C_shape'][2]
+            params_dict['wc'] = params_in['C_shape'][3]
         elif params_in['op_type'] == 'matmul':
             if isinstance(params_in['C_shape'], list):
                 params_dict['hc'] = params_in['C_shape'][2]
                 params_dict['wc'] = params_in['C_shape'][3]
-        elif params_in['op_type'] == 'conv3d_backprop_input' or\
-                params_in['op_type'] == 'conv3d_backprop_filter':
+        elif params_in['op_type'] == 'conv3d_backprop_input' or params_in['op_type'] == 'conv3d_backprop_filter':
             params_dict['dc'] = params_in['C_shape'][1]
             params_dict['hc'] = params_in['C_shape'][2]
             params_dict['wc'] = params_in['C_shape'][3]
@@ -453,37 +532,33 @@ def encode_array(params_in):
     params_dict['group'] = params_in['group']
     # The param encode fixed point data,
     # the data is accurate to two decimal places
-    params_dict['fused_double_operand_num'] = math.ceil( \
-                                params_in['fused_double_operand_num'] * 100)
+    params_dict['fused_double_operand_num'] = math.ceil(params_in['fused_double_operand_num'] * 100)
     params_dict['bias_flag'] = params_in['bias_flag']
     params_dict['op_tag_encode'] = OP_TYPE_DICT[params_in['op_type']]
     params_dict['platform'] = params_in['platform']
 
     params_encode = encode(params_dict)
-    shape_encode = np.array([params_encode[0], params_encode[1],
-                             params_encode[2], params_encode[3],
-                             params_encode[4], params_encode[5],
-                             params_encode[6], params_encode[7],
-                             params_encode[8], params_encode[9],
-                             params_encode[10], params_encode[11],
-                             params_encode[12], params_encode[13],
-                             params_encode[14], params_encode[15]],
+    shape_encode = np.array([params_encode[0], params_encode[1], params_encode[2], params_encode[3],
+                            params_encode[4], params_encode[5], params_encode[6], params_encode[7],
+                            params_encode[8], params_encode[9], params_encode[10], params_encode[11],
+                            params_encode[12], params_encode[13], params_encode[14], params_encode[15]],
                             dtype="uint32")
 
     return tvm.nd.array(shape_encode)
 
 def encode(params):
-    """encode the information of shape to the list of uint32 digit
+    """
+    encode the information of shape to the list of uint32 digit
 
     Parameters
     ----------
-    params: dict of params
+    params: dict
         include all information of shape
 
     Returns
     -------
-    params_encode : list of encoded params
-        The encoded params, include 8 uint32 numbers
+    params_encode: list
+        the encoded params, include 8 uint32 numbers
     """
     # according to the define of TBETilingArgs structure,
     # the combination of multiple members occupy 32 bits storage space
@@ -509,22 +584,18 @@ def encode(params):
     params_encode.append((params['wc'] << 16) + params['hc'])
     # fusedDoubleOperandNum occupies 16 bits, ca0 occupies 8 bits,
     # aType occupies 8 bits, the combination occupies 32 bits
-    params_encode.append((params['A_type_encode'] << 24) + \
-        (params['ca0'] << 16) + params['fused_double_operand_num'])
+    params_encode.append((params['A_type_encode'] << 24) + (params['ca0'] << 16) + params['fused_double_operand_num'])
     # bType occupies 8 bits, cType occupies 8 bits,
     # madType: 8 bits, padl: 8 bits, the combination occupies 32 bits
-    params_encode.append((params['padl'] << 24) + \
-        (params['mad_dtype_encode'] << 16) + \
+    params_encode.append((params['padl'] << 24) + (params['mad_dtype_encode'] << 16) + \
         (params['C_dtype_encode'] << 8) + params['B_dtype_encode'])
     # padr occupies 8 bits, padu occupies 8 bits,
     # padd: 8 bits, strideH: 8 bits, the combination occupies 32 bits
-    params_encode.append((params['strideH'] << 24) + \
-        (params['padd'] << 16) + (params['padu'] << 8) + params['padr'])
+    params_encode.append((params['strideH'] << 24) + (params['padd'] << 16) + (params['padu'] << 8) + params['padr'])
     # strideW occupies 8 bits, strideHExpand occupies 8 bits,
     # strideWExpand: 8 bits, dilationH: 8 bits,
     # the combination occupies 32 bits
-    params_encode.append((params['dilationH'] << 24) + \
-        (params['strideW_expand'] << 16) + \
+    params_encode.append((params['dilationH'] << 24) + (params['strideW_expand'] << 16) + \
         (params['strideH_expand'] << 8) + params['strideW'])
     # dilationW occupies 8 bits, group occupies 8 bits,
     # opTag occupies 8 bits, biasFlag occupies 1 bits,
@@ -532,7 +603,7 @@ def encode(params):
     params_encode.append((params['platform'] << 25) + \
         (params['bias_flag'] << 24) + (params['op_tag_encode'] << 16) + \
         (params['group'] << 8) + params['dilationW'])
-    if (params['op_tag_encode'] == OP_TYPE_DICT['conv2d_backprop_filter'] or\
+    if (params['op_tag_encode'] == OP_TYPE_DICT['conv2d_backprop_filter'] or \
         params['op_tag_encode'] == OP_TYPE_DICT['conv2d_backprop_input']):
         # wa_hi occupies 16 bits, wb_hi occupies 16 bits
         params_encode.append((params['wb_hi'] << 16) + params['wa_hi'])
@@ -546,26 +617,25 @@ def encode(params):
         params_encode.append(params['db'])
         # padf occupies 8 bits, padb occupies 8 bits,
         # strideD: 8 bits, the combination occupies 24 bits
-        params_encode.append((params['strideD'] << 16) + \
-                             (params['padb'] << 8) + params['padf'])
+        params_encode.append((params['strideD'] << 16) + (params['padb'] << 8) + params['padf'])
         # dc occupies 32 bits
         params_encode.append(params['dc'])
     return params_encode
 
 def decode(tiling_encode):
-    """decode the information of tiling from the list of uint32 digit
+    """
+    decode the information of tiling from the list of uint32 digit
 
     Parameters
     ----------
-    tiling_encode: list of encoded tiling
+    tiling_encode: list
         encoded tiling, includes 11 uint32 digits
 
     Returns
     -------
-    tiling : dict of tiling
-        The decoded tiling
+    tiling : dict
+        the decoded tiling
     """
-
     # according to the define of TBETilingResult structure,
     # the one member of tiling_encode occupies 32 bits
     # and includes multiple members of TBETilingResult structure
@@ -678,12 +748,14 @@ def decode(tiling_encode):
     # UBG_pbuffer occupies low 4-bit, n_bef_batch_flag occupies next 1-bit,
     # n_bef_group_flag: 1 bits, batch_bef_group_flag: 1 bits,
     # A_overhead_opt_flag: 1 bits, B_overhead_opt_flag occupies 1 bit,
+    # CUB_channel_wise_flag: 1 bits, CUB_channel_wise_flag occupies 1 bit
     ubg_pbuffer = (tiling_encode[23] & MAX_UINT4)
     n_bef_batch_flag = ((tiling_encode[23] >> 4) & MAX_BOOL)
     n_bef_group_flag = ((tiling_encode[23] >> 5) & MAX_BOOL)
     batch_bef_group_flag = ((tiling_encode[23] >> 6) & MAX_BOOL)
     a_overhead_opt_flag = ((tiling_encode[23] >> 7) & MAX_BOOL)
     b_overhead_opt_flag = ((tiling_encode[23] >> 8) & MAX_BOOL)
+    cub_channel_wise_flag = ((tiling_encode[23] >> 9) & MAX_BOOL)
 
     # BUB_shape_2 support special value None
     if bub_shape_2 == 0:
@@ -698,45 +770,35 @@ def decode(tiling_encode):
         bl0_matrix_4 = None
 
     # default set  channel_wise_flag
-
     aub_channel_wise_flag = None
     bub_channel_wise_flag = None
-    cub_channel_wise_flag = True
 
     # Fill the dictionary of Tiling
-    tiling = {"AUB_shape": [aub_shape_0, aub_shape_1, aub_shape_2, \
-                            aub_shape_3], \
-            "BUB_shape": [bub_shape_0, bub_shape_1, bub_shape_2, \
-                            bub_shape_3], \
-            "AL1_shape": [al1_shape_0, al1_shape_1, al1_shape_2, \
-                            al1_shape_3], \
-            "BL1_shape": [bl1_shape_0, bl1_shape_1, bl1_shape_2, \
-                            bl1_shape_3], \
-            "AL0_matrix": [al0_matrix_0, al0_matrix_1, al0_matrix_2, \
-                            al0_matrix_3, al0_matrix_4, al0_matrix_5], \
-            "BL0_matrix": [bl0_matrix_0, bl0_matrix_1, bl0_matrix_2, \
-                            bl0_matrix_3, bl0_matrix_4, bl0_matrix_5], \
-            "CL0_matrix": [cl0_matrix_0, cl0_matrix_1, cl0_matrix_2, \
-                            cl0_matrix_3, cl0_matrix_4, cl0_matrix_5], \
-            "CUB_matrix": [cub_matrix_0, cub_matrix_1, cub_matrix_2, \
-                            cub_matrix_3, cub_matrix_4, cub_matrix_5], \
-            "block_dim": [batch_dim, n_dim, m_dim, group_dim], \
-            "n_bef_batch_flag": n_bef_batch_flag, \
-            "n_bef_group_flag": n_bef_group_flag, \
-            "batch_bef_group_flag": batch_bef_group_flag, \
-            "A_overhead_opt_flag": a_overhead_opt_flag, \
-            "B_overhead_opt_flag": b_overhead_opt_flag, \
-            "AUB_channel_wise_flag": aub_channel_wise_flag, \
-            "BUB_channel_wise_flag": bub_channel_wise_flag, \
-            "CUB_channel_wise_flag": cub_channel_wise_flag, \
-            "manual_pingpong_buffer": {"AUB_pbuffer": aub_pbuffer, \
-                                        "BUB_pbuffer": bub_pbuffer, \
-                                        "AL1_pbuffer": al1_pbuffer, \
-                                        "BL1_pbuffer": bl1_pbuffer, \
-                                        "AL0_pbuffer": al0_pbuffer, \
-                                        "BL0_pbuffer": bl0_pbuffer, \
-                                        "CL0_pbuffer": cl0_pbuffer, \
-                                        "CUB_pbuffer": cub_pbuffer, \
+    tiling = {"AUB_shape": [aub_shape_0, aub_shape_1, aub_shape_2, aub_shape_3],
+            "BUB_shape": [bub_shape_0, bub_shape_1, bub_shape_2, bub_shape_3],
+            "AL1_shape": [al1_shape_0, al1_shape_1, al1_shape_2, al1_shape_3],
+            "BL1_shape": [bl1_shape_0, bl1_shape_1, bl1_shape_2, bl1_shape_3],
+            "AL0_matrix": [al0_matrix_0, al0_matrix_1, al0_matrix_2, al0_matrix_3, al0_matrix_4, al0_matrix_5],
+            "BL0_matrix": [bl0_matrix_0, bl0_matrix_1, bl0_matrix_2, bl0_matrix_3, bl0_matrix_4, bl0_matrix_5],
+            "CL0_matrix": [cl0_matrix_0, cl0_matrix_1, cl0_matrix_2, cl0_matrix_3, cl0_matrix_4, cl0_matrix_5],
+            "CUB_matrix": [cub_matrix_0, cub_matrix_1, cub_matrix_2, cub_matrix_3, cub_matrix_4, cub_matrix_5],
+            "block_dim": [batch_dim, n_dim, m_dim, group_dim],
+            "n_bef_batch_flag": n_bef_batch_flag,
+            "n_bef_group_flag": n_bef_group_flag,
+            "batch_bef_group_flag": batch_bef_group_flag,
+            "A_overhead_opt_flag": a_overhead_opt_flag,
+            "B_overhead_opt_flag": b_overhead_opt_flag,
+            "AUB_channel_wise_flag": aub_channel_wise_flag,
+            "BUB_channel_wise_flag": bub_channel_wise_flag,
+            "CUB_channel_wise_flag": cub_channel_wise_flag,
+            "manual_pingpong_buffer": {"AUB_pbuffer": aub_pbuffer,
+                                        "BUB_pbuffer": bub_pbuffer,
+                                        "AL1_pbuffer": al1_pbuffer,
+                                        "BL1_pbuffer": bl1_pbuffer,
+                                        "AL0_pbuffer": al0_pbuffer,
+                                        "BL0_pbuffer": bl0_pbuffer,
+                                        "CL0_pbuffer": cl0_pbuffer,
+                                        "CUB_pbuffer": cub_pbuffer,
                                         "UBG_pbuffer": ubg_pbuffer}}
 
     # AUB_shape support special value None
@@ -772,7 +834,8 @@ def decode(tiling_encode):
     return cast_data_type(tiling)
 
 def cast_data_type(tiling):
-    """decode the information of tiling from the list of uint32 digit
+    """
+    decode the information of tiling from the list of uint32 digit
 
     Parameters
     ----------
@@ -781,7 +844,7 @@ def cast_data_type(tiling):
 
     Returns
     -------
-    tiling : dict of tiling
+    tiling : dict
         modify tiling
     """
     for key, value in tiling.items():

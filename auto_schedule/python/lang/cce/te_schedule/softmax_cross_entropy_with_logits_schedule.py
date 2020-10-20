@@ -1,24 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# pylint: disable=too-many-lines
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_reduce
 """
 from __future__ import absolute_import
 
 import math
+
 import te.lang.cce
 from te import tvm
 from te import platform as cce
@@ -166,7 +166,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 1,
                 *repeat_stride))
         is_have_tile = repeat_time > 1 or \
-                       (repeat_time == 1 and remain_size > 0)
+            (repeat_time == 1 and remain_size > 0)
         if is_have_tile:
             if remain_size > 0:
                 reset_mask_insn(ib_expr, dtype, bits=repeat_time + 1)
@@ -449,7 +449,7 @@ def is_vector_reduce(c_size, split_factor):
     return False
 
 
-def logits_2d_schedule(res, input_tensors): # pylint: disable=unused-argument
+def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
     '''
     softmax_cross_entropy_with_logits schedule for nchw format data
     :param data_features: input tensor 1
@@ -580,9 +580,9 @@ def logits_2d_schedule(res, input_tensors): # pylint: disable=unused-argument
         shape, npart_factor, block_split_inner_size,
         min_num_size_one_core, max_ub_count)
 
-    is_need_workspace = (npart_factor > 1 and \
-                        split_factor < min_num_size_one_core) or\
-                        c_size > max_ub_count
+    is_need_workspace = (npart_factor > 1 and
+                         split_factor < min_num_size_one_core) or\
+        c_size > max_ub_count
     if is_need_workspace:
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
 
@@ -686,7 +686,7 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     tensor_list_map = {}
     tensor_list_dst_tensor_map = {}
     gen_reversed_subgraph_list(fake_output_node, tensor_list_map,
-                                tensor_list_dst_tensor_map)
+                               tensor_list_dst_tensor_map)
     tensor_list = list(tensor_list_map.values())
     # Get all placeholders, remove L1 workspace
     placeholder_list = tensor_list[:]
@@ -900,9 +900,9 @@ def get_ub_tiling_2d(shape, npart_factor, block_tiling_inner_loop,
     one_block_size = 32
     byte_size_fp32 = 4
     if shape_c > threshold_size and\
-        shape_c*byte_size_fp32 % one_block_size != 0:
+            shape_c*byte_size_fp32 % one_block_size != 0:
         if shape_nhw % npart_factor == 0 and \
-            shape_nhw // npart_factor >= min_num_size_one_core:
+                shape_nhw // npart_factor >= min_num_size_one_core:
             return 1, npart_factor
         return 1, 1
 
@@ -1705,7 +1705,6 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[div_2_ub].emit_insn(s[div_2_ub].op.axis[0], 'vector_div')
     s[sub_7_ub].emit_insn(s[sub_7_ub].op.axis[0], 'vector_sub')
     s[add_0].emit_insn(add_0_axis_1_i, 'phony_insn')
-
 
     s[broadcast_tensor_0_ub].emit_insn(s[broadcast_tensor_0_ub].op.axis[1],
                                        'unified_broadcast')

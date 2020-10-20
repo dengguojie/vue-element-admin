@@ -1,27 +1,26 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 parser the config params
 """
 from __future__ import absolute_import as _abs
 import inspect
-from te import tvm
-# pylint: disable=import-error
-from tvm._ffi.function import _init_api
 
-BANK_CACHE = ""
+from te.tvm._ffi.function import _init_api
+from te.tvm._ffi.function import get_global_func
+
 
 class L1BufferManager():
     """Manage L1 buffer
@@ -50,11 +49,11 @@ def set_L1_info(key, value):
     ret = True
     if key == "op_L1_space":
         if value >= 0:
-            func = tvm.get_global_func("cce.set_l1_buffer", True)
+            func = get_global_func("cce.set_l1_buffer", True)
             if func:
                 ret = func(value)
         else:
-            func = tvm.get_global_func("cce.reset_l1_buffer", True)
+            func = get_global_func("cce.reset_l1_buffer", True)
             if func:
                 ret = func()
 
@@ -76,13 +75,14 @@ class OpImplPolicy():
         get op_impl_mode kwargs
         """
         if cls.op_impl_mode not in ("", None):
-            impl_mode_arg = inspect.signature(opfunc)\
-                                   .parameters.get('impl_mode', None)
-            if impl_mode_arg is not None and impl_mode_arg.kind in \
-               (inspect.Parameter.KEYWORD_ONLY,
-                inspect.Parameter.POSITIONAL_OR_KEYWORD) and (
-                    op_type in cls.op_impl_mode_list or
-                    cls.op_impl_mode_list == []):
+            impl_mode_arg = \
+                inspect.signature(opfunc).parameters.get('impl_mode', None)
+            if impl_mode_arg is not None and \
+                    impl_mode_arg.kind in \
+                    (inspect.Parameter.KEYWORD_ONLY,
+                     inspect.Parameter.POSITIONAL_OR_KEYWORD) and \
+                    (op_type in cls.op_impl_mode_list or
+                     cls.op_impl_mode_list == []):
                 return {'impl_mode': cls.op_impl_mode}
         return {}
 

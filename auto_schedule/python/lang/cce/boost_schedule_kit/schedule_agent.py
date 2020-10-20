@@ -1,21 +1,20 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
+schedule_agent
 """
-
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 from te import tvm
 from te.utils.error_manager import error_manager_util as err_man
 from .util import Compare
@@ -38,6 +37,7 @@ def raise_schedule_agent_err(msg):
 
 class AttachMap:
     """docstring for  AttachMap"""
+
     def __init__(self):
         # axis:stage
         self._parent_stages = dict()
@@ -289,8 +289,8 @@ class ScopeManager:
         scopes.reverse()
         for axis in scopes:
             if axis is not None \
-                and axis not in visited_scope \
-                and axis in leaf_ivars:
+                    and axis not in visited_scope \
+                    and axis in leaf_ivars:
                 valid_scopes.append(axis)
                 visited_scope.add(axis)
         if len(valid_scopes) <= 1:
@@ -389,7 +389,7 @@ class ScopeManager:
 
         if nlast < 0 or nlast > len(self._origin_axis):
             raise_schedule_agent_err("nlast must >0 and < %d" %
-                               len(self._origin_axis))
+                                     len(self._origin_axis))
         # find the first split parent-child scope
         axis_maping = dict()
         for relation in self._stage.relations:
@@ -492,8 +492,8 @@ class ScopeManager:
         for scope in self._stage.leaf_iter_vars:
             if (scope_end is not None) and (scope == scope_end):
                 break
-            if scope.var.name.find('{}{}'\
-                .format(scope_key.var.name, '.')) == 0:
+            if scope.var.name.find('{}{}'
+                                   .format(scope_key.var.name, '.')) == 0:
                 scope_list.append(scope)
         return scope_list
 
@@ -590,8 +590,8 @@ class ScheduleAgent:
         ax_list, unit = scopes.get_active_scope_and_unit()
         if len(affine_shape) != len(ax_list):
             raise_schedule_agent_err("len(affine_shape) should be equal to "
-                               "len(shape)+len(reduce_axis) of {} "\
-                               .format(parent))
+                                     "len(shape)+len(reduce_axis) of {} "
+                                     .format(parent))
         factor_list = list(
             ceil_div(i, j) if i is not None else None
             for i, j in zip(affine_shape, unit)
@@ -603,8 +603,8 @@ class ScheduleAgent:
         def start_attach(factor_list, ax_list):
             origin_axis = scopes.origin_axis
             for factor, axis in zip(factor_list, ax_list):
-                if factor is not None and (isinstance(factor, tvm.expr.Expr) \
-                    or factor > 1 or axis in origin_axis):
+                if factor is not None and (isinstance(factor, tvm.expr.Expr)
+                                           or factor > 1 or axis in origin_axis):
                     axo, axi = scopes.split(axis, factor=factor)
                     self._attach_map.update_scope(axis, axi)
                     axis_outer.append(axo)
@@ -693,6 +693,6 @@ class ScheduleAgent:
             attach = self.attach_at(tensor_a, tensor_c, affine_shape_to_c)
         else:
             raise_schedule_agent_err("tiling shape of {} shouldn't "
-                                     "be both less and greater than {}".\
+                                     "be both less and greater than {}".
                                      format(tensor_a, tensor_b))
         return attach

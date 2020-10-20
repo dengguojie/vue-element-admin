@@ -1,17 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2020 Huawei Technologies Co., Ltd
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 sparse_apply_proximal_adagrad_d
 """
 import sys
@@ -63,7 +64,7 @@ ZERO_FP32 = 0.0
 NEG_ONE_FP32 = -1.0
 
 
-def Ceil(num, factor):
+def ceil(num, factor):
     """
     compute ceil
 
@@ -209,7 +210,7 @@ class SparseApplyProximalAdagradD:
                                         name="vec_repeat_time")
 
         last_axis = 80
-        last_axis_ceil = Ceil(last_axis, MASK_FP32)
+        last_axis_ceil = ceil(last_axis, MASK_FP32)
         ub_shape = (last_axis_ceil,)
 
         def compute_row(ub_size):
@@ -416,6 +417,7 @@ class SparseApplyProximalAdagradD:
                         self.gm_tensor,
                         self.ub_tensor,
                         self.obj_fp32_input_scalar)
+        opt_config = {"out_of_bound_sync_check":True}
         self.tik_instance.BuildCCE(inputs=[self.gm_tensor.var_gm,
                                            self.gm_tensor.accum_gm,
                                            self.gm_tensor.lr_gm,
@@ -426,6 +428,7 @@ class SparseApplyProximalAdagradD:
                                    outputs=[self.gm_tensor.var_out_gm,
                                             self.gm_tensor.accum_out_gm],
                                    flowtable=[self.gm_tensor.tiling_gm],
+                                   config=opt_config,
                                    kernel_name=self.kernel_name)
 
 
@@ -583,19 +586,16 @@ def traversal_idx(tik_instance,
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
-    # sqrt, tmp = sqrt(accum)
     tik_instance.vsqrt(MASK_FP32, ub_tensor.tmp_ub[0],
                        ub_tensor.accum_ub[0],
                        fp32_input_scalar.vec_repeat_time,
                        1, 1, 8, 8)
-    # div, lr1 = lr/sqrt(accum)
     tik_instance.vdiv(MASK_FP32, ub_tensor.lr1_ub[0],
                       ub_tensor.lr_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    # mul, tmp = grad * lr1
     tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
                       ub_tensor.grad_ub[0],
                       ub_tensor.lr1_ub[0],
@@ -609,28 +609,24 @@ def traversal_idx(tik_instance,
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
-    # sub, prox = var - tmp
     tik_instance.vsub(MASK_FP32, ub_tensor.prox_ub[0],
                       ub_tensor.var_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 8, 8)
-    # mul, tmp = l2 * lr1
     tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
                       ub_tensor.l2_ub[0],
                       ub_tensor.lr1_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    # add, accum = 1.0 + tmp
     tik_instance.vadd(MASK_FP32, ub_tensor.accum_ub[0],
                       ub_tensor.one_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    # div, lr2 = 1.0 / accum
     tik_instance.vdiv(MASK_FP32, ub_tensor.lr2_ub[0],
                       ub_tensor.one_ub[0],
                       ub_tensor.accum_ub[0],
@@ -638,71 +634,59 @@ def traversal_idx(tik_instance,
                       1, 1, 1,
                       8, 0, 8)
     with tik_instance.if_scope(l1_scalar > ZERO_FP32):
-        # l1 > 0
-        # mul, tmp = lr1 * l1
         tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
                           ub_tensor.lr1_ub[0],
                           ub_tensor.l1_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 0)
-        # abs, accum = abs(prox)
         tik_instance.vabs(MASK_FP32, ub_tensor.accum_ub[0],
                           ub_tensor.prox_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1,
                           8, 8)
-        # sub, var_t1 = accum - tmp
         tik_instance.vsub(MASK_FP32, ub_tensor.var_t1_ub[0],
                           ub_tensor.accum_ub[0],
                           ub_tensor.tmp_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 8)
-        # max, tmp = max(var_t1, 0)
         tik_instance.vmax(MASK_FP32, ub_tensor.tmp_ub[0],
                           ub_tensor.var_t1_ub[0],
                           ub_tensor.zero_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 0)
-        # mul, accum = tmp * lr2
         tik_instance.vmul(MASK_FP32, ub_tensor.accum_ub[0],
                           ub_tensor.tmp_ub[0],
                           ub_tensor.lr2_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 8)
-        # prox = sign(prox)
         with tik_instance.for_range(0,
                                     fp32_input_scalar.vec_repeat_time) as \
                 repeat_index:
-            # cmp prox >= 0
             ub_offset = repeat_index * MASK_FP32
             cmp_mask = tik_instance.vcmp_gt(MASK_FP32,
                                             ub_tensor.prox_ub[ub_offset],
                                             ub_tensor.zero_ub[0],
                                             1, 1)
-            # vsel, 1(true), 0(false), reuse tmp_ub
             tik_instance.vsel(MASK_FP32, 0,
                               ub_tensor.tmp_ub[0],
                               cmp_mask,
                               ub_tensor.one_ub[0],
                               ub_tensor.zero_ub[0],
                               1, 1, 1, 1, 0, 0, 0)
-            # cmp prox < 0
             cmp_mask = tik_instance.vcmp_lt(MASK_FP32,
                                             ub_tensor.prox_ub[ub_offset],
                                             ub_tensor.zero_ub[0],
                                             1, 1)
-            # vsel, -1(true), tmp_ub(false)
             tik_instance.vsel(MASK_FP32, 0,
                               ub_tensor.prox_ub[ub_offset],
                               cmp_mask,
                               ub_tensor.neg_one_ub[0],
                               ub_tensor.tmp_ub[0],
                               1, 1, 1, 1, 0, 0, 0)
-        # mul, var = prox * accum
         tik_instance.vmul(MASK_FP32, ub_tensor.var_ub[0],
                           ub_tensor.prox_ub[0],
                           ub_tensor.accum_ub[0],
@@ -710,8 +694,6 @@ def traversal_idx(tik_instance,
                           1, 1, 1,
                           8, 8, 8)
     with tik_instance.else_scope():
-        # l1 <= 0
-        # mul, var = prox * lr2
         tik_instance.vmul(MASK_FP32, ub_tensor.var_ub[0],
                           ub_tensor.prox_ub[0],
                           ub_tensor.lr2_ub[0],

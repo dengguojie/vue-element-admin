@@ -1,25 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic div
 """
-
 import te.lang.dynamic
 from te import platform as tbe_platform
 from te import tvm
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from topi import generic
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import check_dtype
@@ -134,9 +134,6 @@ def div(input_x, input_y, output_z, kernel_name="div"):
         with te.op.compute():
             x_shape, y_shape = variable_shape([input_x, input_y],
                                               support_broadcast=True)
-            x_shape, y_shape, _ = broadcast_shapes(x_shape, y_shape,
-                                                   param_name_input1="input_x",
-                                                   param_name_input2="input_y")
             x_shape, y_shape = refine_shapes_for_broadcast(x_shape, y_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")

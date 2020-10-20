@@ -1,21 +1,22 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 elewise mutil out schedule
 """
 import math
+
 from te import platform as cceconf
 from te import tvm
 from te.platform.cce_conf import CceProductParams as pver
@@ -210,8 +211,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
     def _is_bert_nz_broadcast_tanspose(self, tensor):
         return len(tensor.shape) > 4 and tensor.dtype == "float16" and \
-               util.shape_to_list(tensor.shape)[-4:] == [1, 16, 16, 16] and \
-               self._tiling_para["ub_tiling"]["axis"] < len(self._default_shape) - 2
+            util.shape_to_list(tensor.shape)[-4:] == [1, 16, 16, 16] and \
+            self._tiling_para["ub_tiling"]["axis"] < len(self._default_shape) - 2
 
     def _is_matched_softmax_fractalz_emit_insn_limit(self):
         ub_tiling_factor = self._tiling_para["ub_tiling"]["factor"]
@@ -238,17 +239,16 @@ class ReduceMultiSchedule(ElewiseSchedule):
         pre_reduce_axis_index = len(self._default_shape)
         for i in self._reduce_axes_map:
             pre_reduce_axis_index = min(i, pre_reduce_axis_index)
-        tiling_limit = (ub_tiling_axis == pre_reduce_axis_index - 1 and \
+        tiling_limit = (ub_tiling_axis == pre_reduce_axis_index - 1 and
                         ub_tiling_factor == util.INIT_SIZE) or \
-                        ub_tiling_axis > pre_reduce_axis_index
+            ub_tiling_axis > pre_reduce_axis_index
         size_limit = const_size == util.INIT_SIZE and \
-                     self._align_gm_axis_idx == util.DEFAULT_INDEX
+            self._align_gm_axis_idx == util.DEFAULT_INDEX
 
         if tiling_limit and (not size_limit):
             is_tiling_matched = True
 
         return is_tiling_matched
-
 
     def _get_softmax_fractalz_reduce_insn(self, insn, tensor):
         is_tiling_matched = False
@@ -326,7 +326,6 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
             axis_idx = max(0, axis_idx)
             return axis_idx
-
 
         for i in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[i]
@@ -419,7 +418,6 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
         return True
 
-
     def __check_tiling_res(self, tiling_shape):
         block_tiling_para = self._tiling_para["block_tiling"]
         ub_tiling_para = self._tiling_para["ub_tiling"]
@@ -430,7 +428,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         ub_factor = ub_tiling_para["factor"]
 
         is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
-                                len(block_tiling_axes) == 1
+            len(block_tiling_axes) == 1
 
         if is_need_modify_factor:
             block_tiling_axis = block_tiling_axes[0]
@@ -442,11 +440,10 @@ class ReduceMultiSchedule(ElewiseSchedule):
             if _block_factor > 1:
                 block_tile = tiling_shape[block_tiling_axis] % _block_factor
                 if _block_factor % ub_factor == 1 or \
-                    block_tile % ub_factor == 1:
+                        block_tile % ub_factor == 1:
                     return False
 
         return True
-
 
     def __tiling_init(self):
         # pylint: disable=attribute-defined-outside-init
@@ -568,8 +565,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
             for tensor in self._reduce_tensor_map:
                 if d_i in self._reduce_tensor_map[tensor]:
                     temp_res = temp_res and \
-                               tensor in self._mid_output_tensors and \
-                               util.is_support_atomic_reduce(tensor, version_info)
+                        tensor in self._mid_output_tensors and \
+                        util.is_support_atomic_reduce(tensor, version_info)
             if temp_res:
                 self._reduce_axes_can_be_multi_core.append(d_i)
 
@@ -592,19 +589,18 @@ class ReduceMultiSchedule(ElewiseSchedule):
             return True
         return False
 
-
     def __caculate_basic_info(self):
         # pylint: disable=attribute-defined-outside-init
-        ### reduce info
+        # reduce info
         self._last_axis_index = len(self._default_shape) - 1
         if self._last_axis_index in self._reduce_axes_map.keys():
             self._reduce_include_last_axis = True
-        ### type list
+        # type list
         for tensor in self._mid_output_tensors_dst_tensor_map:
             temp_dtype = tensor.dtype.lower()
             if temp_dtype not in self._type_list:
                 self._type_list.append(temp_dtype)
-        ### max type and min type
+        # max type and min type
         for dtype in self._type_list:
             if dtype not in util.DTYPE_WIDTH_MAP.keys():
                 return True
@@ -612,10 +608,10 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 self._min_type_bitsize = util.DTYPE_WIDTH_MAP[dtype]
             if util.DTYPE_WIDTH_MAP[dtype] > self._max_type_bitsize:
                 self._max_type_bitsize = util.DTYPE_WIDTH_MAP[dtype]
-        ### ub block
+        # ub block
         self._core_num = cceconf.get_soc_spec("CORE_NUM")
 
-        ### ub size
+        # ub size
         # div 2 for align to fp16
         total_size = cceconf.get_soc_spec("UB_SIZE") // 2
         self._pattern = util.pattern_identify(self._mid_tensors)
@@ -649,12 +645,12 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
     def __calculate_align_in_reduce_last(self):
         # pylint: disable=attribute-defined-outside-init
-        ### reduce last, need consider series axes
+        # reduce last, need consider series axes
         # case like 'fp16' (5, 2, 8), align cout is 16
         # if reduce in (1, 2) can not be aligned
         # if reduce in (2), it must be align
         reduce_axes_touch_last = list(range(len(self._default_shape)))
-        ## find reduce last axis series axes, which all reduce have them
+        # find reduce last axis series axes, which all reduce have them
         for tensor in self._reduce_tensor_map:
             if self._last_axis_index in self._reduce_tensor_map[tensor]:
                 # for remove element in list, should use copy
@@ -663,7 +659,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                     if axis not in self._reduce_tensor_map[tensor]:
                         temp_axes.remove(axis)
                 reduce_axes_touch_last = temp_axes
-        ## calculate align, until touch non reduce axis
+        # calculate align, until touch non reduce axis
         cur_size = util.INIT_SIZE
         for idx in reversed(range(len(self._default_shape))):
             if idx not in reduce_axes_touch_last:
@@ -672,7 +668,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             if cur_size % self._align_count == 0:
                 self._all_align_axis_idx = util.DEFAULT_INDEX
                 return False
-        ## reduce not align, recalculate align count
+        # reduce not align, recalculate align count
         align_axis_ori_size = self._default_shape[self._last_axis_index]
         ori_coef = util.gcd(align_axis_ori_size, self._align_count)
         new_coef = util.gcd(cur_size, self._align_count)
@@ -693,19 +689,19 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
     def __calculate_align_in_reduce_non_last(self):
         # pylint: disable=attribute-defined-outside-init
-        ### reduce non last
-        ## all reduce axes size, if not reduce last, need to add least one block size to be aligned
-        ## this strategy allow it to fallback 3 times,
-        ## 1. use one block size to align, in ub size limit
-        ## 2. use one repeat size to align, in ub size limit
-        ## 3. use whole consecutive axes to align, in ub size limit
+        # reduce non last
+        # all reduce axes size, if not reduce last, need to add least one block size to be aligned
+        # this strategy allow it to fallback 3 times,
+        # 1. use one block size to align, in ub size limit
+        # 2. use one repeat size to align, in ub size limit
+        # 3. use whole consecutive axes to align, in ub size limit
         # this will consider from last reduce last backward to pick all axis size to fuse or split
         # for discussion above, consider fuse all axis after final reduce axis, and cut one block
         # calculate last axis to align
         self._limit_ub_count *= self._align_count
         if self._limit_ub_count > self._max_ub_count:
             return True
-        ## fake split for align and limit block tiling
+        # fake split for align and limit block tiling
         # case like (6, 160) reduce in (0,)
         # if not barrier, block tiling into (32, 6, 5), lead to not align
         self._tiling_cur_shape[-1] = util.ceil(self._tiling_cur_shape[-1], self._align_count)
@@ -753,7 +749,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 # this tensor find align dim and factor
                 if cur_factor <= cur_shape[i]:
                     cur_align_status = True
-                    if (res_align_dim == util.DEFAULT_INDEX or res_align_dim > i or \
+                    if (res_align_dim == util.DEFAULT_INDEX or res_align_dim > i or
                         (res_align_dim == i and cur_factor > res_align_factor)) and \
                             i not in self._tiling_barrier:
                         res_align_dim = i
@@ -806,20 +802,19 @@ class ReduceMultiSchedule(ElewiseSchedule):
         self._limit_ub_count *= cur_align_size
         return False
 
-
     def __check_ub_factor(self, ub_axis_idx, block_tiling_axes,
                           block_factor, ub_factor):
         """
         check ub_factor is need modify
         """
         is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
-                                len(block_tiling_axes) == 1
+            len(block_tiling_axes) == 1
         _block_factor = 1
         if is_need_modify_factor:
             if isinstance(block_factor, int):
                 _block_factor = block_factor
             if isinstance(block_factor, list) and \
-                len(block_factor) == 1:
+                    len(block_factor) == 1:
                 _block_factor = block_factor[0]
 
         if _block_factor > 1:
@@ -828,16 +823,15 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
         return ub_factor
 
-
     def __caculate_all_tiling(self):
         # pylint: disable=attribute-defined-outside-init
-        ### note: 1.fuse axis can not be splited twice, or compute at will be wrong
-        ### note: 2.ub tiling can be front at block tiling when use fused axis to block tiling,
-        ### or compute at will be wrong
+        # note: 1.fuse axis can not be splited twice, or compute at will be wrong
+        # note: 2.ub tiling can be front at block tiling when use fused axis to block tiling,
+        # or compute at will be wrong
         if len(self._tiling_barrier) == len(self._tiling_cur_shape):
             return True
         # block tiling
-        ## use greedy, chiefly, make it efficiency
+        # use greedy, chiefly, make it efficiency
         tiling_shape = self._tiling_cur_shape[:]
         tiling_barrier = self._tiling_barrier[:]
         block_tiling_axes, block_factor = util.get_block_factor_radical(tiling_shape,
@@ -858,7 +852,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         else:
             tiling_shape = self._tiling_cur_shape[:]
             tiling_barrier = self._tiling_barrier[:]
-            ## use fill, at last, make it successful
+            # use fill, at last, make it successful
             block_tiling_axes, block_factor = util.get_block_factor_conservative(tiling_shape,
                                                                                  tiling_barrier,
                                                                                  self._core_num)
@@ -1077,10 +1071,10 @@ class ReduceMultiSchedule(ElewiseSchedule):
         dichotomy_reduce_times = reduce_size // util.VECTOR_ONE_REPEAT_UNIT
 
         reduce_matched = len(self._default_shape) > 2 and \
-             len(self._reduce_axes_map) == 2 and \
-             self._last_axis_index in self._reduce_axes_map.keys() and \
-             self._last_axis_index - 1 not in self._reduce_axes_map.keys() and \
-             self._default_shape[-1] % util.VECTOR_ONE_BLOCK_UNIT == 0
+            len(self._reduce_axes_map) == 2 and \
+            self._last_axis_index in self._reduce_axes_map.keys() and \
+            self._last_axis_index - 1 not in self._reduce_axes_map.keys() and \
+            self._default_shape[-1] % util.VECTOR_ONE_BLOCK_UNIT == 0
 
         if reduce_matched and reduce_size % util.VECTOR_ONE_REPEAT_UNIT == 0 and \
                 dichotomy_reduce_times & (dichotomy_reduce_times - 1) == 0:
@@ -1094,11 +1088,11 @@ class ReduceMultiSchedule(ElewiseSchedule):
             pre_reduce_axis_index = len(self._default_shape)
             for i in self._reduce_axes_map:
                 pre_reduce_axis_index = min(i, pre_reduce_axis_index)
-            tiling_limit = (ub_tiling_axis == pre_reduce_axis_index - 1 and \
+            tiling_limit = (ub_tiling_axis == pre_reduce_axis_index - 1 and
                             ub_tiling_factor == util.INIT_SIZE) or \
-                           ub_tiling_axis > pre_reduce_axis_index
+                ub_tiling_axis > pre_reduce_axis_index
             size_limit = const_size == util.INIT_SIZE and \
-                         self._align_gm_axis_idx == util.DEFAULT_INDEX
+                self._align_gm_axis_idx == util.DEFAULT_INDEX
             if not tiling_limit or size_limit:
                 return
             self._insn_map["reduce_sum"] = "vector_dichotomy_reduce"

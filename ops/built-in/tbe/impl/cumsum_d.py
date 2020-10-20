@@ -1,22 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-cumsum
+cumsum_d
 """
-from topi.cce import util
-from impl.cum_computer import get_computer_by_ctype
-from te.utils.op_utils import *
+
+from te.utils import para_check
+from impl import cum_computer
 
 # the computer type
 SUM_TYPE = "sum"
@@ -24,8 +25,9 @@ SUM_TYPE = "sum"
 
 # pylint: disable=locally-disabled, unused-argument,invalid-name
 # pylint: disable=locally-disabled, too-many-arguments, not-callable
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def cumsum_d(x, y, axis=0, exclusive=False, reverse=False,
              kernel_name="cumsum_d"):
     """
@@ -52,7 +54,7 @@ def cumsum_d(x, y, axis=0, exclusive=False, reverse=False,
         axis = len(shape) + axis
     check_param(x, axis, kernel_name)
 
-    cumsum_template = get_computer_by_ctype(x, axis, kernel_name, SUM_TYPE)
+    cumsum_template = cum_computer.get_computer_by_ctype(x, axis, kernel_name, SUM_TYPE)
     cumsum_template.set_ext_params(exclusive, reverse)
 
     return cumsum_template.get_tik_instance()
@@ -74,9 +76,9 @@ def check_param(input_x, axis, kernel_name):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    check_shape(input_shape, param_name="input_x")
-    check_dtype(input_dtype,
-                          ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
+    para_check.check_shape(input_shape, param_name="input_x")
+    para_check.check_dtype(input_dtype,
+                ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
         raise RuntimeError("axis must be in the range [%d, %d). but is %d " % (

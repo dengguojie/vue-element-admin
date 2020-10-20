@@ -1,27 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 fused_minimum_or_maximum_grad
 """
-from __future__ import absolute_import
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483647
@@ -34,12 +34,12 @@ def _compare_value_int32(x_data, y_data, shape_dz):
     """
     min_value_int = tvm.const(1, dtype="int32")
     data_zero_int = tvm.const(0, dtype="int32")
-    min_value_tensor = te.lang.cce.broadcast(min_value_int, shape_dz)
-    data_zero_int_tensor = te.lang.cce.broadcast(data_zero_int, shape_dz)
-    sub_xy = te.lang.cce.vsub(x_data, y_data)
-    add_min = te.lang.cce.vadd(sub_xy, min_value_tensor)
-    vmax_zero = te.lang.cce.vmax(add_min, data_zero_int_tensor)
-    result = te.lang.cce.vmin(vmax_zero, min_value_tensor)
+    min_value_tensor = tbe.broadcast(min_value_int, shape_dz)
+    data_zero_int_tensor = tbe.broadcast(data_zero_int, shape_dz)
+    sub_xy = tbe.vsub(x_data, y_data)
+    add_min = tbe.vadd(sub_xy, min_value_tensor)
+    vmax_zero = tbe.vmax(add_min, data_zero_int_tensor)
+    result = tbe.vmin(vmax_zero, min_value_tensor)
 
     return result
 
@@ -57,17 +57,17 @@ def _compare_value_float(x_data, y_data):
     max_value = tvm.const(2**(62), dtype="float32")
     max_value_1 = tvm.const(2**(2), dtype="float32")
 
-    data_zero = te.lang.cce.vmuls(x_data, 0)
-    min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
-    max_value_tensor = te.lang.cce.vadds(data_zero, max_value)
-    max_value_1_tensor = te.lang.cce.vadds(data_zero, max_value_1)
-    sub_xy = te.lang.cce.vsub(x_data, y_data)
-    add_min_value = te.lang.cce.vadds(sub_xy, min_value)
-    vmax_zero = te.lang.cce.vmax(add_min_value, data_zero)
-    vmin_min_value = te.lang.cce.vmin(vmax_zero, min_value_tensor)
-    vmul_max_value = te.lang.cce.vmul(vmin_min_value, max_value_tensor)
-    vmul_max_value_1 = te.lang.cce.vmul(vmul_max_value, max_value_tensor)
-    result = te.lang.cce.vmul(vmul_max_value_1, max_value_1_tensor)
+    data_zero = tbe.vmuls(x_data, 0)
+    min_value_tensor = tbe.vadds(data_zero, min_value)
+    max_value_tensor = tbe.vadds(data_zero, max_value)
+    max_value_1_tensor = tbe.vadds(data_zero, max_value_1)
+    sub_xy = tbe.vsub(x_data, y_data)
+    add_min_value = tbe.vadds(sub_xy, min_value)
+    vmax_zero = tbe.vmax(add_min_value, data_zero)
+    vmin_min_value = tbe.vmin(vmax_zero, min_value_tensor)
+    vmul_max_value = tbe.vmul(vmin_min_value, max_value_tensor)
+    vmul_max_value_1 = tbe.vmul(vmul_max_value, max_value_tensor)
+    result = tbe.vmul(vmul_max_value_1, max_value_1_tensor)
 
     return result
 
@@ -94,13 +94,13 @@ def _calculate_result_le(x_data, y_data, dz_data, dtype, shape_dz):
     """
     minus_one = tvm.const(-1, dtype="int32")
 
-    minus_one_tensor = te.lang.cce.broadcast(minus_one, shape_dz)
+    minus_one_tensor = tbe.broadcast(minus_one, shape_dz)
     # if y_data >= x_data ; datax_select_le = 1; else datax_select_le =0;
     datax_select_le = _compare_value(y_data, x_data, dtype, shape_dz)
-    result_dx = te.lang.cce.vmul(dz_data, datax_select_le)
-    select_reverse = te.lang.cce.vadd(datax_select_le, minus_one_tensor)
-    select_dy = te.lang.cce.vmul(select_reverse, minus_one_tensor)
-    result_dy = te.lang.cce.vmul(dz_data, select_dy)
+    result_dx = tbe.vmul(dz_data, datax_select_le)
+    select_reverse = tbe.vadd(datax_select_le, minus_one_tensor)
+    select_dy = tbe.vmul(select_reverse, minus_one_tensor)
+    result_dy = tbe.vmul(dz_data, select_dy)
 
     return result_dx, result_dy
 
@@ -113,13 +113,13 @@ def _calculate_result_ge(x_data, y_data, dz_data, dtype, shape_dz):
     """
     minus_one = tvm.const(-1, dtype="int32")
 
-    minus_one_tensor = te.lang.cce.broadcast(minus_one, shape_dz)
+    minus_one_tensor = tbe.broadcast(minus_one, shape_dz)
     # if x_data >= y_data ; datax_select_ge = 1; else datax_select_ge =0;
     datax_select_ge = _compare_value(x_data, y_data, dtype, shape_dz)
-    result_dx = te.lang.cce.vmul(dz_data, datax_select_ge)
-    select_reverse = te.lang.cce.vadd(datax_select_ge, minus_one_tensor)
-    select_dy = te.lang.cce.vmul(select_reverse, minus_one_tensor)
-    result_dy = te.lang.cce.vmul(dz_data, select_dy)
+    result_dx = tbe.vmul(dz_data, datax_select_ge)
+    select_reverse = tbe.vadd(datax_select_ge, minus_one_tensor)
+    select_dy = tbe.vmul(select_reverse, minus_one_tensor)
+    result_dy = tbe.vmul(dz_data, select_dy)
 
     return result_dx, result_dy
 
@@ -134,20 +134,20 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
         for i, shape_x_i in enumerate(shape_x):
             if shape_x_i == 1:
                 reduce_axis.append(i)
-        result_dx = te.lang.cce.sum(result_dx, axis=reduce_axis, keepdims=None)
+        result_dx = tbe.sum(result_dx, axis=reduce_axis, keepdims=None)
 
     if list(shape_y) != list(shape_dz):
         reduce_axis = []
         for i, shape_y_i in enumerate(shape_y):
             if shape_y_i == 1:
                 reduce_axis.append(i)
-        result_dy = te.lang.cce.sum(result_dy, axis=reduce_axis, keepdims=None)
+        result_dy = tbe.sum(result_dy, axis=reduce_axis, keepdims=None)
 
     return result_dx, result_dy
 
 
 # pylint: disable = locally-disabled,invalid-name,too-many-arguments,unused-argument,no-member
-@fusion_manager.register("fused_minimum_or_maximum_grad_cce")
+@tbe_platform.fusion_manager.fusion_manager.register("fused_minimum_or_maximum_grad_cce")
 def fused_minimum_or_maximum_grad_compute(placeholders, shape_x, shape_y, shape_dz, cmp_type,
                                           dtype,
                                           kernel_name="cce_fused_minimum_or_maximum_grad",
@@ -184,11 +184,11 @@ def fused_minimum_or_maximum_grad_compute(placeholders, shape_x, shape_y, shape_
     """
     dz_data, inputx_data, inputy_data = placeholders
     if dtype == "float16":
-        inputx_data = te.lang.cce.cast_to(inputx_data, "float32")
-        inputy_data = te.lang.cce.cast_to(inputy_data, "float32")
-        dz_data = te.lang.cce.cast_to(dz_data, "float32")
-    inputx_data = te.lang.cce.broadcast(inputx_data, shape_dz)
-    inputy_data = te.lang.cce.broadcast(inputy_data, shape_dz)
+        inputx_data = tbe.cast_to(inputx_data, "float32")
+        inputy_data = tbe.cast_to(inputy_data, "float32")
+        dz_data = tbe.cast_to(dz_data, "float32")
+    inputx_data = tbe.broadcast(inputx_data, shape_dz)
+    inputy_data = tbe.broadcast(inputy_data, shape_dz)
 
     if cmp_type == "LE":
         result_dx, result_dy = _calculate_result_le(inputx_data, inputy_data,
@@ -200,14 +200,14 @@ def fused_minimum_or_maximum_grad_compute(placeholders, shape_x, shape_y, shape_
         result_dx, result_dy = _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy)
 
     if dtype == "float16":
-        result_dx = te.lang.cce.cast_to(result_dx, "float16")
-        result_dy = te.lang.cce.cast_to(result_dy, "float16")
+        result_dx = tbe.cast_to(result_dx, "float16")
+        result_dy = tbe.cast_to(result_dy, "float16")
     outs = [result_dx, result_dy]
 
     return outs
 
 
-@util.check_input_type((list, tuple), (list, tuple), (list, tuple), bool, bool, str,
+@para_check.check_input_type((list, tuple), (list, tuple), (list, tuple), bool, bool, str,
                        str, str, bool, bool)
 def fused_minimum_or_maximum_grad_cce(shape_dz, shape_x, shape_y, grad_x=True, grad_y=True,
                                       cmp_type="LE", dtype="float32",
@@ -245,12 +245,12 @@ def fused_minimum_or_maximum_grad_cce(shape_dz, shape_x, shape_y, grad_x=True, g
     -------
     none.
     """
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    shape_x, shape_y, shape_max = util.produce_shapes(shape_x, shape_y)
-    util.check_shape_rule(shape_max)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_x)
+    para_check.check_shape_rule(shape_y)
+    shape_x, shape_y, shape_max = shape_util.produce_shapes(shape_x, shape_y)
+    para_check.check_shape_rule(shape_max)
+    para_check.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
     if list(shape_dz) != list(shape_max):
         raise RuntimeError("fused_minimum_or_maximum_grad_cce shape_dz != shape_max")
 
@@ -272,17 +272,17 @@ def fused_minimum_or_maximum_grad_cce(shape_dz, shape_x, shape_y, grad_x=True, g
 
     with tvm.target.cce():
         if (grad_x, grad_y) == (True, False):
-            sch = generic.auto_schedule(outs[0])
+            sch = tbe.auto_schedule(outs[0])
             outs = [outs[0]]
         if (grad_x, grad_y) == (False, True):
-            sch = generic.auto_schedule(outs[1])
+            sch = tbe.auto_schedule(outs[1])
             outs = [outs[1]]
         if (grad_x, grad_y) == (True, True):
-            sch = generic.auto_schedule(outs)
+            sch = tbe.auto_schedule(outs)
 
     config = {"print_ir": need_print,
               "need_build": need_build,
               "name": kernel_name,
               "tensor_list": placeholders + outs}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

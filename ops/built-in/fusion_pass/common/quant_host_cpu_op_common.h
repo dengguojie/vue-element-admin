@@ -1,12 +1,22 @@
 /**
- * @file quant_common.h
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief fe_util
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file quant_host_cpu_op_common.h
+ * \brief fe_util
  */
 #ifndef BUILTIN_FUSIONPASS_QUANT_COMMON_H
 #define BUILTIN_FUSIONPASS_QUANT_COMMON_H
@@ -31,7 +41,6 @@ static const std::string ATTR_OFFSET_W = "offset_w";
 static const std::string ATTR_OFFSET = "offset";
 static const std::string ATTR_SCALE = "scale";
 
-fe::Status GetkernelDataCountForPass(const std::vector<int64_t> &filterDIms,
-                                     int64_t &kernelDataCount);
-} // namespace fe
-#endif // BUILTIN_FUSIONPASS_QUANT_COMMON_H
+fe::Status GetkernelDataCountForPass(const std::vector<int64_t>& filterDIms, int64_t& kernelDataCount);
+}  // namespace fe
+#endif  // BUILTIN_FUSIONPASS_QUANT_COMMON_H

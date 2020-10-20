@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 this file achieved the apply_adagrad_d which is a optimizer operator
 to update weight, this file contains compute and schedule.
 
@@ -40,26 +38,17 @@ apply_adagrad_d
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
-
+from te.utils import para_check
+from te.utils import shape_util
 NUM_ZERO = 0.0
 
 
 # pylint: disable=locally-disabled, too-many-arguments, unused-argument
 # pylint: disable=too-many-locals, invalid-name
-@fusion_manager.register("apply_adagrad_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_adagrad_d")
 def apply_adagrad_d_compute(var,
                             accum,
                             lr,
@@ -98,46 +87,41 @@ def apply_adagrad_d_compute(var,
     -------
     None
     """
+    shape_list = shape_util.broadcast_shapes(
+        shape_util.shape_to_list(var.shape),
+        shape_util.shape_to_list(lr.shape),
+        param_name_input1="input_var", param_name_input2="input_lr")
 
     input_dtype = var.dtype
-    if input_dtype == "float16" and api_check_support("te.lang.cce.vadd",
-                                                      "float32"):
-        var = te.lang.cce.cast_to(var, "float32")
-        accum = te.lang.cce.cast_to(accum, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
+
+    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        grad = tbe.cast_to(grad, "float32")
+    lr = tbe.broadcast(lr, shape_list[2])
 
     if update_slots is True:
-        grad_square = te.lang.cce.vmul(grad, grad)
-        accum = te.lang.cce.vadd(accum, grad_square)
+        grad_square = tbe.vmul(grad, grad)
+        accum = tbe.vadd(accum, grad_square)
     elif input_dtype == 'float32':
-        accum = te.lang.cce.vadds(accum, tvm.const(NUM_ZERO, "float32"))
-
-    lr_grad = tvm.compute(grad.shape,
-                          lambda *indices: grad(*indices) * lr[0],
-                          tag='elewise_single_VS_mul')
-    sqrt_accum = te.lang.cce.vsqrt(accum)
-
-    update = te.lang.cce.vdiv(lr_grad, sqrt_accum)
-    var = te.lang.cce.vsub(var, update)
-
-    res1 = te.lang.cce.vadds(var, tvm.const(0.0, dtype="float32"))
-    res2 = te.lang.cce.vadds(accum, tvm.const(0.0, dtype="float32"))
-
+        accum = tbe.vadds(accum, tvm.const(NUM_ZERO, "float32"))
+    lr_grad = tbe.vmul(grad, lr)
+    sqrtdata = tbe.vsqrt(accum)
+    update = tbe.vdiv(lr_grad, sqrtdata)
+    var = tbe.vsub(var, update)
+    res1 = tbe.vadds(var, tvm.const(0.0, dtype="float32"))
+    res2 = tbe.vadds(accum, tvm.const(0.0, dtype="float32"))
     if input_dtype == "float16":
-        res1 = te.lang.cce.cast_to(res1, "float16")
-        res2 = te.lang.cce.cast_to(res2, "float16")
+        res1 = tbe.cast_to(res1, "float16")
+        res2 = tbe.cast_to(res2, "float16")
 
-    # this compute is for muti output
-    def _compute(*index):
-        return accum(*index), var(*index), res1(*index),\
-               res2(*index)
-
-    return tvm.compute(var.shape, _compute, name="outputs")
+    return [res1, res2]
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_adagrad_d(var,
                     accum,
                     lr,
@@ -179,17 +163,34 @@ def apply_adagrad_d(var,
 
     check_list = ('float16', 'float32')
     dtype = var.get('dtype')
-    check_dtype(dtype, check_list, param_name="var")
-    dtype = dtype.lower()
+    para_check.check_dtype(dtype, check_list, param_name="var")
+    var_shape = var.get("shape")
+    lr_shape = lr.get("shape")
+    var_dtype = var.get("dtype")
+    if len(lr_shape) != 1 or int(lr_shape[0]) != 1:
+        raise RuntimeError("lr shape must be 1")
 
-    input_dict = (var, accum, lr, grad)
+    shape_util.compare_tensor_dict_key(var, accum, "shape")
+    shape_util.compare_tensor_dict_key(accum, grad, "shape")
+    shape_util.compare_tensor_dict_key(var, lr, "dtype")
+    shape_util.compare_tensor_dict_key(accum, grad, "dtype")
 
-    args = ApplyOpConfig.TensorArgs(input_dict, apply_adagrad_d_compute,
-                                    [var_out, accum_out],
-                                    5 if dtype == 'float32' else 7)
-    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'grad'),
-                                    scalar=('lr', ),
-                                    reuse=('accum', 'var'))
-    options = ApplyOpConfig.TensorOptions(attrs=update_slots)
+    shape_list = shape_util.broadcast_shapes(var_shape, lr_shape, param_name_input1="input_x",
+                                             param_name_input2="input_y")
+    reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
 
-    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)
+    var_data = tvm.placeholder(reshape_x, dtype=var_dtype, name="var")
+    accum_data = tvm.placeholder(reshape_x, dtype=var_dtype, name="accum_data")
+    lr_data = tvm.placeholder(reshape_y, dtype=var_dtype, name="lr_data")
+    grad_data = tvm.placeholder(reshape_x, dtype=var_dtype, name="grad_data")
+    res = apply_adagrad_d_compute(var_data, accum_data, lr_data, grad_data, var_out,
+                                  accum_out, update_slots, kernel_name)
+    inputlist = [var_data, accum_data, lr_data, grad_data]
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(res)
+
+    config = {"name": kernel_name,
+              "tensor_list": list(inputlist) + list(res)}
+
+    tbe.cce_build_code(sch, config)
+

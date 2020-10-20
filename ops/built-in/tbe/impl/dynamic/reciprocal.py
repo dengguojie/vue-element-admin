@@ -19,21 +19,17 @@ reciprocal
 import json
 from te import tvm
 from topi import generic
-
-from topi.cce import util as util_cce
 import te.lang.dynamic
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from impl.util import fusion_util
 from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -132,9 +128,9 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     for (input_x,) in ins:
         with te.op.compute():
             x_shape = variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            fuse_shape = [1]
+            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            data_input = tvm.placeholder(fuse_shape, dtype=input_dtype,
                                          name="data_input")
             res = reciprocal_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])

@@ -20,7 +20,7 @@ from te import platform as tbe_platform
 from te import tik
 from topi.cce import util
 from te.platform.cce_conf import CceProductParams
-from te.utils import op_utils
+from te.utils.op_utils import *
 from te import platform as cce
 
 
@@ -127,7 +127,7 @@ CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
 
 # pylint: disable = too-many-arguments
-def check_param(ori_input, ori_output, grad, ksize, strides, padding, pads, kernel_name):
+def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_format, pads, kernel_name):
     """
     check parameters, if one is invalid, then raise error
 
@@ -157,8 +157,8 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, pads, kern
     ori_input_dtype = ori_input.get("dtype").lower()
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
-    op_utils.check_shape(ori_input_shape, param_name="ori_input")
-    op_utils.check_dtype(ori_input_dtype, ("float16",), param_name="ori_input")
+    check_shape(ori_input_shape, param_name="ori_input")
+    check_dtype(ori_input_dtype, ("float16",), param_name="ori_input")
     # the format of input_x must be NC1HWC0
     if len(ori_input_shape) != 5:
         raise RuntimeError("invalid shape params, input feature map must be "
@@ -181,42 +181,146 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, pads, kern
         raise RuntimeError(
             "invalid shape params, N axis and C1 axis should be same.")
 
-    if len(ksize) != 4 or len(strides) != 4:
-        raise RuntimeError("Invalid ksize or strides params,"
-                           " ksize dim must be 4.")
-
-    if ksize[0] != 1 or ksize[3] != 1:
-        raise RuntimeError("MaxPoolV3Grad only supports pooling "
-                           "across width/height, and other ksize "
-                           "dimension should be one")
-
-    if strides[0] != 1 or strides[3] != 1:
-        raise RuntimeError("MaxPoolV3Grad only supports pooling across "
-                           "width/height, and other strides dimension "
-                           "should be one")
-
-    if padding not in ("SAME", "VALID", "CALCULATED"):
-        raise RuntimeError("MaxPoolV3Grad can only support SAME, VALID or CALCULATED "
-                           "padding mode.")
     if len(pads) != 4:
-        raise RuntimeError("Invalid pads params, pads's dim size must be 4.")
-    if strides[1] > 63 or strides[3] > 63 or strides[1] < 1 or strides[3] < 1:
-        raise RuntimeError("Invalid stride parameters, stride size should be in [1, 63]")
-    if ksize[1] > 255 or ksize[3] > 255 or strides[1] < 1 or strides[3] < 1:
-        raise RuntimeError("Invalid kernel parameters, kernel size should be in [1, 255]")
+        errorInfo = {}
+        errorInfo['errCode'] = OP_ERROR_CODE_012
+        errorInfo['op_name'] = 'max_pool_v3'
+        errorInfo['param_name'] = 'pads'
+        errorInfo['min_value'] = '4'
+        errorInfo['max_value'] = '4'
+        errorInfo['real_value'] = len(pads)
+        raise RuntimeError(errorInfo,
+                           "In op[%s], the num of dimensions of input[%s] should"
+                           " be in the range of [%s, %s], but actually is [%s]." %
+                           (errorInfo['op_name'], errorInfo['param_name'],
+                            errorInfo['min_value'], errorInfo['max_value'],
+                            errorInfo['real_value']))
+    if data_format in ("NHWC",):
+        if len(ksize) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'ksize'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(ksize)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should "
+                               "be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
 
+        elif ksize[0] != 1 or ksize[3] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((ksize[1], ksize[3]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
+                               "but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+        if len(strides) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'strides'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(strides)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif strides[0] != 1 or strides[3] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("strides[1]", "strodes[3]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((strides[1], strides[3]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+    elif data_format in ("NC1HWC0", "NCHW"):
+        if len(ksize) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'ksize'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(ksize)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif ksize[0] != 1 or ksize[1] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("ksize[0]", "ksize[1]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((ksize[0], ksize[1]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+        if len(strides) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'strides'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(strides)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif strides[0] != 1 or strides[1] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("strides[0]", "strodes[1]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((strides[1], strides[1]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+    else:
+        errorInfo = {}
+        errorInfo['errCode'] = OP_ERROR_CODE_015
+        errorInfo['op_name'] = 'max_pool_v3'
+        errorInfo['param_name'] = 'x'
+        errorInfo['excepted_format_list'] = ",".join(("NC1HWC0", "NCHW", "NHWC"))
+        errorInfo['format'] = data_format
+        raise RuntimeError(errorInfo, "In op[%s], the format[%s] of input should"
+                                      " be one of [%s], but actually is [%s]."
+                           % (errorInfo['op_name'], errorInfo['param_name'],
+                              errorInfo['excepted_format_list'], errorInfo['format']))
 
 # pylint: disable = too-many-arguments,,unused-argument,invalid-name
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_ATTR_LIST_INT,
-                          op_utils.REQUIRED_ATTR_LIST_INT,
-                          op_utils.OPTION_ATTR_STR,
-                          op_utils.OPTION_ATTR_LIST_INT,
-                          op_utils.OPTION_ATTR_STR,
-                          op_utils.OPTION_ATTR_BOOL,
-                          op_utils.OPTION_ATTR_BOOL,
-                          op_utils.KERNEL_NAME)
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,
+                          REQUIRED_INPUT, REQUIRED_OUTPUT,
+                          REQUIRED_ATTR_LIST_INT,
+                          REQUIRED_ATTR_LIST_INT,
+                          OPTION_ATTR_STR,
+                          OPTION_ATTR_LIST_INT,
+                          OPTION_ATTR_STR,
+                          OPTION_ATTR_BOOL,
+                          OPTION_ATTR_BOOL,
+                          KERNEL_NAME)
 def max_pool_v3_grad(ori_input,
                      ori_output,
                      grad,
@@ -266,7 +370,7 @@ def max_pool_v3_grad(ori_input,
     if ori_format == "NCHW":
         ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
         strides = (strides[0], strides[2], strides[3], strides[1])
-    check_param(ori_input, ori_output, grad, ksize, strides, padding, pads, kernel_name)
+    check_param(ori_input, ori_output, grad, ksize, strides, padding, data_format, pads, kernel_name)
     ori_input_shape = ori_input.get("shape")
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
@@ -315,7 +419,7 @@ class MaxpoolV3Grad(object):
         self.hi_block = None
         self.tile_h_to_block = False
 
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+        self.tik_instance = tik.Tik()
         self.ori_input_gm = self.tik_instance.Tensor(dtype,
                                                      self.ori_input_shape,
                                                      name='ori_input_gm',

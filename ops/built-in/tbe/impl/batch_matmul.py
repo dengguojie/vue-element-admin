@@ -1,35 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file except in compliance
-with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_matmul
 """
-from __future__ import absolute_import
-
 import functools
 
-import te.lang.cce
-import te.platform.cce_params as cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-
-from topi.cce import util
-from topi import generic
-from te.utils.op_utils import *
-
-from impl.batch_matmul_vector import matmul_vector_cce
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils import para_check
+from impl import batch_matmul_vector
+from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -64,27 +58,30 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     shape_len = len(shape_a)
     inp_src_dtype = src_dtype.lower()
-    k_block_size = cce.BLOCK_REDUCE
+    k_block_size = tbe_platform.BLOCK_REDUCE
     check_list = ("float16")
 
     if inp_src_dtype not in check_list:
-        raise RuntimeError("Dtype of input only support float16")
+        error_manager_vector.raise_err_dtype_invalid('batch_matmul', 'input_x', check_list, inp_src_dtype)
 
     if shape_len != len(shape_b):
-        raise RuntimeError("length of a and b are not equal")
+        error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
+                                                               "length of a and b are not equal")
 
     if shape_len < 2:
-        raise RuntimeError("shape length for batch matmul must large than 2")
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                           "shape length for batch matmul must large than 2")
 
     if shape_len == 2:
-        raise RuntimeError(
-            "batch matmul not support shape length 2, if shape length equal 2, use matmul!")
+        error_manager_vector.raise_err_input_shape_invalid(
+            'batch_matmul', 'input', "batch matmul not support shape length 2, if shape length equal 2, use matmul!")
 
     if shape_a[:shape_len - 2] != shape_b[:shape_len - 2]:
-        raise RuntimeError("batch size of a and b are not equal")
+        error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
+                                                               "batch size of a and b are not equal")
 
-    is_gevm = bool((shape_a[-2] == 1) or (shape_a[-1] == 1))
-    is_gemv = bool((shape_b[-2] == 1) or (shape_b[-1] == 1))
+    is_gevm = (shape_a[-2] == 1) or (shape_a[-1] == 1)
+    is_gemv = (shape_b[-2] == 1) or (shape_b[-1] == 1)
 
     if trans_a:
         m_shape = shape_a[shape_len - 1]
@@ -102,23 +99,27 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
 
     if m_shape == 1:
         if n_shape == 1:
-            raise RuntimeError("input shape M and N can't both be 1")
+            error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input_x',
+                                                               "input shape M and N can't both be 1")
 
     if km_shape != kn_shape:
-        raise RuntimeError("reduce axis not same")
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                           "reduce axis not same")
 
-    if m_shape % cce.BLOCK_IN != 0 and m_shape != 1:
-        raise RuntimeError(
-            "input shape M should be 1 or multiple of %d" % cce.BLOCK_IN)
-
+    if m_shape % tbe_platform.BLOCK_IN != 0 and m_shape != 1:
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                           "input shape M should be 1 or multiple of %d" %
+                                                           tbe_platform.cce_params.BLOCK_IN)
     if m_shape != 1:
         if km_shape % k_block_size != 0:
-            raise RuntimeError(
-                "input shape K1 should be multiple of %d" % cce.BLOCK_IN)
+            error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                               "input shape K1 should be multiple of %d" %
+                                                               tbe_platform.cce_params.BLOCK_IN)
 
-    if n_shape % cce.BLOCK_IN != 0 and n_shape != 1:
-        raise RuntimeError(
-            "input shape N should be 1 or multiple of %d" % cce.BLOCK_IN)
+    if n_shape % tbe_platform.BLOCK_IN != 0 and n_shape != 1:
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                           "input shape N should be 1 or multiple of %d" %
+                                                           tbe_platform.cce_params.BLOCK_IN)
 
     shape_bias_length = len(shape_bias)
 
@@ -126,19 +127,29 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         if shape_bias_length == 1:
             if is_gevm or is_gemv:
                 if shape_bias[0] != m_shape * n_shape:
-                    raise RuntimeError("broadcast case shape bias for gemv must be equal m*n")
+                    error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                                       "broadcast case shape bias for "
+                                                                       "gemv must be equal m*n")
             else:
                 if shape_bias[0] != n_shape:
-                    raise RuntimeError("broadcast bias shape must be equal to shape n")
+                    error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                                       "broadcast bias shape must be equal to shape n")
         elif shape_bias_length == shape_len:
             out_shape = [i for i in shape_a[:-2]] + [m_shape, n_shape]
             if [i for i in shape_bias] != out_shape:
-                raise RuntimeError("non broadcast bias shape must be same as output shape")
+                error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                                   "non broadcast bias shape "
+                                                                   "must be same as output shape")
         else:
-            raise RuntimeError("unsupport input shape now for batch bias case")
+            error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                               "unsupport input shape now for batch bias case")
 
 
 def _get_bias(shape_bias):
+    """ get bias
+    :param shape_bias
+    :return: shape bias
+    """
     bias_length = shape_bias[0]
     if bias_length % 16 != 0:
         bias_length = (bias_length // 16) * 16 + 16
@@ -149,6 +160,10 @@ def _get_bias(shape_bias):
 
 
 def _get_input_shape(shape_x):
+    """ get input shape
+    :param shape_x
+    :return:  input shape
+    """
     shape_length = len(shape_x)
     dim_a = shape_x[shape_length - 2]
     dim_b = shape_x[shape_length - 1]
@@ -179,34 +194,34 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
     src_dtype = input_x.get("dtype")
 
     if src_dtype == "float16":
-        input0 = gen_param(classify="input0", name="x1",
-                           datatype="float16",
-                           format="FRACTAL_NZ")
-        input1 = gen_param(classify="input1", name="x2",
-                           datatype="float16",
-                           format="FRACTAL_NZ")
-        input2 = gen_param(classify="input2", name="bias",
-                           datatype="float16",
-                           format="ND")
-        output0 = gen_param(classify="output0", name="y",
-                            datatype="float16",
-                            format="FRACTAL_NZ")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16",
+                                               format="FRACTAL_NZ")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16",
+                                               format="FRACTAL_NZ")
+        input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                               datatype="float16",
+                                               format="ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16",
+                                                format="FRACTAL_NZ")
     else:
-        input0 = gen_param(classify="input0", name="x1",
-                           datatype="float16,float,float,int32,int32",
-                           format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
-        input1 = gen_param(classify="input1", name="x2",
-                           datatype="float16,float,float,int32,int32",
-                           format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
-        input2 = gen_param(classify="input2", name="bias",
-                           datatype="float16,float,float,int32,int32",
-                           format="ND,NHWC,ND,NHWC,ND")
-        output0 = gen_param(classify="output0", name="y",
-                            datatype="float16,float,float,int32,int32",
-                            format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float,float,int32,int32",
+                                               format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float,float,int32,int32",
+                                               format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+        input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                               datatype="float16,float,float,int32,int32",
+                                               format="ND,NHWC,ND,NHWC,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float,float,int32,int32",
+                                                format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
 
     param_list = [input0, input1, input2, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
@@ -222,35 +237,34 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
     shape_a = input_x.get("shape")
     shape_b = input_y.get("shape")
     src_dtype = input_x.get("dtype")
-    check_shape(shape_a, param_name="input_x")
-    check_shape(shape_b, param_name="input_y")
+    para_check.check_shape(shape_a, param_name="input_x")
+    para_check.check_shape(shape_b, param_name="input_y")
     src_dtypes = ["float32", "int32"]
-    res = True
     if src_dtype in src_dtypes:
         shape_length = len(shape_a)
         shape_length_b = len(shape_b)
         if shape_length != shape_length_b:
-            res = False
+            return False
         elif trans_b:
             if shape_b[shape_length - 2] == 1:
-                res = False
+                return False
         elif bool(1-trans_b):
             if shape_b[shape_length - 1] == 1:
-                res = False
+                return False
         elif trans_a:
             if trans_b:
                 if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
-                    res = False
+                    return False
             else:
                 if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
-                    res = False
+                    return False
         else:
             if trans_b:
                 if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
-                    res = False
+                    return False
             else:
                 if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
-                    res = False
+                    return False
     elif src_dtype == "float16":
         shape_length = len(shape_a)
         if trans_a:
@@ -264,17 +278,14 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
             k_b_shape = shape_b[shape_length - 2]
 
         if k_shape != k_b_shape:
-            res = False
+            return False
 
-    return res
+    return True
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals, no-member
-# pylint: disable=too-many-statements, dangerous-default-value
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_BOOL, REQUIRED_ATTR_BOOL, KERNEL_NAME)
-def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                 trans_b=False, kernel_name="matmul"):
+@tbe_platform.fusion_manager.fusion_manager.register("batch_matmul")
+def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,
+                         trans_b=False, kernel_name="matmul"):
     """
     algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -282,12 +293,12 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     Parameters
     ---------
-    input_x1: dict
+    input_x: dict
         A dict object, contains a matrix's type and
         shape and format, the type can be float16,
         float32, int32, the length of shape must be
         greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
-    input_x2: dict
+    input_y: dict
         A dict object, contains a matrix's type and
         shape and format, the type can be float16,
         float32, int32, the length of shape must be
@@ -297,7 +308,133 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         the shape and type and format, the type can be float16,
         float32, int32, the shape must be 1-dimensional,
         the format can be [ND, NHWC]
-    output_y: dict
+    output_z: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    trans_a: bool
+        If True, shape_a == transposed before multiplication
+    trans_b: str
+        If true, the shape in input_x2 must be transposed before multiplication
+    kernel_name: str
+        cce kernel name, default value is "matmul"
+
+    Return
+    ------
+    None
+    """
+    format_a = input_x.op.attrs["format"].value
+    format_b = input_y.op.attrs["format"].value
+    if format_a == 'FRACTAL_NZ':
+        trans_a_local = not trans_a
+    else:
+        trans_a_local = trans_a
+
+
+    if format_b == 'FRACTAL_NZ':
+        trans_b_local = False if trans_b else True
+    else:
+        trans_b_local = trans_b
+    dst_dtype = output_z.get("dtype").lower()
+    src_dtype = input_x.dtype.lower()
+    result = tbe.matmul(input_x, input_y, trans_a_local, trans_b_local,
+                        format_a=format_a, format_b=format_b, dst_dtype=dst_dtype,
+                        tensor_bias=bias)
+
+    return result
+
+
+def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=False,
+                              trans_b=False, kernel_name="matmul"):
+    """
+    algorithm: batch_matmul
+    calculating  matrix multiplication with bias, C = A*B + bias, support input
+    data with fractal format.
+
+    Parameters
+    ---------
+    input_x: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    input_y: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    bias: dict
+        A dict object, contanis a 1-dimensional tensor's info:
+        the shape and type and format, the type can be float16,
+        float32, int32, the shape must be 1-dimensional,
+        the format can be [ND, NHWC]
+    output_z: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    trans_a: bool
+        If True, shape_a == transposed before multiplication
+    trans_b: str
+        If true, the shape in input_x2 must be transposed before multiplication
+    kernel_name: str
+        cce kernel name, default value is "matmul"
+
+    Return
+    ------
+    None
+    """
+    format_a = input_x.op.attrs["format"].value
+    format_b = input_y.op.attrs["format"].value
+    if format_a == 'FRACTAL_NZ':
+        trans_a_local = False if trans_a else True
+    else:
+        trans_a_local = trans_a
+
+
+    if format_b == 'FRACTAL_NZ':
+        trans_b_local = False if trans_b else True
+    else:
+        trans_b_local = trans_b
+    dst_dtype = output_z.get("dtype").lower()
+    result = tbe.matmul(input_x, input_y, trans_a_local, trans_b_local,
+                        format_a=format_a, format_b=format_b, dst_dtype=dst_dtype,
+                        tensor_bias=bias)
+
+    return result
+
+
+# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=too-many-locals, no-member
+# pylint: disable=too-many-statements, dangerous-default-value
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
+def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
+                 trans_b=False, kernel_name="matmul"):
+    """ algorithm: batch_matmul
+    calculating  matrix multiplication with bias, C = A*B + bias, support input
+    data with fractal format.
+
+    Parameters
+    ---------
+    input_x: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    input_y: dict
+        A dict object, contains a matrix's type and
+        shape and format, the type can be float16,
+        float32, int32, the length of shape must be
+        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    bias: dict
+        A dict object, contanis a 1-dimensional tensor's info:
+        the shape and type and format, the type can be float16,
+        float32, int32, the shape must be 1-dimensional,
+        the format can be [ND, NHWC]
+    output_z: dict
         A dict object, contains a matrix's type and
         shape and format, the type can be float16,
         float32, int32, the length of shape must be
@@ -341,24 +478,27 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         shape_a = _get_input_shape(shape_a)
         shape_b = _get_input_shape(shape_b)
 
-    check_shape(shape_a, param_name="input_x")
-    check_shape(shape_b, param_name="input_y")
+    para_check.check_shape(shape_a, param_name="input_x")
+    para_check.check_shape(shape_b, param_name="input_y")
+
+    trans_a_local = trans_a
+    trans_b_local = trans_b
 
     if input_x.get("format") == "FRACTAL_NZ":
         batch_axis = shape_a[:(len(shape_a) - 2)]
         shape_a = batch_axis + [shape_a[len(shape_a) - 1], shape_a[len(shape_a) - 2]]
-        trans_a = bool(1 - trans_a)
+        trans_a_local = bool(1 - trans_a)
 
     if input_y.get("format") == "FRACTAL_NZ":
         batch_axis = shape_a[:(len(shape_a) - 2)]
         shape_b = batch_axis + [shape_b[len(shape_b) - 1], shape_b[len(shape_b) - 2]]
-        trans_b = bool(1 - trans_b)
+        trans_b_local = bool(1 - trans_b)
 
     if src_dtype.lower() == "float32" or src_dtype.lower() == "int32":
-        matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b, shape_bias, kernel_name)
+        batch_matmul_vector.matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b, shape_bias, kernel_name)
         return
 
-    _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b)
+    _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a_local, trans_b_local)
     inp_src_dtype = src_dtype.lower()
 
     m_shape = shape_a[len(shape_a) - 2]
@@ -367,22 +507,22 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     n_shape = shape_b[len(shape_a) - 1]
 
     if inp_src_dtype == "float16":
-        block_reduce = cce.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
 
-    block_in = cce.BLOCK_IN
-    block_out = cce.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
 
     if trans_a and km_shape == 1:
-        block_in = cce.BLOCK_VECTOR
+        block_in = tbe_platform.BLOCK_VECTOR
 
     if not trans_a and m_shape == 1:
-        block_in = cce.BLOCK_VECTOR
+        block_in = tbe_platform.BLOCK_VECTOR
 
     if trans_b and kn_shape == 1:
-        block_out = cce.BLOCK_VECTOR
+        block_out = tbe_platform.BLOCK_VECTOR
 
     if not trans_b and n_shape == 1:
-        block_out = cce.BLOCK_VECTOR
+        block_out = tbe_platform.BLOCK_VECTOR
 
     if trans_a:
         shape_a_dup = (m_shape // block_reduce, km_shape // block_in, block_reduce, block_in)
@@ -435,19 +575,19 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         shape_bias_dup = (bias_batch_size,) + shape_bias_dup
 
     tensor_a = tvm.placeholder(shape_a_dup, name='tensor_a',
+                               attrs={'format': format_a},
                                dtype=inp_src_dtype)
     tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
+                               attrs={'format': format_b},
                                dtype=inp_src_dtype)
 
     if shape_bias_length > 0:
         tensor_bias = tvm.placeholder(shape_bias_dup, name='tensor_bias',
                                       dtype=dst_dtype)
-
+    result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias,
+                                       output_z, trans_a, trans_b, kernel_name)
     with tvm.target.cce():
-        result = te.lang.cce.matmul(tensor_a, tensor_b, trans_a, trans_b,
-                                    format_a=format_a, format_b=format_b, dst_dtype=dst_dtype,
-                                    tensor_bias=tensor_bias)
-        schedule = generic.auto_schedule(result)
+        schedule = tbe.auto_schedule(result)
     tensor_list = [tensor_a, tensor_b, result]
 
     if shape_bias_length > 0:
@@ -457,4 +597,5 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
               "name": kernel_name,
               "tensor_list": tensor_list}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)
+    tbe_platform.fusion_manager.fusion_manager.set_current_op_pattern("BatchMatmul")

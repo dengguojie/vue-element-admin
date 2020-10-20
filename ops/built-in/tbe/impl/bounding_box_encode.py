@@ -1,25 +1,23 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-BoundingBoxEncode
+bounding_box_encode
 """
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
-from te.utils.op_utils import *
-
+from te.utils import para_check
 
 # the number of bits per byte
 THREAD_NUM = 2
@@ -219,8 +217,7 @@ class BoundingBoxEncode():
         -------
         None
         """
-        with self.tik_instance.for_range(
-                0, self.core_num, block_num=self.core_num) as block_id:
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             self.calculation_process(block_id)
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
@@ -327,10 +324,8 @@ class BoundingBoxEncode():
                                          delta_dst_ub)
         else:
             loop_input = block_id * self.each_core_start_addr
-            with self.tik_instance.for_range(
-                    0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
-                loop_input = loop_input + cycle * self.start_block_addr \
-                             * self.data_num_in_each_block
+            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
+                loop_input = loop_input + cycle * self.start_block_addr * self.data_num_in_each_block
                 anchorbox_src_ub, groundtruthbox_src_ub = \
                     self.data_move_mte2_function(loop_input, self.block_number)
                 delta_dst_ub = self.bounding_box_encode_compute(
@@ -672,8 +667,9 @@ class BoundingBoxEncode():
 
 
 # pylint: disable=too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_FLOAT,
-                 OPTION_ATTR_LIST_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
+                            para_check.KERNEL_NAME)
 def bounding_box_encode(anchorbox_in_dict,
                         ground_truth_in_dict,
                         delta_out_dict,
@@ -705,9 +701,9 @@ def bounding_box_encode(anchorbox_in_dict,
     anchor_box_shape = anchorbox_in_dict.get("shape")
     ground_truth_box_shape = ground_truth_in_dict.get("shape")
 
-    check_shape(anchor_box_shape, param_name="anchorbox_in_dict")
+    para_check.check_shape(anchor_box_shape, param_name="anchorbox_in_dict")
 
-    check_shape(ground_truth_box_shape, param_name="ground_truth_in_dict")
+    para_check.check_shape(ground_truth_box_shape, param_name="ground_truth_in_dict")
 
     bounding_box_encode_ = BoundingBoxEncode(
         anchorbox_in_dict, ground_truth_in_dict, delta_out_dict, means_attrs,

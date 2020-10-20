@@ -1,21 +1,21 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# pylint: disable=redefined-builtin, wildcard-import
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 cce specific declaration and schedules.
 """
+# pylint: disable=redefined-builtin, wildcard-import
 from __future__ import absolute_import as _abs
 
 # tbe base op
@@ -72,7 +72,6 @@ from .atan2 import atan2
 from .concat_d import concat_d
 from .histogram_fixed_width_d import histogram_fixed_width_d
 from .invert import invert
-from .split_d import split_d
 from .split_v_d import split_v_d
 from .mod import mod
 from .softmax_cross_entropy_with_logits import softmax_cross_entropy_with_logits
@@ -125,7 +124,6 @@ from .rsqrt import rsqrt
 
 # tbe it6
 from .greater import greater
-from .space_to_batch_nd_d import space_to_batch_nd_d
 from .batch_to_space_nd_d import batch_to_space_nd_d
 from .batch_norm import batch_norm
 from .batch_norm_grad import batch_norm_grad
@@ -190,26 +188,17 @@ from .depthwise_weight_6d_2_4d import depthwise_weight_6d_2_4d
 from .apply_rms_prop_d import apply_rms_prop_d
 
 from .conv2d import conv2d
-from .conv2d import conv_layer_cce
-from .conv2d import conv_layer_cce_para_check
 from .conv2d import conv2d_compute
 
 from .conv2d_compress import conv2dcompress
-from .conv2d_compress import conv_layer_compress_cce
 
 from .conv2d_backprop_filter_d import conv2d_backprop_filter_d
 from .conv2d_backprop_filter_d import check_conv2dbp_filter_params
-from .conv2d_backprop_filter_d import conv2d_backprop_filter_cce
 from .conv2d_backprop_input_d import conv2d_backprop_input_d
 from .util.util_deconv_comm import check_conv2dbp_input_params
-from .conv2d_backprop_input_d import conv2d_backprop_input_cce
 from .deconvolution import deconvolution
 from .conv2d_transpose_d import conv2d_transpose_d
-from .conv2d_transpose_d import conv2d_transpose_d_compute
-from .conv2d_transpose_d import conv2d_transpose_cce
 from .conv3d import conv3d
-from .conv3d_backprop_input_d import conv3d_backprop_input_d
-from .conv3d_backprop_input_d import check_conv3dbp_input_params
 from .conv3d_backprop_input_d import conv3d_backprop_input_cce
 from .conv3d_backprop_filter_d import conv3d_backprop_filter_cce
 from .conv3d_backprop_filter_d import conv3d_backprop_filter_d
@@ -374,6 +363,9 @@ from .depth_to_space import depth_to_space
 from .lrn_grad import lrn_grad
 from .basic_lstm_cell import basic_lstm_cell
 from .dynamic_lstm import dynamic_lstm
+from .dynamic_rnn import dynamic_rnn
+from .dynamic_gru import dynamic_gru
+from .dynamic_gru_v2 import dynamic_gru_v2
 from .square_sum_v1 import square_sum_v1
 from .square_sum_v2 import square_sum_v2
 from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
@@ -447,3 +439,6 @@ from .avg_pool_1d import avg_pool_1d
 from .kl_div import kl_div
 from .stn_pre import stn_pre
 from .stn_compute import stn_compute
+# caffe it6
+from .prior_box_d_v2 import prior_box_d_v2
+from .fill import fill

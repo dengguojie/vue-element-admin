@@ -1,33 +1,33 @@
 #!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# -*- coding: UTF-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 max_pool_ext2
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import error_manager
 
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-arguments,unnecessary-lambda
-@fusion_manager.register("max_pool_ext2")
+@tbe_platform.fusion_manager.fusion_manager.register("max_pool_ext2")
 def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
                           data_format="NC1HWC0", is_fused_compute=True,
                           kernel_name="max_pool"):
@@ -96,7 +96,7 @@ def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
                                                   in_slice_offset[2], w, c0),
                                        name="tensor_read_select",
                                        attrs=input_data.op.attrs)
-        res = te.lang.cce.pooling2d(select_tensor_in, (window_h, window_w),
+        res = tbe.pooling2d(select_tensor_in, (window_h, window_w),
                                     (stride_h, stride_w),
                                     "MAX", padding, pad=(0, 0, 0, 0),
                                     fusion_params=fusion_params)
@@ -110,12 +110,12 @@ def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
                                          input_data(n, c1, h, w, c0),
                                          name="l1_width_fusion_tensor_in",
                                          attrs=input_data.op.attrs)
-        res = te.lang.cce.pooling2d(l1_width_fusion_in, (window_h, window_w),
+        res = tbe.pooling2d(l1_width_fusion_in, (window_h, window_w),
                                     (stride_h, stride_w), "MAX", padding,
                                     pad=(0, 0, 0, 0),
                                     fusion_params=fusion_params)
     else:
-        res = te.lang.cce.pooling2d(input_data, (window_h, window_w),
+        res = tbe.pooling2d(input_data, (window_h, window_w),
                                     (stride_h, stride_w),
                                     "MAX", padding, pad=(0, 0, 0, 0),
                                     fusion_params=fusion_params)
@@ -123,8 +123,10 @@ def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
-                 REQUIRED_ATTR_STR, OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def max_pool_ext2(input_data, output_data, ksize, strides, padding,
                   data_format="NC1HWC0", kernel_name="max_pool_ext2"):
     """
@@ -156,43 +158,62 @@ def max_pool_ext2(input_data, output_data, ksize, strides, padding,
     input_shape = input_data.get("shape")
     input_dtype = input_data.get("dtype").lower()
 
-    check_shape(input_shape, param_name="input_data")
+    para_check.check_shape(input_shape, param_name="input_data")
 
     check_list = ("float16", "int8", "uint8")
-    check_dtype(input_dtype, check_list, param_name="input_data")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_data")
 
     if data_format in ("NHWC",):
         if len(ksize) != 4:
-            raise RuntimeError("Invalid ksize params, ksize dim must be 4.")
+            expected_value = "equal to 4"
+            real_value = "not equal to 4"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
+                                                               expected_value, real_value)
         if ksize[0] != 1 or ksize[3] != 1:
-            raise RuntimeError("MaxPool only supports pooling across"
-                               "width/height, and other ksize dimension"
-                               "should be one")
+            expected_value = "equal to 1"
+            real_value = "not equal to 1"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[3]",
+                                                               expected_value, real_value)
         if len(strides) != 4:
-            raise RuntimeError("Invalid strides params, strides dim must be 4.")
+            expected_value = "equal to 4"
+            real_value = "not equal to 4"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
+                                                               expected_value, real_value)
         if strides[0] != 1 or strides[3] != 1:
-            raise RuntimeError("MaxPool only supports pooling across"
-                               "width/height, and other strides dimension"
-                               "should be one")
+            expected_value = "equal to 1"
+            real_value = "not equal to 1"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[3]",
+                                                               expected_value, real_value)
     elif data_format in ("NC1HWC0", "NCHW"):
         if len(ksize) != 4:
-            raise RuntimeError("Invalid ksize params, ksize dim must be 4.")
+            expected_value = "equal to 4"
+            real_value = "not equal to 4"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
+                                                               expected_value, real_value)
         if ksize[0] != 1 or ksize[1] != 1:
-            raise RuntimeError("MaxPool only supports pooling across"
-                               "width/height, and other ksize dimension"
-                               "should be one")
+            expected_value = "equal to 1"
+            real_value = "not equal to 1"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[1]",
+                                                               expected_value, real_value)
         if len(strides) != 4:
-            raise RuntimeError("Invalid strides params, strides dim must be 4.")
+            expected_value = "equal to 4"
+            real_value = "not equal to 4"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
+                                                               expected_value, real_value)
         if strides[0] != 1 or strides[1] != 1:
-            raise RuntimeError("MaxPool only supports pooling across"
-                               "width/height, and other strides dimension"
-                               "should be one")
+            expected_value = "equal to 1"
+            real_value = "not equal to 1"
+            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[1]",
+                                                               expected_value, real_value)
     else:
-        raise RuntimeError("The data_format is not supported")
+        error_manager.error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format",
+                                                            ["NHWC", "NC1HWC0", "NCHW"], data_format)
 
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("MaxPool can only support SAME or VALID"
-                           "padding mode.")
+        expected_value = "SAME or VALID"
+        real_value = padding
+        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
+                                                           expected_value, real_value)
 
     # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
     addr_type = input_data.get("addr_type", 0)
@@ -215,10 +236,10 @@ def max_pool_ext2(input_data, output_data, ksize, strides, padding,
                                 is_fused_compute=False,
                                 kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name": kernel_name,
         "tensor_list": [data_input, res],
         "l1_fusion_option": is_l1fusion}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,16 +1,18 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 scatter_update
 """
 from te import tik
@@ -243,10 +245,11 @@ class ScatterUpdate():
         compile info
         """
         self.scatter_update_compute_tiling()
+        opt_config = {"out_of_bound_sync_check": True}
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=(self.var_gm, self.indices_gm, self.updates_gm),
-            outputs=(self.out_gm), flowtable=[self.tiling_gm])
+            outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
         te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 

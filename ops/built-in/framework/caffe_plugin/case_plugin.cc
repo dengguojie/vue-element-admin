@@ -1,14 +1,22 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file case_plugin.cpp
+ * \brief
  */
 #include "register/register.h"
 #include "graph/ge_attr_value.h"
@@ -24,10 +32,9 @@ Status AutoMappingFnCase(const google::protobuf::Message* op_src, ge::Operator& 
   return SUCCESS;
 }
 
-Status ParseSubgraphPostFnCase(const std::string &subgraph_name, const ge::Graph &graph) {
-  return AutoMappingSubgraphIndex(graph,
-                                  [](int data_index) { return data_index + 1; },
-                                  [](int retval_index) { return retval_index; });
+Status ParseSubgraphPostFnCase(const std::string& subgraph_name, const ge::Graph& graph) {
+  return AutoMappingSubgraphIndex(
+      graph, [](int data_index) { return data_index + 1; }, [](int retval_index) { return retval_index; });
 }
 
 REGISTER_CUSTOM_OP("Case")

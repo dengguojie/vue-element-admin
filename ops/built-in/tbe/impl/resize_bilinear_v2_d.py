@@ -1,29 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR list_a PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-resize_bilinear
+resize_bilinear_v2_d
 """
+import numpy as np
 from functools import reduce as reduce_func
 import te
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
+from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
-from te import platform as tbe_platform
 from te.platform import cce_params as param
-from topi.cce import util
 from te.utils.op_utils import *
 # pylint: disable=ungrouped-imports
 from te.lang.cce.te_compute import irbuilder_api as kernel_api
@@ -38,9 +37,36 @@ HW_SIZE_1024 = 1024
 HW_SIZE_2048 = 2048
 # the block count vbi processed one time
 VBI_BLOCK_COUNT = 8
+# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
+SCALAR_MIN_FP32 = 2**(-126)
+# define a scalar, value = 2**(50)
+SCALAR_MUL_FP32 = 2**50
+# define a scalar, value = 2**(26)
+SCALAR_MUL2_FP32 = 2**26
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-lines
+def check_whether_error(output_num, scale):
+    """
+    check_whether_error
+    user numpy to calcu the cast from fp32 to fp16 and to int32
+    if have precision error, return True, else return False
+    """
+    output_fp32 = [float(i) for i in range(0, output_num)]
+    output_np_fp32 = np.array(output_fp32, np.float32)
+    scale_np = np.array([scale], np.float32).reshape([1])
+    output_np_fp32_with_scale = output_np_fp32*scale_np
+    int32_from_float32 = np.floor(output_np_fp32_with_scale)
+
+    output_np_fp16_with_scale = output_np_fp32_with_scale.astype(np.float16)
+    int32_from_float16 = np.floor(output_np_fp16_with_scale)
+
+    is_equal = (int32_from_float32 == int32_from_float16).all()
+
+    if not is_equal:
+        return True
+
+    return False
 
 
 def apply_store_buffer(ib,
@@ -157,6 +183,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         y_down -= 1
     scale_w = float(x_up) / float(x_down)
     scale_h = float(y_up) / float(y_down)
+    is_get_error_w = check_whether_error(w_out, scale_w)
+    is_get_error_h = check_whether_error(h_out, scale_h)
     # c0 declare
     f32_c0 = 8
     f16_c0 = 16
@@ -5616,7 +5644,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             min_loop = min(_x_loop, _y_loop)
 
             def _cast_f32_to_int32(_data_info, f32_ub_info, int32_ub_info,
-                                   dst_f32_ub_info):
+                                   dst_f32_ub_info, fix_flag=False):
                 _ub_int32_info = int32_ub_info
                 _ub_fp32_info = f32_ub_info
                 _ub_des_fp32 = dst_f32_ub_info
@@ -5645,6 +5673,65 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     _addr_info = [_ub_des_fp32, [_ub_fp16_512, 0]]
                     kernel_api.kernel_cast_to_fuc(_ib, _addr_info, _data_info,
                                                   "vconv_f162f32")
+
+                    if fix_flag:
+                        # fix error
+                        fix_tmp_fp32_ub = _ub_info["x2_512_x3_512_ub_unfold"]
+                        tmp_one_block_ub = _ub_info["x0_512_x1_512_ub_unfold"]
+                        # x_float_new - x_float_old
+                        _addr_info = [[fix_tmp_fp32_ub, 0],
+                                      _ub_des_fp32,
+                                      _ub_fp32_info]
+                        kernel_api.kernel_two_to_one_common_fuc(
+                            _ib, _addr_info, _data_info, "vsub")
+                        kernel_api.kernel_vector_dup_fuc(_ib, [tmp_one_block_ub, 0],
+                                                         0, [8, 64])
+                        kernel_api.kernel_vector_dup_fuc(_ib, [tmp_one_block_ub, 8],
+                                                         SCALAR_MIN_FP32, [8, 64])
+                        _ib.emit(
+                            tvm.call_extern(
+                                fix_tmp_fp32_ub.dtype, "vmax",
+                                fix_tmp_fp32_ub.access_ptr('w', offset=0),
+                                tmp_one_block_ub.access_ptr('r', offset=0),
+                                fix_tmp_fp32_ub.access_ptr('r', offset=0),
+                                32, 1, 0, 1, 8, 0, 8))
+                        _ib.emit(
+                            tvm.call_extern(
+                                fix_tmp_fp32_ub.dtype, "vmin",
+                                fix_tmp_fp32_ub.access_ptr('w', offset=0),
+                                tmp_one_block_ub.access_ptr('r', offset=8),
+                                fix_tmp_fp32_ub.access_ptr('r', offset=0),
+                                32, 1, 0, 1, 8, 0, 8))
+
+                        kernel_api.kernel_scalar_to_one_fuc(
+                            _ib,
+                            [[fix_tmp_fp32_ub, 0],
+                             [fix_tmp_fp32_ub, 0]],
+                            _data_info,
+                            ["vmuls", SCALAR_MUL_FP32])
+                        kernel_api.kernel_scalar_to_one_fuc(
+                            _ib,
+                            [[fix_tmp_fp32_ub, 0],
+                             [fix_tmp_fp32_ub, 0]],
+                            _data_info,
+                            ["vmuls", SCALAR_MUL_FP32])
+                        kernel_api.kernel_scalar_to_one_fuc(
+                            _ib,
+                            [[fix_tmp_fp32_ub, 0],
+                             [fix_tmp_fp32_ub, 0]],
+                            _data_info,
+                            ["vmuls", SCALAR_MUL2_FP32])
+                        _addr_info = [_ub_des_fp32,
+                                      _ub_des_fp32,
+                                      [fix_tmp_fp32_ub, 0]]
+                        kernel_api.kernel_two_to_one_common_fuc(
+                            _ib, _addr_info, _data_info, "vsub")
+                        _addr_info = [[_ub_fp16_512, 0], _ub_des_fp32]
+                        kernel_api.kernel_cast_to_fuc(_ib, _addr_info, _data_info,
+                                                      "vconv_f322f16")
+                        _addr_info = [_ub_int32_info, [_ub_fp16_512, 0]]
+                        kernel_api.kernel_cast_to_fuc(_ib, _addr_info, _data_info,
+                                                      "vconv_f162s32r")
 
             def _process_pos_to_l1(src_ub_info, mid_ub_info, des_l1_info,
                                    para_list, loop_index):
@@ -5758,10 +5845,16 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     1, 1, 0, 8, 0))
 
                 data_info = [32 * 64, 64]
+                # charge whether need fix vconv error
+                whether_fix = False
+                if _is_h and is_get_error_h:
+                    whether_fix = True
+                if not _is_h and is_get_error_w:
+                    whether_fix = True
                 # process x pos
                 _cast_f32_to_int32(data_info, [_input_fp32_ub, 0],
                                    [_mid_ub_int32, 0],
-                                   [_input_fp32_ub, HW_SIZE_256 * 8])
+                                   [_input_fp32_ub, HW_SIZE_256 * 8], whether_fix)
                 _addr_info = [[_out_l1_int, loop_index * HW_SIZE_256 * 8],
                               [_mid_ub_int32, 0]]
                 kernel_api.kernel_cp_fuc(_ib, _addr_info, [HW_SIZE_256 * 8, 8],
@@ -5781,11 +5874,17 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         _input_fp32_ub.access_ptr('r', offset=HW_SIZE_256 * 8),
                         32, 1, 1, 1, 8, 0, 8))
                 # copy ub tp l1
-                _addr_info = [[_out_l1_fp32, loop_index * HW_SIZE_256 * 2 * 8],
-                              [_input_fp32_ub, 0]]
-                kernel_api.kernel_cp_fuc(_ib, _addr_info,
-                                         [HW_SIZE_256 * 2 * 8, 8],
-                                         "copy_ubuf_to_cbuf")
+                if _is_h:
+                    _ib.emit(tvm.call_extern(_out_l1_fp32.dtype, "copy_ubuf_to_cbuf",
+                                             _out_l1_fp32.access_ptr("rw", offset=loop_index * HW_SIZE_256 * 8),
+                                             _input_fp32_ub.access_ptr("r", offset=0),
+                                             0, 2, HW_SIZE_256, 0, loop_levely*HW_SIZE_256 - HW_SIZE_256))
+                else:
+                    _addr_info = [[_out_l1_fp32, loop_index * HW_SIZE_256 * 2 * 8],
+                                  [_input_fp32_ub, 0]]
+                    kernel_api.kernel_cp_fuc(_ib, _addr_info,
+                                             [HW_SIZE_256 * 2 * 8, 8],
+                                             "copy_ubuf_to_cbuf")
 
             with _ib.for_range(0, min_loop) as _loop:
                 _process_pos_to_l1(
@@ -6412,7 +6511,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ub_info["y0_scale_ub"].access_ptr('w',
                                                                   offset=0),
                                 l1_info["l1_yscale"].access_ptr(
-                                    'r', offset=y_loop * 8), 0, 2, 1, 255, 0))
+                                    'r', offset=y_loop * 8), 0, 2, 1, loop_levely * HW_SIZE_256 - 1, 0))
                         # if y_before_index_reg != y_index_reg
                         # copy from gm to ub or l1 and open data to x1 x2 x3 x4
                         with ib.if_scope(pos_reg[1] != y_index_reg):
@@ -6489,7 +6588,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                                   offset=0),
                                 l1_info["l1_yscale"].access_ptr(
                                     'r',
-                                    offset=y_loop_tail * 8), 0, 2, 1, 255, 0))
+                                    offset=y_loop_tail * 8), 0, 2, 1, loop_levely * HW_SIZE_256 - 1, 0))
                         # if y_before_index_reg != y_index_reg
                         # copy from gm to ub or l1 and open data to x1 x2 x3 x4
                         with ib.if_scope(pos_reg[1] != y_index_reg):
@@ -6625,7 +6724,6 @@ def resize_bilinear_v2_d(images,
     if align_corners is True and half_pixel_centers is True:
         raise RuntimeError("If half_pixel_centers is True, "
                            "align_corners must be False.")
-
 
     image_data = tvm.placeholder(image_shape,
                                  dtype=image_dtype,

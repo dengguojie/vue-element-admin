@@ -1,6 +1,25 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file yolo_fusion_pass.cpp
+ * \brief
+ */
+#include "yolo_fusion_pass.h"
 #include <iostream>
-#include <vector>
-#include <string>
 #include <map>
 
 #include "graph/utils/op_desc_utils.h"
@@ -13,26 +32,20 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
-#include "yolo_fusion_pass.h"
-
-using namespace std;
-using namespace ge;
 
 namespace fe {
-static const string PATTERN_YOLO = "Yolo";
-static const char *YOLO = "Yolo";
-static const char *YOLO_ATTR_BOXES = "boxes";
-static const char *YOLO_ATTR_COORDS = "coords";
-static const char *YOLO_ATTR_CLASSES = "classes";
+static const char PATTERN_YOLO[] = "Yolo";
+static const char YOLO[] = "Yolo";
+static const char YOLO_ATTR_BOXES[] = "boxes";
+static const char YOLO_ATTR_COORDS[] = "coords";
+static const char YOLO_ATTR_CLASSES[] = "classes";
 
-
-vector<FusionPattern *> YoloPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
+vector<FusionPattern*> YoloPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
   // define Fusion
-  FusionPattern *pattern =
-    new (std::nothrow) FusionPattern("YoloPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("YoloPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_YOLO, {YOLO}).SetOutput(PATTERN_YOLO);
 
@@ -41,36 +54,34 @@ vector<FusionPattern *> YoloPass::DefinePatterns() {
   return patterns;
 }
 
-Status YoloPass::Fusion(ge::ComputeGraph &graph,
-                             Mapping &mapping,
-                             vector<ge::NodePtr> &newNodes) {
+Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloPass");
   // diag node
   ge::NodePtr yoloNode = GetNodeFromMapping(PATTERN_YOLO, mapping);
-  FUSION_PASS_CHECK(yoloNode == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "yoloNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(yoloNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "yoloNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   ge::OpDescPtr yoloDesc = yoloNode->GetOpDesc();
   ge::GeTensorDesc yoloInputDesc = yoloDesc->GetInputDesc(0);
 
   vector<int64_t> inputShape = yoloInputDesc.GetShape().GetDims();
   FUSION_PASS_CHECK(inputShape.empty(),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape is NULL.", yoloNode->GetName().c_str()),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape is NULL.", yoloNode->GetName().c_str()),
+                    return FAILED);
 
   int64_t boxesNum = 3;
   int64_t coordsNum = 4;
   int64_t classesNum = 80;
 
-  if(!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_BOXES, boxesNum)) {
+  if (!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_BOXES, boxesNum)) {
     boxesNum = 3;
   }
 
-  if(!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_COORDS, coordsNum)) {
+  if (!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_COORDS, coordsNum)) {
     coordsNum = 4;
   }
 
-  if(!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_CLASSES, classesNum)) {
+  if (!ge::AttrUtils::GetInt(yoloDesc, YOLO_ATTR_CLASSES, classesNum)) {
     classesNum = 80;
   }
 
@@ -112,4 +123,4 @@ Status YoloPass::Fusion(ge::ComputeGraph &graph,
   return SUCCESS;
 }
 REGISTER_PASS("YoloPass", BUILT_IN_GRAPH_PASS, YoloPass);
-}
+}  // namespace fe

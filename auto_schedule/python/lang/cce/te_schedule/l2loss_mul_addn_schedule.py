@@ -1,23 +1,23 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 l2loss_mull_addn_schedule
 """
-
 from __future__ import absolute_import
-from functools import reduce
+import functools
+
 import te
 from te import tvm
 from te import platform as cce
@@ -43,6 +43,7 @@ def get_max_ub_count(dtype):
     max_ub_count = int(total_size // max_bound * align_to)
 
     return max_ub_count
+
 
 def _get_block_tiling(shape, one_core_data_threadhold):
     """
@@ -73,7 +74,7 @@ def _get_block_tiling(shape, one_core_data_threadhold):
             block_factor = dim // j
 
             remain_size = 1
-            remain_size = reduce(lambda i, j: i * j,
+            remain_size = functools.reduce(lambda i, j: i * j,
                                  shape[block_split_axis + 1:])
 
             remain_size = remain_size * block_factor
@@ -100,6 +101,7 @@ def _get_block_tiling(shape, one_core_data_threadhold):
             break
 
     return block_split_axis, block_factor
+
 
 def _get_ub_tiling(shape, block_split_axis, block_factor, max_ub_count):
     """
@@ -194,6 +196,7 @@ def _check_params(res, input_tensors):
     if len(input_tensors) != 3:
         raise RuntimeError("L2loss mul addn input nums should be 3!")
 
+
 def _do_emit_insn(sch_list, cache_read_buffer_list,
                   mid_out_tensor_list, mid_out_tensor_read_buffer_map,
                   cache_write_buffer_map, phony_tensor):
@@ -206,17 +209,18 @@ def _do_emit_insn(sch_list, cache_read_buffer_list,
         sch[tensor_u].emit_insn(tensor_u.op.axis[0], 'dma_copy')
 
     for tensor_u in mid_out_tensor_read_buffer_map:
-        buffer = mid_out_tensor_read_buffer_map[tensor_u]
-        sch[buffer].emit_insn(buffer.op.axis[0], 'phony_insn')
+        buf = mid_out_tensor_read_buffer_map[tensor_u]
+        sch[buf].emit_insn(buf.op.axis[0], 'phony_insn')
 
     for tensor in cache_write_buffer_map:
-        buffer = cache_write_buffer_map[tensor]
+        buf = cache_write_buffer_map[tensor]
         if tensor in phony_tensor:
-            sch[buffer].emit_insn(buffer.op.axis[0], 'phony_insn')
+            sch[buf].emit_insn(buf.op.axis[0], 'phony_insn')
         else:
-            emit_insn_pragma = get_emit_insn_map(buffer)
-            sch[buffer].emit_insn(buffer.op.axis[0], emit_insn_pragma)
+            emit_insn_pragma = get_emit_insn_map(buf)
+            sch[buf].emit_insn(buf.op.axis[0], emit_insn_pragma)
     sch_list[0] = sch
+
 
 def _do_compute_at(sch_list, cache_read_buffer_list,
                    mid_out_tensor_list, mid_out_tensor_read_buffer_map,
@@ -231,13 +235,14 @@ def _do_compute_at(sch_list, cache_read_buffer_list,
         sch[i].compute_at(sch[compute_at_tensor], compute_at_axis)
 
     for i in mid_out_tensor_read_buffer_map:
-        buffer = mid_out_tensor_read_buffer_map[i]
-        sch[buffer].compute_at(sch[compute_at_tensor], compute_at_axis)
+        buf = mid_out_tensor_read_buffer_map[i]
+        sch[buf].compute_at(sch[compute_at_tensor], compute_at_axis)
 
     for i in cache_write_buffer_map:
-        buffer = cache_write_buffer_map[i]
-        sch[buffer].compute_at(sch[compute_at_tensor], compute_at_axis)
+        buf = cache_write_buffer_map[i]
+        sch[buf].compute_at(sch[compute_at_tensor], compute_at_axis)
     sch_list[0] = sch
+
 
 def l2loss_mul_addn_schedule(res, input_tensors):
     '''
@@ -267,7 +272,7 @@ def l2loss_mul_addn_schedule(res, input_tensors):
 
     tensor_list_map = {}
     tensor_list_dst_tensor_map = {}
-    mid_out_tensor_list = [res_add,]
+    mid_out_tensor_list = [res_add, ]
     phony_tensor = [phony_mul, phony_add]
 
     gen_reversed_subgraph_list(new_res, tensor_list_map,
@@ -324,9 +329,9 @@ def l2loss_mul_addn_schedule(res, input_tensors):
     cache_write_buffer_list = []
     cache_write_buffer_map = {}
     for tensor in cache_write_tensor_list:
-        buffer = sch.cache_write(tensor, cce.scope_ubuf)
-        cache_write_buffer_list.append(buffer)
-        cache_write_buffer_map[tensor] = buffer
+        buf = sch.cache_write(tensor, cce.scope_ubuf)
+        cache_write_buffer_list.append(buf)
+        cache_write_buffer_map[tensor] = buf
 
     new_res_global = sch.cache_write(new_res, cce.scope_gm)
 

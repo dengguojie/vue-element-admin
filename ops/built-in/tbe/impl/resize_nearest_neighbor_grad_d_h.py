@@ -1,23 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-resize_bilinear_grad
+resize_nearest_neighbor_grad_d_h
 """
-
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
 
 
 def _ceil_div(value, factor):
@@ -100,7 +100,7 @@ def clear_ub(tik_instance, dst_ub):
 
 
 # pylint: disable-msg=invalid-name,unused-argument,too-many-arguments
-@util.check_input_type(dict, dict, (list, tuple), bool, bool, str)
+@para_check.check_input_type(dict, dict, (list, tuple), bool, bool, str)
 def resize_nearest_neighbor_grad_d_h(
         grads, y, size, align_corners=False, half_pixel_centers=False,
         kernel_name="resize_nearest_neighbor_grad"):

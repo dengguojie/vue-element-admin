@@ -1,21 +1,24 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights TensorReserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0. You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 inplace compute
 """
-
 from te import tvm
-from .util import dtype_check_decorator, shape_to_list, get_tvm_scalar
+from .util import dtype_check_decorator
+from .util import shape_to_list
+from .util import get_tvm_scalar
 
 
 @dtype_check_decorator
@@ -86,6 +89,7 @@ def inplace_update(lhs, inplace_ids, rhs):
 
     return _inplace_op(lhs, inplace_ids, rhs, ops="inplace_update")
 
+
 def inplace_compute(lhs, rhs, ops):
     """
     compute of inplace
@@ -112,7 +116,7 @@ def _inplace_op(lhs, inplace_ids, rhs, ops):
     elif isinstance(inplace_ids, int):
         _inplace_input_check(lhs, inplace_ids, rhs)
         inplace_ids_list = [inplace_ids]
-        rhs_reshape = [1,] + rhs.shape[:]
+        rhs_reshape = [1, ] + rhs.shape[:]
         rhs = tvm.compute(rhs_reshape, lambda *indices: rhs[indices[1:]],
                           name="reshapeComputeinlineOp")
     elif isinstance(inplace_ids, list):
@@ -158,6 +162,7 @@ def _inplace_op(lhs, inplace_ids, rhs, ops):
 
     return res
 
+
 def _is_tensor_scalar_inplace(lhs, ids, rhs):
     if not isinstance(lhs, tvm.tensor.Tensor):
         raise RuntimeError("The lhTensor input type must be tvm.tensor")
@@ -165,13 +170,14 @@ def _is_tensor_scalar_inplace(lhs, ids, rhs):
     if len(lshape) == 1 and not isinstance(rhs, tvm.tensor.Tensor) and isinstance(ids, int):
         ret = True
     elif len(lshape) == 1 and \
-         not isinstance(rhs, tvm.tensor.Tensor) and \
-         not isinstance(ids, int):
+            not isinstance(rhs, tvm.tensor.Tensor) and \
+            not isinstance(ids, int):
         raise RuntimeError("inplace_ids must be int type!")
     else:
         ret = False
 
     return ret
+
 
 # pylint: disable=too-many-branches
 def _inplace_input_check(lhs, ids, rhs):
@@ -230,4 +236,3 @@ def _inplace_rhs_shape_check(rshape):
         raise RuntimeError(
             "inpalce rhTensor shape[0]=%s is larger than 7394, "
             "resulting in insufficient ub space" % rshape[0])
-

@@ -1,10 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief split fusion pass(strided_slice_grad --> strided_slice_grad_d)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file strided_slice_grad_fusion_pass.cpp
+ * \brief split fusion pass(strided_slice_grad --> strided_slice_grad_d)
+ */
 #include "strided_slice_grad_fusion_pass.h"
 
 #include <iostream>
@@ -30,24 +43,21 @@ static const char* FUSED_NODE = "StridedSliceGrad";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeStridedSliceGrad";
 
 vector<FusionPattern*> ConstToAttrStridedSliceGradPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
+  vector<FusionPattern*> patterns;
 
-  FusionPattern* pattern = new(std::nothrow) FusionPattern("ConstToAttrStridedSliceGradFusion");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("ConstToAttrStridedSliceGradFusion");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-    return patterns);
+                    return patterns);
 
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE})
-    .SetOutput(PATTERN_FUSEDNODE);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
 
   patterns.push_back(pattern);
 
   return patterns;
 }
 
-Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph &graph,
-                                               Mapping &mapping,
-                                               vector<ge::NodePtr> &fusionNodes)
-{
+Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                               vector<ge::NodePtr>& fusionNodes) {
   std::string fusionOpType = "StridedSliceGradD";
   std::vector<PassAttrInfo> strided_slice_gradAttrInfo;
   PassAttrInfo shape = {0, "shape", "SetListInt"};
@@ -61,12 +71,20 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph &graph,
 
   // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  ge::OpDescPtr fusionDescPtr =
-        PatternFusionUtil::GetFusionOpDesc(fusedNode, fusionOpType, strided_slice_gradAttrInfo);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr,
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),return NOT_CHANGED);
-  FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op StridedSliceGradD Not Supported."),
-           return NOT_CHANGED);
+  // Check StridedSliceGrad support dynamic
+  bool unknownShape = false;
+  if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(fusedNode.get()), unknownShape) == ge::GRAPH_SUCCESS && unknownShape) {
+    OP_LOGI("StridedSliceGrad", "unknownShape is True.");
+    ge::OpDescPtr org_desc = fusedNode->GetOpDesc();
+    FUSION_PASS_CHECK(CheckOpSupported(org_desc), OP_LOGI("StridedSliceGrad", "Op StridedSliceGrad Supported Dynamic."),
+                      return NOT_CHANGED);
+  }
+  OP_LOGI("StridedSliceGrad", "unknownShape is False.");
+  ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(fusedNode, fusionOpType, strided_slice_gradAttrInfo);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op StridedSliceGradD Not Supported."), return NOT_CHANGED);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
 
   // check mask value
@@ -75,16 +93,17 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph &graph,
   int64_t shrink_axis_mask = 0;
 
   if ((ge::GRAPH_SUCCESS != op.GetAttr("ellipsis_mask", ellipsis_mask)) ||
-    (ge::GRAPH_SUCCESS != op.GetAttr("new_axis_mask", new_axis_mask)) ||
-    (ge::GRAPH_SUCCESS != op.GetAttr("shrink_axis_mask", shrink_axis_mask))) {
-  OP_LOGE(FUSED_OP_TYPE.c_str(),
-    "op StridedSliceGrad get attribute ellipsis_mask or "\
-    "new axis mask or shrink axis mask failed");
+      (ge::GRAPH_SUCCESS != op.GetAttr("new_axis_mask", new_axis_mask)) ||
+      (ge::GRAPH_SUCCESS != op.GetAttr("shrink_axis_mask", shrink_axis_mask))) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(),
+            "op StridedSliceGrad get attribute ellipsis_mask or "
+            "new axis mask or shrink axis mask failed");
     return FAILED;
   }
 
   if (0 != new_axis_mask || (0 != shrink_axis_mask && 2 != shrink_axis_mask)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "if new_axis_mask or shrink_axis_mask"\
+    OP_LOGI(FUSED_OP_TYPE.c_str(),
+            "if new_axis_mask or shrink_axis_mask"
             "not equal 0, graph not changed.");
     return NOT_CHANGED;
   }
@@ -93,14 +112,12 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph &graph,
   op.GetInputConstData("strides", const_tensor1);
 
   std::vector<int64_t> strides_value;
-  if (!TbeFusionPassUtil::GetConstIntData(const_tensor1,
-                                          op.GetInputDesc("strides").GetDataType(),
-                                          strides_value)) {
+  if (!TbeFusionPassUtil::GetConstIntData(const_tensor1, op.GetInputDesc("strides").GetDataType(), strides_value)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "StridedSliceGrad get strides value failed.");
     return FAILED;
   }
 
-  for (auto value: strides_value) {
+  for (auto value : strides_value) {
     if (value != 1) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGrad has no 1 value, graph not changed.");
 
@@ -112,29 +129,28 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph &graph,
   op.GetInputConstData("shape", const_tensor0);
 
   std::vector<int64_t> shape_value;
-  if (!TbeFusionPassUtil::GetConstIntData(const_tensor0,
-                                          op.GetInputDesc("shape").GetDataType(),
-                                          shape_value)) {
+  if (!TbeFusionPassUtil::GetConstIntData(const_tensor0, op.GetInputDesc("shape").GetDataType(), shape_value)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "StridedSliceGrad get shape value failed.");
     return FAILED;
   }
 
-  if (shrink_axis_mask == 2 && (ellipsis_mask != 1 ||
-      strides_value.size() != 2 || shape_value.size() <= 2)) {
+  if (shrink_axis_mask == 2 && (ellipsis_mask != 1 || strides_value.size() != 2 || shape_value.size() <= 2)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGradD can't support such param, graph not changed.");
     return NOT_CHANGED;
   }
 
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::NodePtr fusionNode = nullptr;
-  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType, strided_slice_gradAttrInfo,fusionNode);
+  Status ret =
+      PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType, strided_slice_gradAttrInfo, fusionNode);
   if (ret != SUCCESS) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGrad has input which is not a CONST, graph not changed.");
-  return NOT_CHANGED;
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGrad has input which is not a CONST, graph not changed.");
+    return NOT_CHANGED;
   }
   fusionNodes.push_back(fusionNode);
   return SUCCESS;
 }
 
 REGISTER_PASS("StridedSliceGradFusionPass", BUILT_IN_GRAPH_PASS, ConstToAttrStridedSliceGradPass);
-}
+}  // namespace fe

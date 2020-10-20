@@ -1,31 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 xlogy
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -48,8 +42,9 @@ TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
 # define seventh order parameter , value = 1 / 5040.0
 TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
+
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("xlogy")
+@tbe_platform.fusion_manager.fusion_manager.register("xlogy")
 def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     """
     algorithm: xlogy
@@ -80,35 +75,33 @@ def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     res: TVM tensor
         the result of compute
     """
-    shape_list = broadcast_shapes(
-        te.lang.cce.util.shape_to_list(input_x.shape),
-        te.lang.cce.util.shape_to_list(input_y.shape),
+    shape_list = shape_util.broadcast_shapes(
+        shape_util.shape_to_list(input_x.shape),
+        shape_util.shape_to_list(input_y.shape),
         param_name_input1="input_x",
         param_name_input2="input_y")
 
     shape = shape_list[2]
     dtype = input_x.dtype
 
-    cloud_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog",
-                                                          "float32")
-    mini_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul",
-                                                         "float32")
+    cloud_check = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
+    mini_check = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if dtype == "float16" and cloud_check:
-        input_x = te.lang.cce.cast_to(input_x, "float32")
-        input_y = te.lang.cce.cast_to(input_y, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
+        input_y = tbe.cast_to(input_y, "float32")
 
-    data_x_broad = te.lang.cce.broadcast(input_x, shape_list[2])
-    data_y_broad = te.lang.cce.broadcast(input_y, shape_list[2])
-    data_log = te.lang.cce.vlog(data_y_broad)
-    res = te.lang.cce.vmul(data_log, data_x_broad)
+    data_x_broad = tbe.broadcast(input_x, shape_list[2])
+    data_y_broad = tbe.broadcast(input_y, shape_list[2])
+    data_log = tbe.vlog(data_y_broad)
+    res = tbe.vmul(data_log, data_x_broad)
 
     if (not cloud_check) and mini_check:
-        data_x_broad = te.lang.cce.cast_to(data_x_broad, "float32")
-        data_x_broad = te.lang.cce.cast_to(data_x_broad, "float32")
+        data_x_broad = tbe.cast_to(data_x_broad, "float32")
+        data_x_broad = tbe.cast_to(data_x_broad, "float32")
         res = _xlogy_mini_compute(res, data_x_broad, data_y_broad, shape)
 
     if dtype == "float16" and (cloud_check or mini_check):
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
@@ -132,30 +125,26 @@ def _xlogy_mini_compute(res_mini, input_x, input_y, shape):
     Returns : A Tensor. Has the same type as mini_res.
     -------
     """
-    input_z = te.lang.cce.cast_to(res_mini, "float32")
-    input_x = te.lang.cce.cast_to(input_x, "float32")
-    input_y = te.lang.cce.cast_to(input_y, "float32")
-    input_x_rec = te.lang.cce.vrec(input_x)
-    input_z_compare = te.lang.cce.vmul(input_z, input_x_rec)
+    input_z = tbe.cast_to(res_mini, "float32")
+    input_x = tbe.cast_to(input_x, "float32")
+    input_y = tbe.cast_to(input_y, "float32")
+    input_x_rec = tbe.vrec(input_x)
+    input_z_compare = tbe.vmul(input_z, input_x_rec)
 
     newton_taylor_res = _newton_taylor_xlogy(input_x, input_y, input_z)
     newton_exp_res = _newton_exp_xlogy(input_x, input_y, input_z)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
-    tensor_input_left_border = te.lang.cce.broadcast(input_left_border, shape)
+    tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
-    tensor_input_right_border = te.lang.cce.broadcast(input_right_border, shape)
+    tensor_input_right_border = tbe.broadcast(input_right_border, shape)
 
-    b_gt_left_border = te.lang.cce.vcmp(input_z_compare,
-                                        tensor_input_left_border, 'gt')
-    exp_taylor_neg = te.lang.cce.vsel(b_gt_left_border,
-                                      newton_taylor_res, newton_exp_res)
+    b_gt_left_border = tbe.vcmp(input_z_compare, tensor_input_left_border, 'gt')
+    exp_taylor_neg = tbe.vsel(b_gt_left_border, newton_taylor_res, newton_exp_res)
 
-    b_lt_right_border = te.lang.cce.vcmp(input_z_compare,
-                                         tensor_input_right_border, 'lt')
-    data_xlogy = te.lang.cce.vsel(b_lt_right_border,
-                                  exp_taylor_neg, newton_exp_res)
+    b_lt_right_border = tbe.vcmp(input_z_compare, tensor_input_right_border, 'lt')
+    data_xlogy = tbe.vsel(b_lt_right_border, exp_taylor_neg, newton_exp_res)
 
     return data_xlogy
 
@@ -175,50 +164,43 @@ def _exp_taylor_compute(input_x):
     """
     # calculate second order tayloy section : x^2 / 2!
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
-    data_power_2 = te.lang.cce.vmul(input_x, input_x)
-    data_power_2_div_2 = te.lang.cce.vmuls(data_power_2,
-                                           taylor_second_order_param)
+    data_power_2 = tbe.vmul(input_x, input_x)
+    data_power_2_div_2 = tbe.vmuls(data_power_2, taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
     taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
-    data_power_3 = te.lang.cce.vmul(data_power_2, input_x)
-    data_power_3_div_6 = te.lang.cce.vmuls(data_power_3,
-                                           taylor_third_order_param)
+    data_power_3 = tbe.vmul(data_power_2, input_x)
+    data_power_3_div_6 = tbe.vmuls(data_power_3, taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
     taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
-    data_power_4 = te.lang.cce.vmul(data_power_3, input_x)
-    data_power_4_div_24 = te.lang.cce.vmuls(data_power_4,
-                                            taylor_fourth_order_param)
+    data_power_4 = tbe.vmul(data_power_3, input_x)
+    data_power_4_div_24 = tbe.vmuls(data_power_4, taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
     taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
-    data_power_5 = te.lang.cce.vmul(data_power_4, input_x)
-    data_power_5_div_120 = te.lang.cce.vmuls(data_power_5,
-                                             taylor_fifth_order_param)
+    data_power_5 = tbe.vmul(data_power_4, input_x)
+    data_power_5_div_120 = tbe.vmuls(data_power_5, taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
     taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
-    data_power_6 = te.lang.cce.vmul(data_power_5, input_x)
-    data_power_6_div_720 = te.lang.cce.vmuls(data_power_6,
-                                             taylor_sixth_order_param)
+    data_power_6 = tbe.vmul(data_power_5, input_x)
+    data_power_6_div_720 = tbe.vmuls(data_power_6, taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
     taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
-    data_power_7 = te.lang.cce.vmul(data_power_6, input_x)
-    data_power_7_div_5040 = te.lang.cce.vmuls(data_power_7,
-                                              taylor_seventh_order_param)
+    data_power_7 = tbe.vmul(data_power_6, input_x)
+    data_power_7_div_5040 = tbe.vmuls(data_power_7, taylor_seventh_order_param)
 
     # calculate first order tayloy plus one section : 1 + x
-    res_first_taylor = te.lang.cce.vadds(input_x, tvm.const(SCALAR_ONE,
-                                                            "float32"))
-    res_second_taylor = te.lang.cce.vadd(res_first_taylor, data_power_2_div_2)
-    res_third_taylor = te.lang.cce.vadd(res_second_taylor, data_power_3_div_6)
-    res_fourth_taylor = te.lang.cce.vadd(res_third_taylor, data_power_4_div_24)
-    res_fifth_taylor = te.lang.cce.vadd(res_fourth_taylor, data_power_5_div_120)
-    res_sixth_taylor = te.lang.cce.vadd(res_fifth_taylor, data_power_6_div_720)
-    res = te.lang.cce.vadd(res_sixth_taylor, data_power_7_div_5040)
+    res_first_taylor = tbe.vadds(input_x, tvm.const(SCALAR_ONE, "float32"))
+    res_second_taylor = tbe.vadd(res_first_taylor, data_power_2_div_2)
+    res_third_taylor = tbe.vadd(res_second_taylor, data_power_3_div_6)
+    res_fourth_taylor = tbe.vadd(res_third_taylor, data_power_4_div_24)
+    res_fifth_taylor = tbe.vadd(res_fourth_taylor, data_power_5_div_120)
+    res_sixth_taylor = tbe.vadd(res_fifth_taylor, data_power_6_div_720)
+    res = tbe.vadd(res_sixth_taylor, data_power_7_div_5040)
 
     return res
 
@@ -237,18 +219,16 @@ def _newton_exp_iter(input_x, input_y, input_z):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    #Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
-    input_x_mul = te.lang.cce.vmuls(input_x, tvm.const(SCALAR_NEG_ONE,
-                                                       "float32"))
-    newton_exp = te.lang.cce.vadd(input_x_mul, input_z)
-    input_xy = te.lang.cce.vmul(input_x, input_y)
-    input_x_rec = te.lang.cce.vrec(input_x)
-    input_x_res = te.lang.cce.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE,
-                                                           "float32"))
-    input_z_mul = te.lang.cce.vmul(input_x_res, input_z)
-    input_z_exp = te.lang.cce.vexp(input_z_mul)
-    input_z_res = te.lang.cce.vmul(input_z_exp, input_xy)
-    newton_exp = te.lang.cce.vadd(newton_exp, input_z_res)
+    # Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
+    input_x_mul = tbe.vmuls(input_x, tvm.const(SCALAR_NEG_ONE, "float32"))
+    newton_exp = tbe.vadd(input_x_mul, input_z)
+    input_xy = tbe.vmul(input_x, input_y)
+    input_x_rec = tbe.vrec(input_x)
+    input_x_res = tbe.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE, "float32"))
+    input_z_mul = tbe.vmul(input_x_res, input_z)
+    input_z_exp = tbe.vexp(input_z_mul)
+    input_z_res = tbe.vmul(input_z_exp, input_xy)
+    newton_exp = tbe.vadd(newton_exp, input_z_res)
 
     return newton_exp
 
@@ -267,18 +247,16 @@ def _newton_taylor_iter(input_x, input_y, input_z):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    #Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
-    input_x_mul = te.lang.cce.vmuls(input_x, tvm.const(SCALAR_NEG_ONE,
-                                                       "float32"))
-    newton_taylor = te.lang.cce.vadd(input_x_mul, input_z)
-    input_xy = te.lang.cce.vmul(input_x, input_y)
-    input_x_rec = te.lang.cce.vrec(input_x)
-    input_x_res = te.lang.cce.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE,
-                                                           "float32"))
-    input_z_mul = te.lang.cce.vmul(input_x_res, input_z)
+    # Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
+    input_x_mul = tbe.vmuls(input_x, tvm.const(SCALAR_NEG_ONE, "float32"))
+    newton_taylor = tbe.vadd(input_x_mul, input_z)
+    input_xy = tbe.vmul(input_x, input_y)
+    input_x_rec = tbe.vrec(input_x)
+    input_x_res = tbe.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE, "float32"))
+    input_z_mul = tbe.vmul(input_x_res, input_z)
     input_z_taylor = _exp_taylor_compute(input_z_mul)
-    input_z_res = te.lang.cce.vmul(input_z_taylor, input_xy)
-    newton_taylor = te.lang.cce.vadd(newton_taylor, input_z_res)
+    input_z_res = tbe.vmul(input_z_taylor, input_xy)
+    newton_taylor = tbe.vadd(newton_taylor, input_z_res)
 
     return newton_taylor
 
@@ -321,7 +299,8 @@ def _newton_taylor_xlogy(input_x, input_y, output_z):
     return output_z
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):
     """
     algorithm: xlogy
@@ -347,28 +326,27 @@ def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):
     dtype = input_x.get("dtype")
     dtype_y = input_y.get("dtype")
 
-    util.compare_tensor_dict_key(input_x, input_y, "dtype")
-    check_shape(shape_x, param_name="input_x")
-    check_shape(shape_y, param_name="input_y")
+    shape_util.compare_tensor_dict_key(input_x, input_y, "dtype")
+    para_check.check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_y, param_name="input_y")
 
     input_dtype = dtype.lower()
     input_dtype_y = dtype_y.lower()
     check_list = ("float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="input_x")
-    check_dtype(input_dtype_y, check_list, param_name="input_y")
-    shape_list = broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                  param_name_input2="input_y")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype_y, check_list, param_name="input_y")
+    shape_list = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                             param_name_input2="input_y")
 
-    shape_x, shape_y = refine_shapes_for_broadcast(shape_list[0],
-                                                   shape_list[1])
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
     data1 = tvm.placeholder(shape_x, name="data1", dtype=input_dtype)
     data2 = tvm.placeholder(shape_y, name="data2", dtype=input_dtype)
     res = xlogy_compute(data1, data2, output_z, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data1, data2, res],
               "bool_storage_as_1bit": False}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

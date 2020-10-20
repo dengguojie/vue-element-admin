@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache Licenses for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pooling2d compute
 """
-
 from te import tvm
 
 POOL2D_TAG = "pooling2d_"
@@ -53,7 +52,7 @@ def max_pool2d(t_x, pooling_params, fusion_params):
         h_p, w_p = (o_h - 1)*s_h + k_h, (o_w - 1)*s_w + k_w
     elif pooling_params["ceil_mode"] == 1:
         h_p, w_p = pooling_params["in_size_h"] + p_t + p_b, \
-                   pooling_params["in_size_w"] + p_l + p_r
+            pooling_params["in_size_w"] + p_l + p_r
 
     def _select(indices):
         i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]

@@ -1,59 +1,53 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
 dynamic conv2d
 """
-
-
 from __future__ import absolute_import
 
-from collections import OrderedDict
-
-import te.lang.cce
-import te.lang.dynamic
 from te import tvm
-from te.platform import CUBE_MKN
-from te.platform import cce_conf
-from te.platform import operation
-from te.platform.fusion_manager import get_fusion_build_cfg
-from topi import generic
-from topi.cce import util
-from impl.util import fusion_util
+import te.lang.cce as tbe
+import te.lang.dynamic as dynamic
+import te.platform as tbe_platform
+from te.utils import check_para
 from te.utils.error_manager import error_manager_conv2d as err_man
+from impl.util import fusion_util
 
-PAD_SHAPE_DIM = 2
+
 NONETYPE = type(None)
+# n, h, w dim in NCHW/NC1HWC0 format
+N_DIM = 0
+H_DIM = 2
+W_DIM = 3
+# dim_size of NCHW/NHWC format
+FORMAT_4D_DIMS = 4
+# dim_size of NC1HWC0 format
+FORMAT_5D_DIMS = 5
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
-def dynamic_shape_to_list(shape):
-    """
-    translate tvm.shape to list type in python
-    """
-
-    tmp = []
-
-    for i in shape:
-        if not isinstance(i, tvm.expr.IntImm) and len(i) > 1:
-            inner_tmp = []
-            for j in i:
-                if isinstance(j, tvm.expr.IntImm):
-                    inner_tmp.append(int(j))
-                else:
-                    inner_tmp.append(j)
-            tmp.append(inner_tmp)
-        else:
-            if isinstance(i, tvm.expr.IntImm):
-                tmp.append(int(i))
-            else:
-                tmp.append(i)
-
-    return tmp
+def _ceil(x_1, x_2):
+    if x_2 == 0:
+        dict_args = {}
+        dict_args['errCode'] = "E60108"
+        dict_args['reason'] = "Division by zero"
+        raise RuntimeError(dict_args,
+                           err_man.get_error_message(dict_args))
+    return (x_1 + x_2 - 1) // x_2
 
 
-def pos_from_format(ele_format):
+def _pos_from_format(ele_format):
     """
     get value from ele_format
     """
@@ -65,7 +59,7 @@ def pos_from_format(ele_format):
     return pos_n, pos_c, pos_h, pos_w
 
 
-def set_default_para():
+def _set_default_para():
     """
     set default parameter value
     """
@@ -77,129 +71,153 @@ def set_default_para():
     return optim_dict, fusion_para
 
 
-def config_dynamic_mode(in_shape, w_shape):
+def _config_dynamic_mode(in_shape, w_shape):
     """
     config dynamic mode
     """
 
     dynamic_mode = None
-    if in_shape[2] == in_shape[3] == -1 and in_shape[0] != -1 \
-            and in_shape[1] != -1 and -1 not in w_shape:
+    if in_shape[H_DIM] == -1 and in_shape[W_DIM] == -1 \
+            and in_shape[N_DIM] != -1 and in_shape[1] != -1 \
+            and -1 not in w_shape:
         dynamic_mode = "dynamic_hw"
-    elif in_shape[0] == -1 and in_shape[1] != -1 and in_shape[2] != -1 \
-            and in_shape[3] != -1 and -1 not in w_shape:
+    elif in_shape[N_DIM] == -1 and in_shape[1] != -1 and in_shape[H_DIM] != -1 \
+            and in_shape[W_DIM] != -1 and -1 not in w_shape:
         dynamic_mode = "dynamic_batch"
+    else:
+        err_man.raise_err_specific_user(
+            "conv2d", "dynamic_only support dynamic_hw or dynamic_batch")
     return dynamic_mode
 
 
-def check_and_config_para(inputs, weights, bias, offset_w, outputs, strides,
-                          pads, dilations, data_format, offset_x, kernel_name):
+def _check_4d_len(seq, seq_name):
+    if len(seq) != 4:
+        err_man.raise_err_should_be_4d("conv2d", seq_name)
+
+
+def _check_format(param_format, expect_formats, param_name):
+    if param_format not in expect_formats:
+        err_man.raise_err_input_format_invalid(
+            "conv2d", param_name, expect_formats, param_format)
+
+
+def _check_and_config_para(inputs, weights, bias, offset_w, outputs, strides,
+                           pads, dilations, data_format, offset_x, kernel_name):
     """
     check and config dynamic mode
     """
 
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        err_man.raise_err_specific_user("conv2d", \
+        err_man.raise_err_specific_user("conv2d",
             "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape")
 
     in_shape = list(inputs.get("ori_shape"))
     w_shape = list(weights.get("ori_shape"))
     in_dtype = inputs.get("dtype")
     w_dtype = weights.get("dtype")
-    all_fmt = ["NCHW", "NHWC"]
     in_format = inputs.get("ori_format")
     w_format = weights.get("ori_format")
-    fmap_range = inputs.get("range")
-    w_range = weights.get("range")
-    optim_dict, fusion_para = set_default_para()
+    in_range = inputs.get("range")
 
-    util.check_kernel_name(kernel_name)
-    # util.check_dtype_rule(offset_w.dtype, ['int32'])
-    util.check_dtype_rule(in_dtype, ['float16'])
-    util.check_dtype_rule(w_dtype, ['float16'])
-    util.check_dtype_rule(outputs.get("dtype"), ['float16'])
+    check_para.check_kernel_name(kernel_name)
+    check_para.check_dtype_rule(in_dtype, ['float16'])
+    check_para.check_dtype_rule(w_dtype, ['float16'])
+    check_para.check_dtype_rule(outputs.get("dtype"), ['float16'])
 
-    if (not isinstance(in_shape, (tuple, list))) or len(in_shape) != 4:
-        err_man.raise_err_should_be_4d("conv2d", "in_shape")
+    _check_4d_len(in_shape, "in_shape")
+    _check_4d_len(w_shape, "weights")
+    _check_4d_len(strides, "strides")
+    _check_4d_len(dilations, "dilations")
+    _check_4d_len(pads, "pads")
 
-    if (not isinstance(w_shape, (tuple, list))) or len(w_shape) != 4:
-        err_man.raise_err_should_be_4d("conv2d", "weights")
-
-    if len(strides) != 4:
-        err_man.raise_err_should_be_4d("conv2d", "strides")
-    if len(dilations) != 4:
-        err_man.raise_err_should_be_4d("conv2d", "dilations")
-    if len(pads) != 4:
-        err_man.raise_err_should_be_4d("conv2d", "pads")
-    if data_format not in all_fmt:
-        err_man.raise_err_input_format_invalid("conv2d", \
-            "input", ["NCHW", "NHWC"], data_format)
+    _check_format(data_format, ("NCHW", "NHWC"), "input")
+    _check_format(w_format, ("NCHW", "NHWC", "HWCN"), "weights")
     if in_format != data_format:
         err_man.raise_err_specific_user("conv2d", "in_format != data_format")
-    if w_format not in all_fmt and w_format != "HWCN":
-        err_man.raise_err_input_format_invalid("conv2d", \
-            "input", ["NCHW", "NHWC"], data_format)
 
-    pos_n, pos_c, pos_h, pos_w = pos_from_format(data_format)
-    w_pos_n, w_pos_c, w_pos_h, w_pos_w = pos_from_format(w_format)
-    in_shape = [in_shape[pos_n], in_shape[pos_c], in_shape[pos_h], in_shape[pos_w]]
-    w_shape = [w_shape[w_pos_n], w_shape[w_pos_c], w_shape[w_pos_h], w_shape[w_pos_w]]
-    strides = [strides[pos_n], strides[pos_c], strides[pos_h], strides[pos_w]]
-    dilations = [dilations[pos_n], dilations[pos_c], dilations[pos_h], dilations[pos_w]]
-    if len(fmap_range) == 5:
-        fmap_range = [fmap_range[pos_n], (in_shape[pos_c], in_shape[pos_c]),
-                      fmap_range[2], fmap_range[3]]
-    else:
-        fmap_range = [fmap_range[pos_n], fmap_range[pos_c],
-                      fmap_range[pos_h], fmap_range[pos_w]]
+    in_shape = _get_shape_nchw(in_shape, in_format)
+    w_shape = _get_shape_nchw(w_shape, w_format)
+    pads, strides, dilations = _get_attrs(pads, strides, dilations, data_format)
 
-    dynamic_mode = config_dynamic_mode(in_shape, w_shape)
-    if dynamic_mode not in ("dynamic_hw", "dynamic_batch"):
-        err_man.raise_err_specific_user("conv2d", \
-            "Only dynamic_hw and dynamic_batch are supported currently")
-    dynamic_para = {
-        "dynamic_mode": dynamic_mode,
-        "fmap_range": fmap_range
-    }
-
-    in_shape, w_shape = \
-        te.lang.cce.check_conv_shape(in_shape, w_shape, *pads, *strides[2:],
-                                     in_dtype, w_dtype, fusion_para,
-                                     optim_dict, *dilations[2:], dynamic_para)
+    optim_dict, fusion_para = _set_default_para()
+    in_shape, w_shape = _round_channel(in_shape, w_shape, in_dtype, w_dtype)
+    fmap_range = _get_fmap_range(in_range, in_shape, in_format)
 
     return in_shape, w_shape, pads, strides, dilations, in_dtype, w_dtype, \
-        optim_dict, fmap_range, w_range, dynamic_mode
+        optim_dict, fusion_para, fmap_range
 
 
-def calc_shape(shape_in, shape_w, in_dtype, w_dtype, optim_dict):
+def _round_channel(shape_in, shape_w, in_dtype, w_dtype):
+    if shape_in[1] != shape_w[1]:
+        err_man.raise_err_scene_equal_limitation(
+            "conv2d", "input feature map channel", "filter channel")
+
+    block_size_k = tbe_platform.CUBE_MKN[in_dtype]['mac'][1]
+    shape_in[1] = _ceil(shape_in[1], block_size_k) * block_size_k
+    shape_in[1] = ((shape_in[1] + block_size_k - 1) //
+                   block_size_k) * block_size_k
+
+    shape_w[1] = _ceil(shape_in[1], block_size_k) * block_size_k
+    w_block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
+    shape_w[0] = _ceil(shape_w[0], w_block_size_n) * w_block_size_n
+
+    return shape_in, shape_w
+
+
+def _get_fmap_range(in_range, in_shape, in_format):
+    if len(in_range) == FORMAT_4D_DIMS:
+        pos_n, pos_c, pos_h, pos_w = _pos_from_format(in_format)
+        fmap_range = [in_range[pos_n], in_range[pos_c],
+                      in_range[pos_h], in_range[pos_w]]
+    # range in NC1HWC0 format sometimes
+    elif len(in_range) == FORMAT_5D_DIMS:
+        fmap_range = [in_range[N_DIM], (in_shape[1], in_shape[1]),
+                      in_range[H_DIM], in_range[W_DIM]]
+    else:
+        raise RuntimeError("range format should be same as input format")
+    return [tuple(r) for r in fmap_range]
+
+
+def _get_attrs(padding, strides, dilations, data_format):
+    pos_n, pos_c, pos_h, pos_w = _pos_from_format(data_format)
+    dilations = [dilations[pos_n], dilations[pos_c], dilations[pos_h], dilations[pos_w]]
+    strides = [strides[pos_n], strides[pos_c], strides[pos_h], strides[pos_w]]
+
+    return padding, strides, dilations
+
+
+def _get_shape_nchw(shape_in, format_in):
+    pos_n, pos_c, pos_h, pos_w = _pos_from_format(format_in)
+    return [shape_in[pos_n], shape_in[pos_c], shape_in[pos_h], shape_in[pos_w]]
+
+
+def _calc_shape(shape_in, shape_w, in_dtype, w_dtype, optim_dict):
     """
     calculate shape
     """
 
     batch_size, in_channel, feature_map_h, feature_map_w = shape_in
-    block_size_k = CUBE_MKN[in_dtype]['mac'][1]
+    block_size_k = tbe_platform.CUBE_MKN[in_dtype]['mac'][1]
     fmap_shape_nc1hwc0 = [batch_size,
                           (in_channel + block_size_k - 1) // block_size_k,
                           feature_map_h, feature_map_w, block_size_k]
 
     out_channel, in_channel_weight, filter_h, filter_w = shape_w
-    block_size_k = CUBE_MKN[w_dtype]['mac'][1]
-    block_size_n = CUBE_MKN[w_dtype]['mac'][2]
+    block_size_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
+    block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     if optim_dict["c0_optim_flg"]:
-        filter_shape_frac_z = ((4 * filter_h * filter_w + block_size_k - 1) \
-                               // block_size_k,
-                               out_channel // block_size_n, block_size_n,
-                               block_size_k)
+        filter_shape_frac_z = (
+            (4 * filter_h * filter_w + block_size_k - 1) // block_size_k,
+            out_channel // block_size_n, block_size_n, block_size_k)
     else:
-        filter_shape_frac_z = (in_channel_weight * filter_h * filter_w \
-                               // block_size_k,
-                               out_channel // block_size_n, block_size_n,
-                               block_size_k)
+        filter_shape_frac_z = (
+            in_channel_weight * filter_h * filter_w // block_size_k,
+            out_channel // block_size_n, block_size_n, block_size_k)
     return fmap_shape_nc1hwc0, filter_shape_frac_z
 
 
-@te.op.register_fusion_compute("Conv2D")
+@tbe_platform.register_fusion_compute("Conv2D")
 def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
                           dsl_flag=True):
@@ -207,16 +225,17 @@ def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pad
     fusion_util.check_fusion_input([weights])
 
     # set fusion build config
-    build_cfg = get_fusion_build_cfg()
+    build_cfg = tbe_platform.get_fusion_build_cfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
 
-    return conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-                          groups, data_format, offset_x, kernel_name, dsl_flag)
+    return _conv2d_compute(
+        inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+        groups, data_format, offset_x, kernel_name, dsl_flag)
 
 
-def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-                   groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
-                   dsl_flag=True):
+def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+                    groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
+                    dsl_flag=True):
 
     """
     conv2d compute
@@ -256,83 +275,56 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dila
     """
 
     res_dtype = "float16"
-    mad_dtype = 'float32'
-    if isinstance(inputs, dict) and isinstance(weights, dict):
-        shape_fm, shape_filter, pads, strides, dilations, in_dtype, w_dtype, \
-        optim_dict, fmap_range, _, dynamic_mode = check_and_config_para(
+    if not (isinstance(inputs, dict) and isinstance(weights, dict)):
+        err_man.raise_err_specific_user(
+            "conv2d", "In op[inputs], [weights] must be dict")
+
+    shape_fm, shape_filter, pads, strides, dilations, in_dtype, w_dtype, \
+        optim_dict, fusion_para, fmap_range = _check_and_config_para(
             inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
             data_format, offset_x, kernel_name)
 
-        fmap_shape_nc1hwc0, filter_shape_frac_z = calc_shape(
-            shape_fm, shape_filter, in_dtype, w_dtype, optim_dict)
-        if dynamic_mode == "dynamic_hw":
-            fmap_shape_nc1hwc0[2] = operation.var("fmap_h", tuple(fmap_range[2]))
-            fmap_shape_nc1hwc0[3] = operation.var("fmap_w", tuple(fmap_range[3]))
-            operation.add_exclude_bound_var(fmap_shape_nc1hwc0[2])
-            operation.add_exclude_bound_var(fmap_shape_nc1hwc0[3])
-        elif dynamic_mode == "dynamic_batch":
-            fmap_shape_nc1hwc0[0] = operation.var("batch_n", tuple(fmap_range[0]))
-            operation.add_exclude_bound_var(fmap_shape_nc1hwc0[0])
+    fmap_shape_nc1hwc0, filter_shape_frac_z = _calc_shape(
+        shape_fm, shape_filter, in_dtype, w_dtype, optim_dict)
+    if fmap_shape_nc1hwc0[H_DIM] == -1 and fmap_shape_nc1hwc0[W_DIM] == -1:
+        fmap_shape_nc1hwc0[H_DIM] = tbe_platform.var("fmap_h", fmap_range[H_DIM])
+        fmap_shape_nc1hwc0[W_DIM] = tbe_platform.var("fmap_w", fmap_range[W_DIM])
+        h_o = tbe_platform.var("ho")
+        w_o = tbe_platform.var("wo")
+        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[H_DIM])
+        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[W_DIM])
+        tbe_platform.add_exclude_bound_var(h_o)
+        tbe_platform.add_exclude_bound_var(w_o)
+    elif fmap_shape_nc1hwc0[N_DIM] == -1:
+        fmap_shape_nc1hwc0[N_DIM] = tbe_platform.var("batch_n", fmap_range[N_DIM])
+        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[N_DIM])
 
-        fmap = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
-        weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
+    fmap = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
+    weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
 
-        fmap_shape_ori = shape_fm
-        tgt_batch, tgt_cin, tgt_h, tgt_w = fmap_shape_ori
-    else:
-        err_man.raise_err_specific_user("conv2d",\
-            "In op[inputs], [weights] must be list or tuple")
-    filter_shape_ori = shape_filter
-    filter_h, filter_w = filter_shape_ori[2:]
-    tgt_cout, _, _, _ = filter_shape_ori
     pad_t, pad_b, pad_l, pad_r = pads
-    stride_h, stride_w = strides[2:]
-    dilate_h, dilate_w = dilations[2:]
-    optim_dict, fusion_para = set_default_para()
-    shape_ori = None
+    op_res = tbe.conv(fmap, weight,
+                  {"bias_tensor": bias,
+                   "offset_w_tensor": offset_w,
+                   "pad_h": [pad_t, pad_b], "pad_w": [pad_l, pad_r],
+                   "stride_h": strides[H_DIM], "stride_w": strides[W_DIM],
+                   "dilate_h": dilations[H_DIM], "dilate_w": dilations[W_DIM],
+                   "filter_h": shape_filter[H_DIM],
+                   "filter_w": shape_filter[W_DIM],
+                   "offset_x": offset_x,
+                   "res_dtype": res_dtype,
+                   "fusion_para": fusion_para,
+                   "kernel_name": kernel_name},
+                  optim_dict=optim_dict,
+                  dsl_flag=dsl_flag)
 
-    _, _, _ = CUBE_MKN[in_dtype]['mac']
-
-    var_map = OrderedDict()
-    if dynamic_mode == "dynamic_hw":
-        var_map['fmap_h'] = fmap_shape_nc1hwc0[2]
-        var_map['fmap_w'] = fmap_shape_nc1hwc0[3]
-        var_map['ho'] = operation.var('ho', tuple(fmap_range[2]))
-        var_map['wo'] = operation.var('wo', tuple(fmap_range[3]))
-        operation.add_exclude_bound_var(var_map['ho'])
-        operation.add_exclude_bound_var(var_map['wo'])
-    elif dynamic_mode == "dynamic_batch":
-        var_map['batch_n'] = fmap_shape_nc1hwc0[0]
-    else:
-        err_man.raise_err_specific_user("conv2d",\
-            "dynamic_only support dynamic_hw or dynamic_batch")
-
-    op_res = te.lang.cce.conv(fmap, weight,
-                              {"bias_tensor": bias,
-                               "offset_w_tensor": offset_w,
-                               "pad_h": [pad_t, pad_b], "pad_w": [pad_l, pad_r],
-                               "stride_h": stride_h, "stride_w": stride_w,
-                               "dilate_h": dilate_h, "dilate_w": dilate_w,
-                               "filter_h": filter_h, "filter_w": filter_w,
-                               "offset_x": offset_x,
-                               "res_dtype": res_dtype, "mad_dtype": mad_dtype,
-                               "fusion_para": fusion_para,
-                               "var_map": var_map, "shape_ori": shape_ori,
-                               "dynamic_mode": dynamic_mode,
-                               "fmap_range": fmap_range,
-                               "dynamic_tgt": [tgt_batch, tgt_cin, tgt_h, tgt_w, tgt_cout],
-                               "kernel_name": kernel_name},
-                              optim_dict=optim_dict,
-                              dsl_flag=dsl_flag)
-
-    te.op.add_compile_info("dynamic_mode", dynamic_mode)
-    return {"op_placeholder": (fmap, weight), "op_res": [op_res]}
+    return {"op_placeholder": [fmap, weight], "op_res": [op_res]}
 
 
-@te.op.register_operator("Conv2D")
-@util.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                       (tuple, list), (tuple, list), (tuple, list),
-                       int, str, int, str, str)
+@tbe_platform.register_operator("Conv2D")
+@check_para.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
+                             (tuple, list), (tuple, list), (tuple, list),
+                             int, str, int, str, str)
 def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
            groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d"):
     """
@@ -344,16 +336,16 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
 
     Parameters
     ----------
-    inputs: dict with keys(shape and dtype)
+    inputs: dict with keys(shape and dtype and range)
         input 4d feature map tensor
     weights: dict with keys(shape and dtype)
         input 4d weight tensor
-    outputs: dict with keys(shape and dtype)
-        output tensor, dtype must be assigned
     bias: dict with keys(shape and dtype) or None
         input bias tensor
     offset_w: keys(shape and dtype) or None
         input offset_w tensor
+    outputs: dict with keys(shape and dtype)
+        output tensor, dtype must be assigned
     strides: tuple/list of 4 integers
         stride on H/W, format sensitive
     pads: tuple/list of 4 integers
@@ -374,17 +366,22 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     None
     """
 
+    if bias:
+        raise RuntimeError("bias is not supported yet in dynamic conv2d")
+    if offset_w:
+        raise RuntimeError("offset_w is not supported yet in dynamic conv2d")
     bias = None
     offset_w = None
 
-    with te.op.compute():
-        res = conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-                             groups, data_format, offset_x, kernel_name, dsl_flag=False)
+    with tbe_platform.compute():
+        res = _conv2d_compute(
+            inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+            groups, data_format, offset_x, kernel_name, dsl_flag=False)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res.get("op_res"))
-    tensor_list = [res.get("op_placeholder")[0], res.get("op_placeholder")[1], res.get("op_res")[0]]
+        sch = tbe.auto_schedule(res.get("op_res"))
 
+    tensor_list = res.get("op_placeholder") + res.get("op_res")
     config = {
         "print_ir": False,
         "name": kernel_name,
@@ -392,4 +389,4 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
 
-    te.lang.dynamic.build(sch, config)
+    dynamic.build(sch, config)

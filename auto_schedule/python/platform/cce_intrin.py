@@ -1,53 +1,60 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 CCE related intrinsics
 """
 # pylint: disable=too-many-lines, unused-import
 from __future__ import absolute_import as _abs
 
-from functools import reduce as functools_reduce
+from functools import reduce as _reduce
 
-from te import tvm
-from . import cce_conf
-from . import cce_runtime
-from . import cce_params as param
-from . import cce_util
+from te.platform import cce_conf
+from te.platform import cce_params
+from te.platform import cce_util
+
+from te.tvm.ir_builder import create as _create
+from te.tvm.intrin import call_extern
+from te.tvm import make as _make
+from te.tvm.tensor_intrin import decl_tensor_intrin
+from te.tvm import api as tvm
 
 # the limit of the nesting depth in the generated CCE,
 # if num_segments > MAX_BRACKET_DEPTH, stackoverflow,
 # the number was tested by experiment
 MAX_BRACKET_DEPTH = 250
 
+
 # pylint: disable=too-many-locals
 def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
     """Store intrinsics"""
-    wgt_lanes = param.WGT_ELEM_BYTES*8 // param.WGT_WIDTH
-    if wgt_lanes != param.BLOCK_OUT * param.BLOCK_REDUCE:
+    wgt_lanes = cce_params.WGT_ELEM_BYTES*8 // cce_params.WGT_WIDTH
+    if wgt_lanes != cce_params.BLOCK_OUT * cce_params.BLOCK_REDUCE:
         raise RuntimeError(
             "param.WGT_WIDTH not equal to param.BLOCK_OUT*param.BLOCK_REDUCE.")
-    wgt_shape = (input_k // param.BLOCK_REDUCE, input_n // param.BLOCK_OUT,
-                 param.BLOCK_OUT, param.BLOCK_REDUCE)
+    wgt_shape = \
+        (input_k // cce_params.BLOCK_REDUCE, input_n // cce_params.BLOCK_OUT,
+         cce_params.BLOCK_OUT, cce_params.BLOCK_REDUCE)
     if wgt_shape[2]*wgt_shape[3] != wgt_lanes:
         raise RuntimeError("Shapes not equal.")
 
-    inp_lanes = param.INP_ELEM_BYTES*8 // param.INP_WIDTH
-    if inp_lanes != param.BLOCK_IN*param.BLOCK_REDUCE:
+    inp_lanes = cce_params.INP_ELEM_BYTES*8 // cce_params.INP_WIDTH
+    if inp_lanes != cce_params.BLOCK_IN*cce_params.BLOCK_REDUCE:
         raise RuntimeError("Shapes not equal.")
-    inp_shape = (input_m // param.BLOCK_IN, input_k // param.BLOCK_REDUCE,
-                 param.BLOCK_IN, param.BLOCK_REDUCE)
+    inp_shape = \
+        (input_m // cce_params.BLOCK_IN, input_k // cce_params.BLOCK_REDUCE,
+         cce_params.BLOCK_IN, cce_params.BLOCK_REDUCE)
     if inp_shape[2]*inp_shape[3] != inp_lanes:
         raise RuntimeError("Shapes not equal.")
     if inp_shape[1] != wgt_shape[0]:
@@ -55,11 +62,12 @@ def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
     if inp_shape[3] != wgt_shape[3]:
         raise RuntimeError("Shapes not equal.")
 
-    out_lanes = param.OUT_ELEM_BYTES*8 // param.OUT_WIDTH
-    if out_lanes != param.BLOCK_OUT*param.BLOCK_IN:
+    out_lanes = cce_params.OUT_ELEM_BYTES*8 // cce_params.OUT_WIDTH
+    if out_lanes != cce_params.BLOCK_OUT*cce_params.BLOCK_IN:
         raise RuntimeError("Shapes not equal.")
-    out_shape = (input_n // param.BLOCK_OUT, input_m // param.BLOCK_IN,
-                 param.BLOCK_IN, param.BLOCK_OUT)
+    out_shape = \
+        (input_n // cce_params.BLOCK_OUT, input_m // cce_params.BLOCK_IN,
+         cce_params.BLOCK_IN, cce_params.BLOCK_OUT)
     if out_shape[2]*out_shape[3] != out_lanes:
         raise RuntimeError("Shapes not equal.")
     if out_shape[0] != wgt_shape[1]:
@@ -67,28 +75,31 @@ def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
     if out_shape[1] != inp_shape[0]:
         raise RuntimeError("Shapes not equal.")
     wgt = tvm.placeholder(wgt_shape,
-                          dtype="float%d" % param.WGT_WIDTH,
-                          name=param.scope_cb)
+                          dtype="float%d" % cce_params.WGT_WIDTH,
+                          name=cce_params.scope_cb)
     inp = tvm.placeholder(inp_shape,
-                          dtype="float%d" % param.INP_WIDTH,
-                          name=param.scope_ca)
+                          dtype="float%d" % cce_params.INP_WIDTH,
+                          name=cce_params.scope_ca)
     res_k2 = tvm.reduce_axis((0, wgt_shape[0]), name="k2")
     res_k1 = tvm.reduce_axis((0, wgt_shape[3]), name="k1")
-    out_dtype = "float%d" % param.OUT_WIDTH
+    out_dtype = "float%d" % cce_params.OUT_WIDTH
     out = tvm.compute(out_shape,
-                      lambda y, x, i, j: tvm.sum(inp[x, res_k2, i, res_k1].astype(out_dtype)*
+                      lambda y, x, i, j: tvm.sum(inp[x, res_k2, i, res_k1].astype(out_dtype) *
                                                  wgt[res_k2, y, j, res_k1].astype(out_dtype),
                                                  axis=[res_k2, res_k1]),
                       name="out")
     wgt_layout = tvm.decl_buffer(
-        wgt.shape, wgt.dtype, param.scope_cb,
-        scope=param.scope_cb, offset_factor=wgt_lanes, data_alignment=wgt_lanes)
+        wgt.shape, wgt.dtype, cce_params.scope_cb,
+        scope=cce_params.scope_cb, offset_factor=wgt_lanes,
+        data_alignment=wgt_lanes)
     inp_layout = tvm.decl_buffer(
-        inp.shape, inp.dtype, param.scope_ca,
-        scope=param.scope_ca, offset_factor=inp_lanes, data_alignment=inp_lanes)
+        inp.shape, inp.dtype, cce_params.scope_ca,
+        scope=cce_params.scope_ca, offset_factor=inp_lanes,
+        data_alignment=inp_lanes)
     out_layout = tvm.decl_buffer(
-        out.shape, out.dtype, param.scope_cc,
-        scope=param.scope_cc, offset_factor=out_lanes, data_alignment=out_lanes)
+        out.shape, out.dtype, cce_params.scope_cc,
+        scope=cce_params.scope_cc, offset_factor=out_lanes,
+        data_alignment=out_lanes)
 
     def intrin_func(ins, outs):
         """
@@ -101,10 +112,10 @@ def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
             """
             instr fuction
             """
-            ib_ins = tvm.ir_builder.create()
-            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope", 3)
+            ib_ins = _create()
+            ib_ins.scope_attr(cce_params.CCE_AXIS, "coproc_scope", 3)
             control_c_bit = 1 if index == 0 else 0
-            ib_ins.emit(tvm.call_extern(
+            ib_ins.emit(call_extern(
                 dout.dtype, "mad",
                 dout.access_ptr("rw"),
                 dinp.access_ptr("r"),
@@ -116,16 +127,16 @@ def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
             return ib_ins.get()
 
         # return a triple of normal-set, reset, update
-        nop = tvm.make.Evaluate(0)
+        nop = _make.Evaluate(0)
         if mock:
             return (nop, nop, nop)
         return (instr(0), None, instr(2))
 
-    return tvm.decl_tensor_intrin(out.op, intrin_func,
-                                  name="mad",
-                                  binds={inp: inp_layout,
-                                         wgt: wgt_layout,
-                                         out: out_layout})
+    return decl_tensor_intrin(out.op, intrin_func, name="mad",
+                              binds={inp: inp_layout,
+                                     wgt: wgt_layout,
+                                     out: out_layout})
+
 
 def flatten_indice(data, indice):
     """
@@ -236,14 +247,14 @@ def set_mask(length):
 
 
 # pylint: disable=too-many-statements
-def intrin_factor(buffer_scope=param.scope_ubuf):
+def intrin_factor(buffer_scope=cce_params.scope_ubuf):
     """
     factory function For tensorize of cce. Using closure tech of Python.
     This function is a API to generate inner explicit functions for tensorize.
 
     Parameters
     ----------
-    None
+    buffer_scope
 
     Returns
     -------
@@ -370,14 +381,14 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 thred_buf = __apply_for_new_alloc(ib_instance, dst_dtype,
                                                   (cal_once_len,),
                                                   scope=buffer_scope)
-                ib_instance.emit(tvm.call_extern(
+                ib_instance.emit(call_extern(
                     dst_dtype, "vector_dup",
                     thred_buf.access_ptr("rw"),
                     temp_thredhold, 1, 1, 1, 8, 8))
 
                 bias_buf = __apply_for_new_alloc(ib_instance, dst_dtype, (cal_once_len,),
                                                  scope=buffer_scope)
-                ib_instance.emit(tvm.call_extern(
+                ib_instance.emit(call_extern(
                     dst_dtype, "vector_dup",
                     bias_buf.access_ptr("rw"),
                     temp_bias, 1, 1, 1, 8, 8))
@@ -393,7 +404,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     thred_buf = __apply_for_new_alloc(ib_instance, "float16",
                                                       src_buffers[0].shape,
                                                       scope=buffer_scope)
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         "float16", "vector_dup",
                         thred_buf.access_ptr("rw"),
                         tvm.const(0, "float16"),
@@ -403,7 +414,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     bias_buf = __apply_for_new_alloc(ib_instance, "float16",
                                                      src_buffers[0].shape,
                                                      scope=buffer_scope)
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         "float16", "vector_dup",
                         bias_buf.access_ptr("rw"),
                         tvm.const(1, "float16"),
@@ -422,24 +433,22 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                                    dst_dtype,
                                                    src_buffers[0].shape,
                                                    scope=buffer_scope)
-                ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                 "vector_dup",
-                                                 scalar_buf.access_ptr("rw"),
-                                                 extern_args[0],
-                                                 dup_repeat_times if (
-                                                     dup_repeat_times != 0) else 1,
-                                                 1, 1, 8, 8))
+                ib_instance.emit(call_extern(
+                    dst_dtype, "vector_dup",
+                    scalar_buf.access_ptr("rw"),
+                    extern_args[0],
+                    dup_repeat_times if (dup_repeat_times != 0) else 1,
+                    1, 1, 8, 8))
                 bias_buf = __apply_for_new_alloc(ib_instance,
                                                  dst_dtype,
                                                  src_buffers[0].shape,
                                                  scope=buffer_scope)
-                ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                 "vector_dup",
-                                                 bias_buf.access_ptr("rw"),
-                                                 tvm.const(0, dtype=dst_dtype),
-                                                 dup_repeat_times if (
-                                                     dup_repeat_times != 0) else 1,
-                                                 1, 1, 8, 8))
+                ib_instance.emit(call_extern(
+                    dst_dtype, "vector_dup",
+                    bias_buf.access_ptr("rw"),
+                    tvm.const(0, dtype=dst_dtype),
+                    dup_repeat_times if (dup_repeat_times != 0) else 1,
+                    1, 1, 8, 8))
 
             # pylint: disable=too-many-nested-blocks
             if repeat_times > 0:
@@ -451,27 +460,22 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     with ib_instance.for_range(0, repeat_times,
                                                name="cmp_index") as cmp_index:
                         repeat_offset = cal_once_len * cmp_index
-                        dst_repeat_offset = (
-                            cal_once_len // reduce_factor) * cmp_index
-                        ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                         op_cmd,
-                                                         src_buffers[0].access_ptr(
-                                                             "r",
-                                                             offset=repeat_offset),
-                                                         scalar_buf.access_ptr(
-                                                             "r",
-                                                             offset=repeat_offset),
-                                                         1, 1, 1, 1, 8, 8, 8))
-                        ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                         "vsel",
-                                                         dst_buffers[0].access_ptr(
-                                                             "w",
-                                                             offset=dst_repeat_offset),
-                                                         src_buffers[1].access_ptr(
-                                                             "r",
-                                                             offset=repeat_offset),
-                                                         bias_buf.access_ptr("r"),
-                                                         1, 1, 1, 1, 8, 8, 8))
+                        dst_repeat_offset = \
+                            (cal_once_len // reduce_factor) * cmp_index
+                        ib_instance.emit(call_extern(
+                            dst_dtype, op_cmd,
+                            src_buffers[0].access_ptr(
+                                "r", offset=repeat_offset),
+                            scalar_buf.access_ptr("r", offset=repeat_offset),
+                            1, 1, 1, 1, 8, 8, 8))
+                        ib_instance.emit(
+                            call_extern(dst_dtype, "vsel",
+                                        dst_buffers[0].access_ptr(
+                                            "w", offset=dst_repeat_offset),
+                                        src_buffers[1].access_ptr(
+                                            "r", offset=repeat_offset),
+                                        bias_buf.access_ptr("r"),
+                                        1, 1, 1, 1, 8, 8, 8))
                 else:
                     while local_repeat_times > 0:
                         if local_repeat_times > 255:
@@ -484,21 +488,21 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             with ib_instance.for_range(0, tmp_repeat_times,
                                                        name="cmp_index") as cmp_index:
                                 tmp_src_repeat_offset = cal_once_len * cmp_index
-                                tmp_dst_repeat_offset = (
-                                    cal_once_len // reduce_factor) * cmp_index
-                                ib_instance.emit(tvm.call_extern(
+                                tmp_dst_repeat_offset = \
+                                    (cal_once_len // reduce_factor) * cmp_index
+                                ib_instance.emit(call_extern(
                                     dst_dtype, "vcmp_" + extern_args[0],
-                                    src_buffers[0].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
-                                    thred_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8,
-                                    8))
+                                    src_buffers[0].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
+                                    thred_buf.access_ptr("r"),
+                                    1, 1, 1, 1, 8, 8, 8))
 
-                                ib_instance.emit(tvm.call_extern(
+                                ib_instance.emit(call_extern(
                                     dst_dtype, "vsel",
-                                    dst_buffers[0].access_ptr("rw",
-                                                              offset=tmp_dst_repeat_offset),
-                                    src_buffers[0].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
+                                    dst_buffers[0].access_ptr(
+                                        "rw", offset=tmp_dst_repeat_offset),
+                                    src_buffers[0].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
                                     bias_buf.access_ptr("r"),
                                     1, 1, 1, 1, 8, 8, 8))
                         elif op_cmd == 'vcmpsel':
@@ -506,123 +510,112 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             with ib_instance.for_range(0, tmp_repeat_times,
                                                        name="cmp_index") as cmp_index:
                                 tmp_src_repeat_offset = cal_once_len * cmp_index
-                                tmp_dst_repeat_offset = (
-                                    cal_once_len // reduce_factor) * cmp_index
-                                ib_instance.emit(tvm.call_extern(
+                                tmp_dst_repeat_offset = \
+                                    (cal_once_len // reduce_factor) * cmp_index
+                                ib_instance.emit(call_extern(
                                     dst_dtype, "vcmp_" + extern_args[0],
-                                    src_buffers[0].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
-                                    src_buffers[1].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
+                                    src_buffers[0].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
+                                    src_buffers[1].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
                                     1, 1, 1, 1, 8, 8, 8))
 
-                                ib_instance.emit(tvm.call_extern(
+                                ib_instance.emit(call_extern(
                                     dst_dtype, "vsel",
-                                    dst_buffers[0].access_ptr("rw",
-                                                              offset=tmp_dst_repeat_offset),
-                                    src_buffers[0].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
-                                    src_buffers[1].access_ptr("r",
-                                                              offset=tmp_src_repeat_offset),
+                                    dst_buffers[0].access_ptr(
+                                        "rw", offset=tmp_dst_repeat_offset),
+                                    src_buffers[0].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
+                                    src_buffers[1].access_ptr(
+                                        "r", offset=tmp_src_repeat_offset),
                                     1, 1, 1, 1, 8, 8, 8))
                         elif op_cmd == 'vlogic':
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 "float16", "vconv_s82f16",
                                 new_src_buffer0.access_ptr(
-                                    "w",
-                                    offset=repeat_src_offset),
-                                src_buffers[0].access_ptr("r",
-                                                          offset=repeat_src_offset),
+                                    "w", offset=repeat_src_offset),
+                                src_buffers[0].access_ptr(
+                                    "r", offset=repeat_src_offset),
                                 tmp_repeat_times, 1, 1, 8, 4))
                             if extern_args[0] != 'not':
-                                ib_instance.emit(tvm.call_extern(
+                                ib_instance.emit(call_extern(
                                     "float16", "vconv_s82f16",
                                     new_src_buffer1.access_ptr(
-                                        "w",
-                                        offset=repeat_src_offset),
-                                    src_buffers[1].access_ptr("r",
-                                                              offset=repeat_src_offset),
+                                        "w", offset=repeat_src_offset),
+                                    src_buffers[1].access_ptr(
+                                        "r", offset=repeat_src_offset),
                                     tmp_repeat_times, 1, 1, 8, 4))
 
                             if extern_args[0] == 'and':
-                                ib_instance.emit(tvm.call_extern("float16", "vmul",
-                                                                 temp_out.access_ptr(
-                                                                     "rw",
-                                                                     offset=repeat_dst_offset),
-                                                                 new_src_buffer0.access_ptr(
-                                                                     "r",
-                                                                     offset=repeat_src_offset),
-                                                                 new_src_buffer1.access_ptr(
-                                                                     "r",
-                                                                     offset=repeat_src_offset),
-                                                                 tmp_repeat_times, 1, 1,
-                                                                 1, 8, 8, 8))
+                                ib_instance.emit(call_extern(
+                                    "float16", "vmul",
+                                    temp_out.access_ptr(
+                                        "rw", offset=repeat_dst_offset),
+                                    new_src_buffer0.access_ptr(
+                                        "r", offset=repeat_src_offset),
+                                    new_src_buffer1.access_ptr(
+                                        "r", offset=repeat_src_offset),
+                                    tmp_repeat_times, 1, 1, 1, 8, 8, 8))
                             elif extern_args[0] == 'or' or extern_args[0] == 'not':
                                 if extern_args[0] == 'or':
-                                    ib_instance.emit(tvm.call_extern("float16", "vadd",
-                                                                     temp_andor_out.access_ptr(
-                                                                         "rw",
-                                                                         offset=repeat_dst_offset),
-                                                                     new_src_buffer0.access_ptr(
-                                                                         "r",
-                                                                         offset=repeat_src_offset),
-                                                                     new_src_buffer1.access_ptr(
-                                                                         "r",
-                                                                         offset=repeat_src_offset),
-                                                                     tmp_repeat_times, 1,
-                                                                     1, 1, 8, 8, 8))
+                                    ib_instance.emit(call_extern(
+                                        "float16", "vadd",
+                                        temp_andor_out.access_ptr(
+                                            "rw", offset=repeat_dst_offset),
+                                        new_src_buffer0.access_ptr(
+                                            "r", offset=repeat_src_offset),
+                                        new_src_buffer1.access_ptr(
+                                            "r", offset=repeat_src_offset),
+                                        tmp_repeat_times, 1, 1, 1, 8, 8, 8))
                                 elif extern_args[0] == 'not':
-                                    ib_instance.emit(tvm.call_extern("float16", "vsub",
-                                                                     temp_andor_out.access_ptr(
-                                                                         "rw",
-                                                                         offset=repeat_dst_offset),
-                                                                     new_src_buffer0.access_ptr(
-                                                                         "r",
-                                                                         offset=repeat_src_offset),
-                                                                     bias_buf.access_ptr(
-                                                                         "r"),
-                                                                     tmp_repeat_times, 1,
-                                                                     1, 1, 8, 8, 8))
+                                    ib_instance.emit(call_extern(
+                                        "float16", "vsub",
+                                        temp_andor_out.access_ptr(
+                                            "rw", offset=repeat_dst_offset),
+                                        new_src_buffer0.access_ptr(
+                                            "r", offset=repeat_src_offset),
+                                        bias_buf.access_ptr("r"),
+                                        tmp_repeat_times, 1, 1, 1, 8, 8, 8))
 
                                 with ib_instance.for_range(0, tmp_repeat_times,
                                                            name="cmp_index") as cmp_index:
                                     tmp_src_repeat_offset = cal_once_len * cmp_index
                                     tmp_dst_repeat_offset = (
                                         cal_once_len // reduce_factor) * cmp_index
-                                    ib_instance.emit(tvm.call_extern(
+                                    ib_instance.emit(call_extern(
                                         "float16", "vcmp_eq",
-                                        temp_andor_out.access_ptr("r",
-                                                                  offset=tmp_src_repeat_offset),
+                                        temp_andor_out.access_ptr(
+                                            "r", offset=tmp_src_repeat_offset),
                                         thred_buf.access_ptr("r"),
                                         1, 1, 1, 1, 8, 8, 8))
 
-                                    ib_instance.emit(tvm.call_extern(
+                                    ib_instance.emit(call_extern(
                                         "float16", "vsel",
-                                        temp_out.access_ptr("rw",
-                                                            offset=tmp_dst_repeat_offset),
-                                        temp_andor_out.access_ptr("r",
-                                                                  offset=tmp_src_repeat_offset),
+                                        temp_out.access_ptr(
+                                            "rw",
+                                            offset=tmp_dst_repeat_offset),
+                                        temp_andor_out.access_ptr(
+                                            "r", offset=tmp_src_repeat_offset),
                                         bias_buf.access_ptr("r"),
                                         1, 1, 1, 1, 8, 8, 8))
 
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 "float16", "vconv_f162s8",
-                                dst_buffers[0].access_ptr("rw",
-                                                          offset=repeat_dst_offset),
-                                temp_out.access_ptr("r",
-                                                    offset=repeat_dst_offset),
+                                dst_buffers[0].access_ptr(
+                                    "rw", offset=repeat_dst_offset),
+                                temp_out.access_ptr(
+                                    "r", offset=repeat_dst_offset),
                                 tmp_repeat_times, 1, 1, 4, 8))
                         else:
-                            concat_args = {}
-                            concat_args["src_buffers"] = src_buffers
-                            concat_args["dst_buffers"] = dst_buffers
-                            concat_args["repeat_src_offset"] = repeat_src_offset
-                            concat_args["repeat_dst_offset"] = repeat_dst_offset
-                            concat_args["repeat_times"] = tmp_repeat_times
-                            concat_args["extern_args"] = extern_args
-                            concat_args["args"] = args
+                            concat_args = {
+                                "src_buffers": src_buffers,
+                                "dst_buffers": dst_buffers,
+                                "repeat_src_offset": repeat_src_offset,
+                                "repeat_dst_offset": repeat_dst_offset,
+                                "repeat_times": tmp_repeat_times,
+                                "extern_args": extern_args, "args": args}
                             tmp_args = __concat_args(concat_args)
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 dst_dtype, op_cmd, *tmp_args))
 
                         local_repeat_times -= 255
@@ -632,7 +625,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
             if remain_len > 0:
                 mask1, mask2 = set_mask(remain_len)
-                ib_instance.emit(tvm.call_extern(
+                ib_instance.emit(call_extern(
                     dst_dtype, "set_vector_mask",
                     tvm.const(mask1, dtype="uint64"),
                     tvm.const(mask2, dtype="uint64")))
@@ -641,141 +634,135 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 repeat_dst_offset = repeat_times * cal_once_len
 
                 if op_cmd.lower().find("vcmp_") != -1:
-                    ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                     op_cmd,
-                                                     src_buffers[0].access_ptr(
-                                                         "r",
-                                                         offset=repeat_src_offset),
-                                                     scalar_buf.access_ptr("r"),
-                                                     1, 1, 1, 1, 8, 8, 8))
-                    ib_instance.emit(tvm.call_extern(dst_dtype,
-                                                     "vsel",
-                                                     dst_buffers[0].access_ptr(
-                                                         "rw",
-                                                         offset=repeat_dst_offset),
-                                                     src_buffers[1].access_ptr(
-                                                         "r",
-                                                         offset=repeat_src_offset),
-                                                     bias_buf.access_ptr("r"),
-                                                     1, 1, 1, 1, 8, 8, 8))
+                    ib_instance.emit(
+                        call_extern(
+                            dst_dtype, op_cmd,
+                            src_buffers[0].access_ptr(
+                                "r", offset=repeat_src_offset),
+                            scalar_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
+                    ib_instance.emit(
+                        call_extern(
+                            dst_dtype, "vsel",
+                            dst_buffers[0].access_ptr(
+                                "rw", offset=repeat_dst_offset),
+                            src_buffers[1].access_ptr(
+                                "r", offset=repeat_src_offset),
+                            bias_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
                 elif op_cmd == 'vcond':
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         dst_dtype, "vcmp_" + extern_args[0],
-                        src_buffers[0].access_ptr("r",
-                                                  offset=repeat_src_offset),
+                        src_buffers[0].access_ptr(
+                            "r", offset=repeat_src_offset),
                         thred_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         dst_dtype, "vsel",
-                        dst_buffers[0].access_ptr("rw",
-                                                  offset=repeat_dst_offset),
-                        src_buffers[0].access_ptr("r",
-                                                  offset=repeat_src_offset),
+                        dst_buffers[0].access_ptr(
+                            "rw", offset=repeat_dst_offset),
+                        src_buffers[0].access_ptr(
+                            "r", offset=repeat_src_offset),
                         bias_buf.access_ptr("r"),
                         1, 1, 1, 1, 8, 8, 8))
                 elif op_cmd == 'vcmpsel':
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         dst_dtype, "vcmp_" + extern_args[0],
-                        src_buffers[0].access_ptr("r",
-                                                  offset=repeat_src_offset),
-                        src_buffers[1].access_ptr("r",
-                                                  offset=repeat_src_offset), 1,
-                        1, 1, 1, 8, 8,
-                        8))
-                    ib_instance.emit(tvm.call_extern(
+                        src_buffers[0].access_ptr(
+                            "r", offset=repeat_src_offset),
+                        src_buffers[1].access_ptr(
+                            "r", offset=repeat_src_offset),
+                        1, 1, 1, 1, 8, 8, 8))
+                    ib_instance.emit(call_extern(
                         dst_dtype, "vsel",
-                        dst_buffers[0].access_ptr("rw",
-                                                  offset=repeat_dst_offset),
-                        src_buffers[0].access_ptr("r",
-                                                  offset=repeat_src_offset),
-                        src_buffers[1].access_ptr("r",
-                                                  offset=repeat_src_offset),
+                        dst_buffers[0].access_ptr(
+                            "rw", offset=repeat_dst_offset),
+                        src_buffers[0].access_ptr(
+                            "r", offset=repeat_src_offset),
+                        src_buffers[1].access_ptr(
+                            "r", offset=repeat_src_offset),
                         1, 1, 1, 1, 8, 8, 8))
                 elif op_cmd == 'vlogic':
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         "float16", "vconv_s82f16",
-                        new_src_buffer0.access_ptr("rw", offset=repeat_src_offset),
-                        src_buffers[0].access_ptr("r",
-                                                  offset=repeat_src_offset),
+                        new_src_buffer0.access_ptr(
+                            "rw", offset=repeat_src_offset),
+                        src_buffers[0].access_ptr(
+                            "r", offset=repeat_src_offset),
                         1, 1, 1, 8, 4))
                     if extern_args[0] != 'not':
-                        ib_instance.emit(tvm.call_extern(
+                        ib_instance.emit(call_extern(
                             "float16", "vconv_s82f16",
-                            new_src_buffer1.access_ptr("rw", offset=repeat_src_offset),
-                            src_buffers[1].access_ptr("r",
-                                                      offset=repeat_src_offset),
+                            new_src_buffer1.access_ptr(
+                                "rw", offset=repeat_src_offset),
+                            src_buffers[1].access_ptr(
+                                "r", offset=repeat_src_offset),
                             1, 1, 1, 8, 4))
 
                     if extern_args[0] == 'and':
-                        ib_instance.emit(tvm.call_extern("float16", "vmul",
-                                                         temp_out.access_ptr(
-                                                             "rw",
-                                                             offset=repeat_dst_offset),
-                                                         new_src_buffer0.access_ptr(
-                                                             "r",
-                                                             offset=repeat_src_offset),
-                                                         new_src_buffer1.access_ptr(
-                                                             "r",
-                                                             offset=repeat_src_offset),
-                                                         1, 1, 1, 1, 8, 8, 8))
+                        ib_instance.emit(
+                            call_extern(
+                                "float16", "vmul",
+                                temp_out.access_ptr(
+                                    "rw", offset=repeat_dst_offset),
+                                new_src_buffer0.access_ptr(
+                                    "r", offset=repeat_src_offset),
+                                new_src_buffer1.access_ptr(
+                                    "r", offset=repeat_src_offset),
+                                1, 1, 1, 1, 8, 8, 8))
                     elif extern_args[0] == 'or' or extern_args[0] == 'not':
                         if extern_args[0] == 'or':
-                            ib_instance.emit(tvm.call_extern("float16", "vadd",
-                                                             temp_andor_out.access_ptr(
-                                                                 "rw",
-                                                                 offset=repeat_dst_offset),
-                                                             new_src_buffer0.access_ptr(
-                                                                 "r",
-                                                                 offset=repeat_src_offset),
-                                                             new_src_buffer1.access_ptr(
-                                                                 "r",
-                                                                 offset=repeat_src_offset),
-                                                             1, 1, 1, 1, 8, 8, 8))
+                            ib_instance.emit(
+                                call_extern(
+                                    "float16", "vadd",
+                                    temp_andor_out.access_ptr(
+                                        "rw", offset=repeat_dst_offset),
+                                    new_src_buffer0.access_ptr(
+                                        "r", offset=repeat_src_offset),
+                                    new_src_buffer1.access_ptr(
+                                        "r", offset=repeat_src_offset),
+                                    1, 1, 1, 1, 8, 8, 8))
                         elif extern_args[0] == 'not':
-                            ib_instance.emit(tvm.call_extern("float16", "vsub",
-                                                             temp_andor_out.access_ptr(
-                                                                 "rw",
-                                                                 offset=repeat_dst_offset),
-                                                             new_src_buffer0.access_ptr(
-                                                                 "r",
-                                                                 offset=repeat_src_offset),
-                                                             bias_buf.access_ptr("r"),
-                                                             1, 1, 1, 1, 8, 8, 8))
-                        ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(
+                                call_extern(
+                                    "float16", "vsub",
+                                    temp_andor_out.access_ptr(
+                                        "rw", offset=repeat_dst_offset),
+                                    new_src_buffer0.access_ptr(
+                                        "r", offset=repeat_src_offset),
+                                    bias_buf.access_ptr("r"),
+                                    1, 1, 1, 1, 8, 8, 8))
+                        ib_instance.emit(call_extern(
                             "float16", "vcmp_eq",
-                            temp_andor_out.access_ptr("r",
-                                                      offset=repeat_src_offset),
+                            temp_andor_out.access_ptr(
+                                "r", offset=repeat_src_offset),
                             thred_buf.access_ptr("r"),
                             1, 1, 1, 1, 8, 8, 8))
 
-                        ib_instance.emit(tvm.call_extern(
+                        ib_instance.emit(call_extern(
                             "float16", "vsel",
                             temp_out.access_ptr("rw", offset=repeat_src_offset),
-                            temp_andor_out.access_ptr("r",
-                                                      offset=repeat_src_offset),
+                            temp_andor_out.access_ptr(
+                                "r", offset=repeat_src_offset),
                             bias_buf.access_ptr("r"),
                             1, 1, 1, 1, 8, 8, 8))
 
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         "float16", "vconv_f162s8",
-                        dst_buffers[0].access_ptr("rw",
-                                                  offset=repeat_dst_offset),
+                        dst_buffers[0].access_ptr(
+                            "rw", offset=repeat_dst_offset),
                         temp_out.access_ptr("r", offset=repeat_src_offset),
                         1, 1, 1, 4, 8))
                 else:
-                    concat_args = {}
-                    concat_args["src_buffers"] = src_buffers
-                    concat_args["dst_buffers"] = dst_buffers
-                    concat_args["repeat_src_offset"] = repeat_src_offset
-                    concat_args["repeat_dst_offset"] = repeat_dst_offset
-                    concat_args["repeat_times"] = 1
-                    concat_args["extern_args"] = extern_args
-                    concat_args["args"] = args
+                    concat_args = {
+                        "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                        "repeat_src_offset": repeat_src_offset,
+                        "repeat_dst_offset": repeat_dst_offset,
+                        "repeat_times": 1, "extern_args": extern_args,
+                        "args": args}
                     tmp_args = __concat_args(concat_args)
-                    ib_instance.emit(tvm.call_extern(dst_dtype, op_cmd, *tmp_args))
+                    ib_instance.emit(call_extern(dst_dtype, op_cmd, *tmp_args))
 
                 if reset_mask_pipe_line is not None:
                     mask1, mask2 = set_mask(128)
-                    ib_instance.emit(tvm.call_extern(
+                    ib_instance.emit(call_extern(
                         dst_dtype, "set_vector_mask",
                         tvm.const(mask1, dtype="uint64"),
                         tvm.const(mask2, dtype="uint64")))
@@ -793,19 +780,15 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     "vec_single_elewise only support ONE src buffer and ONE dst buffer ")
             if args is None:
                 args = [1, 1, 8, 8]
-            vec_cmd_factory_args = {}
-            vec_cmd_factory_args["ib_instance"] = ib_instance
-            vec_cmd_factory_args["op_cmd"] = op_cmd
-            vec_cmd_factory_args["src_buffers"] = src_buffers
-            vec_cmd_factory_args["dst_buffers"] = dst_buffers
-            vec_cmd_factory_args["op_length"] = op_length
-            vec_cmd_factory_args["reduce_factor"] = 1
-            vec_cmd_factory_args["base_pipeline"] = base_pipeline
-            vec_cmd_factory_args["pipeline_count_list"] = pipeline_count_list
-            vec_cmd_factory_args["reset_mask_pipe_line"] = reset_mask_pipe_line
-            vec_cmd_factory_args["extern_args"] = []
-            vec_cmd_factory_args["args"] = args
-            vec_cmd_factory_args["repeat_cal_dtype"] = None
+            vec_cmd_factory_args = {
+                "ib_instance": ib_instance, "op_cmd": op_cmd,
+                "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                "op_length": op_length, "reduce_factor": 1,
+                "base_pipeline": base_pipeline,
+                "pipeline_count_list": pipeline_count_list,
+                "reset_mask_pipe_line": reset_mask_pipe_line,
+                "extern_args": [], "args": args,
+                "repeat_cal_dtype": None}
             __vec_cmd_factory(vec_cmd_factory_args)
 
         # pylint: disable=too-many-arguments
@@ -818,22 +801,19 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             """
             if (len(src_buffers) != 1) or (len(dst_buffers) != 1):
                 raise RuntimeError(
-                    "vec_cast_elewise only support ONE src buffer and ONE dst buffer ")
+                    "vec_cast_elewise only support ONE src buffer "
+                    "and ONE dst buffer ")
             if args is None:
                 raise RuntimeError("vec_cast_elewise must specify args")
-            vec_cmd_factory_args = {}
-            vec_cmd_factory_args["ib_instance"] = ib_instance
-            vec_cmd_factory_args["op_cmd"] = op_cmd
-            vec_cmd_factory_args["src_buffers"] = src_buffers
-            vec_cmd_factory_args["dst_buffers"] = dst_buffers
-            vec_cmd_factory_args["op_length"] = op_length
-            vec_cmd_factory_args["reduce_factor"] = 1
-            vec_cmd_factory_args["base_pipeline"] = base_pipeline
-            vec_cmd_factory_args["pipeline_count_list"] = pipeline_count_list
-            vec_cmd_factory_args["reset_mask_pipe_line"] = reset_mask_pipe_line
-            vec_cmd_factory_args["extern_args"] = []
-            vec_cmd_factory_args["args"] = args
-            vec_cmd_factory_args["repeat_cal_dtype"] = repeat_cal_dtype
+            vec_cmd_factory_args = {
+                "ib_instance": ib_instance, "op_cmd": op_cmd,
+                "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                "op_length": op_length, "reduce_factor": 1,
+                "base_pipeline": base_pipeline,
+                "pipeline_count_list": pipeline_count_list,
+                "reset_mask_pipe_line": reset_mask_pipe_line,
+                "extern_args": [], "args": args,
+                "repeat_cal_dtype": repeat_cal_dtype}
             __vec_cmd_factory(vec_cmd_factory_args)
 
         # pylint: disable=too-many-arguments, len-as-condition
@@ -847,22 +827,19 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             if (len(src_buffers) != 1) or (len(dst_buffers) != 1) or (
                     len(extern_args) < 1):
                 raise RuntimeError(
-                    "vec_single_elewise only support ONE src buffer and ONE dst buffer ")
+                    "vec_single_elewise only support ONE src buffer "
+                    "and ONE dst buffer ")
             if args is None:
                 args = [1, 1, 8, 8]
-            vec_cmd_factory_args = {}
-            vec_cmd_factory_args["ib_instance"] = ib_instance
-            vec_cmd_factory_args["op_cmd"] = op_cmd
-            vec_cmd_factory_args["src_buffers"] = src_buffers
-            vec_cmd_factory_args["dst_buffers"] = dst_buffers
-            vec_cmd_factory_args["op_length"] = op_length
-            vec_cmd_factory_args["reduce_factor"] = 1
-            vec_cmd_factory_args["base_pipeline"] = base_pipeline
-            vec_cmd_factory_args["pipeline_count_list"] = pipeline_count_list
-            vec_cmd_factory_args["reset_mask_pipe_line"] = reset_mask_pipe_line
-            vec_cmd_factory_args["extern_args"] = extern_args
-            vec_cmd_factory_args["args"] = args
-            vec_cmd_factory_args["repeat_cal_dtype"] = None
+            vec_cmd_factory_args = {
+                "ib_instance": ib_instance, "op_cmd": op_cmd,
+                "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                "op_length": op_length, "reduce_factor": 1,
+                "base_pipeline": base_pipeline,
+                "pipeline_count_list": pipeline_count_list,
+                "reset_mask_pipe_line": reset_mask_pipe_line,
+                "extern_args": extern_args,
+                "args": args, "repeat_cal_dtype": None}
             __vec_cmd_factory(vec_cmd_factory_args)
 
         # pylint: disable=too-many-arguments
@@ -879,19 +856,15 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     "vec_binary_elewise only support TWO src buffer and ONE dst buffer ")
             if args is None:
                 args = [1, 1, 1, 8, 8, 8]
-            vec_cmd_factory_args = {}
-            vec_cmd_factory_args["ib_instance"] = ib_instance
-            vec_cmd_factory_args["op_cmd"] = op_cmd
-            vec_cmd_factory_args["src_buffers"] = src_buffers
-            vec_cmd_factory_args["dst_buffers"] = dst_buffers
-            vec_cmd_factory_args["op_length"] = op_length
-            vec_cmd_factory_args["reduce_factor"] = 1
-            vec_cmd_factory_args["base_pipeline"] = base_pipeline
-            vec_cmd_factory_args["pipeline_count_list"] = pipeline_count_list
-            vec_cmd_factory_args["reset_mask_pipe_line"] = reset_mask_pipe_line
-            vec_cmd_factory_args["extern_args"] = extern_args
-            vec_cmd_factory_args["args"] = args
-            vec_cmd_factory_args["repeat_cal_dtype"] = None
+            vec_cmd_factory_args = {
+                "ib_instance": ib_instance, "op_cmd": op_cmd,
+                "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                "op_length": op_length, "reduce_factor": 1,
+                "base_pipeline": base_pipeline,
+                "pipeline_count_list": pipeline_count_list,
+                "reset_mask_pipe_line": reset_mask_pipe_line,
+                "extern_args": extern_args,
+                "args": args, "repeat_cal_dtype": None}
             __vec_cmd_factory(vec_cmd_factory_args)
 
         # pylint: disable=too-many-arguments
@@ -905,22 +878,19 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             """
             if (len(src_buffers) != 2) or (len(dst_buffers) != 1):
                 raise RuntimeError(
-                    "vec_binary_elewise_compare only support TWO src buffer and ONE dst buffer ")
+                    "vec_binary_elewise_compare only support TWO src buffer "
+                    "and ONE dst buffer ")
             if args is None:
                 args = [1, 1, 1, 8, 8, 8]
-            vec_cmd_factory_args = {}
-            vec_cmd_factory_args["ib_instance"] = ib_instance
-            vec_cmd_factory_args["op_cmd"] = op_cmd
-            vec_cmd_factory_args["src_buffers"] = src_buffers
-            vec_cmd_factory_args["dst_buffers"] = dst_buffers
-            vec_cmd_factory_args["op_length"] = op_length
-            vec_cmd_factory_args["reduce_factor"] = 1
-            vec_cmd_factory_args["base_pipeline"] = base_pipeline
-            vec_cmd_factory_args["pipeline_count_list"] = pipeline_count_list
-            vec_cmd_factory_args["reset_mask_pipe_line"] = reset_mask_pipe_line
-            vec_cmd_factory_args["extern_args"] = extern_args
-            vec_cmd_factory_args["args"] = args
-            vec_cmd_factory_args["repeat_cal_dtype"] = None
+            vec_cmd_factory_args = {
+                "ib_instance": ib_instance, "op_cmd": op_cmd,
+                "src_buffers": src_buffers, "dst_buffers": dst_buffers,
+                "op_length": op_length, "reduce_factor": 1,
+                "base_pipeline": base_pipeline,
+                "pipeline_count_list": pipeline_count_list,
+                "reset_mask_pipe_line": reset_mask_pipe_line,
+                "extern_args": extern_args,
+                "args": args, "repeat_cal_dtype": None}
             __vec_cmd_factory(vec_cmd_factory_args)
 
         # pylint: disable=consider-using-in
@@ -978,33 +948,32 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
             res_shape = produce_res_shape(shape, reduce_axis_index)
 
-
             tensor_a = tvm.placeholder(shape, dtype, name='A0')
 
-            res_b = tvm.compute(res_shape, lambda *indice: func(
-                flatten_indice(tensor_a, produce_res_indice(indice, reduce_axis_index,
-                                                            index_k)), axis=index_k),
-                                name='B')
+            res_b = tvm.compute(
+                res_shape,
+                lambda *indice: func(
+                    flatten_indice(tensor_a,
+                                   produce_res_indice(indice,
+                                                      reduce_axis_index,
+                                                      index_k)),
+                    axis=index_k),
+                name='B')
 
-            buf_a = tvm.decl_buffer(tensor_a.shape, tensor_a.dtype,
-                                    name="A0_buf",
-                                    offset_factor=1,
-                                    scope=buffer_scope,
-                                    strides=[tvm.var() for _ in
-                                             range(len(tensor_a.shape))],
-                                    data_alignment=get_data_alignment(
-                                        tensor_a.dtype))
+            buf_a = tvm.decl_buffer(
+                tensor_a.shape, tensor_a.dtype, name="A0_buf", offset_factor=1,
+                scope=buffer_scope,
+                strides=[tvm.var() for _ in range(len(tensor_a.shape))],
+                data_alignment=get_data_alignment(tensor_a.dtype))
 
-            buf_b = tvm.decl_buffer(res_b.shape, res_b.dtype,
-                                    name="B_buf",
-                                    offset_factor=1,
-                                    scope=buffer_scope,
-                                    strides=[tvm.var() for _ in
-                                             range(len(res_b.shape))],
-                                    data_alignment=get_data_alignment(res_b.dtype))
+            buf_b = tvm.decl_buffer(
+                res_b.shape, res_b.dtype, name="B_buf", offset_factor=1,
+                scope=buffer_scope,
+                strides=[tvm.var() for _ in range(len(res_b.shape))],
+                data_alignment=get_data_alignment(res_b.dtype))
 
             v_cmd = "v" + cmd
-            size = functools_reduce(lambda i, j: i * j, shape)
+            size = _reduce(lambda i, j: i * j, shape)
             burst_ele_num = 256 // get_bit_len(dtype)
             dst_stride_m0 = 1
             src0_stride_m0 = 1
@@ -1025,15 +994,16 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr fuction
                     """
-                    ib_instance = tvm.ir_builder.create()
+                    ib_instance = _create()
                     if flag == 'body':
                         sid = 0
                         burst = (size + burst_ele_num - 1) // burst_ele_num
                         nburst = 1
                         body_func_name = 'copy_ubuf_to_ubuf'
-                        ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                               2 + total_pipe_line * pipe_line_index)
-                        ib_instance.emit(tvm.call_extern(
+                        ib_instance.scope_attr(
+                            cce_params.CCE_AXIS, "coproc_scope",
+                            2 + total_pipe_line * pipe_line_index)
+                        ib_instance.emit(call_extern(
                             out.dtype, body_func_name,
                             out.access_ptr("rw"),
                             instace_a0.access_ptr("r"),
@@ -1050,7 +1020,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 dst_stride_m1,
                                 src0_stride_m1,
                                 src1_stride_m1
-                               ]
+                                ]
                         pipeline_count_list = [1]
                         src_buffers = [instace_a0, out]
                         dst_buffers = [out]
@@ -1062,8 +1032,8 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
                 return instr('body'), None, instr('update')
 
-            return tvm.decl_tensor_intrin(res_b.op, intrin_func,
-                                          binds={tensor_a: buf_a, res_b: buf_b})
+            return decl_tensor_intrin(res_b.op, intrin_func,
+                                      binds={tensor_a: buf_a, res_b: buf_b})
 
         def compute_prod_segmentation(ib_instace, total_len, src_a, src_c):
             """
@@ -1089,7 +1059,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     else:
                         tmp_repeat_times = local_repeat_times
                     with ib_instace.new_scope():
-                        ib_instace.emit(tvm.call_extern(
+                        ib_instace.emit(call_extern(
                             src_c.dtype, "vmul",
                             src_c.access_ptr("rw"),
                             src_a.access_ptr("r", offset=src_offset),
@@ -1103,12 +1073,12 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             if remain_len > 0:
                 with ib_instace.new_scope():
                     mask1, mask2 = set_mask(remain_len)
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         src_c.dtype, "set_vector_mask",
                         tvm.const(mask1, dtype="uint64"),
                         tvm.const(mask2, dtype="uint64")))
                 with ib_instace.new_scope():
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         src_c.dtype, "vmul",
                         src_c.access_ptr("rw"),
                         src_a.access_ptr("r", offset=src_offset),
@@ -1118,7 +1088,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         dst_stride_m1, src0_stride_m1, src1_stride_m1))
                 with ib_instace.new_scope():
                     mask1, mask2 = set_mask(128)
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         src_c.dtype, "set_vector_mask",
                         tvm.const(mask1, dtype="uint64"),
                         tvm.const(mask2, dtype="uint64")))
@@ -1141,12 +1111,12 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 '''
                 with ib_instace.new_scope():
                     mask1, mask2 = set_mask(num)
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         input_c.dtype, "set_vector_mask",
                         tvm.const(mask1, dtype="uint64"),
                         tvm.const(mask2, dtype="uint64")))
                 with ib_instace.new_scope():
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         input_c.dtype, "vmul",
                         input_c.access_ptr("rw"),
                         input_c.access_ptr("r"),
@@ -1167,7 +1137,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             d_buf = tvm.decl_buffer((128,), input_c.dtype, "d_buf", scope="local.UB",
                                     data=buf_var)
             reg = ib_instace.allocate(input_c.dtype, (2,), name="reg_buf",
-                                      scope=param.scope_reg)
+                                      scope=cce_params.scope_reg)
 
             def fold_mul_2(num):
                 '''
@@ -1177,27 +1147,28 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 Then, the two half data mul by vmul after setting mask.
                 '''
                 with ib_instace.for_range(0, num, name="ii") as offset_num:
-                    ib_instace.emit(tvm.call_extern(input_c.dtype, "reg_mov",
-                                                    tvm.call_extern(reg.dtype, "reg",
-                                                                    reg[0]),
-                                                    input_c.access_ptr("rw",
-                                                                       offset=(offset_num + num))))
+                    ib_instace.emit(
+                        call_extern(
+                            input_c.dtype, "reg_mov",
+                            call_extern(reg.dtype, "reg", reg[0]),
+                            input_c.access_ptr(
+                                "rw", offset=(offset_num + num))))
 
                     with ib_instace.new_scope():
-                        ib_instace.emit(tvm.call_extern(
+                        ib_instace.emit(call_extern(
                             reg.dtype, "reg_mov",
                             d_buf.access_ptr("rw", offset=offset_num),
-                            tvm.call_extern(reg.dtype, "reg", reg[0])))
+                            call_extern(reg.dtype, "reg", reg[0])))
 
                 with ib_instace.new_scope():
                     mask1, mask2 = set_mask(num)
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         input_c.dtype, "set_vector_mask",
                         tvm.const(mask1, dtype="uint64"),
                         tvm.const(mask2, dtype="uint64")))
 
                 with ib_instace.new_scope():
-                    ib_instace.emit(tvm.call_extern(
+                    ib_instace.emit(call_extern(
                         input_c.dtype, "vmul",
                         input_c.access_ptr("rw"),
                         input_c.access_ptr("r"),
@@ -1217,7 +1188,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
             with ib_instace.new_scope():
                 mask1, mask2 = set_mask(128)
-                ib_instace.emit(tvm.call_extern(
+                ib_instace.emit(call_extern(
                     input_c.dtype, "set_vector_mask",
                     tvm.const(mask1, dtype="uint64"),
                     tvm.const(mask2, dtype="uint64")))
@@ -1242,7 +1213,6 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 that can be used in tensorize schedule.
 
             """
-		    # pylint: disable=too-many-statements
             pipe_line_index = __cal_map_sum(vec_count)
             vec_count["reduce_last_axis"] += 4
 
@@ -1264,21 +1234,17 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             else:
                 k = tvm.reduce_axis((0, data_shape[-1]), name='k')
                 res_b = tvm.compute((1,), lambda i: func(tensor_a[k], axis=[k]), name='B')
-            a_buf = tvm.decl_buffer(tensor_a.shape, tensor_a.dtype,
-                                    name="A0_buf",
-                                    offset_factor=1,
-                                    scope=buffer_scope,
-                                    strides=[tvm.var() for _ in
-                                             range(len(tensor_a.shape))],
-                                    data_alignment=get_data_alignment(tensor_a.dtype))
+            a_buf = tvm.decl_buffer(
+                tensor_a.shape, tensor_a.dtype, name="A0_buf", offset_factor=1,
+                scope=buffer_scope,
+                strides=[tvm.var() for _ in range(len(tensor_a.shape))],
+                data_alignment=get_data_alignment(tensor_a.dtype))
 
-            b_buf = tvm.decl_buffer(res_b.shape, res_b.dtype,
-                                    name="B_buf",
-                                    offset_factor=1,
-                                    scope=buffer_scope,
-                                    strides=[tvm.var() for _ in
-                                             range(len(res_b.shape))],
-                                    data_alignment=get_data_alignment(res_b.dtype))
+            b_buf = tvm.decl_buffer(
+                res_b.shape, res_b.dtype, name="B_buf", offset_factor=1,
+                scope=buffer_scope,
+                strides=[tvm.var() for _ in range(len(res_b.shape))],
+                data_alignment=get_data_alignment(res_b.dtype))
 
             dst_stride_m0 = 1
             src0_stride_m0 = 1
@@ -1290,7 +1256,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             stride_outside = 8
 
             if len(data_shape) > 1:
-                total_len = functools_reduce(lambda x, y: x * y, data_shape[:])
+                total_len = _reduce(lambda x, y: x * y, data_shape[:])
             else:
                 total_len = data_shape[-1]
 
@@ -1305,20 +1271,20 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr fuction
                     """
-                    ib_instance = tvm.ir_builder.create()
+                    ib_instance = _create()
                     if flag == "update":
                         pipeline_count = 0
                         # __ubuf__ half C_buf[128] vlaue: { 1.0 }
                         buf_var = ib_instance.allocate(dtype, (128,), "c_buf",
                                                        scope="local.UB")
                         c_buf = tvm.decl_buffer((128,), dtype, "c_buf",
-                                                scope="local.UB",
-                                                data=buf_var)
+                                                scope="local.UB", data=buf_var)
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 2 * pipeline_count))
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line *
+                                (pipe_line_index + 2 * pipeline_count))
+                            ib_instance.emit(call_extern(
                                 c_buf.dtype, "vector_dup",
                                 c_buf.access_ptr("rw", offset=0),
                                 tvm.const(1.0, dtype="float16"),
@@ -1334,21 +1300,23 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         compute_last_128_numbers(ib_instance, c_buf)
 
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 2 * pipeline_count))
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line *
+                                (pipe_line_index + 2 * pipeline_count))
                             mask1, mask2 = set_mask(16)
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 out_b.dtype, "set_vector_mask",
                                 tvm.const(mask1, dtype="uint64"),
                                 tvm.const(mask2, dtype="uint64")))
                             pipeline_count = 1 - pipeline_count
 
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 2 * pipeline_count))
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line *
+                                (pipe_line_index + 2 * pipeline_count))
+                            ib_instance.emit(call_extern(
                                 out_b.dtype, "vmul",
                                 out_b.access_ptr("rw"),
                                 out_b.access_ptr("r"),
@@ -1358,11 +1326,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 dst_stride_m1, src0_stride_m1, src1_stride_m1))
                             pipeline_count = 1 - pipeline_count
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 1))
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 out_b.dtype, "set_vector_mask",
                                 tvm.const(mask1, dtype="uint64"),
                                 tvm.const(mask2, dtype="uint64")))
@@ -1372,13 +1340,13 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         buf_var = ib_instance.allocate(dtype, (128,), "c_buf",
                                                        scope="local.UB")
                         c_buf = tvm.decl_buffer((128,), dtype, "c_buf",
-                                                scope="local.UB",
-                                                data=buf_var)
+                                                scope="local.UB", data=buf_var)
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 2 * pipeline_count))
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line *
+                                (pipe_line_index + 2 * pipeline_count))
+                            ib_instance.emit(call_extern(
                                 c_buf.dtype, "vector_dup",
                                 c_buf.access_ptr("rw", offset=0),
                                 tvm.const(1.0, dtype="float16"),
@@ -1396,20 +1364,21 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         compute_last_128_numbers(ib_instance, c_buf)
 
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 2 * pipeline_count))
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line *
+                                (pipe_line_index + 2 * pipeline_count))
+                            ib_instance.emit(call_extern(
                                 out_b.dtype, "copy_ubuf_to_ubuf",
                                 out_b.access_ptr("rw"),
                                 c_buf.access_ptr("r"),
                                 0, 1, 1, 0, 0))
                         with ib_instance.new_scope():
-                            ib_instance.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                   2 + total_pipe_line * (
-                                                       pipe_line_index + 1))
+                            ib_instance.scope_attr(
+                                cce_params.CCE_AXIS, "coproc_scope",
+                                2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
-                            ib_instance.emit(tvm.call_extern(
+                            ib_instance.emit(call_extern(
                                 out_b.dtype, "set_vector_mask",
                                 tvm.const(mask1, dtype="uint64"),
                                 tvm.const(mask2, dtype="uint64")))
@@ -1418,8 +1387,8 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 # return a triple of normal-set, reset, update
                 return (instr("body"), None, instr("update"))
 
-            return tvm.decl_tensor_intrin(res_b.op, intrin_func,
-                                          binds={tensor_a: a_buf, res_b: b_buf})
+            return decl_tensor_intrin(res_b.op, intrin_func,
+                                      binds={tensor_a: a_buf, res_b: b_buf})
 
         def reduce_last_axis(data_shape, op_instance, dtype):
             """
@@ -1522,7 +1491,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
             max_cal_times = 254
             if len(data_shape) > 1:
-                total_len = functools_reduce(lambda x, y: x * y, data_shape[:])
+                total_len = _reduce(lambda x, y: x * y, data_shape[:])
             else:
                 total_len = data_shape[-1]
 
@@ -1544,9 +1513,9 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     is_vcmax = vc_cmd == "vcmax"
                     is_vcmin = vc_cmd == "vcmin"
                     is_vcmax_v200 = out_b.dtype.lower() == "float32" and \
-                                    cce_conf.intrinsic_check_support("Intrinsic_vcmax", "float32")
+                        cce_conf.intrinsic_check_support("Intrinsic_vcmax", "float32")
                     is_vcmin_v200 = out_b.dtype.lower() == "float32" and \
-                                    cce_conf.intrinsic_check_support("Intrinsic_vcmin", "float32")
+                        cce_conf.intrinsic_check_support("Intrinsic_vcmin", "float32")
                     if (is_vcmax and is_vcmax_v200) or (is_vcmin and is_vcmin_v200):
                         return True
                     return False
@@ -1557,7 +1526,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     # pylint: disable=too-many-branches, too-many-statements
                     is_need_add_stride_para = __is_need_add_stride_para()
-                    ib_ins = tvm.ir_builder.create()
+                    ib_ins = _create()
                     if flag == "update":
                         local_total_len = total_len
                         pipeline_count = 0
@@ -1567,7 +1536,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             if repeat_times > 0:
                                 local_repeat_times = repeat_times
                                 with ib_ins.new_scope():
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1579,7 +1548,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                         else:
                                             tmp_repeat_times = local_repeat_times
 
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, emit_cmd,
                                             ins_a.access_ptr("rw",
                                                              offset=repeat_dst_offset),
@@ -1596,23 +1565,23 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             if remain_len > 0:
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
                                     mask1, mask2 = set_mask(remain_len)
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, "set_vector_mask",
                                         tvm.const(mask1, dtype="uint64"),
                                         tvm.const(mask2, dtype="uint64")))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
 
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, emit_cmd,
                                         ins_a.access_ptr("rw",
                                                          offset=repeat_times * res_block_size),
@@ -1625,12 +1594,12 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                     ))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
                                     mask1, mask2 = set_mask(128)
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, "set_vector_mask",
                                         tvm.const(mask1, dtype="uint64"),
                                         tvm.const(mask2, dtype="uint64")))
@@ -1651,22 +1620,25 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         if local_total_len > 1:
                             with ib_ins.new_scope():
                                 mask1, mask2 = set_mask(local_total_len)
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
                                 pipeline_count = 1 - pipeline_count
 
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+
                                 def __do_ib_ins_emit():
                                     if is_need_add_stride_para:
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, vc_cmd,
                                             ins_a.access_ptr("rw"),
                                             ins_a.access_ptr("r"),
@@ -1679,7 +1651,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                             0
                                         ))
                                     else:
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, vc_cmd,
                                             ins_a.access_ptr("rw"),
                                             ins_a.access_ptr("r"),
@@ -1700,25 +1672,27 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
                         with ib_ins.if_scope(out_b.elem_offset > 0):
                             new_buffer_b = __apply_for_new_alloc(ib_ins, out_b.dtype, (1,))
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out_b.dtype, "reg_mov",
                                 new_buffer_b.access_ptr("rw"),
                                 out_b.access_ptr("r")))
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
                                 mask1, mask2 = set_mask(v_cmd_mask)
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, v_cmd,
                                     new_buffer_b.access_ptr("rw"),
                                     new_buffer_b.access_ptr("r"),
@@ -1733,34 +1707,37 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 ))
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 1))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 1))
                                 mask1, mask2 = set_mask(128)
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out_b.dtype, "reg_mov",
                                 out_b.access_ptr("rw"),
                                 new_buffer_b.access_ptr("r")))
                         with ib_ins.else_scope():
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
                                 mask1, mask2 = set_mask(v_cmd_mask)
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, v_cmd,
                                     out_b.access_ptr("rw"),
                                     out_b.access_ptr("r"),
@@ -1775,11 +1752,12 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 ))
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 1))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 1))
                                 mask1, mask2 = set_mask(128)
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
@@ -1792,7 +1770,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             if repeat_times > 0:
                                 local_repeat_times = repeat_times
                                 with ib_ins.new_scope():
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1804,7 +1782,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                         else:
                                             tmp_repeat_times = local_repeat_times
 
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, emit_cmd,
                                             ins_a.access_ptr("rw",
                                                              offset=repeat_dst_offset),
@@ -1822,23 +1800,23 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                             if remain_len > 0:
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
                                     mask1, mask2 = set_mask(remain_len)
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, "set_vector_mask",
                                         tvm.const(mask1, dtype="uint64"),
                                         tvm.const(mask2, dtype="uint64")))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
+                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
 
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, emit_cmd,
                                         ins_a.access_ptr("rw",
                                                          offset=repeat_times * res_block_size),
@@ -1851,12 +1829,13 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                     ))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(param.CCE_AXIS,
-                                                      "coproc_scope",
-                                                      2 + total_pipe_line * (
-                                                          pipe_line_index + 2 * pipeline_count))
+                                    ib_ins.scope_attr(
+                                        cce_params.CCE_AXIS,
+                                        "coproc_scope",
+                                        2 + total_pipe_line *
+                                        (pipe_line_index + 2 * pipeline_count))
                                     mask1, mask2 = set_mask(128)
-                                    ib_ins.emit(tvm.call_extern(
+                                    ib_ins.emit(call_extern(
                                         out_b.dtype, "set_vector_mask",
                                         tvm.const(mask1, dtype="uint64"),
                                         tvm.const(mask2, dtype="uint64")))
@@ -1878,21 +1857,24 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         if local_total_len > 1:
                             with ib_ins.new_scope():
                                 mask1, mask2 = set_mask(local_total_len)
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "set_vector_mask",
                                     tvm.const(mask1, dtype="uint64"),
                                     tvm.const(mask2, dtype="uint64")))
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
-                                ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                                  2 + total_pipe_line * (
-                                                      pipe_line_index + 2 * pipeline_count))
+                                ib_ins.scope_attr(
+                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    2 + total_pipe_line *
+                                    (pipe_line_index + 2 * pipeline_count))
+
                                 def __do_ib_ins_emit():
                                     if is_need_add_stride_para:
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, vc_cmd,
                                             ins_a.access_ptr("rw"),
                                             ins_a.access_ptr("r"),
@@ -1905,7 +1887,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                             0
                                         ))
                                     else:
-                                        ib_ins.emit(tvm.call_extern(
+                                        ib_ins.emit(call_extern(
                                             out_b.dtype, vc_cmd,
                                             ins_a.access_ptr("rw"),
                                             ins_a.access_ptr("r"),
@@ -1917,16 +1899,13 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 __do_ib_ins_emit()
                                 pipeline_count = 1 - pipeline_count
                         with ib_ins.new_scope():
-                        #     ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                        #                       2 + total_pipe_line * (
-                        #                           pipe_line_index + 2 * pipeline_count))
                             with ib_ins.if_scope(out_b.elem_offset > 0):
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "reg_mov",
                                     out_b.access_ptr("rw"),
                                     ins_a.access_ptr("r")))
                             with ib_ins.else_scope():
-                                ib_ins.emit(tvm.call_extern(
+                                ib_ins.emit(call_extern(
                                     out_b.dtype, "copy_ubuf_to_ubuf",
                                     out_b.access_ptr("rw"),
                                     ins_a.access_ptr("r"),
@@ -1937,11 +1916,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                     1
                                 ))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                              2 + total_pipe_line * (
-                                                  pipe_line_index + 1))
+                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                              "coproc_scope",
+                                              2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out_b.dtype, "set_vector_mask",
                                 tvm.const(mask1, dtype="uint64"),
                                 tvm.const(mask2, dtype="uint64")))
@@ -1950,8 +1929,8 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 # return a triple of normal-set, reset, update
                 return (instr("body"), None, instr("update"))
 
-            return tvm.decl_tensor_intrin(tensor_b.op, intrin_func,
-                                          binds={tensor_a: a_buf, tensor_b: b_buf})
+            return decl_tensor_intrin(tensor_b.op, intrin_func,
+                                      binds={tensor_a: a_buf, tensor_b: b_buf})
 
         # pylint: disable=too-many-branches, too-many-arguments
         def elewise_binary_intrin_cce(shape, op_ins, dst_dtype, src_dtype,
@@ -1984,7 +1963,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 that can be used in tensorize schedule.
             """
             # for pylint, reserve argument
-            dst_dtype = dst_dtype
+            _ = dst_dtype
 
             pipe_line_index = __cal_map_sum(vec_count)
             vec_count["elewise_binary_intrin_cce"] += 4
@@ -2011,15 +1990,17 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                   * flatten_indice(ten_a1, indice), name="out")
                 intrinsic_cmd = "vmul"
             elif op_ins.lower() == "elewise_binary_min":
-                out = tvm.compute(shape, lambda *indice: tvm.min(
-                    flatten_indice(ten_a, indice),
-                    flatten_indice(ten_a1, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.min(
+                                      flatten_indice(ten_a, indice),
+                                      flatten_indice(ten_a1, indice)),
                                   name="out")
                 intrinsic_cmd = "vmin"
             elif op_ins.lower() == "elewise_binary_max":
-                out = tvm.compute(shape, lambda *indice: tvm.max(
-                    flatten_indice(ten_a, indice),
-                    flatten_indice(ten_a1, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.max(
+                                      flatten_indice(ten_a, indice),
+                                      flatten_indice(ten_a1, indice)),
                                   name="out")
                 intrinsic_cmd = "vmax"
             elif op_ins.lower() == "elewise_binary_or":
@@ -2135,7 +2116,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                                range(len(out.shape))],
                                       data_alignment=get_data_alignment(
                                           out.dtype))
-            size = functools_reduce(lambda i, j: i * j, shape)
+            size = _reduce(lambda i, j: i * j, shape)
 
             def intrin_func(ins, outs):
                 """
@@ -2152,7 +2133,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr function
                     """
-                    ib_ins = tvm.ir_builder.create()
+                    ib_ins = _create()
                     src_buffers = [ins_a0, ins_a1]
                     dst_buffers = [out]
                     if_reset_mask_pipe_line = True
@@ -2163,9 +2144,9 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                              pipeline_count_list,
                                              if_reset_mask_pipe_line, args)
                         # for storage rewrite reuse, out and A1 is the same buffer
-                        ib_ins.emit(tvm.call_extern(out.dtype, "rewrite_inplace",
-                                                    out.access_ptr("w"),
-                                                    ins_a1.access_ptr("r")))
+                        ib_ins.emit(call_extern(out.dtype, "rewrite_inplace",
+                                                out.access_ptr("w"),
+                                                ins_a1.access_ptr("r")))
                     elif op_ins.lower().find("elewise_binary_compare") != -1:
                         vec_binary_elewise_compare(ib_ins,
                                                    intrinsic_cmd,
@@ -2189,11 +2170,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 # return a triple of normal-set, reset, update
                 return (instr(), None, None)
 
-            return tvm.decl_tensor_intrin(out.op, intrin_func,
-                                          name=intrinsic_cmd,
-                                          binds={ten_a: a0_buf,
-                                                 ten_a1: a1_buf,
-                                                 out: out_buf})
+            return decl_tensor_intrin(out.op, intrin_func,
+                                      name=intrinsic_cmd,
+                                      binds={ten_a: a0_buf,
+                                             ten_a1: a1_buf,
+                                             out: out_buf})
 
         # pylint: disable=too-many-branches
         def elewise_single_intrin_cce(shape, op_ins, dst_dtype, src_dtype, args):
@@ -2235,13 +2216,15 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             dst_stride_m1 = 8
             src_stride_m1 = 8
             if op_ins.lower() == "elewise_single_log":
-                out = tvm.compute(shape, lambda *indice: tvm.log(
-                    flatten_indice(ten_a0, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.log(
+                                      flatten_indice(ten_a0, indice)),
                                   name="out")
                 intrinsic_cmd = "vln"
             elif op_ins.lower() == "elewise_single_exp":
-                out = tvm.compute(shape, lambda *indice: tvm.exp(
-                    flatten_indice(ten_a0, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice:
+                                  tvm.exp(flatten_indice(ten_a0, indice)),
                                   name="out")
                 intrinsic_cmd = "vexp"
             elif op_ins.lower() == "elewise_single_rec":
@@ -2250,10 +2233,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                   name="out")
                 intrinsic_cmd = "vrec"
             elif op_ins.lower() == "elewise_single_abs":
-                out = tvm.compute(shape, lambda *indice: tvm.select(
-                    flatten_indice(ten_a0, indice) >= 0,
-                    flatten_indice(ten_a0, indice),
-                    - flatten_indice(ten_a0, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.select(
+                                      flatten_indice(ten_a0, indice) >= 0,
+                                      flatten_indice(ten_a0, indice),
+                                      -flatten_indice(ten_a0, indice)),
                                   name="out")
                 intrinsic_cmd = "vabs"
             elif op_ins.lower() == "elewise_single_vs_add":
@@ -2271,10 +2255,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                   name="out")
                 intrinsic_cmd = "vmuls"
             elif op_ins.lower() == "elewise_single_relu":
-                out = tvm.compute(shape, lambda *indice: tvm.select(
-                    flatten_indice(ten_a0, indice) >= 0,
-                    flatten_indice(ten_a0, indice),
-                    tvm.const(0, dtype=dst_dtype)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.select(
+                                      flatten_indice(ten_a0, indice) >= 0,
+                                      flatten_indice(ten_a0, indice),
+                                      tvm.const(0, dtype=dst_dtype)),
                                   name="out")
                 intrinsic_cmd = "vrelu"
             elif op_ins.lower() == "elewise_single_not":
@@ -2283,8 +2268,9 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                   name="out")
                 intrinsic_cmd = "vnot"
             elif op_ins.lower() == "elewise_single_sqrt":
-                out = tvm.compute(shape, lambda *indice: tvm.sqrt(
-                    flatten_indice(ten_a0, indice)),
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.sqrt(
+                                      flatten_indice(ten_a0, indice)),
                                   name="out")
                 intrinsic_cmd = "vsqrt"
             elif op_ins.lower() == "elewise_single_round":
@@ -2400,7 +2386,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                       scope=buffer_scope,
                                       strides=[tvm.var() for _ in
                                                range(len(out.shape))])
-            size = functools_reduce(lambda i, j: i * j, shape)
+            size = _reduce(lambda i, j: i * j, shape)
 
             def intrin_func(ins, outs):
                 """
@@ -2413,21 +2399,22 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr function
                     """
-                    ib_ins = tvm.ir_builder.create()
+                    ib_ins = _create()
                     if intrinsic_cmd == "vconv_deq":
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
-                                              2 + total_pipe_line * pipe_line_index)
-                            ib_ins.emit(tvm.call_extern("float16", "set_deqscale",
-                                                        tvm.const(1,
-                                                                  dtype="float16")))
+                            ib_ins.scope_attr(
+                                cce_params.CCE_AXIS,
+                                "coproc_scope",
+                                2 + total_pipe_line * pipe_line_index)
+                            ib_ins.emit(
+                                call_extern("float16", "set_deqscale",
+                                            tvm.const(1, dtype="float16")))
                     if_reset_mask_pipe_line = True
                     pipeline_count_list = [0]
                     src_buffers = [ins_a0]
                     dst_buffers = [out]
                     if res_args is not None:
-                        extend_args = res_args if isinstance(res_args,
-                                                             list) \
+                        extend_args = res_args if isinstance(res_args, list) \
                             else [res_args]
                         vec_vssingle_elewise(ib_ins, intrinsic_cmd, src_buffers,
                                              dst_buffers, size,
@@ -2455,10 +2442,10 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 # return a triple of normal-set, reset, update
                 return (instr(), None, None)
 
-            return tvm.decl_tensor_intrin(out.op, intrin_func,
-                                          name=intrinsic_cmd,
-                                          binds={ten_a0: a0_buf,
-                                                 out: out_buf})
+            return decl_tensor_intrin(out.op, intrin_func,
+                                      name=intrinsic_cmd,
+                                      binds={ten_a0: a0_buf,
+                                             out: out_buf})
 
         def elewise_multiple_intrin_cce(shape, op_ins, dst_dtype, src_dtype, args):
             """factory funtion for elewise operations of multiple op. For tensorize
@@ -2488,8 +2475,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 that can be used in tensorize schedule.
             """
             # for pylint, reserve argument
-            dst_dtype = dst_dtype
-            args = args
+            _ = dst_dtype
 
             pipe_line_index = __cal_map_sum(vec_count)
             vec_count["elewise_multiple_intrin_cce"] += 4
@@ -2537,7 +2523,6 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 a2_buf = a0_buf
             elif args[1] == 1 and args[2] == 1:  # input Y,Z are same
                 ins_a1 = tvm.placeholder(shape, src_dtype, name='A1')
-                ins_a1 = ins_a1
                 a1_buf = tvm.decl_buffer(ins_a1.shape, ins_a1.dtype,
                                          name="A1_buf",
                                          offset_factor=1,
@@ -2580,16 +2565,15 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                   + flatten_indice(ins_a1, indice), name="out")
                 intrinsic_cmd = "vmadd"
             elif op_ins.lower() == "elewise_multiple_maddrelu":
-                out = tvm.compute(shape, lambda *indice: tvm.select(
-                    (flatten_indice(ten_a0, indice) *
-                     flatten_indice(ins_a1, indice) \
-                     + flatten_indice(ins_a1, indice))
-                    >= 0,
-                    flatten_indice(ten_a0, indice) \
-                    * flatten_indice(ins_a1, indice) \
-                    + flatten_indice(ins_a1, indice),
-                    tvm.const(0, dtype=src_dtype)),
-                                  name="out")
+                out = tvm.compute(shape,
+                                  lambda *indice: tvm.select(
+                                      (flatten_indice(ten_a0, indice) *
+                                       flatten_indice(ins_a1, indice) +
+                                       flatten_indice(ins_a1, indice)) >= 0,
+                                      (flatten_indice(ten_a0, indice) *
+                                       flatten_indice(ins_a1, indice) +
+                                       flatten_indice(ins_a1, indice)),
+                                      tvm.const(0, dtype=src_dtype)), name="out")
                 intrinsic_cmd = "vmaddrelu"
 
             out_buf = tvm.decl_buffer(out.shape, out.dtype,
@@ -2601,7 +2585,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                       data_alignment=get_data_alignment(
                                           out.dtype))
 
-            size = functools_reduce(lambda i, j: i * j, shape)
+            size = _reduce(lambda i, j: i * j, shape)
 
             # pylint: disable=inconsistent-return-statements
             def intrin_func(ins, outs):
@@ -2633,7 +2617,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr function
                     """
-                    ib_ins = tvm.ir_builder.create()
+                    ib_ins = _create()
                     # due to the vmla and vmadd is [Xd] = [Xn]*[Xd] + [Xm],
                     # so the src only include the A0, A1, and the dst is A2.
                     src_buffers = [ins_a0, ins_a1]
@@ -2648,20 +2632,20 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
                     # for storage rewrite reuse,A2 and out is the same
                     # buffer
-                    ib_ins.emit(tvm.call_extern(out.dtype, "rewrite_inplace",
-                                                out.access_ptr("w"),
-                                                ins_a2.access_ptr("r")))
+                    ib_ins.emit(call_extern(out.dtype, "rewrite_inplace",
+                                            out.access_ptr("w"),
+                                            ins_a2.access_ptr("r")))
                     return ib_ins.get()
 
                 # return a triple of normal-set, reset, update
                 return (instr(), None, None)
 
-            return tvm.decl_tensor_intrin(out.op, intrin_func,
-                                          name=intrinsic_cmd,
-                                          binds={ten_a0: a0_buf,
-                                                 ins_a1: a1_buf,
-                                                 ins_a1: a2_buf,
-                                                 out: out_buf})
+            return decl_tensor_intrin(out.op, intrin_func,
+                                      name=intrinsic_cmd,
+                                      binds={ten_a0: a0_buf,
+                                             ins_a1: a1_buf,
+                                             ins_a1: a2_buf,
+                                             out: out_buf})
 
         def concat(shapes, dtype, axis=0):
             """Join a sequence of arrays along an existing axis.
@@ -2682,7 +2666,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             ret : tvm.Tensor
             """
             # for pylint, reserve argument
-            axis = axis
+            _ = axis
 
             pipe_line_index = __cal_map_sum(vec_count)
             vec_count["concat"] += 1
@@ -2699,36 +2683,29 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             if len(shapes) == 3 and len(shapes[0]) == 1 and len(
                     shapes[1]) == 1 and len(shapes[2]) == 1:
                 tensors = [
-                    tvm.placeholder(shapes[i], dtype, name="input" + str(i)) for
-                    i in
-                    range(len(shapes))]
-                out = tvm.compute((len(shapes), shapes[0][0]),
-                                  lambda i, j: tvm.select(i == 0, tensors[0][j],
-                                                          tvm.select(i == 1,
-                                                                     tensors[1][
-                                                                         j],
-                                                                     tensors[2][
-                                                                         j])),
-                                  name='out')
+                    tvm.placeholder(shapes[i], dtype, name="input" + str(i))
+                    for i in range(len(shapes))]
+                out = tvm.compute(
+                    (len(shapes), shapes[0][0]),
+                    lambda i, j: tvm.select(i == 0, tensors[0][j],
+                                            tvm.select(i == 1, tensors[1][j], tensors[2][j])),
+                    name='out')
 
-                bufs = [tvm.decl_buffer(tensors[i].shape, tensors[i].dtype,
-                                        name=str(tensors[i].name) + "_buf",
-                                        offset_factor=align_factor,
-                                        data_alignment=get_data_alignment(
-                                            tensors[i].dtype),
-                                        scope=buffer_scope,
-                                        strides=[tvm.var() for i in
-                                                 range(len(tensors[i].shape))])
+                bufs = [tvm.decl_buffer(
+                    tensors[i].shape, tensors[i].dtype,
+                    name=str(tensors[i].name) + "_buf",
+                    offset_factor=align_factor,
+                    data_alignment=get_data_alignment(tensors[i].dtype),
+                    scope=buffer_scope,
+                    strides=[tvm.var() for i in range(len(tensors[i].shape))])
                         for i in range(len(tensors))]
 
-                out_buf = tvm.decl_buffer(out.shape, out.dtype,
-                                          name="out_buf",
-                                          offset_factor=align_factor,
-                                          data_alignment=get_data_alignment(
-                                              out.dtype),
-                                          scope=buffer_scope,
-                                          strides=[tvm.var() for i in
-                                                   range(len(out.shape))])
+                out_buf = tvm.decl_buffer(
+                    out.shape, out.dtype, name="out_buf",
+                    offset_factor=align_factor,
+                    data_alignment=get_data_alignment(out.dtype),
+                    scope=buffer_scope,
+                    strides=[tvm.var() for i in range(len(out.shape))])
 
                 len_burst = (shapes[0][0] + (align_factor - 1)) // align_factor
 
@@ -2743,11 +2720,11 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                         """
                         instr function
                         """
-                        ib_ins = tvm.ir_builder.create()
-                        ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope",
+                        ib_ins = _create()
+                        ib_ins.scope_attr(cce_params.CCE_AXIS, "coproc_scope",
                                           2 + total_pipe_line * pipe_line_index)
                         if flag == 'body':
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_ubuf",
                                 out.access_ptr("rw"),
                                 ins_a.access_ptr("r"),
@@ -2756,7 +2733,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 len_burst,
                                 0,
                                 0))
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_ubuf",
                                 out.access_ptr("rw", offset=(shapes[0][0] + (
                                     align_factor - 1)) // align_factor * align_factor),
@@ -2766,7 +2743,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 len_burst,
                                 0,
                                 0))
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_ubuf",
                                 out.access_ptr("rw", offset=((shapes[0][0] + (
                                     align_factor - 1)) // align_factor * align_factor) * 2),
@@ -2785,7 +2762,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                 for i in range(tensors_len):
                     binds[tensors[i]] = bufs[i]
                 binds[out] = out_buf
-                return tvm.decl_tensor_intrin(out.op, intrin_func, binds=binds)
+                return decl_tensor_intrin(out.op, intrin_func, binds=binds)
             return None
 
         def mov_backup(shape, dtype):
@@ -2803,7 +2780,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             -------
             ret : tvm.Tensor
             """
-            num = functools_reduce(lambda i, j: i * j, shape)
+            num = _reduce(lambda i, j: i * j, shape)
 
             align_factor = 0
             if dtype in ["int8", "uint8"]:
@@ -2816,20 +2793,16 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
             ten_a = tvm.placeholder(shape, dtype, name='a')
             ten_b = tvm.compute(shape, lambda *i: ten_a[i], name='b')
 
-            a_buf = tvm.decl_buffer(ten_a.shape, ten_a.dtype,
-                                    name="a_buf",
-                                    offset_factor=1,
-                                    data_alignment=get_data_alignment(ten_a.dtype),
-                                    scope=buffer_scope,
-                                    strides=[tvm.var() for _ in
-                                             range(len(ten_a.shape))])
+            a_buf = tvm.decl_buffer(
+                ten_a.shape, ten_a.dtype, name="a_buf", offset_factor=1,
+                data_alignment=get_data_alignment(ten_a.dtype),
+                scope=buffer_scope,
+                strides=[tvm.var() for _ in range(len(ten_a.shape))])
 
-            b_buf = tvm.decl_buffer(ten_b.shape, ten_b.dtype,
-                                    name="b_buf",
-                                    offset_factor=1,
-                                    data_alignment=get_data_alignment(ten_b.dtype),
-                                    strides=[tvm.var() for _ in
-                                             range(len(ten_b.shape))])
+            b_buf = tvm.decl_buffer(
+                ten_b.shape, ten_b.dtype, name="b_buf", offset_factor=1,
+                data_alignment=get_data_alignment(ten_b.dtype),
+                strides=[tvm.var() for _ in range(len(ten_b.shape))])
 
             len_burst = (num + (align_factor - 1)) // align_factor
 
@@ -2844,14 +2817,15 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                     """
                     instr function
                     """
-                    ib_ins = tvm.ir_builder.create()
+                    ib_ins = _create()
                     if flag == 'body':
                         tmp_buffer = __apply_for_new_alloc(ib_ins, ins.dtype,
                                                            (align_factor,))
                         with ib_ins.new_scope():
                             sid = cce_util.get_dma_sid("Sid_copy_gm_to_ubuf")
-                            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                              "coproc_scope", 5)
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_gm_to_ubuf",
                                 tmp_buffer.access_ptr("w"),
                                 out.access_ptr("rw", offset=num),
@@ -2861,8 +2835,9 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 0,
                                 0))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                              "coproc_scope", 6)
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_gm",
                                 out.access_ptr("rw"),
                                 ins.access_ptr("r"),
@@ -2872,8 +2847,9 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                                 0,
                                 0))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(param.CCE_AXIS, "coproc_scope", 14)
-                            ib_ins.emit(tvm.call_extern(
+                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                              "coproc_scope", 14)
+                            ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_gm",
                                 out.access_ptr("rw", offset=num),
                                 tmp_buffer.access_ptr("r"),
@@ -2886,8 +2862,8 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
 
                 return instr('body'), None, None
 
-            return tvm.decl_tensor_intrin(ten_b.op, intrin_func,
-                                          binds={ten_a: a_buf, ten_b: b_buf})
+            return decl_tensor_intrin(ten_b.op, intrin_func,
+                                      binds={ten_a: a_buf, ten_b: b_buf})
 
         intrin_map = {"reduce_nist_axis": reduce_nist_axis,
                       "elewise_single_intrin_cce": elewise_single_intrin_cce,
@@ -2902,7 +2878,7 @@ def intrin_factor(buffer_scope=param.scope_ubuf):
                       "vec_cast_elewise": vec_cast_elewise,
                       "vec_VSsingle_elewise": vec_vssingle_elewise,
                       "vec_binary_elewise": vec_binary_elewise
-                     }
+                      }
         if not intrin_map.get(intrin_key):
             raise RuntimeError("Not implement yet.")
         return intrin_map[intrin_key]

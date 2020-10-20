@@ -1,32 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 range_d
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name
-@fusion_manager.register("range_d")
+@tbe_platform.fusion_manager.fusion_manager.register("range_d")
 def range_d_compute(x, y, start, limit, delta, kernel_name="range_d"):
     """
     algorithm: range_d
@@ -56,26 +54,23 @@ def range_d_compute(x, y, start, limit, delta, kernel_name="range_d"):
     """
     if isinstance(start, int) and isinstance(delta, int) \
        and isinstance(limit, int):
-        res_start = te.lang.cce.broadcast(tvm.const(start, dtype="int32"),
-                                          x.shape)
-        res_delta = te.lang.cce.broadcast(tvm.const(delta, dtype="int32"),
-                                          x.shape)
-        mid_res = te.lang.cce.vmul(res_delta, x)
-        res = te.lang.cce.vadd(mid_res, res_start)
+        res_start = tbe.broadcast(tvm.const(start, dtype="int32"), x.shape)
+        res_delta = tbe.broadcast(tvm.const(delta, dtype="int32"), x.shape)
+        mid_res = tbe.vmul(res_delta, x)
+        res = tbe.vadd(mid_res, res_start)
 
         return res
 
-    res_start = te.lang.cce.broadcast(tvm.const(start, dtype="float32"),
-                                      x.shape)
-    res_delta = te.lang.cce.broadcast(tvm.const(delta, dtype="float32"),
-                                      x.shape)
-    mid_res = te.lang.cce.vmul(x, res_delta)
-    res = te.lang.cce.vadd(res_start, mid_res)
+    res_start = tbe.broadcast(tvm.const(start, dtype="float32"), x.shape)
+    res_delta = tbe.broadcast(tvm.const(delta, dtype="float32"), x.shape)
+    mid_res = tbe.vmul(x, res_delta)
+    res = tbe.vadd(res_start, mid_res)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     """
     algorithm: range_d
@@ -109,8 +104,8 @@ def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     shape_assist = x.get("shape")
     dtype_assist = x.get("dtype").lower()
 
-    check_shape(shape_assist, param_name="x")
-    check_dtype(dtype_assist.lower(), ("int32", "float32"), param_name="x")
+    para_check.check_shape(shape_assist, param_name="x")
+    para_check.check_dtype(dtype_assist.lower(), ("int32", "float32"), param_name="x")
 
     if limit == start:
         raise RuntimeError("start can not equal to limit")
@@ -133,8 +128,8 @@ def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     res = range_d_compute(data, y, start, limit, delta, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

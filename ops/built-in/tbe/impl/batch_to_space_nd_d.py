@@ -1,33 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-batch_to_space_nd
+batch_to_space_nd_d
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+import functools
 
-from functools import reduce as functools_reduce
-import te.lang.cce
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
+from te.utils import para_check
+from te.utils import shape_util
 from impl.copy_only import copy_only
-from te.utils.op_utils import *
+from impl.transpose_d import transpose_d
 
 
 # pylint: disable=too-many-instance-attributes,useless-object-inheritance
@@ -83,7 +78,7 @@ class _BatchToSpace(object):
         tile_axis = 1
         for i, _ in enumerate(self.tile_shape):
             if i > 0:
-                ele_cnt = functools_reduce(lambda x, y: x * y,
+                ele_cnt = functools.reduce(lambda x, y: x * y,
                                            self.tile_shape[i:])
                 if total_cnt // ele_cnt > 0:
                     tile_axis = i
@@ -135,9 +130,8 @@ def _kernel_ir(dst, src, batch):
         burst = 2
 
     tile_axis = batch.tile_axis()
-    if tile_axis == 1 and output_w * (block_h - 1) * burst <= 65535 and (
-            block_w - 1) * burst <= 65535 and crop_w * burst <= 65535 and (
-            input_h * input_w <= 4095):
+    if tile_axis == 1 and output_w * (block_h - 1) * burst <= 65535 and \
+            (block_w - 1) * burst <= 65535 and crop_w * burst <= 65535 and (input_h * input_w <= 4095):
         size = input_h * padded_w * c_0
         padded_data = batch.new_alloc(
             i_b, [size], name="padded_data", scope=tbe_platform.scope_ubuf)
@@ -241,8 +235,7 @@ def _kernel_ir(dst, src, batch):
                             end - start, output_w * burst, crop_w * burst,
                             output_w * (block_h - 1) * burst))
 
-    elif tile_axis in (1, 2) and (block_w - 1) * burst <= 65535 and (
-        input_w <= 4095):
+    elif tile_axis in (1, 2) and (block_w - 1) * burst <= 65535 and (input_w <= 4095):
         size = padded_w * c_0
         padded_data = batch.new_alloc(
             i_b, [size], name="padded_data", scope=tbe_platform.scope_ubuf)
@@ -263,9 +256,8 @@ def _kernel_ir(dst, src, batch):
                                 0, input_w, burst, 0, (block_w - 1) * burst))
 
                     # move data from UB to GM
-                    with i_b.if_scope(
-                            tvm.all(i_h * block_h + b_h >= crop_t,
-                                    i_h * block_h + b_h < output_h + crop_t)):
+                    with i_b.if_scope(tvm.all(i_h * block_h + b_h >= crop_t,
+                                              i_h * block_h + b_h < output_h + crop_t)):
                         offset_base = (var * num_inner +
                                        n_i) * output_h * output_w * c_0
                         offset_out = (i_h * block_h + b_h -
@@ -278,8 +270,7 @@ def _kernel_ir(dst, src, batch):
                                     "r", offset=crop_l * c_0), 0, 1,
                                 output_w * burst, 0, 0))
 
-    elif tile_axis == 3 and (block_w - 1) * burst <= 65535 and (
-        input_w <= 4095):
+    elif tile_axis == 3 and (block_w - 1) * burst <= 65535 and (input_w <= 4095):
         size = input_w * c_0
         padded_data = batch.new_alloc(
             i_b, [size], name="padded_data", scope=tbe_platform.scope_ubuf)
@@ -300,10 +291,8 @@ def _kernel_ir(dst, src, batch):
                                 0, input_w, burst, 0, 0))
 
                         # move data from UB to GM
-                        with i_b.if_scope(
-                                tvm.all(
-                                    i_h * block_h + b_h >= crop_t,
-                                    i_h * block_h + b_h < output_h + crop_t)):
+                        with i_b.if_scope(tvm.all(i_h * block_h + b_h >= crop_t,
+                                                  i_h * block_h + b_h < output_h + crop_t)):
                             start = (crop_l - b_w + block_w - 1) // block_w
                             end = (crop_l + output_w - b_w + block_w -
                                    1) // block_w
@@ -348,13 +337,10 @@ def _kernel_ir(dst, src, batch):
                                     0))
 
                             # move data from UB to GM
-                            with i_b.if_scope(
-                                    tvm.all(
-                                        i_h * block_h + b_h >= crop_t,
-                                        i_h * block_h + b_h < output_h + crop_t,
-                                        i_w * block_w + b_w >= crop_l,
-                                        i_w * block_w + b_w <
-                                        output_w + crop_l)):
+                            with i_b.if_scope(tvm.all(i_h * block_h + b_h >= crop_t,
+                                                      i_h * block_h + b_h < output_h + crop_t,
+                                                      i_w * block_w + b_w >= crop_l,
+                                                      i_w * block_w + b_w < output_w + crop_l)):
                                 offset_base = (var * num_inner +
                                                n_i) * output_h * output_w * c_0
                                 offset_out = (i_h * block_h + b_h -
@@ -377,8 +363,8 @@ def _check_parms(shape, dtype, block_shape, crops, kernel_name):
     and kernel_name.
     """
     dtype_list = ("float16", "float32")
-    check_shape(shape, param_name="x")
-    check_dtype(dtype, dtype_list, param_name="x")
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_dtype(dtype, dtype_list, param_name="x")
 
     if len(shape) != 5:
         raise RuntimeError(
@@ -417,7 +403,6 @@ def _check_parms(shape, dtype, block_shape, crops, kernel_name):
 
 
 # pylint: disable=invalid-name
-@fusion_manager.register("batch_to_space_nd_d")
 def batch_to_space_nd_d_compute(x,
                                 y,
                                 block_shape,
@@ -443,11 +428,8 @@ def batch_to_space_nd_d_compute(x,
     res: TVM tensor
         output tensor.
     """
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
     dtype = x.dtype
-
-    if len(crops) == 4:
-        crops = [[crops[0], crops[1]], [crops[2], crops[3]]]
 
     batch = _BatchToSpace(shape, dtype, block_shape, crops)
 
@@ -459,8 +441,9 @@ def batch_to_space_nd_d_compute(x,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_LIST_INT), KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_LIST_INT),
+                            para_check.KERNEL_NAME)
 def batch_to_space_nd_d(x,
                         y,
                         block_shape,
@@ -487,9 +470,29 @@ def batch_to_space_nd_d(x,
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
+    input_format = x.get("format")
+    ori_format = x.get("ori_format")
 
-    if len(crops) == 4:
-        crops = [[crops[0], crops[1]], [crops[2], crops[3]]]
+    if input_format not in ("NC1HWC0",):
+        raise RuntimeError("The input_format must be NC1HWC0.")
+
+    if ori_format in ("NHWC",):
+        if len(crops) == 4:
+            crops = [[crops[0], crops[1]], [crops[2], crops[3]]]
+    elif ori_format in ("NCHW",):
+        if len(block_shape) == 3 and block_shape[0] == 1:
+            block_shape = [block_shape[1], block_shape[2]]
+        else:
+            raise RuntimeError("The value of first block_shape must be 1")
+        if len(crops) == 6 and crops[0] == 0 and crops[1] == 0:
+            crops = [[crops[2], crops[3]], [crops[4], crops[5]]]
+        elif len(crops) == 3 and len(crops[0]) == 2 and len(crops[1]) == 2 \
+                and len(crops[2]) == 2 and crops[0][0] == 0 and crops[0][1] == 0:
+            crops = [[crops[1][0], crops[1][1]], [crops[2][0], crops[2][1]]]
+        else:
+            raise RuntimeError("The value of first crops must be 0")
+    else:
+        raise RuntimeError("The ori_format is not supported")
 
     _check_parms(shape, dtype, block_shape, crops, kernel_name)
 
@@ -499,11 +502,24 @@ def batch_to_space_nd_d(x,
         copy_only(x, x, kernel_name)
         return
 
+    if crops[0][0] == 0 and crops[0][1] == 0 and \
+            crops[1][0] == 0 and crops[1][1] == 0:
+        new_shape_input = \
+            (block_shape[0], block_shape[1], shape[0] // block_shape[0] //
+             block_shape[1], shape[1], shape[2], shape[3], shape[4])
+        new_shape_output = \
+            (shape[0] // block_shape[0] // block_shape[1], shape[1], shape[2],
+             block_shape[0], shape[3], block_shape[1], shape[4])
+        x.update({"shape": new_shape_input})
+        y.update({"shape": new_shape_output})
+        transpose_d(x, y, [2, 3, 4, 0, 5, 1, 6], kernel_name)
+        return
+
     data = tvm.placeholder(shape, name="data", dtype=dtype)
 
     res = batch_to_space_nd_d_compute(data, y, block_shape, crops, kernel_name)
 
     sch = tvm.create_schedule(res.op)
 
-    with build_config:
+    with tbe_platform.cce_build.build_config:
         tvm.build(sch, [data, res], "cce", name=kernel_name)

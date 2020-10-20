@@ -1,26 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# pylint: disable=too-many-lines
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_reduce
 """
-# pylint: disable=unused-import
 from __future__ import absolute_import
 from __future__ import division
 import math
-from functools import reduce
+import functools
 
 import te.lang.cce
 from te import tvm
@@ -323,7 +321,6 @@ def get_tiling_fractal_z(shape, dtype, max_ub_count):
         else:
             ub_split_inner = n_val
 
-
     return block_split_axis, block_factor, ub_split_axis, ub_split_inner
 
 
@@ -544,9 +541,15 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
         sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
         sch[tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
 
+    soc_version = cceconf.get_soc_spec("SOC_VERSION")
+
     for tensor in mid_tensor_buffer_map:
         buffer_tensor = mid_tensor_buffer_map[tensor]
-        if "broadcast" in tensor.op.tag and compute_at_axis_1 == block_inner_axis:
+        is_compute_at_outer = \
+            "broadcast" in tensor.op.tag and \
+            compute_at_axis_1 == block_inner_axis and \
+            soc_version in ["Ascend910", ]
+        if is_compute_at_outer:
             sch[buffer_tensor].compute_at(sch[final_out_buffer_1], ub_outer)
         else:
             sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
@@ -587,7 +590,7 @@ def schedule_cut_nlstaxis_twice(sch_list, res, shape_x,
     final_out_tensor = final_out_tensor_list[0]
 
     reorder_list = final_out_tensor.op.reduce_axis[:] +\
-                        final_out_tensor.op.axis[:]
+        final_out_tensor.op.axis[:]
 
     sch[final_out_tensor].reorder(*reorder_list)
 
@@ -600,7 +603,7 @@ def schedule_cut_nlstaxis_twice(sch_list, res, shape_x,
         fused_axis = final_out_tensor_block_outer
     else:
         fuse_axis_list = final_out_tensor.op.reduce_axis[0:block_split_axis] + \
-                         [final_out_tensor_block_outer]
+            [final_out_tensor_block_outer]
         fused_axis = sch[final_out_tensor].fuse(*fuse_axis_list)
 
     sch[final_out_tensor].split(final_out_tensor_block_inner,
@@ -627,7 +630,7 @@ def schedule_cut_nlstaxis_twice(sch_list, res, shape_x,
     final_out_tensor_global = final_out_tensor_global_list[0]
 
     reorder_list = final_out_tensor_global.op.reduce_axis[:] + \
-                    final_out_tensor_global.op.axis[:]
+        final_out_tensor_global.op.axis[:]
     sch[final_out_tensor_global].reorder(*reorder_list)
 
     reorder_list = []
@@ -706,7 +709,7 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
     final_out_tensor = final_out_tensor_list[0]
 
     reorder_list = final_out_tensor.op.reduce_axis[:] +\
-                        final_out_tensor.op.axis[:]
+        final_out_tensor.op.axis[:]
 
     sch[final_out_tensor].reorder(*reorder_list)
 
@@ -719,7 +722,7 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
         fused_axis = final_out_tensor_block_outer
     else:
         fuse_axis_list = final_out_tensor.op.reduce_axis[0:block_split_axis] +\
-                         [final_out_tensor_block_outer]
+            [final_out_tensor_block_outer]
         fused_axis = sch[final_out_tensor].fuse(*fuse_axis_list)
 
     final_out_tensor_ub_rf, _ = sch.rfactor(final_out_tensor, fused_axis)
@@ -742,7 +745,6 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
 
     final_out_tensor_global = final_out_tensor_global_list[0]
 
-
     if ub_split_axis <= reduce_axis_idx:
         ub_outer, ub_inner = \
             sch[final_out_tensor_ub_rf].split(
@@ -751,18 +753,18 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
                 factor=ub_split_inner)
 
         reorder_list = final_out_tensor_global.op.reduce_axis[:] + \
-                       final_out_tensor_global.op.axis[:]
+            final_out_tensor_global.op.axis[:]
         sch[final_out_tensor_global].reorder(*reorder_list)
 
         reorder_list = []
         reorder_list.append(final_out_tensor_ub_rf.op.axis[0])
         reorder_list.append(final_out_tensor_ub_rf.op.reduce_axis[-1])
         reorder_list += final_out_tensor_ub_rf.op. \
-                            reduce_axis[0:ub_split_axis - block_split_axis - 1]
+            reduce_axis[0:ub_split_axis - block_split_axis - 1]
         reorder_list.append(ub_outer)
         reorder_list.append(ub_inner)
         reorder_list += final_out_tensor_ub_rf.op. \
-                            reduce_axis[ub_split_axis - block_split_axis: -1]
+            reduce_axis[ub_split_axis - block_split_axis: -1]
         for axis in final_out_tensor_ub_rf.op.axis[1:]:
             reorder_list.append(axis)
         sch[final_out_tensor_ub_rf].reorder(*reorder_list)
@@ -771,19 +773,19 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
         ub_outer, ub_inner = \
             sch[final_out_tensor_ub_rf].split(
                 final_out_tensor_ub_rf.op.axis[ub_split_axis + 1],
-                #final_out_tensor_ub_rf.op.reduce_axis[
+                # final_out_tensor_ub_rf.op.reduce_axis[
                 #    ub_split_axis - block_split_axis - 1],
                 factor=ub_split_inner)
 
         reorder_list = final_out_tensor_global.op.reduce_axis[:] + \
-                       final_out_tensor_global.op.axis[:]
+            final_out_tensor_global.op.axis[:]
         sch[final_out_tensor_global].reorder(*reorder_list)
 
         reorder_list = []
         reorder_list.append(final_out_tensor_ub_rf.op.axis[0])
         reorder_list.append(final_out_tensor_ub_rf.op.reduce_axis[-1])
         reorder_list += final_out_tensor_ub_rf.op. \
-                            reduce_axis[0: -1]
+            reduce_axis[0: -1]
         reorder_list.append(ub_outer)
         reorder_list.append(ub_inner)
         for axis in final_out_tensor_ub_rf.op.axis[1:ub_split_axis + 1]:
@@ -978,16 +980,16 @@ def schedule_cut_m1_nz(sch_list, res, shape_x,
     if dim == 3:
         reorder_list = [final_out_tensor_block_outer,
                         ] + \
-                       [ub_outer, final_out_tensor_block_inner, ub_inner] + \
-                       final_ub_tensor.op.axis[(dim - 1):]
+            [ub_outer, final_out_tensor_block_inner, ub_inner] + \
+            final_ub_tensor.op.axis[(dim - 1):]
     else:
         reorder_list = [final_out_tensor_block_outer] + \
-                       final_ub_tensor.op.reduce_axis[0:ub_split_axis-1] + \
-                       final_ub_tensor.op.axis[0:block_split_axis] +\
+            final_ub_tensor.op.reduce_axis[0:ub_split_axis-1] + \
+            final_ub_tensor.op.axis[0:block_split_axis] +\
                        [final_out_tensor_block_inner] + \
-                       final_ub_tensor.op.axis[block_split_axis+1:dim-1] +\
+            final_ub_tensor.op.axis[block_split_axis+1:dim-1] +\
                        [ub_outer, ub_inner] + \
-                       final_ub_tensor.op.axis[(dim - 1):]
+            final_ub_tensor.op.axis[(dim - 1):]
 
     sch[final_ub_tensor].reorder(*reorder_list)
 
@@ -1043,7 +1045,7 @@ def _is_general_schedule(is_fractal_z, shape_x,
             else:
                 general_schedule = True
     else:
-        #ND input
+        # ND input
         dim = len(shape_x)
         if block_split_axis == ub_split_axis < dim - 1:
             general_schedule = False
@@ -1111,7 +1113,7 @@ def _is_reduce_align(shape_x, dtype, reduce_axis_idx,
     if dtype == "float32":
         aligned_data_size = 8
 
-    reduce_res_size = reduce(lambda i, j: i * j, shape_reduce_res)
+    reduce_res_size = functools.reduce(lambda i, j: i * j, shape_reduce_res)
 
     if shape_reduce_res != shape_before_reduce:
         if reduce_res_size % aligned_data_size != 0:
@@ -1185,8 +1187,8 @@ def layer_norm_grad_schedule(res, input_tensors):
     max_ub_count = get_max_ub_count(dtype)
 
     is_fractal_z = shape_res[-1] == 16 and \
-                   ((len(shape_x) == 4 and shape_res[2] == 1) or\
-                    (len(shape_x) == 3 and shape_res[1] == 1))
+        ((len(shape_x) == 4 and shape_res[2] == 1) or
+         (len(shape_x) == 3 and shape_res[1] == 1))
 
     reduce_axis_idx = _get_reduce_axis(shape_x, shape_res)
 
@@ -1279,7 +1281,7 @@ def layer_norm_grad_schedule(res, input_tensors):
                     mid_tensor_buffer_map, final_out_tensor_list,
                     input_broadcast_tensor_buffers, is_keep_dim)
     else:
-        #ND input
+        # ND input
         dim = len(shape_x)
         if block_split_axis == ub_split_axis < dim - 1:
             schedule_cut_nlstaxis_twice(

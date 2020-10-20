@@ -1,24 +1,23 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-sparse_apply_proximal_adagrad
+sparse_apply_proximal_adagrad_d
 """
 # pylint: disable=import-error
+from te.utils import para_check
 from te import tik
-from topi.cce import util
-from te.utils.op_utils import *
 
 
 # max elememts can be put into ub, foor loop will be used for larger shape
@@ -31,9 +30,10 @@ HARD_CORE_NUM = 32
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,unused-argument,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
                                     grad, indices, var_out,
                                     accum_out,
@@ -95,10 +95,10 @@ def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
         var_out, updated var, accum
     """
 
-    var_shape = var.get("shape")
+    var_shape = list(var.get("shape"))
     var_dtype = var.get("dtype")
 
-    idx_shape = indices.get("shape")
+    idx_shape = list(indices.get("shape"))
     idx_dtype = indices.get("dtype")
     accum_dtype = accum.get("dtype").lower()
     lr_dtype = lr.get("dtype").lower()
@@ -106,14 +106,14 @@ def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
     l2_dtype = l2.get("dtype").lower()
     grad_dtype = grad.get("dtype").lower()
     check_list = ("float32")
-    check_dtype(accum_dtype, check_list, param_name="accum")
-    check_dtype(lr_dtype, check_list, param_name="lr")
-    check_dtype(l1_dtype, check_list, param_name="l1")
-    check_dtype(l2_dtype, check_list, param_name="l2")
-    check_dtype(grad_dtype, check_list, param_name="grad")
+    para_check.check_dtype(accum_dtype, check_list, param_name="accum")
+    para_check.check_dtype(lr_dtype, check_list, param_name="lr")
+    para_check.check_dtype(l1_dtype, check_list, param_name="l1")
+    para_check.check_dtype(l2_dtype, check_list, param_name="l2")
+    para_check.check_dtype(grad_dtype, check_list, param_name="grad")
     _param_check(var_shape, var_dtype, idx_shape, idx_dtype, kernel_name)
 
-    grad_shape = (idx_shape[0], ) + var_shape[1:]
+    grad_shape = [idx_shape[0], ] + var_shape[1:]
 
     op_class = SparseApplyProximalAdagrad(var_shape, var_dtype, grad_shape,
                                           idx_shape, idx_dtype, kernel_name)
@@ -124,14 +124,14 @@ def sparse_apply_proximal_adagrad_d(var, accum, lr, l1, l2,
 
 
 def _param_check(var_shape, var_dtype, idx_shape, idx_dtype, kernel_name):
-    check_shape(var_shape, min_rank=1, max_rank=8, param_name="var")
-    check_shape(idx_shape, min_rank=1, max_rank=1, param_name="indices")
+    para_check.check_shape(var_shape, min_rank=1, max_rank=8, param_name="var")
+    para_check.check_shape(idx_shape, min_rank=1, max_rank=1, param_name="indices")
 
     var_dtype_list = ("float16", "float32")
-    check_dtype(var_dtype.lower(), var_dtype_list, param_name="var")
+    para_check.check_dtype(var_dtype.lower(), var_dtype_list, param_name="var")
 
     index_dtype_list = ("int32", "uint32", "int16", "uint16", "int64", "uint64")
-    check_dtype(idx_dtype.lower(), index_dtype_list, param_name="indices")
+    para_check.check_dtype(idx_dtype.lower(), index_dtype_list, param_name="indices")
 
 
 

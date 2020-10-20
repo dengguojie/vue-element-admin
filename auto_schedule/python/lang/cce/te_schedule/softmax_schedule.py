@@ -1,20 +1,23 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 softmax schedule, provide a schedule for softmax
 """
 # pylint: disable=too-many-lines
 from __future__ import absolute_import
+
 from te import tvm
 from te import platform as cce
 from te.platform import log
@@ -57,6 +60,7 @@ class SoftmaxSchedule(VectorSchedule):
 
     """
     # pylint: disable=super-init-not-called
+
     def __init__(self):
         self._scope = cce.scope_ubuf
         self._core_dim = cce.get_soc_spec("CORE_NUM")
@@ -172,7 +176,6 @@ class SoftmaxSchedule(VectorSchedule):
         log.debug("end softmax_schedule")
         return sch, []
 
-
     def _do_schedule_last_with_workspace(self):
         self._schedule = tvm.create_schedule(self._res.op)
 
@@ -194,7 +197,6 @@ class SoftmaxSchedule(VectorSchedule):
         sch = self._schedule
         return sch
 
-
     def _do_schedule_last_32align(self):
         self._schedule = tvm.create_schedule(self._res.op)
         self._do_cache_read()
@@ -214,7 +216,6 @@ class SoftmaxSchedule(VectorSchedule):
 
         sch = self._schedule
         return sch
-
 
     def _do_schedule_last_noalign_storagealign(self):
         self._schedule = tvm.create_schedule(self._res.op)
@@ -237,7 +238,6 @@ class SoftmaxSchedule(VectorSchedule):
         sch = self._schedule
         return sch
 
-
     def _do_schedule_last_dim1(self):
         self._schedule = tvm.create_schedule(self._res.op)
         self._do_cache_read()
@@ -257,7 +257,6 @@ class SoftmaxSchedule(VectorSchedule):
 
         sch = self._schedule
         return sch
-
 
     def _do_schedule_last_noalign_lt32(self):
         self._schedule = tvm.create_schedule(self._res.op)
@@ -279,7 +278,6 @@ class SoftmaxSchedule(VectorSchedule):
         sch = self._schedule
         return sch
 
-
     def _do_schedule_last_noalign_ge32(self):
         self._schedule = tvm.create_schedule(self._res.op)
         self._do_cache_read()
@@ -299,7 +297,6 @@ class SoftmaxSchedule(VectorSchedule):
 
         sch = self._schedule
         return sch
-
 
     def _do_schedule_nlst_axis(self):
         self._schedule = tvm.create_schedule(self._res.op)
@@ -334,7 +331,6 @@ class SoftmaxSchedule(VectorSchedule):
 
         return sch
 
-
     def _construct_compute_graph(self, out_tensors):
         """
         record relate context imformations of operations
@@ -366,17 +362,17 @@ class SoftmaxSchedule(VectorSchedule):
         for i in self._broadcast_tensors:
             if shape_to_list(i.shape) != shape:
                 self._is_this_schedule_support = False
-                return False # broadcast must be as same as the shape of elewise res
+                return False  # broadcast must be as same as the shape of elewise res
 
         reduce_axis_num = get_reduce_axis_num(self._reduce_tensors[0])
         for i in self._reduce_tensors:
             if get_reduce_axis_num(i) != reduce_axis_num:
                 self._is_this_schedule_support = False
-                return False # all reduce must have the same reduce_axis
+                return False  # all reduce must have the same reduce_axis
 
         if len(reduce_axis_num) != 1:
             self._is_this_schedule_support = False
-            return False # must be only one reduce_axis
+            return False  # must be only one reduce_axis
 
         self._is_last_reduce_axis = ((len(shape) - 1) in reduce_axis_num)
         self._reduce_axis_num = reduce_axis_num[0]
@@ -402,7 +398,7 @@ class SoftmaxSchedule(VectorSchedule):
         if (self._max_ub_count < align_factor_32byte) or \
            (self._is_last_reduce_axis and self._max_ub_count < shape[self._reduce_axis_num]):
             self._is_this_schedule_support = False
-            return False # workspace
+            return False  # workspace
 
         # calculate max_ub_count: try double buffer
         self._is_double_buffer = False
@@ -418,7 +414,6 @@ class SoftmaxSchedule(VectorSchedule):
             self._max_ub_count = tmp_max_ub_count
 
         return True
-
 
     def __gen_reversed_subgraph_list(self, tensor, tensor_list, visited_list):
         """traverse tensors by Depth-First-Search
@@ -520,7 +515,7 @@ class SoftmaxSchedule(VectorSchedule):
         """
         broadcast
         """
-        if tensor.op.tag.find("broadcast") != -1: # broadcast_for_tensor
+        if tensor.op.tag.find("broadcast") != -1:  # broadcast_for_tensor
             return True
         return False
 
@@ -534,7 +529,6 @@ class SoftmaxSchedule(VectorSchedule):
             if self._is_reduce_ops(in_tensor) or self._is_broadcast_ops(in_tensor):
                 return True
         return False
-
 
     def _do_cache_read(self):
         """
@@ -599,7 +593,6 @@ class SoftmaxSchedule(VectorSchedule):
             self._schedule[i].compute_inline()
         for i in self._compute_inline_buffer:
             self._schedule[i].compute_inline()
-
 
     def _get_total_width(self):
         """
@@ -711,7 +704,6 @@ class SoftmaxSchedule(VectorSchedule):
         align_factor_256byte = 256*8//bits
         return align_factor_32byte, align_factor_256byte
 
-
     def _calculate_tiling_last_common(self):
         """
         calculate tiling strategy: last axis
@@ -771,7 +763,6 @@ class SoftmaxSchedule(VectorSchedule):
         self._tiling_para["ub_tiling"]["nparts"] = ub_nparts
         self._tiling_para["ub_tiling"]["factor"] = ub_factor
         self._tiling_para["ub_tiling"]["axis"] = ub_axis
-
 
     # pylint: disable=too-many-locals
     def _calculate_last_axis_tiling(self):
@@ -976,7 +967,6 @@ class SoftmaxSchedule(VectorSchedule):
         block = tvm.thread_axis("blockIdx.x")
         self._schedule[self._res].bind(self._multi_core_fused_axis, block)
 
-
     def _do_reorder(self):
         if self._is_last_reduce_axis:
             return
@@ -1066,7 +1056,6 @@ class SoftmaxSchedule(VectorSchedule):
                 self._schedule[write_buffer].storage_align(write_buffer.op.axis[at_axis],
                                                            align_factor, 0)
 
-
     def _do_tiling_last_noalign_lt32(self):
         # Tiling strategy: 1) 128 alignment reduction set_mask (not use)
         # 2) Enable 32 cores > 3) Maximize UB utilization
@@ -1138,7 +1127,6 @@ class SoftmaxSchedule(VectorSchedule):
         self._do_tiling()
         self._calculate_multi_core()
         self._do_multi_core()
-
 
     def _do_tiling_last_32align(self):
         # Prerequisites:
@@ -1242,7 +1230,6 @@ class SoftmaxSchedule(VectorSchedule):
             if write_buffer not in self._compute_inline_buffer:
                 para = {"parent": self._schedule[self._res], "scope": ub_outer}
                 self._compute_at_map[write_buffer] = para
-
 
     def _do_compute_at(self):
         for stage in self._compute_at_map:
@@ -1349,7 +1336,6 @@ class SoftmaxSchedule(VectorSchedule):
 
             self._emit_insn_map[write_buffer] = insn_para
 
-
     def _calculate_emit_insn_last(self):
         """
         Calculate the instruction map of tensor
@@ -1433,7 +1419,6 @@ class SoftmaxSchedule(VectorSchedule):
             for i in self._double_buffer_tensors:
                 self._schedule[i].double_buffer()
 
-
     def _get_softmax_spec_node(self):
         self._spec_node_list = []
         self._spec_mid_list = []
@@ -1462,7 +1447,6 @@ class SoftmaxSchedule(VectorSchedule):
                                     self._spec_mid_list[i],
                                     list(compute_at_tensor))
 
-
     def _get_tensors_before_reduce_and_spec_node(self, reduce_tensor):
         tensors_before_reduce = set()
 
@@ -1475,7 +1459,7 @@ class SoftmaxSchedule(VectorSchedule):
             if len(tmp_tensor.op.input_tensors) > 1:
                 return
             if (tmp_end_tensor is not None) and \
-                tmp_tensor.same_as(tmp_end_tensor):
+                    tmp_tensor.same_as(tmp_end_tensor):
                 return
 
             for in_tensor in list(tmp_tensor.op.input_tensors):
@@ -1514,7 +1498,7 @@ class SoftmaxSchedule(VectorSchedule):
 
         def _get_tensor_list(tmp_tensor, tmp_end_tensor=None):
             if (tmp_end_tensor is not None) and \
-                tmp_tensor.same_as(tmp_end_tensor):
+                    tmp_tensor.same_as(tmp_end_tensor):
                 return
 
             tensors_before_reduce.add(tmp_tensor)
@@ -1574,7 +1558,7 @@ class SoftmaxSchedule(VectorSchedule):
     def _calculate_compute_at_with_workspace(self):
         for at_tensor in self._compute_at_tensor_map:
             # 1. at to reduce node
-            if at_tensor not in self._spec_mid_list: # reduce tensor
+            if at_tensor not in self._spec_mid_list:  # reduce tensor
                 new_at_tensor = \
                     self._cache_write_tensors_and_buffer_map[at_tensor]
                 for tmp_tensor in self._compute_at_tensor_map[at_tensor]:
@@ -1583,7 +1567,7 @@ class SoftmaxSchedule(VectorSchedule):
                     # from _cache_read_buffer_and_reader_map
                     if tmp_tensor in self._spec_mid_list:
                         for ub_tensor in \
-                            self._cache_read_buffer_and_reader_map:
+                                self._cache_read_buffer_and_reader_map:
                             gm_reader = \
                                 self._cache_read_buffer_and_reader_map[
                                     ub_tensor]
@@ -1651,7 +1635,6 @@ class SoftmaxSchedule(VectorSchedule):
         tail = shape[self._reduce_axis_num] % factor
         if 0 < tail < align_factor_32byte:
             factor = factor - align_factor_32byte
-
 
         for at_tensor in self._compute_at_tensor_map:
             # 1. reduce_node
@@ -1749,7 +1732,7 @@ class SoftmaxSchedule(VectorSchedule):
             # 3.2 elewise using reduce result,
             # compute_inline broadcast(not last axis)
             elif i in self._after_reduce_bc_tensors and \
-                (not self._is_last_reduce_axis):
+                    (not self._is_last_reduce_axis):
                 at_axis = self._tiling_result["ub_tiling"]["axis"]
                 insn_scope = write_buffer.op.axis[at_axis]
                 insn_para = {"scope": insn_scope, "instruction": insn}
@@ -1770,7 +1753,6 @@ class SoftmaxSchedule(VectorSchedule):
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]
             self._schedule[stage].emit_insn(scope_iter_var, instruction)
-
 
 
 # pylint: disable=too-many-locals, invalid-name
@@ -1935,7 +1917,6 @@ def calculate_last_axis_ub_tiling(shape,
     return (outer, inner, ret_axis)
 
 
-
 @tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_sum")
 def reduce_last_axis_enhance_reduce_sum(tensor_op):
     """
@@ -1943,12 +1924,14 @@ def reduce_last_axis_enhance_reduce_sum(tensor_op):
     """
     return reduce_last_axis_enhance(tensor_op, "vadd")
 
+
 @tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_max")
 def reduce_last_axis_enhance_reduce_max(tensor_op):
     """
     reduce last axis reduce max enhance
     """
     return reduce_last_axis_enhance(tensor_op, "vmax")
+
 
 @tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_min")
 def reduce_last_axis_enhance_reduce_min(tensor_op):
@@ -1967,7 +1950,6 @@ def reduce_last_axis_enhance(tensor_op, intrin_cmd):
 
     # intrin_cmd is vcadd/vcmin/vcmax
     return reduce_last_axis_enhance_vccmd(tensor_op, intrin_cmd)
-
 
 
 def reduce_last_axis_enhance_vcmd(tensor_op, intrin_cmd):
@@ -2108,6 +2090,7 @@ def reset_mask_insn(ib_expr, type_, bits=128, mask_func=None):
         type_, "set_vector_mask", tvm.const(mask1, dtype="uint64"),
         tvm.const(mask2, dtype="uint64")))
 
+
 def new_alloc(ib_expr, dtype, shape, name, scope):
     """
     new alloc
@@ -2117,9 +2100,11 @@ def new_alloc(ib_expr, dtype, shape, name, scope):
 
     return new_buffer
 
+
 def _get_for_vars(tensor_op):
     for_extent_vals = []
     for_vars = []
+
     def _post_order_for(tensor_op):
         """
         post order
@@ -2178,6 +2163,7 @@ def _insn_reduce_last_using_vcxx_dim1(ib_expr,
             1,
             *repeat_stride))
 
+
 def __tail_vcadd_proc(ib_expr, intrin_cmd, src_buffer, repeat_time, remain_size):
     if repeat_time > 1 or (repeat_time == 1 and remain_size > 0):
         if remain_size > 0:
@@ -2190,6 +2176,7 @@ def __tail_vcadd_proc(ib_expr, intrin_cmd, src_buffer, repeat_time, remain_size)
             src_buffer.access_ptr("rw", offset=0),
             src_buffer.access_ptr("r", offset=0),
             1, 1, 1, 8))
+
 
 def __tail_vcmax_proc(ib_expr, intrin_cmd, src_buffer, repeat_time, remain_size,
                       vector_inst_one_repeat_size, factor, repeat_stride):
@@ -2264,8 +2251,7 @@ def _insn_reduce_last_using_vcxx(ib_expr,
         ib_expr.emit(tvm.call_extern(
             src_buffer.dtype, intrin_cmd,
             src_buffer.access_ptr("rw", offset=repeat_time * factor),
-            src_buffer.access_ptr("r", offset=
-                                  repeat_time * vector_inst_one_repeat_size),
+            src_buffer.access_ptr("r", offset=repeat_time * vector_inst_one_repeat_size),
             1,
             *repeat_stride))
 
@@ -2283,7 +2269,6 @@ def _insn_reduce_last_using_vcxx(ib_expr,
 
 def _insn_reg_mov(ib_expr, dst_buffer, src_buffer, reg, reg_num,
                   reduce_axis_len, loop, k1_size):
-    # reg[8]
     reg_mov_loop = reduce_axis_len//8
     if reg_mov_loop:
         remain_reg_mov_loop = reduce_axis_len - reg_mov_loop*8
@@ -2319,7 +2304,7 @@ def _insn_reg_mov(ib_expr, dst_buffer, src_buffer, reg, reg_num,
                 src_buffer.dtype, "reg_mov",
                 tvm.call_extern(reg.dtype, "reg", reg[i]),
                 src_buffer.access_ptr(
-                    "rw", offset=src_dst_offset+loop*reduce_axis_len-k1_size +i)
+                    "rw", offset=src_dst_offset+loop*reduce_axis_len-k1_size + i)
             ))
         for j in range(reamin_reg_num):
             ib_expr.emit(tvm.call_extern(
@@ -2356,7 +2341,6 @@ def reduce_last_axis_enhance_vccmd(tensor_op, intrin_cmd):
         repeat_stride = (1, 1, 8, 0, 0, 0)
     else:
         repeat_stride = (1, 1, 8)
-
 
     if len(for_extent_vals) == 1:
         _insn_reduce_last_using_vcxx_dim1(ib_expr,
@@ -2412,7 +2396,7 @@ def reset_mask_insn_using_mask(ir_builder, type_, mask1, mask2):
 
 @tvm.register_func("tvm.intrin.cce.vector_reduce_sum_softmax_fractalz_vcadd")
 def vector_reduce_sum_softmax_fractalz_vcadd(
-        tensor_op): # pylint: disable=too-many-branches, too-many-statements
+        tensor_op):  # pylint: disable=too-many-branches, too-many-statements
     """
     reduce sum for softmax fractalz format
     now only using for RL_BANK bert NZ softmax:
@@ -2504,7 +2488,7 @@ def vector_reduce_sum_softmax_fractalz_vcadd(
             reset_mask_insn(ib_expr, src_buffer.dtype,
                             bits=outer_reduce_size % 8 * 8)
             src_offset = block_num * no_reduce_size * 8 * c0_size \
-                         + idx * c0_size
+                + idx * c0_size
             dst_offset = idx * tmp_buf_shape[1] + block_num * 2 * 8
             dst_ptr = tvm.call_pure_intrin(
                 dtype, "tvm_access_ptr",
@@ -2622,32 +2606,32 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
             no_reduce_size *= for_extent_vals[i]
 
     # support float16 float32
-    # shape: (c1_size, hw_size, c0_size)
+    # the shape is (c1_size, hw_size, c0_size)
     c0_size = last_reduce_size
     hw_size = no_reduce_size
     c1_size = outer_reduce_size
     is_not_supported = reduce_axis_num != 2 or \
-                       hw_size > 255 or \
-                       c1_size < 2 or \
-                       c0_size != 16 or \
-                       (dtype not in ("float16", "float32")) or \
-                       (intrin_cmd not in ("vadd", "vmax", "vmin"))
+        hw_size > 255 or \
+        c1_size < 2 or \
+        c0_size != 16 or \
+        (dtype not in ("float16", "float32")) or \
+        (intrin_cmd not in ("vadd", "vmax", "vmin"))
     if is_not_supported:
         raise RuntimeError("Unsupported IR of softmax_fractalz reduce!")
 
     vector_cross_cmd_map = {
-        "vadd" : "vcadd",
-        "vmax" : "vcgmax",
-        "vmin" : "vcgmin",
+        "vadd": "vcadd",
+        "vmax": "vcgmax",
+        "vmin": "vcgmin",
     }
     dtype_repeat_size_map = {
         "float32": {
-            "one_block_size" : 8,
-            "eight_block_size" : 64,
+            "one_block_size": 8,
+            "eight_block_size": 64,
         },
         "float16": {
-            "one_block_size" : 16,
-            "eight_block_size" : 128,
+            "one_block_size": 16,
+            "eight_block_size": 128,
         },
     }
     intrin_cross_cmd = vector_cross_cmd_map[intrin_cmd]
@@ -2655,7 +2639,6 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
         dtype_repeat_size_map[dtype]["eight_block_size"]
     vector_one_block_size = \
         dtype_repeat_size_map[dtype]["one_block_size"]
-
 
     # 1. first dichotomy reduce, using vadd/vmax/vmin
     tmp_buf_shape = (c1_size // 2, hw_size, c0_size)
@@ -2674,7 +2657,6 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
                                  hw_size * c0_size,
                                  vector_inst_one_repeat_size)
 
-
     # 2. loop dichotomy reduce, using vadd/vmax/vmin
     while dichotomy_size > 1:
         outer_size = dichotomy_size
@@ -2689,7 +2671,6 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
                                      hw_size * c0_size,
                                      vector_inst_one_repeat_size)
 
-
     # 3. vcadd/vcgmax/vcgmin
     _reduce_using_vccmd(ib_expr,
                         intrin_cross_cmd,
@@ -2701,11 +2682,9 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
                         vector_inst_one_repeat_size,
                         vector_one_block_size)
 
-
     reset_mask_insn(ib_expr, res_buffer.dtype)
     stmt = ib_expr.get()
     return stmt
-
 
 
 def _dichotomy_reduce_using_vcmd(ib_expr,
@@ -2764,7 +2743,6 @@ def _dichotomy_reduce_using_vcmd(ib_expr,
                 src_buffer.access_ptr("rw", offset=dst_offset),
                 1,
                 1, 1, 1, 8, 8, 8))
-
 
 
 def _reduce_using_vccmd(ib_expr,

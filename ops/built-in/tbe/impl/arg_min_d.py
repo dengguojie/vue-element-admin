@@ -1,24 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 arg_min_d
 """
 # pylint: disable=too-many-lines
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # define a scalar, value = (2**16 - 1)
 SCALAR_MAX_FP16 = (2**16 - 1)
@@ -61,8 +61,8 @@ def _get_ceil_int(int1, int2):
 
 
 # pylint: disable=unused-argument,invalid-name,useless-object-inheritance
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def arg_min_d(x, y, dimension, kernel_name="arg_min_d"):
     """
     Generate arg_max_d operator use arg_max_d
@@ -116,10 +116,10 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     dim_num = len(shape_x)
     if axis < -dim_num or axis >= dim_num:
         raise RuntimeError("Axis value out of range")
-    check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_x.lower(), check_list, param_name="x")
+    para_check.check_dtype(dtype_x.lower(), check_list, param_name="x")
 
 
 
@@ -352,7 +352,6 @@ class Argmin(ArgminBase):
             core_number_all = self.first_dim_size
             core_loop = core_number_all // core_number
             core_over = core_number_all - (core_loop * core_number)
-
 
             with self.tik_instance.for_range(
                     0, core_number, block_num=core_number) as num_core_i:

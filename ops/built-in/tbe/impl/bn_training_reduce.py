@@ -1,40 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bn_training_reduce
 """
-from __future__ import division
-
 import math
-import numpy as np
 
-import te.lang.cce
-import te.platform.cce_params as cce_params
-from te import platform as cceconf
-import te.platform.cce_emitinsn_params as cce_emitinsn_params
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.platform import cce_util
-from te.platform.cce_build import build_config
-
-from topi import generic
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -50,29 +39,29 @@ def op_select_format(x, sum, square_sum,
     # can support Nz + ND
     if origin_format == "NCHW" and len(origin_shape) == 4 \
             and origin_shape[0] == 1 and origin_shape[2] == 1:
-        input0 = gen_param(classify="input0", name="x",
-                           datatype="float16,float,float16,float",
-                           format="NCHW,NCHW,NC1HWC0,NC1HWC0")
-        output0 = gen_param(classify="output0", name="sum",
-                            datatype="float,float,float,float",
-                            format="NCHW,NCHW,NC1HWC0,NC1HWC0")
-        output1 = gen_param(classify="output1", name="square_sum",
-                            datatype="float,float,float,float",
-                            format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype="float16, float, float16, float",
+                                               format="NCHW, NCHW, NC1HWC0, NC1HWC0")
+        output0 = util_select_op_base.gen_param(classify="output0", name="sum",
+                                                datatype="float, float, float, float",
+                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0")
+        output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
+                                                datatype="float, float, float, float",
+                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0")
     # support 5HD + 5HD
     else:
-        input0 = gen_param(classify="input0", name="x",
-                           datatype="float16,float",
-                           format="NC1HWC0,NC1HWC0")
-        output0 = gen_param(classify="output0", name="sum",
-                            datatype="float,float",
-                            format="NC1HWC0,NC1HWC0")
-        output1 = gen_param(classify="output1", name="square_sum",
-                            datatype="float,float",
-                            format="NC1HWC0,NC1HWC0")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype="float16, float",
+                                               format="NC1HWC0, NC1HWC0")
+        output0 = util_select_op_base.gen_param(classify="output0", name="sum",
+                                                datatype="float, float",
+                                                format="NC1HWC0, NC1HWC0")
+        output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
+                                                datatype="float, float",
+                                                format="NC1HWC0, NC1HWC0")
 
     param_list = [input0, output0, output1]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
@@ -93,11 +82,12 @@ def _check_format(data_format, origin_foramt):
     None
     """
     if data_format.upper() not in ("NC1HWC0", "NCHW"):
-        raise RuntimeError("The data format only supports NC1HWC0 and NCHW.")
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce",
+                                                      "The data format only supports NC1HWC0 and NCHW.")
     if data_format.upper() == "NCHW":
         if origin_foramt not in ("NCHW",):
-            raise RuntimeError("The origin format only supports "
-                               "NCHW when format is NCHW")
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce",
+                                                          "The origin format only supports NCHW when format is NCHW")
 
 
 def _reduce_compute_5hd(x):
@@ -117,10 +107,10 @@ def _reduce_compute_5hd(x):
     res: TVM tensor list
         the result of bn_training_reduce compute
     """
-    square_x = te.lang.cce.vmul(x, x)
+    square_x = tbe.vmul(x, x)
 
     axis = [0, 2, 3]
-    sum_x, square_sum_x = te.lang.cce.tuple_sum([x, square_x], axis, True)
+    sum_x, square_sum_x = tbe.tuple_sum([x, square_x], axis, True)
 
     res = [sum_x, square_sum_x]
 
@@ -147,7 +137,7 @@ def _reduce_compute_nd(x, sum):
         the result of bn_training_reduce compute
     """
     origin_format = sum.get("ori_format")
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
     axis = list(range(len(shape)))
 
     if origin_format == "NCHW":
@@ -157,9 +147,9 @@ def _reduce_compute_nd(x, sum):
         if shape[i] == 1 and i in axis:
             axis.remove(i)
 
-    square_x = te.lang.cce.vmul(x, x)
-    sum_x = te.lang.cce.sum(x, axis, False)
-    square_sum_x = te.lang.cce.sum(square_x, axis, False)
+    square_x = tbe.vmul(x, x)
+    sum_x = tbe.sum(x, axis, False)
+    square_sum_x = tbe.sum(square_x, axis, False)
 
     # Output has been reversed because of binary_reduce_output_reversed
     res = [square_sum_x, sum_x]
@@ -167,21 +157,21 @@ def _reduce_compute_nd(x, sum):
     return res
 
 
-# Schedule for ND
-# Including definition for several operator specific intrinsic instructions
-# bn_reduce_sum
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
 @tvm.register_func("tvm.intrin.cce.bn_reduce_sum")
 def bn_reduce_sum(stmt_op):
     """
     Collapse second input tensor to one repeat
     and use vcadd to calculate sum to output
+    Schedule for ND
+    Including definition for several operator specific intrinsic instructions
+    bn_reduce_sum
     """
     # Get input and output buffers
     input_size_list = [1]
     for_extents = []
     ir_builder = tvm.ir_builder.create()
-    cce_util.get_init_op(stmt_op)
+    tbe_platform.cce_util.get_init_op(stmt_op)
 
     def _post_order_for(_stmt):
         if isinstance(_stmt, tvm.stmt.For):
@@ -190,15 +180,15 @@ def bn_reduce_sum(stmt_op):
 
     tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     ins, outs = \
-        cce_util.get_buffer(stmt_op, need_unique=True, need_origin_adress=True)
+        tbe_platform.cce_util.get_buffer(stmt_op, need_unique=True, need_origin_adress=True)
     in_buffer = ins[1]
     out_buffer = outs[0]
     input_size = input_size_list[0]
 
     # Check if input can be collapsed into one repeat
     vector_inst_one_repeat_size = \
-        cce_params.VECTOR_INST_BLOCK_WIDTH // \
-        cce_util.get_align_factor(in_buffer.dtype)[1]
+        tbe_platform.cce_params.VECTOR_INST_BLOCK_WIDTH // \
+        tbe_platform.cce_util.get_align_factor(in_buffer.dtype)[1]
 
 
     # get reduce_axis shape
@@ -246,9 +236,7 @@ def bn_reduce_sum(stmt_op):
         if tail_flag:
             tail_mask = \
                 (current_size - repeat * 2 * vector_inst_one_repeat_size) // 2
-            te.platform.cce_intrin_md.reset_mask_insn(ir_builder,
-                                                      in_buffer.dtype,
-                                                      tail_mask)
+            tbe_platform.cce_intrin_md.reset_mask_insn(ir_builder, in_buffer.dtype, tail_mask)
             ir_b.emit(tvm.call_extern(
                 buffer.dtype,
                 "vadd",
@@ -260,8 +248,7 @@ def bn_reduce_sum(stmt_op):
                                   offset=repeat*2*vector_inst_one_repeat_size +
                                   8),
                 1, 1, 2, 2, 0, 0, 0))
-            te.platform.cce_intrin_md.reset_mask_insn(ir_builder,
-                                                      in_buffer.dtype)
+            tbe_platform.cce_intrin_md.reset_mask_insn(ir_builder, in_buffer.dtype)
         return current_size // 2
 
     # emit vadd
@@ -275,8 +262,7 @@ def bn_reduce_sum(stmt_op):
             input_reduce_axis_shape / collapse_repeat - \
             vector_inst_one_repeat_size
         add_repeat_stride = int(8 + mask_bits / 8)
-        te.platform.cce_intrin_md.reset_mask_insn(ir_builder,
-                                                  in_buffer.dtype, mask_bits)
+        tbe_platform.cce_intrin_md.reset_mask_insn(ir_builder, in_buffer.dtype, mask_bits)
         ir_builder.emit(tvm.call_extern(
             in_buffer.dtype,
             "vadd",
@@ -289,7 +275,7 @@ def bn_reduce_sum(stmt_op):
             add_repeat_stride))
 
         # emit vcadd for remain
-        te.platform.cce_intrin_md.reset_mask_insn(ir_builder, in_buffer.dtype)
+        tbe_platform.cce_intrin_md.reset_mask_insn(ir_builder, in_buffer.dtype)
         ir_builder.emit(tvm.call_extern(
             in_buffer.dtype,
             "vcadd",
@@ -326,21 +312,21 @@ def binary_reduce_output(stmt_op):
                                      scope=scope, data=buf_var)
         return new_buffer
     _ = tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
-    ins, outs = cce_util.get_buffer(stmt_op)
+    ins, outs = tbe_platform.cce_util.get_buffer(stmt_op)
     # Alloc second buffer for binary collection
     out_buffer_sec = \
-        cce_emitinsn_params.cceEmitParamsIns.get_param("binary_reduce"
-                                                       "_output_buffer")
+        tbe_platform.cce_emitinsn_params.cceEmitParamsIns.get_param("binary_reduce"
+                                                                    "_output_buffer")
     in_buffer = ins[0], ins[1]
     out_buffer = outs[0], out_buffer_sec
     input_size = input_size_list[0]
     output_size = input_size
-    block_unit = cce_util.get_align_factor(in_buffer[0].dtype)[0]
+    block_unit = tbe_platform.cce_util.get_align_factor(in_buffer[0].dtype)[0]
     remain_buffer = new_alloc(ir_builder, out_buffer[0].dtype, (block_unit,),
-                              "copy_part_0", cce_params.scope_ubuf)
+                              "copy_part_0", tbe_platform.cce_params.scope_ubuf)
     remain_buffer_sec = new_alloc(ir_builder, out_buffer[1].dtype,
                                   (block_unit,), "copy_part_1",
-                                  cce_params.scope_ubuf)
+                                  tbe_platform.cce_params.scope_ubuf)
     burst_len = max(output_size // block_unit, 1)
     remains = max(output_size - burst_len * block_unit, 0)
     remains_fill = block_unit - remains
@@ -407,7 +393,7 @@ def binary_reduce_output(stmt_op):
 # pylint: disable=locally-disabled,too-many-branches
 def bn_training_reduce_schedule_nd(res, core_num=None):
     """bn_training_reduce schedule method"""
-    cce_emitinsn_params.cceEmitParamsIns.clear_param()
+    tbe_platform.cce_emitinsn_params.cceEmitParamsIns.clear_param()
     # Prepare extra tensors
     # Step 1: Get two output tensors
     # Step 2: Merge two output tensors into Dummy
@@ -415,8 +401,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     output_first = res[0]  # Square Sum
     output_second = res[1]  # Sum
     final_output = tvm.compute(output_first.shape,
-                               lambda *indices: output_first(*indices) +
-                               output_second(*indices),
+                               lambda *indices: output_first(*indices) + output_second(*indices),
                                name="DummyYummySweety")
     is_cast = False
     if "cast" in output_second.op.input_tensors[0].name:
@@ -424,10 +409,10 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     # Calculate block split factor by axis_n_size and core_num
     axis_n_size = int(res[0].shape[1])
     if not core_num:
-        core_num = int(cceconf.get_soc_spec("CORE_NUM"))
+        core_num = int(tbe_platform.get_soc_spec("CORE_NUM"))
     # Multi core kernel requires aligned output
-    element_size = cce_util.get_align_factor(output_first.dtype)[1]
-    block_element_num = te.platform.cce_intrin_md.ALIGNMENT_BYTES // element_size
+    element_size = tbe_platform.cce_util.get_align_factor(output_first.dtype)[1]
+    block_element_num = tbe_platform.cce_intrin_md.ALIGNMENT_BYTES // element_size
     estimate_block_split_factor = max(axis_n_size // core_num, 8)
     nearest_aligned_factor = estimate_block_split_factor % block_element_num
     # Decrease core_num for aligned output
@@ -436,7 +421,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     # Round to the nearest
     block_split_factor = estimate_block_split_factor - nearest_aligned_factor
     # Calculate UB split
-    ub_size = te.platform.CceProductParams().getParams("Unified_Buffer") // 2
+    ub_size = tbe_platform.CceProductParams().getParams("Unified_Buffer") // 2
     reduce_data_num = 1
     reduce_data_factor = 2
     if is_cast:
@@ -472,38 +457,33 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
 
     # Create original schedule
     sch = tvm.create_schedule(final_output.op)
-    # ////////////////////////////////////
-    # ///////// DataFlow Control /////////
-    # ////////////////////////////////////
+
+    #  DataFlow Control
     # Read input in
-    input_tensor_ub = sch.cache_read(res_input, cce_params.scope_ubuf, input_tensor_next)
+    input_tensor_ub = sch.cache_read(res_input, tbe_platform.cce_params.scope_ubuf, input_tensor_next)
     ub_tensors.append(input_tensor_ub)
-    # Compute procedure in ubuf
+    #  Compute procedure in ubuf
     for ub_tens in ub_tensors:
-        sch[ub_tens].set_scope(cce_params.scope_ubuf)
-    # ////////////////////////////////////
-    # //////// Split axis Control ////////
-    # ////////////////////////////////////
+        sch[ub_tens].set_scope(tbe_platform.cce_params.scope_ubuf)
+
+    #  Split axis Control
     outer, inner = \
         sch[final_output].split(sch[final_output].op.axis[1],
                                 factor=block_split_factor)
     ub_outer, ub_inner = sch[final_output].split(inner, factor=actual_loop)
     sch[final_output].bind(outer, tvm.thread_axis("blockIdx.x"))
-    # ////////////////////////////////////
-    # ///////// Compute Control //////////
-    # ////////////////////////////////////
+
+    # Compute Control
     compute_at_axis = ub_outer
     for ub_tens in ub_tensors:
         sch[ub_tens].compute_at(sch[final_output], compute_at_axis)
-    # ////////////////////////////////////
-    # //////////// EmitInsn //////////////
-    # ////////////////////////////////////
 
-    def emit_on_self(tensor, axisnum=0, op='dma_copy'):
+    # EmitInsn
+    def emit_on_self(tensor, axisnum=0, op="dma_copy"):
         """Do emit insn"""
         sch[tensor].emit_insn(sch[tensor].op.axis[axisnum], op)
 
-    def emit_on_self_ex(tensor, axis, op='dma_copy'):
+    def emit_on_self_ex(tensor, axis, op="dma_copy"):
         """Do emit insn"""
         sch[tensor].emit_insn(axis, op)
 
@@ -529,7 +509,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     out_buffer_sec = new_alloc(final_output.dtype,
                                (block_split_factor,),
                                "reduce_sec_output_gm")
-    cce_emitinsn_params.cceEmitParamsIns.insert_param(
+    tbe_platform.cce_emitinsn_params.cceEmitParamsIns.insert_param(
         "binary_reduce_output_buffer", out_buffer_sec)
     tensor_list = [res_input,
                    final_output,
@@ -538,7 +518,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     return sch, tensor_list
 
 
-@fusion_manager.register("bn_training_reduce")
+@tbe_platform.fusion_manager.fusion_manager.register("bn_training_reduce")
 def bn_training_reduce_compute(x, sum, square_sum,
                                kernel_name="bn_training_reduce"):
     """
@@ -564,7 +544,7 @@ def bn_training_reduce_compute(x, sum, square_sum,
         the result of bn_training_reduce compute
     """
     if x.dtype == "float16":
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
     data_format = sum.get("format")
     if data_format == "NC1HWC0":
         res = _reduce_compute_5hd(x)
@@ -573,7 +553,8 @@ def bn_training_reduce_compute(x, sum, square_sum,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum,
                        kernel_name="bn_training_reduce"):
     """
@@ -601,8 +582,8 @@ def bn_training_reduce(x, sum, square_sum,
     shape_x = x.get("shape")
     dtype_x = x.get("dtype")
 
-    check_shape(shape_x, param_name="x")
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     data_format = x.get("format")
     origin_format = x.get("ori_format")
@@ -614,15 +595,15 @@ def bn_training_reduce(x, sum, square_sum,
                                      kernel_name=kernel_name)
     if data_format == "NC1HWC0":
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
     else:
         sch, tensor_list = bn_training_reduce_schedule_nd(res)
 
-        with build_config:
+        with tbe_platform.cce_build.build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
         return
     tensor_list = [x_input] + list(res)
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

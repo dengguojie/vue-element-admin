@@ -1,26 +1,27 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Runtime function related hooks
 """
 # pylint: disable=unused-import
 from __future__ import absolute_import as _abs
 
-from te import tvm
+from te.tvm import ir_pass
 from te.tvm import build_module
-from . import ir_pass
+from te.tvm import make as _make
+
 
 def get_pass_list():
     """
@@ -33,24 +34,25 @@ def get_pass_list():
     # the number in pass_list such as 0,1,2,3 represents the order of the pass
     # called
     pass_list = [
-        (1, tvm.ir_pass.ReuseBuf),
-        (1, tvm.ir_pass.ReuseCoAxisBuffer),
-        (1, tvm.ir_pass.FullySplitLoopPartition),
-        (1, lambda x: tvm.ir_pass.UnrollLoop(x, 0, 8, 0, True)),
-        (1, tvm.ir_pass.RemoveNoOp),
-        (1, tvm.ir_pass.CanonicalSimplify),
-        (1, tvm.ir_pass.FissionLoop),
-        (1, tvm.ir_pass.EmitInsn),
-        (1, tvm.ir_pass.SetSPROptimizer),
-        (1, tvm.ir_pass.TikDoubleBufferSupport),
-        (1, tvm.ir_pass.InjectPipeBuffer),
-        (2, tvm.ir_pass.AutoFuseBuffer),
-        (2, tvm.ir_pass.Simplify),
-        (2, tvm.ir_pass.InjectSync),
-        (2, tvm.ir_pass.PackIntrinArgConfig),
-        (3, tvm.ir_pass.DeviceMark),
+        (1, ir_pass.ReuseBuf),
+        (1, ir_pass.ReuseCoAxisBuffer),
+        (1, ir_pass.FullySplitLoopPartition),
+        (1, lambda x: ir_pass.UnrollLoop(x, 0, 8, 0, True)),
+        (1, ir_pass.RemoveNoOp),
+        (1, ir_pass.CanonicalSimplify),
+        (1, ir_pass.FissionLoop),
+        (1, ir_pass.EmitInsn),
+        (1, ir_pass.SetSPROptimizer),
+        (1, ir_pass.TikDoubleBufferSupport),
+        (1, ir_pass.InjectPipeBuffer),
+        (2, ir_pass.AutoFuseBuffer),
+        (2, ir_pass.Simplify),
+        (2, ir_pass.InjectSync),
+        (2, ir_pass.PackIntrinArgConfig),
+        (3, ir_pass.DeviceMark),
     ]
     return pass_list
+
 
 def build_config_update(current_config, attr, value):
     """
@@ -130,7 +132,7 @@ def build_config_update_list(current_config, config_list):
         elif attr not in ["add_lower_pass", "dump_pass_ir_list"]:
             raise RuntimeError("build config has no parameter \"%s\"" % attr)
 
-    config = tvm.make.node("BuildConfig", **current_config_map)
+    config = _make.node("BuildConfig", **current_config_map)
 
     if "add_lower_pass" in config_list:
         config.add_lower_pass = config_list["add_lower_pass"]
@@ -146,10 +148,12 @@ def build_config_update_list(current_config, config_list):
 
 
 def get_new_build_config(config, update_map):
+    """get new build config"""
     new_config = config
-    for k, v in update_map.items():
-        new_config = build_config_update(new_config, k, v)
+    for key, val in update_map.items():
+        new_config = build_config_update(new_config, key, val)
     return new_config
+
 
 # pylint: disable=invalid-name
 # Add a lower pass to sync uop

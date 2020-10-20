@@ -1,32 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sgd
 """
 
-import te.lang.cce
-from impl.util.util_apply_op_schedule import (ApplyOpConfig,
-                                              common_apply_op_process)
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from impl.util.util_apply_op_schedule import ApplyOpConfig
+from impl.util.util_apply_op_schedule import common_apply_op_process
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
-@fusion_manager.register("sgd")
+@tbe_platform.fusion_manager.fusion_manager.register("sgd")
 def sgd_compute(parameters,
                 gradient,
                 learning_rate,
@@ -77,85 +76,73 @@ def sgd_compute(parameters,
     outs
     """
     dtype = parameters.dtype
-    support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
-                                                      "float32")
+    support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if not support:
-        raise RuntimeError(
-            "only support float16 while need to cast to float32")
+        raise RuntimeError("only support float16 while need to cast to float32")
     if dtype == "float16":
-        parameters = te.lang.cce.cast_to(parameters, "float32")
-        accum = te.lang.cce.cast_to(accum, "float32")
-        learning_rate = te.lang.cce.cast_to(learning_rate, "float32")
-        gradient = te.lang.cce.cast_to(gradient, "float32")
-        momentum = te.lang.cce.cast_to(momentum, "float32")
-        stat = te.lang.cce.cast_to(stat, "float32")
+        parameters = tbe.cast_to(parameters, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        learning_rate = tbe.cast_to(learning_rate, "float32")
+        gradient = tbe.cast_to(gradient, "float32")
+        momentum = tbe.cast_to(momentum, "float32")
+        stat = tbe.cast_to(stat, "float32")
 
     # if weight_decay != 0.0
     if weight_decay != 0.0:
-        parameters = te.lang.cce.vmuls(parameters, tvm.const(1.0, 'float32'))
-        grad_delta = te.lang.cce.vmuls(parameters, weight_decay)
-        gradient = te.lang.cce.vadd(gradient, grad_delta)
+        parameters = tbe.vmuls(parameters, tvm.const(1.0, 'float32'))
+        grad_delta = tbe.vmuls(parameters, weight_decay)
+        gradient = tbe.vadd(gradient, grad_delta)
 
-    stat_mid = te.lang.cce.vmuls(stat, tvm.const(-1, "float32"))
-    stat_act = te.lang.cce.vadds(stat_mid, tvm.const(1, "float32"))
+    stat_mid = tbe.vmuls(stat, tvm.const(-1, "float32"))
+    stat_act = tbe.vadds(stat_mid, tvm.const(1, "float32"))
 
-    dampening_t = te.lang.cce.vmuls(stat_act, dampening)
+    dampening_t = tbe.vmuls(stat_act, dampening)
 
     # update accum
-    accum_delta = tvm.compute(accum.shape,
-                              lambda *indice: accum(*indice) * momentum[0],
-                              tag='elewise_single_VS_mul')
+    accum_delta = tvm.compute(accum.shape, lambda *indice: accum(*indice) * momentum[0], tag='elewise_single_VS_mul')
 
-    gradient_damp = te.lang.cce.vmul(gradient, dampening_t)
-    accum_t = te.lang.cce.vadd(accum_delta, gradient)
+    gradient_damp = tbe.vmul(gradient, dampening_t)
+    accum_t = tbe.vadd(accum_delta, gradient)
     if dampening != 0.0:
-        accum_t = te.lang.cce.vsub(accum_t, gradient_damp)
+        accum_t = tbe.vsub(accum_t, gradient_damp)
 
     # update parameters
     if nesterov:
-        parameters_delta = tvm.compute(
-            gradient.shape,
-            lambda *indice: gradient(*indice) * learning_rate[0],
-            tag='elewise_single_VS_mul')
-        parameters_delta_2 = tvm.compute(
-            accum_t.shape,
-            lambda *indice: accum_t(*indice) * momentum[0],
-            tag='elewise_single_VS_mul')
-        parameters_delta_2 = tvm.compute(
-            parameters_delta_2.shape,
-            lambda *indice: parameters_delta_2(*indice) * learning_rate[0],
-            tag='elewise_single_VS_mul')
-        parameters_delta = te.lang.cce.vadd(parameters_delta,
-                                            parameters_delta_2)
-        parameters_t = te.lang.cce.vsub(parameters, parameters_delta)
+        parameters_delta = tvm.compute(gradient.shape,
+                                       lambda *indice: gradient(*indice) * learning_rate[0],
+                                       tag='elewise_single_VS_mul')
+        parameters_delta_2 = tvm.compute(accum_t.shape,
+                                         lambda *indice: accum_t(*indice) * momentum[0],
+                                         tag='elewise_single_VS_mul')
+        parameters_delta_2 = tvm.compute(parameters_delta_2.shape,
+                                         lambda *indice: parameters_delta_2(*indice) * learning_rate[0],
+                                         tag='elewise_single_VS_mul')
+        parameters_delta = tbe.vadd(parameters_delta, parameters_delta_2)
+        parameters_t = tbe.vsub(parameters, parameters_delta)
     else:
-        parameters_delta = tvm.compute(
-            accum_t.shape,
-            lambda *indice: accum_t(*indice) * learning_rate[0],
-            tag='elewise_single_VS_mul')
-        parameters_t = te.lang.cce.vsub(parameters, parameters_delta)
+        parameters_delta = tvm.compute(accum_t.shape,
+                                       lambda *indice: accum_t(*indice) * learning_rate[0],
+                                       tag='elewise_single_VS_mul')
+        parameters_t = tbe.vsub(parameters, parameters_delta)
 
     # update stat
-    stat_t = te.lang.cce.vmuls(stat_act, tvm.const(0.0, 'float32'))
+    stat_t = tbe.vmuls(stat_act, tvm.const(0.0, 'float32'))
 
     if dtype == "float16":
-        parameters_t = te.lang.cce.cast_to(parameters_t, "float16")
-        accum_t = te.lang.cce.cast_to(accum_t, "float16")
-        stat_t = te.lang.cce.cast_to(stat_t, "float16")
+        parameters_t = tbe.cast_to(parameters_t, "float16")
+        accum_t = tbe.cast_to(accum_t, "float16")
+        stat_t = tbe.cast_to(stat_t, "float16")
 
     def _compute(*index):
-        return accum_t(*index), parameters_t(*index), stat_t(
-            *index), parameters_t(*index)
+        return accum_t(*index), parameters_t(*index), stat_t(*index), parameters_t(*index)
 
     return tvm.compute(parameters.shape, _compute, name="outputs")
 
 
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_FLOAT,
-                          op_utils.OPTION_ATTR_FLOAT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def sgd(parameters,
         gradient,
         learning_rate,
@@ -218,11 +205,8 @@ def sgd(parameters,
         17 if nesterov else 9,
     )
 
-    name = ApplyOpConfig.TensorName(all=('parameters', 'gradient',
-                                         'learning_rate', 'accum', 'momentum',
-                                         'stat'),
+    name = ApplyOpConfig.TensorName(all=('parameters', 'gradient', 'learning_rate', 'accum', 'momentum', 'stat'),
                                     scalar=('learning_rate', 'momentum'),
                                     reuse=('accum', 'parameters', 'stat'))
-    options = ApplyOpConfig.TensorOptions(
-        attrs=[dampening, weight_decay, nesterov])
+    options = ApplyOpConfig.TensorOptions(attrs=[dampening, weight_decay, nesterov])
     common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)

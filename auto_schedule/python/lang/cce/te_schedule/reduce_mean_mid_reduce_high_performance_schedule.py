@@ -1,21 +1,22 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce atomic schedule
 """
 import math
+
 import te.lang.cce
 from te import tvm
 from te.platform import cce_emitinsn_params
@@ -78,14 +79,14 @@ def dichotomy_reduce_block_mean(stmt_op):  # pylint: disable=too-many-locals
         input_size = collapse_repeat * vector_inst_one_repeat_size
     # Do Emit Insn
 
-    def collapse(ir_b, buffer, current_size):
+    def collapse(ir_b, buf, current_size):
         repeat = current_size // 2 // vector_inst_one_repeat_size
         ir_b.emit(tvm.call_extern(
-            buffer.dtype,
+            buf.dtype,
             "vadd",
-            buffer.access_ptr("rw", offset=0),
-            buffer.access_ptr("r", offset=0),
-            buffer.access_ptr("r", offset=current_size // 2),
+            buf.access_ptr("rw", offset=0),
+            buf.access_ptr("r", offset=0),
+            buf.access_ptr("r", offset=current_size // 2),
             repeat, 1, 1, 1, 8, 8, 8))
         return current_size // 2
 
@@ -221,9 +222,11 @@ def reduce_mean_mid_reduce_high_performance_schedule(outs,  # pylint: disable=R0
     # ////////////////////////////////
 
     def emit_on_self_ex(_tensor, axis, operation):
+        """wrapper to emit insn"""
         sch[_tensor].emit_insn(axis, operation)
 
     def emit_on_self(_tensor, axisnum=0, operation='dma_copy'):
+        """emit insn for current tensor"""
         emit_on_self_ex(_tensor, sch[_tensor].op.axis[axisnum], operation)
 
     emit_on_self(placeholder_ub)

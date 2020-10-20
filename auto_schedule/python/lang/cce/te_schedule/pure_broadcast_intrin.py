@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Pure broadcast intrin
 """
 import math
@@ -27,7 +27,7 @@ from .util import get_least_common_multiple
 from te.platform.cce_intrin_md import reset_mask_insn
 from te.platform.cce_intrin_md import reset_mask_insn_inverted
 from te.platform.cce_intrin_md import apply_for_new_alloc
-from te.platform.cce_params import scope_reg, scope_ubuf
+from te.platform.cce_params import scope_reg
 
 DMA_MODE = 0
 VECTOR_MODE = 1
@@ -36,38 +36,38 @@ UINT8_MAXIMUM = 255
 
 
 def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
-    """Do last axis broadcast"""
+    """Do last axis broadcast
+    There are currently 3 ways to do last axis broadcast:
+    1. Direct scalar move DSM
+           Use reg_mov to copy all elements one by one
+           Advantage: Good for tiny broadcast such as 1, 2 to 2, 2
+                      Stable support for all scene
+           Disadvantage: Slowest
+           Prerequisite: No
+           Cycle is broadcast_src * broadcast_factor
+           Extra storage needed: registers
+    2. Last axis full aligned broadcast LFA
+           Use reg_mov along with vector_dup to do full aligned broadcast
+           Advantage: Fastest and simple for aligned broadcast
+           Disadvantage: Supports only aligned last axis broadcast
+           Prerequisite: Aligned or broadcast_src == 1
+           Cycle is broadcast_src
+           Plus broadcast_src * broadcast_factor // rep
+    3. Mask grouping broadcast MG
+           Calculate mask for each one of the element, then do vector_dup
+           Advantage: Faster than DSM when dealing with unaligned data
+           Disadvantage: May use too much registers (stack)
+                         Supports only unaligned data larger than 1/2 block
+           Prerequisite: src is larger than 1/2 block
+           Cycle is broadcast_src
+           Plus broadcast_src * (ceil(broadcast_factor / rep) + 1)
+           Extra storage needed: registers
+    4. Last axis transpose broadcast LAT
+    5. Full aligned last axis transpose broadcast FALAT
+    """
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
-    ###########################################################################
-    # There are currently 3 ways to do last axis broadcast:
-    # 1. Direct scalar move DSM
-    #        Use reg_mov to copy all elements one by one
-    #        Advantage: Good for tiny broadcast such as 1, 2 to 2, 2
-    #                   Stable support for all scene
-    #        Disadvantage: Slowest
-    #        Prerequisite: No
-    #        Cycle is broadcast_src * broadcast_factor
-    #        Extra storage needed: registers
-    # 2. Last axis full aligned broadcast LFA
-    #        Use reg_mov along with vector_dup to do full aligned broadcast
-    #        Advantage: Fastest and simple for aligned broadcast
-    #        Disadvantage: Supports only aligned last axis broadcast
-    #        Prerequisite: Aligned or broadcast_src == 1
-    #        Cycle is broadcast_src
-    #        Plus broadcast_src * broadcast_factor // rep
-    # 3. Mask grouping broadcast MG
-    #        Calculate mask for each one of the element, then do vector_dup
-    #        Advantage: Faster than DSM when dealing with unaligned data
-    #        Disadvantage: May use too much registers (stack)
-    #                      Supports only unaligned data larger than 1/2 block
-    #        Prerequisite: src is larger than 1/2 block
-    #        Cycle is broadcast_src
-    #        Plus broadcast_src * (ceil(broadcast_factor / rep) + 1)
-    #        Extra storage needed: registers
-    # 4. Last axis transpose broadcast LAT
-    # 5. Full aligned last axis transpose broadcast FALAT
-    ###########################################################################
+
     # Calculate broadcast information
     dtype_byte_size = get_align_factor(input_buffer.dtype)[1]
     align_factor = 32  # Currently all of our chip requires 32Byte aligned data for performance
@@ -140,7 +140,7 @@ def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-stat
     # 1. Direct scalar move DSM
     #        Use reg_mov to copy all elements one by one
     #        Advantage: Good for tiny broadcast such as 1, 2 to 2, 2
-    #        Prerequisite: No
+    #        Prerequisite: No Prerequisite
     #        Cycle is broadcast_src * broadcast_unit * broadcast_factor
     #        Extra storage needed: 0
     # 2. Full aligned broadcast FA
@@ -151,8 +151,9 @@ def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-stat
     #        Extra storage needed: 0
     # 3. Semi aligned broadcast SA
     #        Use DSM to align data, then do copy_ub_to_ub and transpose back
-    #        Prerequisite: broadcast_unit * broadcast_facotr % align_factor == 0
-    #        Cycle is ceil((broadcast_src * broadcast_unit) / (2 * rep))
+    #        Prerequisite:
+    #        judge if broadcast_unit * broadcast_facotr % align_factor == 0
+    #        Cycle ceil((broadcast_src * broadcast_unit) / (2 * rep))
     #        Plus broadcast_factor * broadcast_src
     #        Plus ceil((broadcast_src * broadcast_unit * broadcast_factor) / (2 * rep))
     #        Extra storage needed: align to 256 Byte
@@ -262,7 +263,6 @@ def mask_grouping_broadcast(*args):  # pylint: disable=too-many-locals, too-many
         return _reg
 
     # Collect all instruction with their mask
-    # Example: {mask: {line_index: address}, }
     mask2insn = {}
     for broadcast_index in range(broadcast_count):
         start, mid, end = get_instr(vector_inst_one_repeat_size, broadcast_index,
@@ -565,9 +565,9 @@ def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
                                       name="broadcast_element_index") as __idx:
                 for reg_idx in range(actual_reg_num):
                     src_offset = (broadcast_src - idx - 1) * broadcast_unit \
-                                 + __idx \
-                                 - reg_idx * broadcast_unit \
-                                 - idx * (actual_reg_num - 1) * broadcast_unit
+                        + __idx \
+                        - reg_idx * broadcast_unit \
+                        - idx * (actual_reg_num - 1) * broadcast_unit
                     src_address = input_buffer.access_ptr("r", offset=src_offset)
                     ir_builder.emit(tvm.call_extern(input_buffer.dtype, "reg_mov",
                                                     tvm.call_extern(reg_buffer.dtype,
@@ -580,14 +580,14 @@ def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
                                           name="broadcast_factor_index") as _idx:
                     for reg_idx in range(actual_reg_num):
                         dst_offset = (broadcast_src - idx - 1 - reg_idx) \
-                                     * broadcast_unit \
-                                     * broadcast_factor \
-                                     + _idx * broadcast_unit\
-                                     + __idx \
-                                     - idx \
-                                     * (actual_reg_num - 1) \
-                                     * broadcast_factor \
-                                     * broadcast_unit
+                            * broadcast_unit \
+                            * broadcast_factor \
+                            + _idx * broadcast_unit\
+                            + __idx \
+                            - idx \
+                            * (actual_reg_num - 1) \
+                            * broadcast_factor \
+                            * broadcast_unit
                         dst_address = output_buffer.access_ptr("rw", offset=dst_offset)
                         ir_builder.emit(tvm.call_extern(
                             input_buffer.dtype, "reg_mov",

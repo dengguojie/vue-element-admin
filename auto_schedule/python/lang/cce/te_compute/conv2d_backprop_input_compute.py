@@ -1,21 +1,35 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
 conv2d backprop input DSL interface.
 """
+from inspect import currentframe
 
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-import inspect
 from te import tvm
-from te.platform import CUBE_MKN
-from te.platform import get_soc_spec
-from te.platform import cce_params
-from te.platform import operation
-from te.platform.cce_conf import CceProductParams as pver
-from te.lang.cce.te_compute import util
+from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import \
+    DeConvPattern
+from te.lang.cce.te_compute.conv2d_backprop_input_opti_compute import \
+    DeConvKernelSize1Pattern
+from te.lang.cce.te_compute.cube_util import check_pad_zero
 from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.utils.error_manager import error_manager_util as err_man
-from .conv2d_backprop_input_general_compute import DeConvPattern
-from .conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
+from te.platform import cce_conf
+from te.platform import cce_params
+from te.platform.operation import get_te_var
+from te.tvm.tensor import Tensor
+from te.utils import check_para
+from te.utils.error_manager import error_manager_util
 
 NoneType = type(None)
 
@@ -62,8 +76,6 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 # same as (2**63-1)
 DATA_SIZE_MAX = 9223372036854775807
 
-# for dynamic shape tiling
-DYNAMIC_TILING_INFO_DICT = {}
 
 class DeconvParam:
     """
@@ -81,6 +93,9 @@ class DeconvParam:
 
     @classmethod
     def set_default(cls):
+        """
+        set default l1_size in deconvparam
+        """
         cls.al1_size = 0
         cls.bl1_size = 0
 
@@ -88,7 +103,7 @@ class DeconvParam:
     bl1_size = 0
 
 
-def check_variable_range(variable, mini, maxi, name):
+def _check_variable_range(variable, mini, maxi, name):
     """
     check variable range
 
@@ -101,10 +116,10 @@ def check_variable_range(variable, mini, maxi, name):
         dict_args['attr_name'] = name
         dict_args["value"] = str(variable)
         raise RuntimeError(dict_args,
-                           err_man.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
-def check_equal_rule(param_1, param_2, param_name1, param_name2):
+def _check_equal_rule(param_1, param_2, param_name1, param_name2):
     """
     check variable equal
 
@@ -116,12 +131,22 @@ def check_equal_rule(param_1, param_2, param_name1, param_name2):
         dict_args['param2'] = param_name2
         dict_args['actual_value'] = "{}, {}".format(param_1, param_2)
         raise RuntimeError(dict_args,
-                           err_man.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
-def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
-                       out_backprop, filter_sizes, input_sizes,
-                       strides, padding, dilations, res_dtype, offset_w,
-                       fusion_para=None, dynamic_para=None):
+
+def _check_input_params(
+        filters,  # pylint: disable=R0913,R0914,R0915
+        out_backprop,
+        filter_sizes,
+        input_sizes,
+        strides,
+        padding,
+        dilations,
+        res_dtype,
+        offset_w,
+        fusion_para=None,
+        dynamic_para=None,
+        switch_to_general_scheme=False):
     """
     check the input params of conv2d_backprop_input_compute
 
@@ -143,6 +168,14 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
 
     res_dtype : dE/dX data type, "float16" by default
 
+    offset_w: the offset for weight
+
+    fusion_para: the l1 fusion para, default is None
+
+    dynamic_para: the dynamic shape para, default is None
+
+    switch_to_general_scheme: the condition change to general defualt is False
+
     Returns
     ----------
     None
@@ -156,7 +189,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             dict_args["expected_length"] = str(shape_dim)
             dict_args["length"] = str(len(shape_arg))
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
         axis_i = 0
         for i in shape_arg:
             if not isinstance(i, shape_dtype):
@@ -167,7 +200,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 dict_args["wrong_axis"] = str(axis_i)
                 dict_args["actual_value"] = str(i)
                 raise RuntimeError(dict_args,
-                                   err_man.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
             axis_i = axis_i + 1
 
     # check dtype
@@ -184,14 +217,14 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 _gen_dict_args("filter dtype",
                                valid_dtype_dict["filter"], filters.dtype)
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if out_backprop.dtype not in valid_dtype_dict["dedy"]:
             dict_args = \
                 _gen_dict_args("out_backprop dtype",
                                valid_dtype_dict["dedy"], out_backprop.dtype)
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if filters.dtype != out_backprop.dtype:
             dict_args = dict()
@@ -199,14 +232,14 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             dict_args["param_1"] = "filter"
             dict_args["param_2"] = "out_backprop"
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if res_dtype not in valid_dtype_dict["dx"][filters.dtype]:
             dict_args = \
                 _gen_dict_args("dx dtype",
                                valid_dtype_dict["dx"], res_dtype)
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     # check shape
     def _check_shape():
@@ -218,7 +251,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             dict_args["expect_dim"] = str(FILTER_SHAPE_DIM)
             dict_args["dim"] = str(len(filters.shape))
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if len(out_backprop.shape) != DY_SHAPE_DIM:
             dict_args = dict()
@@ -228,7 +261,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             dict_args["expect_dim"] = str(DY_SHAPE_DIM)
             dict_args["dim"] = str(len(out_backprop.shape))
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         _check_shape_rule(filter_sizes, FILTER_DIM, int, "filter_sizes")
         _check_shape_rule(strides, STRIDES_DIM, int, "strides")
@@ -240,12 +273,12 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
 
     # limitation by chip
     def _is_load3d_special_case():
-        if pver().is_cloud_version() \
-            and dx_h_after_pad != filter_h \
-            and dx_w_after_pad == filter_w:
+        if cce_conf.CceProductParams().is_cloud_version() \
+                and dx_h_after_pad != filter_h \
+                and dx_w_after_pad == filter_w:
             return False
         if (1 <= filter_h <= 11) and (1 <= filter_w <= 11) \
-            and (dx_h_after_pad == filter_h or dx_w_after_pad == filter_w):
+                and (dx_h_after_pad == filter_h or dx_w_after_pad == filter_w):
             return True
         return False
 
@@ -272,8 +305,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
         _, filter_cout1, filter_cout0, filter_cin0 \
             = shape_to_list(filters.shape)
 
-    dy_batch, dy_c1, dy_h, dy_w, dy_c0 = \
-        shape_to_list(out_backprop.shape)
+    dy_batch, dy_c1, dy_h, dy_w, dy_c0 = shape_to_list(out_backprop.shape)
     filter_cout, filter_cin, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
     stride_h, stride_w = strides
@@ -283,8 +315,8 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     dx_h_after_pad = dx_h + pad_up + pad_down
     dx_w_after_pad = dx_w + pad_left + pad_right
-    _, dedy_k0, _ = CUBE_MKN[out_backprop.dtype]['mac']
-    _, w_k0, w_n0 = CUBE_MKN[filters.dtype]['mac']
+    _, dedy_k0, _ = cce_params.CUBE_MKN[out_backprop.dtype]['mac']
+    _, w_k0, w_n0 = cce_params.CUBE_MKN[filters.dtype]['mac']
 
     filter_cout = (filter_cout + w_k0 - 1) // w_k0 * w_k0
     dynamic_mode = None if not dynamic_para \
@@ -314,74 +346,74 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
     if dynamic_mode == "dynamic_hw":
         dy_filling_hw_min = 1
         dx_hw_min = 1
-        dedy_h_bound = operation.get_te_var("dedy_h").get_bound()
-        dedy_w_bound = operation.get_te_var("dedy_w").get_bound()
-        dx_h_bound = operation.get_te_var("dx_h").get_bound()
-        dx_w_bound = operation.get_te_var("dx_w").get_bound()
+        dedy_h_bound = get_te_var("dedy_h").get_bound()
+        dedy_w_bound = get_te_var("dedy_w").get_bound()
+        dx_h_bound = get_te_var("dx_h").get_bound()
+        dx_w_bound = get_te_var("dx_w").get_bound()
     elif dynamic_mode == "dynamic_batch":
-        batch_n_bound = operation.get_te_var("batch_n").get_bound()
+        batch_n_bound = get_te_var("batch_n").get_bound()
 
     if offset_w is not None:
         dict_args = dict()
         dict_args["errCode"] = "E65004"
         raise RuntimeError(dict_args,
-                           err_man.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     # dy
     def _check_dy():
-        check_equal_rule(dy_c0, dedy_k0, "dy_c0", str(dedy_k0))
+        _check_equal_rule(dy_c0, dedy_k0, "dy_c0", str(dedy_k0))
         if dynamic_mode == "dynamic_hw":
-            check_variable_range(dedy_h_bound[0]*stride_h, dy_filling_hw_min,
-                                 dy_filling_hw_max, "dy_h*stride_h")
-            check_variable_range(dedy_h_bound[1]*stride_h, dy_filling_hw_min,
-                                 dy_filling_hw_max, "dy_h*stride_h")
+            _check_variable_range(dedy_h_bound[0]*stride_h, dy_filling_hw_min,
+                                  dy_filling_hw_max, "dy_h*stride_h")
+            _check_variable_range(dedy_h_bound[1]*stride_h, dy_filling_hw_min,
+                                  dy_filling_hw_max, "dy_h*stride_h")
             if filter_h == 1 and filter_w == 1:
-                check_variable_range(dedy_w_bound[0]*stride_w*stride_h, 
-                                     dy_filling_hw_min,
-                                     dy_filling_hw_max, 
-                                     "dy_w*stride_w*stride_h")
-                check_variable_range(dedy_w_bound[1]*stride_w*stride_h, 
-                                     dy_filling_hw_min,
-                                     dy_filling_hw_max, 
-                                     "dy_w*stride_w*stride_h")
+                _check_variable_range(dedy_w_bound[0]*stride_w*stride_h,
+                                      dy_filling_hw_min,
+                                      dy_filling_hw_max,
+                                      "dy_w*stride_w*stride_h")
+                _check_variable_range(dedy_w_bound[1]*stride_w*stride_h,
+                                      dy_filling_hw_min,
+                                      dy_filling_hw_max,
+                                      "dy_w*stride_w*stride_h")
             else:
-                check_variable_range(dedy_w_bound[0]*stride_w, 
-                                     dy_filling_hw_min,
-                                     dy_filling_hw_max, 
-                                     "dy_w*stride_w")
-                check_variable_range(dedy_w_bound[1]*stride_w, 
-                                     dy_filling_hw_min,
-                                     dy_filling_hw_max, 
-                                     "dy_w*stride_w")
+                _check_variable_range(dedy_w_bound[0]*stride_w,
+                                      dy_filling_hw_min,
+                                      dy_filling_hw_max,
+                                      "dy_w*stride_w")
+                _check_variable_range(dedy_w_bound[1]*stride_w,
+                                      dy_filling_hw_min,
+                                      dy_filling_hw_max,
+                                      "dy_w*stride_w")
         else:
-            check_variable_range(dy_h*stride_h, dy_filling_hw_min,
-                                 dy_filling_hw_max, "dy_h*stride_h")
+            _check_variable_range(dy_h*stride_h, dy_filling_hw_min,
+                                  dy_filling_hw_max, "dy_h*stride_h")
             if filter_h == 1 and filter_w == 1:
-                check_variable_range(dy_w*stride_w*stride_h,
-                                     dy_filling_hw_min,
-                                     dy_filling_hw_max, 
-                                     "dy_w*stride_w*stride_h")
+                _check_variable_range(dy_w*stride_w*stride_h,
+                                      dy_filling_hw_min,
+                                      dy_filling_hw_max,
+                                      "dy_w*stride_w*stride_h")
             else:
-                check_variable_range(dy_w*stride_w, dy_filling_hw_min,
-                                    dy_filling_hw_max, "dy_w*stride_w")
+                _check_variable_range(dy_w*stride_w, dy_filling_hw_min,
+                                      dy_filling_hw_max, "dy_w*stride_w")
 
     # w
     # check filter shape and filter_sizes from topi
     def _check_filter():
-        check_equal_rule(filter_cout0, w_k0, "filter_cout0", str(w_k0))
+        _check_equal_rule(filter_cout0, w_k0, "filter_cout0", str(w_k0))
 
-        check_equal_rule(filter_cout1*filter_cout0, filter_cout,
-                         "filter_cout1*filter_cout0", "filter_cout")
+        _check_equal_rule(filter_cout1*filter_cout0, filter_cout,
+                          "filter_cout1*filter_cout0", "filter_cout")
 
-        check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
+        _check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
 
-        check_equal_rule(dy_c1*dy_c0, filter_cout, "dy_c", "filter_cout")
+        _check_equal_rule(dy_c1*dy_c0, filter_cout, "dy_c", "filter_cout")
 
-        check_variable_range(filter_h, FILTER_HW_MIN,
-                             FILTER_HW_MAX, "filter_h")
+        _check_variable_range(filter_h, FILTER_HW_MIN,
+                              FILTER_HW_MAX, "filter_h")
 
-        check_variable_range(filter_w, FILTER_HW_MIN,
-                             FILTER_HW_MAX, "filter_w")
+        _check_variable_range(filter_w, FILTER_HW_MIN,
+                              FILTER_HW_MAX, "filter_w")
 
         def _check_max(x_1, x_2, name_1, name_2):
             if x_1 > x_2:
@@ -390,52 +422,51 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 dict_args["param_1"] = name_1
                 dict_args["param_2"] = name_2
                 raise RuntimeError(dict_args,
-                                   err_man.get_error_message(dict_args))
-            if not dynamic_para:
-                if not fusion_para.get("valid_shape"):
-                    _check_max(filter_h_dilation, dx_h_after_pad,
-                            "filter_h after dilation", "dx_h after pad")
-                _check_max(filter_w_dilation, dx_w_after_pad,
-                        "filtre_w after dilation", "dx_w after pad")
+                                   error_manager_util.get_error_message(dict_args))
+        if not dynamic_para:
+            _check_max(filter_h_dilation, dx_h_after_pad,
+                       "filter_h after dilation", "dx_h after pad")
+            _check_max(filter_w_dilation, dx_w_after_pad,
+                       "filtre_w after dilation", "dx_w after pad")
 
     # dx
     def _check_dx():
         if dynamic_mode == "dynamic_hw":
-            check_variable_range(dx_h_bound[0], dx_hw_min, dx_hw_max, "dx_h")
-            check_variable_range(dx_h_bound[1], dx_hw_min, dx_hw_max, "dx_h")
-            check_variable_range(dx_w_bound[0], dx_hw_min, dx_hw_max, "dx_w")
-            check_variable_range(dx_w_bound[1], dx_hw_min, dx_hw_max, "dx_w")
-            check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
+            _check_variable_range(dx_h_bound[0], dx_hw_min, dx_hw_max, "dx_h")
+            _check_variable_range(dx_h_bound[1], dx_hw_min, dx_hw_max, "dx_h")
+            _check_variable_range(dx_w_bound[0], dx_hw_min, dx_hw_max, "dx_w")
+            _check_variable_range(dx_w_bound[1], dx_hw_min, dx_hw_max, "dx_w")
+            _check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
         elif dynamic_mode == "dynamic_batch":
-            check_variable_range(dx_h, dx_hw_min, dx_hw_max, "dx_h")
-            check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
+            _check_variable_range(dx_h, dx_hw_min, dx_hw_max, "dx_h")
+            _check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
         else:
-            check_variable_range(dx_h, dx_hw_min, dx_hw_max, "dx_h")
-            check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
-            check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
-            if not fusion_para or not fusion_para.get("valid_shape"):
-                check_equal_rule(
-                    (dx_h_after_pad - filter_h_dilation) \
-                        // stride_h + 1, dy_h,
-                    "(dx_h_after_pad - filter_h_dilation) \
-                        // stride_h + 1", "dy_h")
+            _check_variable_range(dx_h, dx_hw_min, dx_hw_max, "dx_h")
+            _check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
+            _check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
 
-                check_equal_rule(
-                    (dx_w_after_pad - filter_w_dilation) \
-                        // stride_w + 1, dy_w,
-                    "(dx_w_after_pad - filter_w_dilation) \
-                        // stride_w + 1", "dy_h")
+            _check_equal_rule(
+                (dx_h_after_pad - filter_h_dilation)
+                // stride_h + 1, dy_h,
+                "(dx_h_after_pad - filter_h_dilation) \
+                    // stride_h + 1", "dy_h")
 
-        check_equal_rule(dx_c, filter_cin, "dx_cin", "filter_cin")
+            _check_equal_rule(
+                (dx_w_after_pad - filter_w_dilation)
+                // stride_w + 1, dy_w,
+                "(dx_w_after_pad - filter_w_dilation) \
+                    // stride_w + 1", "dy_h")
+
+        _check_equal_rule(dx_c, filter_cin, "dx_cin", "filter_cin")
 
     # strides
     def _check_strides():
-        check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")
+        _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")
 
-        check_variable_range(stride_w, STRIDE_MIN, STRIDE_MAX, "stride_w")
+        _check_variable_range(stride_w, STRIDE_MIN, STRIDE_MAX, "stride_w")
 
-        check_variable_range(stride_h*stride_w, STRIDE_MUL_MIN,
-                             STRIDE_MUL_MAX, "stride_h*stride_w")
+        _check_variable_range(stride_h*stride_w, STRIDE_MUL_MIN,
+                              STRIDE_MUL_MAX, "stride_h*stride_w")
 
     # padding
     def _check_padding():
@@ -447,7 +478,7 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 dict_args['attr_name'] = attr_name
                 dict_args["value"] = str(attr_value)
                 raise RuntimeError(dict_args,
-                                   err_man.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
         def _check_max(x_1, x_2, name_1, name_2):
             if x_1 > x_2:
@@ -456,17 +487,19 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 dict_args["param_1"] = name_1
                 dict_args["param_2"] = name_2
                 raise RuntimeError(dict_args,
-                                   err_man.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
-        _check_border("pad_up", pad_up)
-        _check_border("pad_down", pad_down)
+        if fusion_para.get("l1_fusion_type") == -1:
+            _check_border("pad_up", pad_up)
+            _check_border("pad_down", pad_down)
+            _check_max(pad_up, filter_h_dilation,
+                       "pad_up", "filter_h_dilation")
+            _check_max(pad_down, filter_h_dilation,
+                       "pad_down", "filter_h_dilation")
+
         _check_border("pad_left", pad_left)
         _check_border("pad_right", pad_right)
 
-        _check_max(pad_up, filter_h_dilation,
-                   "pad_up", "filter_h_dilation")
-        _check_max(pad_down, filter_h_dilation,
-                   "pad_down", "filter_h_dilation")
         _check_max(pad_left, filter_w_dilation,
                    "pad_left", "filter_w_dilation")
         _check_max(pad_right, filter_w_dilation,
@@ -480,57 +513,67 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             dict_args["dilation_n"] = str(dilation_n)
             dict_args["dilation_c"] = str(dilation_c)
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
-        check_variable_range(dilation_h, DILATION_MIN,
-                             DILATION_MAX, "dilation_h")
+        _check_variable_range(dilation_h, DILATION_MIN,
+                              DILATION_MAX, "dilation_h")
 
-        check_variable_range(dilation_w, DILATION_MIN,
-                             DILATION_MAX, "dilation_w")
+        _check_variable_range(dilation_w, DILATION_MIN,
+                              DILATION_MAX, "dilation_w")
 
     # check L1 exceed buffer
     def _check_l1_buffer():
+        def _l1fusion_size_limit(l1_size):
+            l1fusion_l1_size = 0
+            if padding != [0, 0, 0, 0] \
+                    or [filter_h, filter_w] != [1, 1] \
+                    or switch_to_general_scheme:
+                if stride_h > 1 or stride_w > 1:
+                    l1fusion_l1_size = l1_size
+            return l1fusion_l1_size
+
         if dynamic_mode == "dynamic_hw":
             dx_w = dx_w_bound[1]
             dy_w = dedy_w_bound[1]
         else:
             dx_w = input_sizes[3]
             dy_w = shape_to_list(out_backprop.shape)[3]
-        c0_size = cce_params.C0_SIZE
+        cce_params.C0_SIZE = cce_params.C0_SIZE
         c0_size_k = cce_params.CUBE_MKN[filters.dtype]['mac'][1]
         bl1_size = filter_h_dilation * filter_w_dilation *\
-                   c0_size * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
+            cce_params.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
 
         al1_w_value = dy_w * stride_w
 
-        if dx_w > c0_size:
+        if dx_w > cce_params.C0_SIZE:
             al1_h_value = filter_h_dilation + 1
-        elif c0_size % dx_w == 0:
-            al1_h_value = filter_h_dilation + c0_size // dx_w - 1
+        elif cce_params.C0_SIZE % dx_w == 0:
+            al1_h_value = filter_h_dilation + cce_params.C0_SIZE // dx_w - 1
         else:
-            al1_h_value = filter_h_dilation + c0_size // dx_w + 1
+            al1_h_value = filter_h_dilation + cce_params.C0_SIZE // dx_w + 1
 
         al1_size = al1_h_value * al1_w_value *\
-                   c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
+            c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
         if _is_conv1d_situation():
             load3d_stride = 1
             a_l1_m_length = (dy_c0 - 1) * load3d_stride + filter_w_dilation
-            al1_size = a_l1_m_length *\
-                       c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
+            al1_size = a_l1_m_length * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
+        if fusion_para.get("l1_fusion_type") != -1:
+            al1_size = _l1fusion_size_limit(al1_size)
         DeconvParam.al1_size = al1_size
         DeconvParam.bl1_size = bl1_size
-        if al1_size + bl1_size > get_soc_spec("L1_SIZE"):
+        if al1_size + bl1_size > cce_conf.get_soc_spec("L1_SIZE"):
             dict_args = dict()
             dict_args["errCode"] = "E60026"
             raise RuntimeError(dict_args,
-                               err_man.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     # 64 bits limitation check
     def _check_chip_limitation():
         def _align(x_1, x_2):
             return (x_1 + x_2 - 1) // x_2 * x_2
 
-        def _check_64bits_limitation(attr_name, attr_value, dtype=None):
+        def _check_64bits_limitation(attr_value, dtype=None):
             if dtype is None:
                 bit_ratio = BIT_RATIO_DICT.get("float16")
             else:
@@ -539,10 +582,10 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
                 dict_args = dict()
                 dict_args["errCode"] = "E60020"
                 raise RuntimeError(dict_args,
-                                   err_man.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
-        _, dedy_k0, _ = CUBE_MKN[out_backprop.dtype]['mac']
-        _, w_k0, w_n0 = CUBE_MKN[filters.dtype]['mac']
+        _, dedy_k0, _ = cce_params.CUBE_MKN[out_backprop.dtype]['mac']
+        _, w_k0, w_n0 = cce_params.CUBE_MKN[filters.dtype]['mac']
 
         if dynamic_mode == "dynamic_hw":
             fmap_size = dx_batch * _align(dx_c, dedy_k0) \
@@ -556,13 +599,10 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
             fmap_size = dx_batch * _align(dx_c, dedy_k0) * dx_h * dx_w
             dedy_size = dy_batch * dy_c1 * dy_h * dy_w * dy_c0
         filter_size = _align(filter_cout, w_k0) \
-                      * _align(filter_cin, w_n0) * filter_h * filter_w
-        _check_64bits_limitation("fmap_size",
-                                 fmap_size, dtype=res_dtype)
-        _check_64bits_limitation("dedy_size",
-                                 dedy_size, dtype=out_backprop.dtype)
-        _check_64bits_limitation("filter_size",
-                                 filter_size, dtype=filters.dtype)
+            * _align(filter_cin, w_n0) * filter_h * filter_w
+        _check_64bits_limitation(fmap_size, dtype=res_dtype)
+        _check_64bits_limitation(dedy_size, dtype=out_backprop.dtype)
+        _check_64bits_limitation(filter_size, dtype=filters.dtype)
 
     _check_dy()
     _check_filter()
@@ -575,21 +615,41 @@ def check_input_params(filters, # pylint: disable=R0913,R0914,R0915
     _check_chip_limitation()
 
 
-@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor,
-                       (list, tuple), (list, tuple), (list, tuple),
-                       (list, tuple), (list, tuple), str,
-                       (tvm.tensor.Tensor, NoneType), int,
-                       (tvm.tensor.Tensor, NoneType),
-                       (dict, NoneType), (dict, NoneType), str)
-def conv2d_backprop_input_compute(filters,# pylint: disable=R0913,R0914
+def _get_dynamic_mode(out_backprop):
+    if isinstance(out_backprop.shape[0], tvm.expr.Var):
+        return "dynamic_batch"
+    if isinstance(out_backprop.shape[2], tvm.expr.Var) and \
+            isinstance(out_backprop.shape[3], tvm.expr.Var):
+        return "dynamic_hw"
+    return None
+
+
+def _get_dynamic_para(out_backprop):
+    dynamic_para = {}
+    dynamic_mode = _get_dynamic_mode(out_backprop)
+    if dynamic_mode == "dynamic_batch":
+        dynamic_para["var_map"] = {"batch_n": get_te_var("batch_n").get_tvm_var()}
+    elif dynamic_mode == "dynamic_hw":
+        dynamic_para["var_map"] = {v: get_te_var(v).get_tvm_var()
+                                   for v in ("dedy_h", "dedy_w", "dx_h", "dx_w")}
+    else:
+        return None
+    dynamic_para["dynamic_mode"] = dynamic_mode
+    return dynamic_para
+
+
+@check_para.check_input_type(Tensor, Tensor,
+                             (list, tuple), (list, tuple), (list, tuple),
+                             (list, tuple), (list, tuple), str,
+                             (Tensor, NoneType), int,
+                             (Tensor, NoneType), (dict, NoneType), str)
+def conv2d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                   out_backprop, filter_sizes,
                                   input_sizes, strides, padding, dilations,
                                   res_dtype="float16", tensor_bias=None,
                                   offset_x=0, offset_w=None,
                                   fusion_para=None,
-                                  dynamic_para=None,
                                   kernel_name="conv2d_backprop_input_cce"):
-
     """
     DSL interface of conv2d backprop input
 
@@ -615,6 +675,8 @@ def conv2d_backprop_input_compute(filters,# pylint: disable=R0913,R0914
 
     offset_w : offset of w
 
+    fusion_para: the l1 fuison para
+
     kernel_name : cce kernel name
 
     Returns
@@ -628,32 +690,59 @@ def conv2d_backprop_input_compute(filters,# pylint: disable=R0913,R0914
                        "output_memory_type": 0,
                        "valid_shape": (),
                        "slice_offset": (),
-                       "output_offset": (),
                        "l1_fusion_type": -1,
                        "fmap_l1_addr_flag": False,
                        "fmap_l1_valid_size": 0}
 
-    check_input_params(filters, out_backprop, filter_sizes, input_sizes,
-                        strides, padding, dilations, res_dtype, offset_w,
+    caller_name = currentframe().f_back.f_back.f_code.co_name
+
+    # opti -> general:
+    # 1) In quantified non-fusion scene, opti strategy maybe exceed UB size;
+    # 2) In quantified fusion scene, convert to general strategy for increasing
+    # bias in l0c
+    def _is_switch_to_general_scheme():
+        if tensor_bias is not None and filters.dtype == 'int8' and \
+          out_backprop.dtype == 'int8' and (strides[0] > 1 or strides[1] > 1):
+            if caller_name.endswith('_compute') or \
+              (1 + strides[0] * strides[1]) * \
+              shape_to_list(out_backprop.shape)[3] * \
+              cce_params.CUBE_MKN[res_dtype]['mac'][2] * BIT_RATIO_DICT[res_dtype] > \
+              cce_conf.get_soc_spec("UB_SIZE"):
+                return True
+        return False
+
+    dynamic_para = _get_dynamic_para(out_backprop)
+
+    switch_to_general_scheme = _is_switch_to_general_scheme()
+    _check_input_params(filters,
+                        out_backprop,
+                        filter_sizes,
+                        input_sizes,
+                        strides,
+                        padding,
+                        dilations,
+                        res_dtype,
+                        offset_w,
                         fusion_para=fusion_para,
-                        dynamic_para=dynamic_para)
+                        dynamic_para=dynamic_para,
+                        switch_to_general_scheme=switch_to_general_scheme)
 
     out_channel, in_channel, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
-    ceil = lambda A, B: (A + B - 1) // B
-    _, dx_k0, dx_n0 = CUBE_MKN[res_dtype]['mac']
+
+    def ceil(lhs, rhs):
+        return (lhs + rhs - 1) // rhs
+
+    _, dx_k0, dx_n0 = cce_params.CUBE_MKN[res_dtype]['mac']
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
 
-    caller_name = inspect.currentframe().f_back.f_back.f_code.co_name
-    switch_to_general_scheme = tensor_bias is not None and \
-        filters.dtype == 'int8' and out_backprop.dtype == 'int8' and \
-        (strides[0] > 1 or strides[1] > 1) and \
-        caller_name.endswith('_compute')
-
+    if dynamic_para:
+        DynamicConv2dBpInputParams.dynamic_mode = \
+            dynamic_para.get("dynamic_mode")
     DynamicConv2dBpInputParams.tiling_info_dict = {
         "op_type": 'conv2d_backprop_input',
         "A_shape": shape_to_list(out_backprop.shape),
-        "B_shape": [out_channel, (in_channel + dx_k0 - 1) // dx_k0, 
+        "B_shape": [out_channel, (in_channel + dx_k0 - 1) // dx_k0,
                     filter_h, filter_w, dx_k0],
         "C_shape": list(shape_dx),
         "A_dtype": out_backprop.dtype,
@@ -677,19 +766,19 @@ def conv2d_backprop_input_compute(filters,# pylint: disable=R0913,R0914
         "out_fm_memory_type": [],
         "l1_fusion_type": -1,
         "fusion_type": 0,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "dynamic_shape_flag": True
     }
 
-    if filter_h == 1 and filter_w == 1 \
-          and (padding == [0, 0, 0, 0] or dynamic_para) \
-          and not switch_to_general_scheme:
+    if filter_h == 1 and filter_w == 1 and (check_pad_zero(padding)) and not switch_to_general_scheme:
         pattc = DeConvKernelSize1Pattern(filter_sizes,
                                          strides=strides,
                                          pad=padding,
                                          output_shape=shape_dx,
                                          fusion_para=fusion_para,
                                          dynamic_para=dynamic_para,
-                                         kernel_name=kernel_name)
+                                         kernel_name=kernel_name,
+                                         offset_x=offset_x)
     else:
         pattc = DeConvPattern(filter_sizes, strides=strides,
                               pad=padding, output_shape=shape_dx,
@@ -705,7 +794,9 @@ def conv2d_backprop_input_compute(filters,# pylint: disable=R0913,R0914
     return dx_ddr
 
 
-class DynamicConv2dBpInputParams:
-
+class DynamicConv2dBpInputParams:  # pylint: disable=R0903
+    """
+    Dynamic Conv2dBpInput Params
+    """
     dynamic_mode = None
     tiling_info_dict = {}

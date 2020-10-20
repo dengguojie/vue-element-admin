@@ -1,25 +1,25 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 adam_apply_one_with_decay
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # shape size limit
 SHAPE_SIZE_LIMIT = 2**30
@@ -43,7 +43,7 @@ def square_compute(x, kernel_name="square"):
     -------
     res: the result of square
     """
-    res = te.lang.cce.vmul(x, x)
+    res = tbe.vmul(x, x)
     return res
 
 
@@ -64,13 +64,14 @@ def mul_compute(x1, x2, kernel_name="mul"):
    -------
    res: output of the data's element-wise mul
    """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vmul(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = \
+        shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vmul(data_x1, data_x2)
 
     return res
 
@@ -92,13 +93,14 @@ def add_compute(x1, x2, kernel_name="add"):
    -------
    res: output of the data's add
    """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vadd(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = \
+        shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vadd(data_x1, data_x2)
 
     return res
 
@@ -120,16 +122,14 @@ def sqrt_compute(x, kernel_name="sqrt"):
     """
     input_dtype = x.dtype
     has_improve_precision = False
-    if input_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vsqrt",
-                                                    "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
+    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vsqrt", "float32"):
+        x = tbe.cast_to(x, "float32")
         has_improve_precision = True
 
-    res = te.lang.cce.vsqrt(x)
+    res = tbe.vsqrt(x)
 
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
@@ -151,14 +151,15 @@ def true_div_compute(x1, x2, kernel_name="true_div"):
     -------
     res: output of the data's divide
     """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
+    shape_x1, shape_x2, shape_max = \
+        shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
 
-    res = te.lang.cce.vdiv(data_x1, data_x2)
+    res = tbe.vdiv(data_x1, data_x2)
 
     return res
 
@@ -180,13 +181,14 @@ def sub_compute(x1, x2, kernel_name="sub"):
    -------
    res : output of the data's sub
    """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vsub(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = \
+        shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vsub(data_x1, data_x2)
 
     return res
 
@@ -207,79 +209,83 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
     the list of inputs shape after broadcast
     """
     shape0 = input0.get("shape")
-    check_shape(shape0, param_name="input0")
+    para_check.check_shape(shape0, param_name="input0")
 
     shape1 = input1.get("shape")
-    check_shape(shape1, param_name="input1")
+    para_check.check_shape(shape1, param_name="input1")
 
     shape2 = input2.get("shape")
-    check_shape(shape2, param_name="input2")
+    para_check.check_shape(shape2, param_name="input2")
 
     shape3 = input3.get("shape")
-    check_shape(shape3, param_name="input3")
+    para_check.check_shape(shape3, param_name="input3")
 
     shape4 = input4.get("shape")
-    check_shape(shape4, param_name="input4")
+    para_check.check_shape(shape4, param_name="input4")
 
     shapecm0 = const_mul_x.get("shape")
-    check_shape(shapecm0, param_name="const_mul_x")
+    para_check.check_shape(shapecm0, param_name="const_mul_x")
 
     shapecm1 = const_mul1_x.get("shape")
-    check_shape(shapecm1, param_name="const_mul1_x")
+    para_check.check_shape(shapecm1, param_name="const_mul1_x")
 
     shapecm2 = const_mul2_x.get("shape")
-    check_shape(shapecm2, param_name="const_mul2_x")
+    para_check.check_shape(shapecm2, param_name="const_mul2_x")
 
     shapecm3 = const_mul3_x.get("shape")
-    check_shape(shapecm3, param_name="const_mul3_x")
+    para_check.check_shape(shapecm3, param_name="const_mul3_x")
 
     shapecm4 = const_mul4_x.get("shape")
-    check_shape(shapecm4, param_name="const_mul4_x")
+    para_check.check_shape(shapecm4, param_name="const_mul4_x")
 
     shapey = add2_y.get("shape")
-    check_shape(shapey, param_name="add2_y")
+    para_check.check_shape(shapey, param_name="add2_y")
 
     # broadcast mul_3 shape
-    shape0, shapecm3, shape_max_03 = broadcast_shapes(shape0, shapecm3, param_name_input1="input0", param_name_input2="const_mul3_x")
+    shape0, shapecm3, shape_max_03 = \
+        shape_util.broadcast_shapes(shape0, shapecm3, param_name_input1="input0", param_name_input2="const_mul3_x")
     # broadcast mul_2 shape
-    shape1, shapecm2, shape_max_02 = broadcast_shapes(shape1, shapecm2, param_name_input1="input1", param_name_input2="const_mul2_x")
+    shape1, shapecm2, shape_max_02 = \
+        shape_util.broadcast_shapes(shape1, shapecm2, param_name_input1="input1", param_name_input2="const_mul2_x")
     # broadcast add_1 shape
-    shape_max_02, shape_max_03, shape_max_add1 = broadcast_shapes(
+    shape_max_02, shape_max_03, shape_max_add1 = shape_util.broadcast_shapes(
         shape_max_02, shape_max_03, param_name_input1="shape_max_02", param_name_input2="shape_max_03")
     # broadcast add_2 shape
-    shapey, shape_max_add1, shape_max_add2 = broadcast_shapes(
+    shapey, shape_max_add1, shape_max_add2 = shape_util.broadcast_shapes(
         shapey, shape_max_add1, param_name_input1="add2_y", param_name_input2="shape_max_add1")
 
     # broadcast mul_0 shape
-    shape2, shapecm0, shape_max_20 = broadcast_shapes(shape2, shapecm0, param_name_input1="input2", param_name_input2="const_mul_x")
+    shape2, shapecm0, shape_max_20 = \
+        shape_util.broadcast_shapes(shape2, shapecm0, param_name_input1="input2", param_name_input2="const_mul_x")
     # broadcast mul_1 shape
-    shape0, shapecm1, shape_max_01 = broadcast_shapes(shape0, shapecm1, param_name_input1="input0", param_name_input2="const_mul1_x")
+    shape0, shapecm1, shape_max_01 = \
+        shape_util.broadcast_shapes(shape0, shapecm1, param_name_input1="input0", param_name_input2="const_mul1_x")
     # broadcast add_0 shape
-    shape_max_20, shape_max_01, shape_max_add0 = broadcast_shapes(
+    shape_max_20, shape_max_01, shape_max_add0 = shape_util.broadcast_shapes(
         shape_max_20, shape_max_01, param_name_input1="shape_max_20", param_name_input2="shape_max_01")
 
     # broadcast truediv_0 shape
-    shape_max_add0, shape_max_add2, shape_max_truediv = broadcast_shapes(
+    shape_max_add0, shape_max_add2, shape_max_truediv = shape_util.broadcast_shapes(
         shape_max_add0, shape_max_add2, param_name_input1="shape_max_add0", param_name_input2="shape_max_add2")
 
     # broadcast mul_4 shape
-    shape3, shapecm4, shape_max_34 = broadcast_shapes(shape3, shapecm4, param_name_input1="input3", param_name_input2="const_mul4_x")
+    shape3, shapecm4, shape_max_34 = \
+        shape_util.broadcast_shapes(shape3, shapecm4, param_name_input1="input3", param_name_input2="const_mul4_x")
     # broadcast add_3 shape
-    shape_max_34, shape_max_truediv, shape_max_add3 = broadcast_shapes(
+    shape_max_34, shape_max_truediv, shape_max_add3 = shape_util.broadcast_shapes(
         shape_max_34, shape_max_truediv, param_name_input1="shape_max_34", param_name_input2="shape_max_truediv")
 
     # broadcast mul_5 shape
-    shape4, shape_max_add3, shape_max_4add3 = broadcast_shapes(
+    shape4, shape_max_add3, shape_max_4add3 = shape_util.broadcast_shapes(
         shape4, shape_max_add3, param_name_input1="input4", param_name_input2="shape_max_add3")
     # broadcast sub_0 shape
-    shape3, shape_max_4add3, shape_max_sub = broadcast_shapes(
+    shape3, shape_max_4add3, shape_max_sub = shape_util.broadcast_shapes(
         shape3, shape_max_4add3, param_name_input1="input3", param_name_input2="shape_max_4add3")
 
-    return shape0, shape1, shape2, shape3, shape4,\
-           shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey
+    return shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey
 
 
-@fusion_manager.register("adam_apply_one_with_decay")
+@tbe_platform.fusion_manager.fusion_manager.register("adam_apply_one_with_decay")
 def adam_apply_one_with_decay_compute(input0, input1, input2, input3, input4,
                                       const_mul_x, const_mul1_x, const_mul2_x,
                                       const_mul3_x, const_mul4_x, add2_y):
@@ -343,10 +349,11 @@ def adam_apply_one_with_decay_compute(input0, input1, input2, input3, input4,
     return y0, y1, y2
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def adam_apply_one_with_decay(input0,
                               input1,
                               input2,
@@ -420,7 +427,6 @@ def adam_apply_one_with_decay(input0,
                                     const_mul_x, const_mul1_x, const_mul2_x,
                                     const_mul3_x, const_mul4_x, add2_y)
 
-
     input_place0 = tvm.placeholder(shape0, name="input0", dtype=dtype0)
     input_place1 = tvm.placeholder(shape1, name="input1", dtype=dtype1)
     input_place2 = tvm.placeholder(shape2, name="input2", dtype=dtype2)
@@ -440,7 +446,7 @@ def adam_apply_one_with_decay(input0,
         input_cm0, input_cm1, input_cm2, input_cm3, input_cm4, input_y)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule([y1, y2, y3])
+        sch = tbe.auto_schedule([y1, y2, y3])
 
     config = {
         "name":
@@ -450,4 +456,4 @@ def adam_apply_one_with_decay(input0,
                         input_cm3, input_cm4, input_y, y1, y2, y3)
     }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

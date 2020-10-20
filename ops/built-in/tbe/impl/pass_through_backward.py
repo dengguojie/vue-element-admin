@@ -1,26 +1,30 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-space_to_depth
+pass_through_backward
 """
+import te.platform as tbe_platform
+
 from te import tik
 from impl import common_util
 from impl import constant_util as constant
-from te import platform as tbe_platform
 
 # pylint: disable=redefined-builtin,useless-object-inheritance
 if "reduce" not in dir(__builtins__):
-    from functools import reduce
+    import functools
+
 
 # the minimum value of block_size
 BLOCK_SIZE_MIN = 2
@@ -92,7 +96,7 @@ class SpaceToDepthBase:
         -------
         size: the size of input data
         """
-        return reduce(lambda x1, x2: x1 * x2, self.input_shape[start:end])
+        return functools.reduce(lambda x1, x2: x1 * x2, self.input_shape[start:end])
 
     def get_output_size(self, start=0, end=4):
         """
@@ -106,7 +110,7 @@ class SpaceToDepthBase:
         -------
         size: the size of output data
         """
-        return reduce(lambda x1, x2: x1 * x2, self.output_shape[start:end])
+        return functools.reduce(lambda x1, x2: x1 * x2, self.output_shape[start:end])
 
 
 class SpaceToDepthComputeParam:
@@ -198,7 +202,7 @@ class SpaceToDepth(SpaceToDepthBase):
         if start == end:
             size = 1
         else:
-            size = reduce(lambda x1, x2: x1 * x2, self.tiling_shape[start:end])
+            size = functools.reduce(lambda x1, x2: x1 * x2, self.tiling_shape[start:end])
         return size
 
     def get_bs_c_align_size(self):
@@ -236,16 +240,16 @@ class SpaceToDepth(SpaceToDepthBase):
         buf_size: the ub buffer size
         """
         size_for_tail = 32
-        ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         all_ub_buffer = ub_size // self.dtype_size - size_for_tail
         buf_size = all_ub_buffer
         tiling_case = len(self.tiling_shape)
         for i in range(0, len(self.tiling_shape)):
-            buf_size_needed = reduce(lambda x1, x2: x1 * x2,
+            buf_size_needed = functools.reduce(lambda x1, x2: x1 * x2,
                                      self.tiling_shape[i:])
             is_buffer_large_enough = all_ub_buffer // buf_size_needed
             if is_buffer_large_enough > 0:
-                batch_size = reduce(lambda x1, x2: x1 * x2,
+                batch_size = functools.reduce(lambda x1, x2: x1 * x2,
                                     self.input_shape[1:])
                 if i == 0 and batch_size >= self.element_size:
                     tiling_case = 1
@@ -257,10 +261,10 @@ class SpaceToDepth(SpaceToDepthBase):
         if tiling_case == 0:
             buf_size = self.get_tiling_shape_size(0, 5)
         if tiling_case == 4:
-            buf_size_needed = reduce(lambda x1, x2: x1 * x2,
+            buf_size_needed = functools.reduce(lambda x1, x2: x1 * x2,
                                      self.tiling_shape[tiling_case:])
             buf_num = buf_size // \
-                      reduce(lambda x1, x2: x1 * x2,
+                      functools.reduce(lambda x1, x2: x1 * x2,
                              self.tiling_shape[tiling_case:5])
             buf_size = buf_size_needed
             for i in range(buf_num, 0, -1):
@@ -296,7 +300,7 @@ class SpaceToDepth(SpaceToDepthBase):
                                                 name="offset_align")
         offset_align.set_as((offset + self.get_bs_c() - 1) // self.get_bs_c())
         buf_num = self.buf_size // \
-                  reduce(lambda x1, x2: x1 * x2,
+                  functools.reduce(lambda x1, x2: x1 * x2,
                          self.tiling_shape[self.tiling_case:
                                            len(self.tiling_shape)])
         loop_n = self.tik_instance.Scalar(dtype=constant.DATA_TYPE_UINT64,
@@ -590,7 +594,7 @@ class SpaceToDepth(SpaceToDepthBase):
                                        (1, 1, 0), (0, 0))
         elif self.tiling_case == 4:
             buf_num = self.buf_size // \
-                      reduce(lambda x1, x2: x1 * x2,
+                      functools.reduce(lambda x1, x2: x1 * x2,
                              self.tiling_shape[self.tiling_case:
                                                len(self.tiling_shape)])
             self.move_gm_to_ub(data_ub,
@@ -856,7 +860,7 @@ class SpaceToDepth(SpaceToDepthBase):
         """
         all_block_num = self.get_block_num()
 
-        block_dim = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        block_dim = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         if all_block_num < block_dim:
             with self.tik_instance.for_range(

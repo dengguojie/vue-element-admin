@@ -1,26 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-basic_lstm_cell_cstate_grad
+basic_lstm_cell_c_state_grad
 """
-from functools import reduce as functools_reduce
+import functools
 
-from te import platform as cce
+import te.platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 # pylint: disable=too-many-instance-attributes
@@ -125,7 +124,7 @@ class LstmCellGradInput():
             shape_list += (self.dht_out_shape,)
 
         for shape in shape_list:
-            check_shape(shape, min_rank=4, max_rank=4, param_name="dht_out")
+            para_check.check_shape(shape, min_rank=4, max_rank=4, param_name="dht_out")
             if shape != self.c_shape:
                 raise RuntimeError("the input shapes are not same")
 
@@ -138,7 +137,7 @@ class LstmCellGradInput():
             dtype_list += (self.dht_out_dtype,)
 
         for dtype in dtype_list:
-            check_dtype(dtype.lower(), check_list, param_name="dht_out")
+            para_check.check_dtype(dtype.lower(), check_list, param_name="dht_out")
             if dtype != self.c_dtype:
                 raise RuntimeError("the input dtypes are not same")
 
@@ -236,7 +235,7 @@ class LstmCellGrad(LstmCellGradInput):
               self).__init__(cell_state, dht_out, dht, dct, inpute_gate,
                              forget_gate, update_gate, output_gate, tanh_ct,
                              kernel_name)
-        self.fz_num = functools_reduce(lambda x, y: x * y, self.dht_shape[:2])
+        self.fz_num = functools.reduce(lambda x, y: x * y, self.dht_shape[:2])
 
         self.ele_each_core = 0
         self.out_loop_ele_num = 0
@@ -246,7 +245,7 @@ class LstmCellGrad(LstmCellGradInput):
         self.ub_size = 0
 
         # get vector compute parameters
-        dtype_bytes_size = cce.cce_intrin.get_bit_len(self.dht_dtype) // 8
+        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.dht_dtype) // 8
         self.v_mask_max = 128 // (dtype_bytes_size // 2)
         self.v_repeat_max = 255
         self.v_ele_each_block = 32 // dtype_bytes_size
@@ -302,9 +301,9 @@ class LstmCellGrad(LstmCellGradInput):
         None
         """
 
-        ub_size_bytes = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+        ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         self.ele_each_core = (
-            functools_reduce(lambda x, y: x * y, self.dht_shape) //
+            functools.reduce(lambda x, y: x * y, self.dht_shape) //
             self.aicore_num)
         if self.ele_each_core < self.v_ele_each_block * 2:
             self.out_loop_num = 1
@@ -316,7 +315,7 @@ class LstmCellGrad(LstmCellGradInput):
         ub_pice_num = 20
         total_num_each_core = self.ele_each_core * ub_pice_num
 
-        dtype_size = cce.cce_intrin.get_bit_len(self.dht_dtype) // 8
+        dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dht_dtype) // 8
 
         if total_num_each_core * dtype_size < ub_size_bytes:
             self.inner_loop_num = 0
@@ -688,11 +687,8 @@ class LstmCellGrad(LstmCellGradInput):
         Returns:
         None
         """
-        with self.tik_instance.for_range(
-                0, self.aicore_num, block_num=self.aicore_num) as index0:
-            with self.tik_instance.for_range(
-                    0, self.out_loop_num,
-                    thread_num=self.out_loop_num) as index1:
+        with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index0:
+            with self.tik_instance.for_range(0, self.out_loop_num, thread_num=self.out_loop_num) as index1:
                 self.compute_each_core(index0, index1)
 
         if self.dht_out_shape is not None:
@@ -709,9 +705,11 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 # pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_c_state_grad(c,
                                  dht,

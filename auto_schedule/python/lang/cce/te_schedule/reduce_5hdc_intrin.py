@@ -1,27 +1,27 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce 5hd c axis intrinsic functions
 """
-import math
 import te
 
 from te import tvm
 
 from te.platform import log
-from te.platform.cce_util import get_buffer, get_align_factor
+from te.platform.cce_util import get_buffer
+from te.platform.cce_util import get_align_factor
 from te.platform.cce_intrin_md import reset_mask_insn
 
 
@@ -148,7 +148,6 @@ def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
                                     original_shape[idx],
                                     is_c1,
                                     c_inv_size))
-            reduce_src = math.ceil(reduce_src / original_shape[idx])
             offset += 1
     # Prepare buffer
     ins, outs = get_buffer(stmt, need_origin_adress=True)
@@ -216,19 +215,48 @@ def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # pylint: disable=R0913
     vector_insn_rep_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
     repeat_times = reduce_unit // vector_insn_rep_size
     remains = reduce_unit - vector_insn_rep_size * repeat_times
-    with ir_builder.for_range(0, reduce_src, name="loop_reduce_src") as loop_src:
-        src_offset = loop_src * reduce_factor * reduce_unit
-        dst_offset = loop_src * reduce_unit
-        with ir_builder.for_range(0, reduce_factor - 1, name="loop_reduce_factor") as loop_factor:
-            src_offset = src_offset + (loop_factor + 1) * reduce_unit
-            if need_clean and clean_factor < 16:
-                with ir_builder.if_scope(loop_factor == reduce_factor - 2):
-                    vector_insn_factor_clean(ir_builder, intrin_cmd, input_buffer,
-                                             repeat_times, remains, src_offset, clean_factor)
-            vector_insn_factory_normal(ir_builder, INTRIN_MAPPING_NORMAL[intrin_cmd],
-                                       output_buffer, input_buffer, repeat_times,
-                                       vector_insn_rep_size, vector_insn_rep_size,
-                                       remains, dst_offset, src_offset)
+    with ir_builder.for_range(0, reduce_factor - 1, name="loop_reduce_factor") as loop_factor:
+        src_offset = (loop_factor + 1) * reduce_unit
+        if need_clean and clean_factor < 16:
+            with ir_builder.if_scope(loop_factor == reduce_factor - 2):
+                vector_insn_factor_clean(ir_builder, intrin_cmd, input_buffer,
+                                         repeat_times, remains, src_offset, clean_factor)
+        vector_insn_factory_normal(ir_builder, INTRIN_MAPPING_NORMAL[intrin_cmd],
+                                   output_buffer, input_buffer, repeat_times,
+                                   vector_insn_rep_size, vector_insn_rep_size,
+                                   remains, 0, src_offset)
+    if reduce_src > 1:
+        with ir_builder.for_range(0, reduce_src - 1, name="loop_reduce_src") as loop_src:
+            src_offset = (loop_src + 1) * reduce_factor * reduce_unit
+            dst_offset = (loop_src + 1) * reduce_unit
+            dup_repeat = reduce_unit // vector_insn_rep_size
+            dup_remain = reduce_unit % vector_insn_rep_size
+            if dup_repeat > 0:
+                reset_mask_insn(ir_builder, output_buffer.dtype)
+                ir_builder.emit(tvm.call_extern(
+                    output_buffer.dtype,
+                    "vector_dup",
+                    output_buffer.access_ptr("rw", offset=dst_offset),
+                    0,
+                    dup_repeat, 1, 1, 8, 8))
+            if dup_remain > 0:
+                reset_mask_insn(ir_builder, output_buffer.dtype, dup_remain)
+                ir_builder.emit(tvm.call_extern(
+                    output_buffer.dtype,
+                    "vector_dup",
+                    output_buffer.access_ptr("rw", offset=dst_offset + dup_repeat * vector_insn_rep_size),
+                    0,
+                    1, 1, 1, 8, 8))
+            with ir_builder.for_range(0, reduce_factor, name="loop_reduce_factor") as loop_factor:
+                src_offset = src_offset + loop_factor * reduce_unit
+                if need_clean and clean_factor < 16:
+                    with ir_builder.if_scope(loop_factor == reduce_factor - 2):
+                        vector_insn_factor_clean(ir_builder, intrin_cmd, input_buffer,
+                                                 repeat_times, remains, src_offset, clean_factor)
+                vector_insn_factory_normal(ir_builder, INTRIN_MAPPING_NORMAL[intrin_cmd],
+                                           output_buffer, input_buffer, repeat_times,
+                                           vector_insn_rep_size, vector_insn_rep_size,
+                                           remains, dst_offset, src_offset)
 
 
 def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disable=R0913

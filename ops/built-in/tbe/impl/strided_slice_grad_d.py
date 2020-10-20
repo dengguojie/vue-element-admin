@@ -1,27 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-strided_slice_grad
+strided_slice_grad_d
 """
-
-from impl import pad_d
-from topi.cce import util
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from impl.strided_slice_d import _init_parameter
-from te.utils.op_utils import *
+from impl import pad_d
+from impl import strided_slice_d
+
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 BLOCK_SIZE = 32
@@ -276,14 +275,14 @@ class StridedSliceGradLastDimCompute(object):
 
         with self.tik_instance.for_range(0, aicore_num, block_num=aicore_num) as block_idx:
             with self.tik_instance.if_scope(block_idx != aicore_num - 1):
-                self.compute_each_core(block_idx * product_per_core, product_per_core)
+                self._compute_each_core(block_idx * product_per_core, product_per_core)
             with self.tik_instance.else_scope():
-                self.compute_each_core(block_idx * product_per_core, product_last_core)
+                self._compute_each_core(block_idx * product_per_core, product_last_core)
 
         tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.y], outputs=[self.x])
         return tik_instance
 
-    def compute_each_core(self, move_product_offset, move_product_len):
+    def _compute_each_core(self, move_product_offset, move_product_len):
         product_repeat = move_product_len // self.max_dim_product
         if product_repeat > 0:
             with self.tik_instance.for_range(0, product_repeat) as product_index:
@@ -336,7 +335,8 @@ class StridedSliceGradLastDimCompute(object):
 
 
 def _update_begin_end(input_shape, begin, end, begin_mask, end_mask):
-    """ Calculate the value of padding by input parameters.
+    """
+    Calculate the value of padding by input parameters.
 
     Parameters
     ----------
@@ -380,7 +380,8 @@ def _update_begin_end(input_shape, begin, end, begin_mask, end_mask):
 
 
 def _get_paddings(shape_x, begin_shape, end_shape):
-    """ Calculate the value of padding by input parameters.
+    """
+    Calculate the value of padding by input parameters.
 
     Parameters
     ----------
@@ -408,7 +409,8 @@ def _get_paddings(shape_x, begin_shape, end_shape):
 
 
 def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
-    """ Check whether the input shape meets the requirements.
+    """
+    Check whether the input shape meets the requirements.
 
     Parameters
     ----------
@@ -451,7 +453,8 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
 
 
 def _check_mask(input_mask, is_shrink=False):
-    """ Check whether the value of the input mask is 0.
+    """
+    Check whether the value of the input mask is 0.
 
     Parameters
     ----------
@@ -471,9 +474,10 @@ def _check_mask(input_mask, is_shrink=False):
 
 
 def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
-    """Check whether the shape of begin and shape is not equal,
+    """
+    Check whether the shape of begin and shape is not equal,
        and masks are not 0
-
+    
     Parameters
     ----------
     shape : list or tuple.
@@ -500,14 +504,17 @@ def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
-                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_INT, OPTION_ATTR_INT,
-                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
                          end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                          kernel_name="strided_slice_grad_d"):
 
-    """ Since `StridedSlice` cuts out pieces of its `input` which is size`shape_dy`, its gradient
+    """
+    Since `StridedSlice` cuts out pieces of its `input` which is size`shape_dy`, its gradient
     will have the same shape (which is passed here as `shape_x`). The gradient will be zero in any
     element that the slice does not select.
 
@@ -551,9 +558,9 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     ori_format_dy = dy.get("ori_format")
     input_dtype = dy.get("dtype").lower()
 
-    check_dtype(input_dtype, ("float16", "float32", "int8", "uint8", "int32"), param_name="dy")
-    check_shape(shape, param_name="shape")
-    check_shape(shape_dy, param_name="dy")
+    para_check.check_dtype(input_dtype, ("float16", "float32", "int8", "uint8", "int32"), param_name="dy")
+    para_check.check_shape(shape, param_name="shape")
+    para_check.check_shape(shape_dy, param_name="dy")
 
     _check_mask(new_axis_mask)
     _check_mask(shrink_axis_mask, True)
@@ -566,7 +573,7 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     begin = list(begin)
     end = list(end)
     strides = list(strides)
-    begin_shape, end_shape, stride_shape = _init_parameter(shape, begin, end,
+    begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
                                                            strides, begin_mask, end_mask,
                                                            ellipsis_mask, new_axis_mask,
                                                            shrink_axis_mask)

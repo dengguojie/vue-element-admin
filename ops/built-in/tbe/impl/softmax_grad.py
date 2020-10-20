@@ -1,26 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not
-use this file except in compliance with the License.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-softmaxgrad
+softmax_grad
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+
+
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("softmax_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("softmax_grad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x,
                          kernel_name="softmax_grad"):
     """
@@ -45,35 +48,37 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
         the result of softmax_grad_compute
     """
     dtype = softmax.dtype
-    shape_input1 = te.lang.cce.util.shape_to_list(softmax.shape)
-    shape_input2 = te.lang.cce.util.shape_to_list(grad_softmax.shape)
+    shape_input1 = shape_util.shape_to_list(softmax.shape)
+    shape_input2 = shape_util.shape_to_list(grad_softmax.shape)
     has_improve_precision = False
     if list(shape_input1) != list(shape_input2):
-        shape_input1, shape_input2, shape = broadcast_shapes(shape_input1, shape_input2,
-                                                             param_name_input1="softmax",
-                                                             param_name_input2="grad_softmax")
-        softmax = te.lang.cce.broadcast(softmax, shape, dtype)
-        grad_softmax = te.lang.cce.broadcast(grad_softmax, shape, dtype)
+        shape_input1, shape_input2, shape =\
+            shape_util.broadcast_shapes(shape_input1, shape_input2,
+                                        param_name_input1="softmax",
+                                        param_name_input2="grad_softmax")
+        softmax = tbe.broadcast(softmax, shape, dtype)
+        grad_softmax = tbe.broadcast(grad_softmax, shape, dtype)
 
-    data_vmul = te.lang.cce.vmul(softmax, grad_softmax)
+    data_vmul = tbe.vmul(softmax, grad_softmax)
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.sum", "float32"):
-        data_vmul = te.lang.cce.cast_to(data_vmul, "float32")
+        data_vmul = tbe.cast_to(data_vmul, "float32")
         has_improve_precision = True
-    data_sum = te.lang.cce.sum(data_vmul, axis=-1, keepdims=True)
+    data_sum = tbe.sum(data_vmul, axis=-1, keepdims=True)
     if list(shape_input1) != list(shape_input2):
-        data_sum_tmp = te.lang.cce.broadcast(data_sum, shape)
+        data_sum_tmp = tbe.broadcast(data_sum, shape)
     else:
-        data_sum_tmp = te.lang.cce.broadcast(data_sum, shape_input2)
-    data_sub = te.lang.cce.vsub(grad_softmax, data_sum_tmp)
-    res = te.lang.cce.vmul(softmax, data_sub)
+        data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
+    data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
+    res = tbe.vmul(softmax, data_sub)
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     """
     Computes softmax gradients for a softmax operation
@@ -99,17 +104,18 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     shape_grad_softmax = grad_softmax.get("shape")
     dtype_softmax = softmax.get("dtype")
 
-    util.compare_tensor_dict_key(softmax, grad_softmax, "dtype")
-    check_shape(shape_softmax, param_name="softmax")
-    check_shape(shape_grad_softmax, param_name="grad_softmax")
+    shape_util.compare_tensor_dict_key(softmax, grad_softmax, "dtype")
+    para_check.check_shape(shape_softmax, param_name="softmax")
+    para_check.check_shape(shape_grad_softmax, param_name="grad_softmax")
 
     check_list = ("float16", "float32")
     input_dtype = dtype_softmax.lower()
 
-    check_dtype(input_dtype, check_list, param_name="softmax")
+    para_check.check_dtype(input_dtype, check_list, param_name="softmax")
     if list(shape_softmax) != list(shape_grad_softmax):
         shape_softmax, shape_grad_softmax, shape_max = \
-            broadcast_shapes(shape_softmax, shape_grad_softmax, param_name_input1="softmax", param_name_input2="grad_softmax")
+            shape_util.broadcast_shapes(shape_softmax, shape_grad_softmax, param_name_input1="softmax",
+                                        param_name_input2="grad_softmax")
 
     softmax = tvm.placeholder(shape_softmax, name="softmax", dtype=input_dtype)
     grad_softmaxgrad = tvm.placeholder(shape_grad_softmax,
@@ -119,8 +125,8 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     res = softmax_grad_compute(softmax, grad_softmaxgrad, grad_x,
                                kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [softmax, grad_softmaxgrad, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

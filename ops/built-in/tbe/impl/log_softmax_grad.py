@@ -1,36 +1,35 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 log_softmax_grad
 """
-from __future__ import absolute_import
 import operator
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable = locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("log_softmax_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("log_softmax_grad")
 def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
                              kernel_name="log_softmax_grad"):
     """
@@ -59,29 +58,31 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
     result: TVM tensor.
     """
     dtype = input_dy.dtype
-    shape1 = te.lang.cce.util.shape_to_list(input_dy.shape)    
+    shape1 = shape_util.shape_to_list(input_dy.shape)
     has_improve_precision = False
     if dtype == "float16" and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
-        input_dy = te.lang.cce.cast_to(input_dy, "float32")
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
+                                                    "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
+        input_dy = tbe.cast_to(input_dy, "float32")
         has_improve_precision = True
 
-    data_exp = te.lang.cce.vexp(input_x)
-    data_sum = te.lang.cce.sum(input_dy, axis, True)
-    data_sum_broadcast = te.lang.cce.broadcast(data_sum, shape1)
-    data_softmax = te.lang.cce.vmul(data_exp, data_sum_broadcast)
+    data_exp = tbe.vexp(input_x)
+    data_sum = tbe.sum(input_dy, axis, True)
+    data_sum_broadcast = tbe.broadcast(data_sum, shape1)
+    data_softmax = tbe.vmul(data_exp, data_sum_broadcast)
 
-    result = te.lang.cce.vsub(input_dy, data_softmax)
+    result = tbe.vsub(input_dy, data_softmax)
     if has_improve_precision:
-        result = te.lang.cce.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 (OPTION_ATTR_INT, OPTION_ATTR_LIST_INT), KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
+                            para_check.KERNEL_NAME)
 def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
                      kernel_name="log_softmax_grad"):
     """
@@ -117,11 +118,11 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
 
     shape1 = input_dy.get("shape")
     shape2 = input_x.get("shape")
-    check_shape(shape1, param_name="input_dy")
-    check_shape(shape2, param_name="input_x")
-    check_dtype(input_dtype, check_list, param_name="input_dy")
+    para_check.check_shape(shape1, param_name="input_dy")
+    para_check.check_shape(shape2, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_dy")
 
-    axis = util.axis_check(len(shape1), axis)
+    axis = shape_util.axis_check(len(shape1), axis)
 
     if not isinstance(axis, int):
         for i in axis:
@@ -134,7 +135,7 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     if not operator.eq(list(shape1), list(shape2)):
         raise RuntimeError("all input shape must be equal")
 
-    shape1, axis = util.shape_refine(list(shape1), axis)
+    shape1, axis = shape_util.shape_refine(list(shape1), axis)
     shape2 = shape1
 
     data1 = tvm.placeholder(shape1, dtype=input_dtype, name="data1")
@@ -142,9 +143,9 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     result = log_softmax_grad_compute(data1, data2, output_z, axis, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data1, data2, result]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

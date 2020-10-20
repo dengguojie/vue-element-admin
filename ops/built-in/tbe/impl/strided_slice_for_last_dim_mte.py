@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-StridedSlice
+strided_slice_for_last_dim_mte
 """
-
 from functools import reduce as funct_reduce
 from te import tik
 from te import platform as tbe_platform
@@ -70,11 +69,19 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
     input_core_dim_num_left = input_dim_size_except_last % core_num
 
     input_ub_size = input_core_dim_num * input_shape[-1]
-    if input_ub_size == 0:
+
+    output_last_dim_part_block_1 = output_shape[-1] // block_data_cnt
+    output_last_dim_part_size_1 = \
+        output_last_dim_part_block_1 * block_data_cnt
+    allowed_repeat_cnt = input_ub_size // \
+        (output_last_dim_part_size_1 * block_data_cnt)
+
+    if input_ub_size == 0 or allowed_repeat_cnt == 0:
         return False
     if input_ub_size > ub_max_size // byte_cnt:
         input_ub_size = \
             ub_max_size // byte_cnt // block_data_cnt * block_data_cnt
+
     # ub_size change
     input_data_ub = tik_instance.Tensor(dtype,
                                         (input_ub_size,),
@@ -89,9 +96,6 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
             do strides operation
             """
 
-            output_last_dim_part_block_1 = output_shape[-1] // block_data_cnt
-            output_last_dim_part_size_1 = \
-                output_last_dim_part_block_1 * block_data_cnt
             output_last_dim_part_block_2 = 1
             output_last_dim_part_size_2 = \
                 output_last_dim_part_block_2 * block_data_cnt

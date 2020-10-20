@@ -1,34 +1,35 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file nn_other_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
-**/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+/*!
+ * \file nn_other_ops.cpp
+ * \brief
+ */
 #include "inc/nn_detect_ops.h"
+
+#include <cmath>
 #include <string>
 #include <vector>
 #include <algorithm>
-#include "util/util.h"
-#include "op_log.h"
-#include <math.h>
-#include "./util/error_util.h"
 
-namespace ge
-{
+#include "util/util.h"
+#include "util/error_util.h"
+#include "op_log.h"
+
+namespace ge {
 // ------------------CheckValid-----------------------
 IMPLEMT_COMMON_INFERFUNC(CheckValidInferShape) {
   auto tensordesc_bbox = op.GetInputDesc("bbox_tensor");
@@ -78,14 +79,12 @@ IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
   int64_t pool_w_shape;
   if (op.GetAttr("pooled_height", pool_h_shape) == ge::GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "pooled_height");
-    OP_LOGI(op.GetName().c_str(),
-            "GetOpAttr ConstValue pooled_height failed. Use unknown shape.");
+    OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_height failed. Use unknown shape.");
     pool_h_shape = UNKNOWN_DIM;
   }
   if (op.GetAttr("pooled_width", pool_w_shape) == ge::GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "pooled_width");
-    OP_LOGI(op.GetName().c_str(),
-            "GetOpAttr ConstValue pooled_width failed. Use unknown shape.");
+    OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_width failed. Use unknown shape.");
     pool_w_shape = UNKNOWN_DIM;
   }
 
@@ -107,7 +106,7 @@ IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
 INFER_FUNC_REG(ROIAlign, ROIAlignInfer);
 // ------------ROIAlign END-------------
 
-//----------------Iou-------------------
+// ----------------Iou-------------------
 IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
   auto shapeBbox = op.GetInputDesc("bboxes").GetShape();
   auto shapeGbox = op.GetInputDesc("gtboxes").GetShape();
@@ -127,11 +126,11 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Iou, IouInferShape);
-//----------------Iou-------------------
+// ----------------Iou-------------------
 
 // ----------------BoundingBoxDecode-------------------
 IMPLEMT_COMMON_INFERFUNC(BoundingBoxDecodeInferShape) {
-  if(InferShapeAndTypeTwoInOneOutBroadcast(op, "rois", "deltas", "bboxes")) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "rois", "deltas", "bboxes")) {
     return GRAPH_SUCCESS;
   }
   OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode InferShape Failed.");
@@ -143,8 +142,7 @@ COMMON_INFER_FUNC_REG(BoundingBoxDecode, BoundingBoxDecodeInferShape);
 
 // ----------------BoundingBoxEncode-------------------
 IMPLEMT_COMMON_INFERFUNC(BoundingBoxEncodeInferShape) {
-  if(InferShapeAndTypeTwoInOneOutBroadcast(op, "anchor_box",
-                                           "ground_truth_box", "delats")) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "anchor_box", "ground_truth_box", "delats")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -181,23 +179,23 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
   inputW = xShape[3];
 
   vector<float> aspectratios_new;
-  for(int i = 0; i < ar_size; i++){
-  float ar = aspect_ratio[i];
-  bool already_exist = false;
-  if(fabsf(ar - 1.0) < 1e-6){
-    already_exist = true;
-  } else{
-  for(uint16_t j = 0; j < aspectratios_new.size(); j++){
-    if(fabsf(ar - aspectratios_new[j]) < 1e-6){
+  for (int i = 0; i < ar_size; i++) {
+    float ar = aspect_ratio[i];
+    bool already_exist = false;
+    if (fabsf(ar - 1.0) < 1e-6) {
       already_exist = true;
-      break;
+    } else {
+      for (uint16_t j = 0; j < aspectratios_new.size(); j++) {
+        if (fabsf(ar - aspectratios_new[j]) < 1e-6) {
+          already_exist = true;
+          break;
+        }
       }
     }
-  }
-  if(!already_exist){
-    aspectratios_new.push_back(ar);
-    if(flip){
-      aspectratios_new.push_back(1.0 / ar);
+    if (!already_exist) {
+      aspectratios_new.push_back(ar);
+      if (flip) {
+        aspectratios_new.push_back(1.0 / ar);
       }
     }
   }
@@ -205,9 +203,9 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
 
   int64_t priorNum;
   if (ar_size == 1 && (fabsf(aspect_ratio[0] - 1.0) < 1e-6)) {
-  priorNum = min_size_size * ar_size + max_size_size;
+    priorNum = min_size_size * ar_size + max_size_size;
   } else {
-  priorNum = min_size_size + min_size_size * ar_new_size + max_size_size;
+    priorNum = min_size_size + min_size_size * ar_new_size + max_size_size;
   }
 
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum * 4, 1});
@@ -219,12 +217,12 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
   (void)op.update_output_desc_y(outdesc);
 
   return GRAPH_SUCCESS;
-  }
+}
 IMPLEMT_VERIFIER(PriorBox, PriorBoxVerify) {
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(PriorBox, PriorBoxInfer);
-VERIFY_FUNC_REG (PriorBox, PriorBoxVerify);
+VERIFY_FUNC_REG(PriorBox, PriorBoxVerify);
 // ----------------PriorBox Op End-------------------
 
 // ----------------PriorBoxD Op Start-------------------
@@ -250,12 +248,42 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   (void)op.update_output_desc_y(outdesc);
 
   return GRAPH_SUCCESS;
-  }
+}
 IMPLEMT_VERIFIER(PriorBoxD, PriorBoxDVerify) {
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(PriorBoxD, PriorBoxDInfer);
-VERIFY_FUNC_REG (PriorBoxD, PriorBoxDVerify);
+VERIFY_FUNC_REG(PriorBoxD, PriorBoxDVerify);
 // ----------------PriorBoxD Op End-------------------
 
-} // namespace ge
+// ---------------PriorBoxDV2 Op Start------------------
+IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
+  auto featureDesc = op.GetInputDesc("x");
+  auto boxDesc = op.GetInputDesc("box_height");
+  auto input_dType = featureDesc.GetDataType();
+  auto output_dType = input_dType;
+
+  auto xShape = featureDesc.GetShape().GetDims();
+  int64_t inputH, inputW;
+  inputH = xShape[2];
+  inputW = xShape[3];
+  auto boxLen = boxDesc.GetShape().GetDims();
+  int64_t priorNum;
+  priorNum = boxLen[0];
+  vector<int64_t> yShape({1, 2, inputH * inputW * priorNum, 4});
+
+  auto outdesc = op.GetOutputDesc("y");
+  outdesc.SetShape(Shape(yShape));
+  outdesc.SetDataType(output_dType);
+  outdesc.SetFormat(featureDesc.GetFormat());
+  (void)op.update_output_desc_y(outdesc);
+
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(PriorBoxDV2, PriorBoxDV2Verify) {
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(PriorBoxDV2, PriorBoxDV2Infer);
+VERIFY_FUNC_REG(PriorBoxDV2, PriorBoxDV2Verify);
+// ---------------PriorBoxDV2 Op End------------------
+}  // namespace ge

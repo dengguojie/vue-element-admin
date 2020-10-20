@@ -1,29 +1,28 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 power
 """
 # pylint: disable=redefined-outer-name
-
 import math
-from functools import reduce
-import te.lang.cce
+import functools
+
+import te.platform as tbe_platform
+import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from te.utils.op_utils import *
-from topi import generic
-from topi.cce import util
+from te.utils import para_check
 
 
 def positive_compute(base, power, version, input_dtype):
@@ -45,16 +44,16 @@ def positive_compute(base, power, version, input_dtype):
     base_cast = base
 
     if input_dtype == "float16" and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
-        base_cast = te.lang.cce.cast_to(base, "float32")
+       tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
+       tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+        base_cast = tbe.cast_to(base, "float32")
 
-    log_val = te.lang.cce.vlog(base_cast)
-    mul_val = te.lang.cce.vmuls(log_val, power)
-    exp_val = te.lang.cce.vexp(mul_val)
+    log_val = tbe.vlog(base_cast)
+    mul_val = tbe.vmuls(log_val, power)
+    exp_val = tbe.vexp(mul_val)
 
     if exp_val.dtype.lower() != input_dtype:
-        exp_val = te.lang.cce.cast_to(exp_val, input_dtype)
+        exp_val = tbe.cast_to(exp_val, input_dtype)
 
     return exp_val
 
@@ -80,19 +79,19 @@ def negtive_compute(base, power, nan_values, version, input_dtype):
         base_cast = base
 
         if input_dtype == "float16" and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
-            base_cast = te.lang.cce.cast_to(base, "float32")
+           tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
+           tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+            base_cast = tbe.cast_to(base, "float32")
 
         sign_value = math.pow(-1, power)
-        abs_base_value = te.lang.cce.vabs(base_cast)
-        log_value = te.lang.cce.vlog(abs_base_value)
-        mul_value = te.lang.cce.vmuls(log_value, power)
-        exp_value = te.lang.cce.vexp(mul_value)
-        res = te.lang.cce.vmuls(exp_value, sign_value)
+        abs_base_value = tbe.vabs(base_cast)
+        log_value = tbe.vlog(abs_base_value)
+        mul_value = tbe.vmuls(log_value, power)
+        exp_value = tbe.vexp(mul_value)
+        res = tbe.vmuls(exp_value, sign_value)
 
         if res.dtype.lower() != input_dtype:
-            res = te.lang.cce.cast_to(res, input_dtype)
+            res = tbe.cast_to(res, input_dtype)
 
         return res
 
@@ -135,28 +134,28 @@ def power_scalar(input_x, base, power):
     res: the result when attr scale is 0.0 and attr power is not
     """
 
-    tmp_zero = te.lang.cce.vmuls(input_x, 0)
-    ones = te.lang.cce.vadds(tmp_zero, 1)
+    tmp_zero = tbe.vmuls(input_x, 0)
+    ones = tbe.vadds(tmp_zero, 1)
     zeros = tmp_zero
 
 
     if base > 0.0:
-        res = te.lang.cce.vmuls(ones, math.pow(base, power))
+        res = tbe.vmuls(ones, math.pow(base, power))
         return res
     if base < 0.0:
         if float(power).is_integer():
-            res = te.lang.cce.vmuls(ones, math.pow(base, power))
+            res = tbe.vmuls(ones, math.pow(base, power))
             return res
 
         # return abnormal value
-        res = te.lang.cce.vrec(zeros)
+        res = tbe.vrec(zeros)
         return res
 
     if power > 0:
         return zeros
 
     # return abnormal value
-    res = te.lang.cce.vrec(zeros)
+    res = tbe.vrec(zeros)
 
     return res
 
@@ -177,8 +176,8 @@ def zero_diff_scale_compute(input_x, shift, power):
     """
 
     if power == 0.0:
-        tmp_zero = te.lang.cce.vmuls(input_x, 0)
-        res = te.lang.cce.vadds(tmp_zero, 1)
+        tmp_zero = tbe.vmuls(input_x, 0)
+        res = tbe.vadds(tmp_zero, 1)
         return res
 
     res = power_scalar(input_x, shift, power)
@@ -186,7 +185,7 @@ def zero_diff_scale_compute(input_x, shift, power):
     return res
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
-@fusion_manager.register("power")
+@tbe_platform.fusion_manager.fusion_manager.register("power")
 def power_compute(input_x, output_y, power=1.0, scale=1.0,
           shift=0.0, kernel_name="power"):
     """
@@ -204,7 +203,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
     res: result of power
     """
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     input_dtype = input_x.dtype.lower()
 
     diff_scale = power * scale
@@ -213,23 +212,23 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
         res = zero_diff_scale_compute(input_x, shift, power)
         return res
 
-    shift_scaled_x = te.lang.cce.vmuls(input_x, scale)
-    shift_scaled_x = te.lang.cce.vadds(shift_scaled_x, shift)
+    shift_scaled_x = tbe.vmuls(input_x, scale)
+    shift_scaled_x = tbe.vadds(shift_scaled_x, shift)
 
-    tmp_zero = te.lang.cce.vmuls(input_x, 0)
+    tmp_zero = tbe.vmuls(input_x, 0)
     zeros = tmp_zero
 
-    nan_value = te.lang.cce.vrec(zeros)
+    nan_value = tbe.vrec(zeros)
 
     if power == 1.0:
         res = shift_scaled_x
         return res
     if power == 2.0:
-        res = te.lang.cce.vmul(shift_scaled_x, shift_scaled_x)
+        res = tbe.vmul(shift_scaled_x, shift_scaled_x)
         return res
     if power == 3.0:
-        res = te.lang.cce.vmul(shift_scaled_x, shift_scaled_x)
-        res = te.lang.cce.vmul(res, shift_scaled_x)
+        res = tbe.vmul(shift_scaled_x, shift_scaled_x)
+        res = tbe.vmul(res, shift_scaled_x)
         return res
 
     positive_pow_val = \
@@ -239,17 +238,17 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
                         nan_value, cce_product, input_dtype)
     zero_pow_val = zero_compute(power, nan_value, zeros)
 
-    res = te.lang.cce.vcmpsel(shift_scaled_x, zeros,
+    res = tbe.vcmpsel(shift_scaled_x, zeros,
                               'gt', positive_pow_val, negative_pow_val)
-    res = te.lang.cce.vcmpsel(shift_scaled_x, zeros,
+    res = tbe.vcmpsel(shift_scaled_x, zeros,
                               'eq', zero_pow_val, res)
 
     return res
 
 
 # pylint: disable=redefined-outer-name, too-many-arguments, unused-variable
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                 para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def power(input_x, output_y, power=1.0, scale=1.0,
           shift=0.0, kernel_name="power"):
     """
@@ -275,25 +274,21 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
     type_tuple = ("float16", "float32")
-    check_dtype(input_dtype, type_tuple, param_name="x")
+    para_check.check_dtype(input_dtype, type_tuple, param_name="x")
 
 
     fuseshape = [1]
-    fuseshape[0] = reduce(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
 
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
-    cur_cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
-            error_info = {}
-            error_info['errCode'] = 'E80008'
-            error_info['param_name'] = 'input_x'
-            error_info['op_name'] = 'power'
-            error_info['expect_value'] = "float16"
-            error_info['real_value'] = input_dtype
+            error_info = {'errCode': 'E80008', 'param_name': 'input_x', 'op_name': 'power', 'expect_value': "float16",
+                          'real_value': input_dtype}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype " 
                                            "should be [%s], but actually is [%s]."
                                % (error_info['op_name'], error_info['param_name'],
@@ -304,10 +299,10 @@ def power(input_x, output_y, power=1.0, scale=1.0,
         res = power_compute(data_input, output_y, power, scale, shift, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res],
               "print_ir": True}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

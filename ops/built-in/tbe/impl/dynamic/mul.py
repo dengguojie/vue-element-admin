@@ -1,23 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic mul
 """
 import te.lang.dynamic
 from te import tvm
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -119,10 +120,6 @@ def mul(input1, input2, output, kernel_name="mul"):
             # shape
             shape_x1, shape_x2 = variable_shape([input1, input2],
                                                 support_broadcast=True)
-            shape_x1, shape_x2, shape_max = \
-                broadcast_shapes(shape_x1, shape_x2,
-                                 param_name_input1="input1",
-                                 param_name_input2="input2")
             shape_x1, shape_x2 = refine_shapes_for_broadcast(shape_x1,
                                                              shape_x2)
             # mul_compute

@@ -1,21 +1,22 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file reduce_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file reduce_ops.cpp
+ * \brief
  */
 #include "inc/reduce_ops.h"
 #include <string>
@@ -24,25 +25,29 @@
 #include "op_log.h"
 #include "./util/error_util.h"
 
-namespace ge{
+namespace ge {
 using std::string;
 
 // Obtains the value of the constant tensor.
-static void GetAllConstValue(const Tensor& data,
-                             std::vector<int64_t>& const_vec) {
+static void GetAllConstValue(const Tensor& data, std::vector<int64_t>& const_vec, ge::DataType axisType) {
   const uint8_t* constData = data.GetData();
-  size_t size = data.GetSize() / sizeof(int32_t);
+  if (axisType == ge::DT_INT32) {
+    size_t size = data.GetSize() / sizeof(int32_t);
 
-  for (size_t i = 0; i < size; ++i) {
-    const_vec.push_back((int64_t)(*((int32_t*)constData + i)));
+    for (size_t i = 0; i < size; ++i) {
+      const_vec.push_back((int64_t)(*((int32_t*)constData + i)));
+    }
+  } else if (axisType == ge::DT_INT64) {
+    size_t size = data.GetSize() / sizeof(int64_t);
+
+    for (size_t i = 0; i < size; ++i) {
+      const_vec.push_back((int64_t)(*((int64_t*)constData + i)));
+    }
   }
 }
 
-static bool InferReduceShape(const ge::Operator& op,
-                             const string& input_name,
-                             const string& axis_name,
-                             const string& keep_dims_name,
-                             ge::TensorDesc& result_desc) {
+static bool InferReduceShape(const ge::Operator& op, const string& input_name, const string& axis_name,
+                             const string& keep_dims_name, ge::TensorDesc& result_desc) {
   result_desc = op.GetInputDesc(input_name);
   auto shape = result_desc.GetShape();
   std::vector<int64_t> shapeVector = shape.GetDims();
@@ -51,6 +56,17 @@ static bool InferReduceShape(const ge::Operator& op,
   vector<string> input_infer_depends = {"axes"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
+
+  // infer output shape range
+  std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+  op_desc->MutableInputDesc(input_name)->GetShapeRange(input_shape_range);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  MakeUpShapeRange(shapeVector, input_shape_range);
+  if (input_shape_range.size() != (uint32_t)dim_num) {
+    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
+    input_shape_range.clear();
+    MakeUpShapeRange(shapeVector, input_shape_range);
+  }
 
   if (shapeVector.size() == 1 && shapeVector[0] == -2) {
     std::vector<int64_t> oShapeVector;
@@ -62,32 +78,32 @@ static bool InferReduceShape(const ge::Operator& op,
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.",
-            keep_dims_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
   ge::TensorDesc axis_desc;
   axis_desc = op.GetInputDesc(axis_name);
   auto axis_shape = axis_desc.GetShape();
+  auto axis_type = axis_desc.GetDataType();
   std::vector<int64_t> axis_shapeVector = axis_shape.GetDims();
   int64_t axis_dimNum = axis_shape.GetDimNum();
 
   if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-    OP_LOGE(op.GetName().c_str(),
-            "The size of axisnode must be less than inputx dim_num.");
+    OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
     return false;
   }
 
   if (axis_dimNum == 1 && axis_shapeVector[0] == 0) {
     result_desc.SetShape(shape);
+    result_desc.SetShapeRange(input_shape_range);
+    OP_LOGI(op.GetName().c_str(), "axis dim num is 1 and axis shape vector[0] is 0.");
     return true;
   }
 
   Tensor data;
   if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
-    OP_LOGI(op.GetName().c_str(),
-            "GetInputConstData of %s failed.", axis_name.c_str());
+    OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed.", axis_name.c_str());
     ge::TensorDesc axis_desc;
     axis_desc = op.GetInputDesc(axis_name);
     auto axis_shape = axis_desc.GetShape();
@@ -95,26 +111,35 @@ static bool InferReduceShape(const ge::Operator& op,
     int64_t axis_dimNum = axis_shape.GetDimNum();
     std::vector<int64_t> oShapeVector;
 
+    OP_LOGI(op.GetName().c_str(), "axis_dimNum: %lld", axis_dimNum);
     if (axis_dimNum > 1) {
       OP_LOGE(op.GetName().c_str(),
               "The dim numbles of axis must be one or zero,"
-              "but actual is %d.", axis_dimNum);
+              "but actual is %d.",
+              axis_dimNum);
       return false;
     } else if (axis_dimNum == 1) {
       if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-        OP_LOGE(op.GetName().c_str(),
-                "The size of axisnode must be less than inputx dim_num.");
+        OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
         return false;
       }
       if (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2) {
-        OP_LOGI(op.GetName().c_str(),
-                "Reduce axis is unknown in dynamic shape.");
+        OP_LOGI(op.GetName().c_str(), "Reduce axis is unknown in dynamic shape.");
         if (!keep_dims) {
           oShapeVector.push_back(-2);
         } else {
           for (uint32_t item = 0; item < shapeVector.size(); ++item) {
-            oShapeVector.push_back(-1);
+            // use input shape range
+            int64_t range_min_value = 1;
+            int64_t range_max_value = input_shape_range[item].second;
+            if (range_max_value == 1) {
+              oShapeVector.push_back(1);
+            } else {
+              oShapeVector.push_back(-1);
+            }
+            output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
           }
+          result_desc.SetShapeRange(output_shape_range);
         }
         Shape oShape(oShapeVector);
         result_desc.SetShape(oShape);
@@ -125,24 +150,54 @@ static bool InferReduceShape(const ge::Operator& op,
         }
       }
     } else {
+      if (keep_dims && !axis_shapeVector.empty() && (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2)) {
+        OP_LOGI(op.GetName().c_str(), "Reduce axis is unknown in dynamic shape.");
+        for (uint32_t item = 0; item < shapeVector.size(); ++item) {
+          // use input shape range
+          int64_t range_min_value = 1;
+          int64_t range_max_value = input_shape_range[item].second;
+          if (range_max_value == 1) {
+            oShapeVector.push_back(1);
+          } else {
+            oShapeVector.push_back(-1);
+          }
+          output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
+        }
+        result_desc.SetShapeRange(output_shape_range);
+        Shape oShape(oShapeVector);
+        result_desc.SetShape(oShape);
+        return true;
+      }
       if (!keep_dims) {
-       dim_num = dim_num - 1;
+        dim_num = dim_num - 1;
       }
     }
 
+    int64_t range_min_value = 1;
+    int64_t range_max_value = -1;
+    for (uint32_t item = 0; item < shapeVector.size(); ++item) {
+      if (input_shape_range[item].second == -1) {
+        range_max_value = -1;
+        break;
+      }
+      if (input_shape_range[item].second > range_max_value) {
+        range_max_value = input_shape_range[item].second;
+      }
+    }
     for (int64_t item = 0; item < dim_num; ++item) {
       oShapeVector.push_back(-1);
+      output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
     }
     Shape oShape(oShapeVector);
     result_desc.SetShape(oShape);
+    result_desc.SetShapeRange(output_shape_range);
     return true;
-
   }
 
-  std::vector<int64_t> axis {};
+  std::vector<int64_t> axis{};
   size_t size = data.GetSize();
   if (size != 0) {
-    GetAllConstValue(data, axis);
+    GetAllConstValue(data, axis, axis_type);
   }
 
   if (axis.size() == 0) {
@@ -170,23 +225,34 @@ static bool InferReduceShape(const ge::Operator& op,
       if (keep_dims) {
         // If keepDims is true, current dimesion set to 1
         oShapeVector.push_back(1);
+        output_shape_range.push_back(std::make_pair(1, 1));
       }
     } else {
       // item is not in ConstValueAxis
       oShapeVector.push_back(shapeVector[item]);
+      output_shape_range.push_back(input_shape_range[item]);
     }
+  }
+
+  bool is_dynamic_shape = false;
+  for (uint32_t i = 0; i < shapeVector.size(); ++i) {
+    if (shapeVector[i] == -1) {
+       is_dynamic_shape = true;
+       break;
+    }
+  }
+  if (!is_dynamic_shape) {
+    output_shape_range.clear();
   }
 
   Shape oShape(oShapeVector);
   result_desc.SetShape(oShape);
+  result_desc.SetShapeRange(output_shape_range);
   return true;
 }
 
-static bool InferReduceDShape(const ge::Operator& op,
-                              const string& input_name,
-                              const string& axis_name,
-                              const string& keep_dims_name,
-                              ge::TensorDesc& result_desc) {
+static bool InferReduceDShape(const ge::Operator& op, const string& input_name, const string& axis_name,
+                              const string& keep_dims_name, ge::TensorDesc& result_desc) {
   result_desc = op.GetInputDesc(input_name);
   auto shape = result_desc.GetShape();
   std::vector<int64_t> shapeVector = shape.GetDims();
@@ -222,13 +288,26 @@ static bool InferReduceDShape(const ge::Operator& op,
 
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -dimNum || axis[i] > (dimNum - 1)) {
-      OpsInputShapeDimErrReport(op.GetName(), "axis", Strcat(dimNum - 1), Strcat(-dimNum), Strcat(axis[i]));
+      OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dimNum - 1), ConcatString(-dimNum),
+                                ConcatString(axis[i]));
       OP_LOGE(op.GetName().c_str(), "the axis of reduce verify failed.");
       return false;
     }
     if (axis[i] < 0) {
       axis[i] = dimNum + axis[i];
     }
+  }
+
+  // infer output shape range
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+  op_desc->MutableInputDesc(input_name)->GetShapeRange(input_shape_range);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  MakeUpShapeRange(shapeVector, input_shape_range);
+  if (input_shape_range.size() != (uint32_t)dimNum) {
+    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
+    input_shape_range.clear();
+    MakeUpShapeRange(shapeVector, input_shape_range);
   }
 
   std::vector<int64_t> oShapeVector;
@@ -240,25 +319,38 @@ static bool InferReduceDShape(const ge::Operator& op,
       if (keep_dims) {
         // If keepDims is true, current dimesion set to 1
         oShapeVector.push_back(1);
+        output_shape_range.push_back(std::make_pair(1, 1));
       }
     } else {
       // item is not in ConstValueAxis
       oShapeVector.push_back(shapeVector[item]);
+      output_shape_range.push_back(input_shape_range[item]);
     }
+  }
+
+  bool is_dynamic_shape = false;
+  for (uint32_t i = 0; i < shapeVector.size(); ++i) {
+    if (shapeVector[i] == -1) {
+       is_dynamic_shape = true;
+       break;
+    }
+  }
+  if (!is_dynamic_shape) {
+    output_shape_range.clear();
   }
 
   Shape oShape(oShapeVector);
   result_desc.SetShape(oShape);
+  result_desc.SetShapeRange(output_shape_range);
   return true;
 }
 
-//----------------ReduceAll Op-------------------
+// ----------------ReduceAll Op-------------------
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAll proto inferfunction!");
   ge::TensorDesc result_desc;
-  if (!InferReduceShape(op, "x", "axes",
-                        "keep_dims", result_desc)) {
+  if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
   }
   auto shape = result_desc.GetShape();
@@ -272,17 +364,16 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   return GRAPH_SUCCESS;
 }
 
-//Registered inferfunction
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(ReduceAll, ReduceAllInferShape);
-//----------------ReduceAll END-------------------
+// ----------------ReduceAll END-------------------
 
-//----------------ReduceAllD Op-------------------
+// ----------------ReduceAllD Op-------------------
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ReduceAllDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAllD proto inferfunction!");
   ge::TensorDesc result_desc;
-  if (!InferReduceDShape(op, "x", "axes",
-                         "keep_dims", result_desc)) {
+  if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
   }
   auto shape = result_desc.GetShape();
@@ -296,9 +387,9 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllDInferShape) {
   return GRAPH_SUCCESS;
 }
 
-//Registered inferfunction
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(ReduceAllD, ReduceAllDInferShape);
-//----------------ReduceAllD END-------------------
+// ----------------ReduceAllD END-------------------
 
 // ----------------ReduceProd Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceProdInferShape) {
@@ -342,7 +433,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceProdDInferShape) {
 COMMON_INFER_FUNC_REG(ReduceProdD, ReduceProdDInferShape);
 // ----------------ReduceProdD END-------------------
 
-//----------------ReduceMean Op-------------------
+// ----------------ReduceMean Op-------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMeanInferShape)
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMean proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -351,18 +442,23 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMeanInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(ReduceMean, ReduceMeanInferShape);
-//----------------ReduceMean END-------------------
+// ----------------ReduceMean END-------------------
 
-//----------------ReduceMeanD Op-------------------
+// ----------------ReduceMeanD Op-------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMeanDInferShape)
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMeanD proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -371,32 +467,53 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMeanDInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(ReduceMeanD, ReduceMeanDInferShape);
-//----------------ReduceMeanD END-------------------
+// ----------------ReduceMeanD END-------------------
 
 // ----------------BNTrainingReduce-------------------
 IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
   auto tensordesc = op.GetInputDesc("x");
   auto shape = tensordesc.GetShape();
+  auto format = tensordesc.GetFormat();
   std::vector<int64_t> shapeVector = shape.GetDims();
-  int64_t dimNum = shape.GetDimNum();
-
+  size_t dimNum = shapeVector.size();
   std::vector<int64_t> oShapeVector;
-  for (int64_t item = 0; item < dimNum; ++item) {
-      if (item == 0 || item == 2 || item == 3) {
-          oShapeVector.push_back(1);
-      } else {
-          oShapeVector.push_back(shapeVector[item]);
-      }
+
+  if (format == FORMAT_NHWC) {
+    if (dimNum == 4) {
+      oShapeVector.push_back(shapeVector[3]);
+    } else {
+      OpsInputShapeDimErrReport(op.GetName(), "x", "4", "4", ConcatString(dimNum));
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 4 when NHWC.", shapeVector.size());
+      return GRAPH_FAILED;
+    }
+  } else if (format == FORMAT_NCHW) {
+    if (dimNum >= 2 && dimNum <= 4) {
+      oShapeVector.push_back(shapeVector[1]);
+    } else {
+      OpsInputShapeDimErrReport(op.GetName(), "x", "4", "2", ConcatString(dimNum));
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 2-4 when NCHW.", shapeVector.size());
+      return GRAPH_FAILED;
+    }
+  } else {
+    OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC", ConcatString(format));
+    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW and NHWC.");
+    return GRAPH_FAILED;
   }
+
   TensorDesc td = op.GetOutputDesc("sum");
   Shape oShape(oShapeVector);
   td.SetShape(oShape);
@@ -417,8 +534,7 @@ IMPLEMT_VERIFIER(BNTrainingReduceGrad, BNTrainingReduceGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(BNTrainingReduceGrad, ELMTWISE_INFER_SHAPEANDTYPE(
-    "grads", "y"));
+COMMON_INFER_FUNC_REG(BNTrainingReduceGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "y"));
 
 VERIFY_FUNC_REG(BNTrainingReduceGrad, BNTrainingReduceGradVerify);
 // ----------------BNTrainingReduceGrad END---------------
@@ -461,9 +577,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateInferShape) {
 COMMON_INFER_FUNC_REG(BNTrainingUpdate, BNTrainingUpdateInferShape);
 // ------------------BNTrainingUpdate END---------------------
 
-//-------------BNTrainingUpdateV2--------------------
+// -------------BNTrainingUpdateV2--------------------
 IMPLEMT_VERIFIER(BNTrainingUpdateV2, BNTrainingUpdateV2Verify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -493,11 +608,10 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape) {
 
 INFER_FUNC_REG(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape);
 VERIFY_FUNC_REG(BNTrainingUpdateV2, BNTrainingUpdateV2Verify);
-//--------------BNTrainingUpdateV2 End--------------------
+// --------------BNTrainingUpdateV2 End--------------------
 
-//-------------BNTrainingUpdateV3--------------------
+// -------------BNTrainingUpdateV3--------------------
 IMPLEMT_VERIFIER(BNTrainingUpdateV3, BNTrainingUpdateV3Verify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -537,18 +651,17 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape) {
 
 INFER_FUNC_REG(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape);
 VERIFY_FUNC_REG(BNTrainingUpdateV3, BNTrainingUpdateV3Verify);
-//--------------BNTrainingUpdateV3 End--------------------
+// --------------BNTrainingUpdateV3 End--------------------
 
-//------------------------BNInfer--------------------------
+// ------------------------BNInfer--------------------------
 IMPLEMT_VERIFIER(BNInfer, BNInferVerify) {
-
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(BNInfer, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 
 VERIFY_FUNC_REG(BNInfer, BNInferVerify);
-//----------------------BNInfer End--------------------------
+// ----------------------BNInfer End--------------------------
 
 // ------------------BNTrainingUpdateGrad---------------------
 IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
@@ -560,7 +673,7 @@ IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
 IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
   auto shape = op.GetInputDesc("batch_mean").GetShape();
   auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
-  
+
   TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
   td_diff_scale.SetShape(shape);
   td_diff_scale.SetDataType(output_dtype);
@@ -578,16 +691,15 @@ COMMON_INFER_FUNC_REG(BNTrainingUpdateGrad, BNTrainingUpdateGradInferShape);
 VERIFY_FUNC_REG(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify);
 // ----------------BNTrainingUpdateGrad END-------------------
 
-//----------------BNInferGrad-------------------------
+// ----------------BNInferGrad-------------------------
 IMPLEMT_VERIFIER(BNInferGrad, BNInferGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(BNInferGrad, ELMTWISE_INFER_SHAPEANDTYPE(
-  "grads", "x_backprop"));
+COMMON_INFER_FUNC_REG(BNInferGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "x_backprop"));
 
 VERIFY_FUNC_REG(BNInferGrad, BNInferGradVerify);
-//----------------BNInferGrad End----------------------
+// ----------------BNInferGrad End----------------------
 
 // ----------------ReduceSum Op-------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceSumInferShape)
@@ -598,11 +710,16 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceSumInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
@@ -618,11 +735,16 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceSumDInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
@@ -634,7 +756,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAny proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
-     return GRAPH_FAILED;
+    return GRAPH_FAILED;
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
@@ -655,7 +777,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAnyD proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
-     return GRAPH_FAILED;
+    return GRAPH_FAILED;
   }
   std::vector<int64_t> axes_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axes", axes_dim)) {
@@ -665,7 +787,8 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
   }
 
   if (axes_dim.size() < DIM_SIZE1 || axes_dim.size() > DIM_SIZE8) {
-    OpsInputShapeDimErrReport(op.GetName(), "axes", Strcat(DIM_SIZE8), Strcat(DIM_SIZE1), Strcat(axes_dim.size()));
+    OpsInputShapeDimErrReport(op.GetName(), "axes", ConcatString(DIM_SIZE8), ConcatString(DIM_SIZE1),
+                              ConcatString(axes_dim.size()));
     OP_LOGE(op.GetName().c_str(), "axes must be between 1 and 8.");
     return GRAPH_FAILED;
   }
@@ -683,7 +806,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
 COMMON_INFER_FUNC_REG(ReduceAnyD, ReduceAnyDInferShape);
 // ----------------ReduceAnyD END-------------------
 
-//----------------ReduceMax Op-------------------
+// ----------------ReduceMax Op-------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMaxInferShape)
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMax proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -692,18 +815,23 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMaxInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(ReduceMax, ReduceMaxInferShape);
-//----------------ReduceMax END-------------------
+// ----------------ReduceMax END-------------------
 
-//----------------ReduceMaxD Op-------------------
+// ----------------ReduceMaxD Op-------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMaxDInferShape)
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMaxD proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -712,18 +840,23 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReduceMaxDInferShape)
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(ReduceMaxD, ReduceMaxDInferShape);
-//----------------ReduceMaxD END-------------------
+// ----------------ReduceMaxD END-------------------
 
-//----------------ReduceMin Op-------------------
+// ----------------ReduceMin Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMinInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMin proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -742,9 +875,9 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMinInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ReduceMin, ReduceMinInferShape);
-//----------------ReduceMin END-------------------
+// ----------------ReduceMin END-------------------
 
-//----------------ReduceMinD Op-------------------
+// ----------------ReduceMinD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMinDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ReduceMinD proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -763,7 +896,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMinDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ReduceMinD, ReduceMinDInferShape);
-//----------------ReduceMinD END-------------------
+// ----------------ReduceMinD END-------------------
 
 // ----------------EuclideanNorm Op-------------------
 IMPLEMT_COMMON_INFERFUNC(EuclideanNormInferShape) {
@@ -786,7 +919,7 @@ IMPLEMT_COMMON_INFERFUNC(EuclideanNormInferShape) {
 COMMON_INFER_FUNC_REG(EuclideanNorm, EuclideanNormInferShape);
 // ----------------EuclideanNorm END-------------------
 
-//----------------EuclideanNormD Op-------------------
+// ----------------EuclideanNormD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(EuclideanNormDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter EuclideanNormD proto inferfunction!");
   ge::TensorDesc result_desc;
@@ -805,10 +938,9 @@ IMPLEMT_COMMON_INFERFUNC(EuclideanNormDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(EuclideanNormD, EuclideanNormDInferShape);
-//----------------EuclideanNormD END-------------------
+// ----------------EuclideanNormD END-------------------
 
-
-//------------------------INInferV2--------------------------
+// ------------------------INInferV2--------------------------
 IMPLEMT_VERIFIER(INInferV2, INInferV2Verify) {
   return GRAPH_SUCCESS;
 }
@@ -817,40 +949,39 @@ COMMON_INFER_FUNC_REG(INInferV2, ELMTWISE_INFER_SHAPEANDTYPE("mean", "batch_mean
 COMMON_INFER_FUNC_REG(INInferV2, ELMTWISE_INFER_SHAPEANDTYPE("variance", "batch_variance"));
 
 VERIFY_FUNC_REG(INInferV2, INInferV2Verify);
-//----------------------INInferV2 End--------------------------
+// ----------------------INInferV2 End--------------------------
 
-//------------------------INTrainingReduceV2--------------------------
+// ------------------------INTrainingReduceV2--------------------------
 IMPLEMT_COMMON_INFERFUNC(INTrainingReduceV2InferShape) {
-    auto inputTensorDesc = op.GetInputDesc("x");
-    auto shape = inputTensorDesc.GetShape();
-    std::vector<int64_t> dims_input;
-    dims_input = shape.GetDims();
-    std::vector<int64_t> dimVector;
-    int64_t dimNum = shape.GetDimNum();
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
+  std::vector<int64_t> dims_input;
+  dims_input = shape.GetDims();
+  std::vector<int64_t> dimVector;
+  int64_t dimNum = shape.GetDimNum();
 
-    for (int64_t item = 0; item < dimNum; ++item) {
-        if (item == 2 || item == 3) {
-            dimVector.push_back(1);
-        } else {
-            dimVector.push_back(dims_input[item]);
-        }
+  for (int64_t item = 0; item < dimNum; ++item) {
+    if (item == 2 || item == 3) {
+      dimVector.push_back(1);
+    } else {
+      dimVector.push_back(dims_input[item]);
     }
+  }
 
-    TensorDesc sum = op.GetOutputDesc("sum");
-    sum.SetShape(ge::Shape(dimVector));
-    sum.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("sum", sum);
+  TensorDesc sum = op.GetOutputDesc("sum");
+  sum.SetShape(ge::Shape(dimVector));
+  sum.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("sum", sum);
 
-    TensorDesc square_sum = op.GetOutputDesc("square_sum");
-    square_sum.SetShape(ge::Shape(dimVector));
-    square_sum.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("square_sum", square_sum);
-    return GRAPH_SUCCESS;
+  TensorDesc square_sum = op.GetOutputDesc("square_sum");
+  square_sum.SetShape(ge::Shape(dimVector));
+  square_sum.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("square_sum", square_sum);
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(INTrainingReduceV2, INTrainingReduceV2InferShape);
-//----------------------INTrainingReduceV2 End--------------------------
-
+// ----------------------INTrainingReduceV2 End--------------------------
 
 // -------------------INTrainingUpdateV2--------------------
 IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateV2InferShape) {
@@ -880,73 +1011,71 @@ IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateV2InferShape) {
 COMMON_INFER_FUNC_REG(INTrainingUpdateV2, INTrainingUpdateV2InferShape);
 // ------------------INTrainingUpdateV2 END---------------------
 
-
-//------------------------GNTrainingReduce--------------------------
+// ------------------------GNTrainingReduce--------------------------
 IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
-    auto inputTensorDesc = op.GetInputDesc("x");
-    auto shape = inputTensorDesc.GetShape();
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
 
-    Format input_format = inputTensorDesc.GetFormat();
+  Format input_format = inputTensorDesc.GetFormat();
 
-    if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
-        OP_LOGE(op.GetName().c_str(), "data_format only "
-        "support 'NHWC' and 'NCHW'.");
-        return GRAPH_FAILED;
+  if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
+    OP_LOGE(op.GetName().c_str(),
+            "data_format only "
+            "support 'NHWC' and 'NCHW'.");
+    return GRAPH_FAILED;
+  }
+
+  int64_t num = 2;
+  if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
+    OpsGetAttrErrReport(op.GetName(), "num_groups");
+    OP_LOGE(op.GetName().c_str(), "Use default num_groups value!");
+    op.SetAttr("num_groups", num);
+  }
+
+  std::vector<int64_t> dims_input;
+  dims_input = shape.GetDims();
+  Format dataFormat = inputTensorDesc.GetFormat();
+  std::vector<int64_t> dimVector;
+  int64_t dimNum = shape.GetDimNum();
+
+  if (dataFormat == FORMAT_NCHW) {
+    for (int64_t item = 0; item < dimNum; ++item) {
+      if (item == 2 || item == 3) {
+        dimVector.push_back(1);
+      } else if (item == 0) {
+        dimVector.push_back(dims_input[item]);
+      } else if (item == 1) {
+        dimVector.push_back(num);
+        dimVector.push_back(1);
+      }
     }
-
-    int64_t num = 2;
-    if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
-        OpsGetAttrErrReport(op.GetName(), "num_groups");
-        OP_LOGE(op.GetName().c_str(), "Use default num_groups value!");
-        op.SetAttr("num_groups", num);
+  } else if (dataFormat == FORMAT_NHWC) {
+    for (int64_t item = 0; item < dimNum; ++item) {
+      if (item == 1 || item == 2) {
+        dimVector.push_back(1);
+      } else if (item == 0) {
+        dimVector.push_back(dims_input[item]);
+      } else if (item == 3) {
+        dimVector.push_back(num);
+        dimVector.push_back(1);
+      }
     }
+  }
 
+  TensorDesc sum = op.GetOutputDesc("sum");
+  sum.SetShape(ge::Shape(dimVector));
+  sum.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("sum", sum);
 
-    std::vector<int64_t> dims_input;
-    dims_input = shape.GetDims();
-    Format dataFormat= inputTensorDesc.GetFormat();
-    std::vector<int64_t> dimVector;
-    int64_t dimNum = shape.GetDimNum();
+  TensorDesc square_sum = op.GetOutputDesc("square_sum");
+  square_sum.SetShape(ge::Shape(dimVector));
+  square_sum.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("square_sum", square_sum);
 
-    if (dataFormat == FORMAT_NCHW){
-        for (int64_t item = 0; item < dimNum; ++item) {
-            if (item == 2 || item == 3) {
-                dimVector.push_back(1);
-            } else if (item == 0) {
-                dimVector.push_back(dims_input[item]);
-            } else if (item == 1) {
-                dimVector.push_back(num);
-                dimVector.push_back(1);
-            }
-        }
-    } else if (dataFormat == FORMAT_NHWC){
-        for (int64_t item = 0; item < dimNum; ++item) {
-            if (item == 1 || item == 2) {
-                dimVector.push_back(1);
-            } else if (item == 0) {
-                dimVector.push_back(dims_input[item]);
-            } else if (item == 3) {
-                dimVector.push_back(num);
-                dimVector.push_back(1);
-            }
-        }
-    }
-
-    TensorDesc sum = op.GetOutputDesc("sum");
-    sum.SetShape(ge::Shape(dimVector));
-    sum.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("sum", sum);
-
-    TensorDesc square_sum = op.GetOutputDesc("square_sum");
-    square_sum.SetShape(ge::Shape(dimVector));
-    square_sum.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("square_sum", square_sum);
-
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(GNTrainingReduce, GNTrainingReduceInferShape);
 // ----------------------GNTrainingReduce END--------------------------
-
 
 // -------------------GNTrainingUpdate--------------------
 IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
@@ -956,9 +1085,10 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
   Format input_format = inputTensorDesc.GetFormat();
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
-      OP_LOGE(op.GetName().c_str(), "data_format only "
-      "support 'NHWC' and 'NCHW'.");
-      return GRAPH_FAILED;
+    OP_LOGE(op.GetName().c_str(),
+            "data_format only "
+            "support 'NHWC' and 'NCHW'.");
+    return GRAPH_FAILED;
   }
 
   int64_t num = 2;
@@ -989,4 +1119,4 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
 
 COMMON_INFER_FUNC_REG(GNTrainingUpdate, GNTrainingUpdateInferShape);
 // ------------------GNTrainingUpdate END---------------------s
-}
+}  // namespace ge

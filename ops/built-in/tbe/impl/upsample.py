@@ -1,22 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
 upsample
 """
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.cce_build import build_config
-from topi.cce import util
-from te.utils import op_utils
+
 # size of 5HD format
 DIM_5HD = 5
 # size of c0 for fp16 fp32
@@ -26,40 +28,33 @@ INT8_C0_SIZE = 32
 
 
 #pylint: disable=locally-disabled,invalid-name
-def check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w):
+def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w):
     """
     input_shape:input dic shape
     input_dtype: input dtype
     input_format: input format,NC1HWC0
     The common check rule for tensor shape, just for 5hd
     """
-    op_utils.check_shape(input_shape)
+    para_check.check_shape(input_shape)
     if len(input_shape) != DIM_5HD:
-        error_info = {}
-        error_info['errCode'] = 'E80012'
-        error_info['opname'] = 'upsample'
-        error_info['expect_value'] = '5'
-        error_info['real_value'] = str(len(input_shape))
+        error_info = {'errCode': 'E80012', 'opname': 'upsample', 'expect_value': '5',
+                      'real_value': str(len(input_shape))}
         raise RuntimeError(error_info,
             "In op[%s], the num of dimensions of input[%s] should be [%s], but actually is [%s]."
             % (error_info['opname'], 'x', error_info['expect_value'], error_info['real_value']))
     n, c1, h, w, c0 = input_shape
 
-    op_utils.check_shape([n, c1, h * stride_h, w * stride_w, c0])
-    product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    para_check.check_shape([n, c1, h * stride_h, w * stride_w, c0])
+    product = tbe_platform.get_soc_spec("SOC_VERSION")
     product_list = ["Hi3796CV300ES", "Hi3796CV300CS"]
     if product in product_list:
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]
     if input_dtype not in check_list:
-        error_info = {}
-        error_info['errCode'] = 'E80006'
-        error_info['opname'] = 'upsample'
-        error_info['tensor_name'] = 'x'
-        error_info['excepted_dtype_list'] = str(check_list)
-        error_info['dtype'] = str(input_dtype)
-        raise RuntimeError(error_info, 
+        error_info = {'errCode': 'E80006', 'opname': 'upsample', 'tensor_name': 'x',
+                      'excepted_dtype_list': str(check_list), 'dtype': str(input_dtype)}
+        raise RuntimeError(error_info,
             "In op[%s], the input[%s]'s dtype should be one of [%s], but actually is [%s]."
             % (error_info['opname'], 'x', str(check_list), str(input_dtype)))
     shape_c0 = C0
@@ -68,18 +63,14 @@ def check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, s
             "The value of C0 must be 16")
 
     if input_format != "NC1HWC0":
-        error_info = {}
-        error_info['errCode'] = 'E80015'
-        error_info['opname'] = 'upsample'
-        error_info['tensor_name'] = 'x'
-        error_info['excepted_dtype_list'] = "NC1HWC0"
-        error_info['format'] = str(input_format)
-        raise RuntimeError(error_info, 
+        error_info = {'errCode': 'E80015', 'opname': 'upsample', 'tensor_name': 'x', 'excepted_dtype_list': "NC1HWC0",
+                      'format': str(input_format)}
+        raise RuntimeError(error_info,
             "In op[%s], the input[%s]'s dtype should be [%s], but actually is [%s]."
             % (error_info['opname'], 'x', "NC1HWC0", str(input_format)))
 
 
-def upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
+def _upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
     """
     calculating data
 
@@ -100,13 +91,8 @@ def upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
     input_format = dic.get("format")
     input_dtype = dic.get("dtype").lower()
     if stride_h <= 0 or stride_w <= 0:
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'upsample'
-        error_info['param_name'] = 'stride'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str((stride_w, stride_h))
+        error_info = {'errCode': 'E80002', 'opname': 'upsample', 'param_name': 'stride', 'min_value': '0',
+                      'max_value': 'inf', 'real_value': str((stride_w, stride_h))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] "
                                        "should be in the range of [%s, %s),"
                                        " but actually is [%s]."
@@ -114,10 +100,10 @@ def upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
                               error_info['min_value'], 
                              error_info['max_value'], error_info['real_value']))
 
-    check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w)
+    _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w)
 
 
-def buffer_mapping(schedule, op_list):
+def _buffer_mapping(schedule, op_list):
     """
     buffer data
     Parameters
@@ -132,7 +118,7 @@ def buffer_mapping(schedule, op_list):
         schedule[i_op].set_scope(tbe_platform.scope_ubuf)
 
 
-def cal_shape(dshape, stride_h, stride_w):
+def _cal_shape(dshape, stride_h, stride_w):
     """
     calcute outshape shape
     Parameters
@@ -150,7 +136,7 @@ def cal_shape(dshape, stride_h, stride_w):
 
 
 #pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
-def gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
+def _gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     """
     gen upsample calclate produce and and tensor
     when float
@@ -167,7 +153,7 @@ def gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     ins_list: instiction list
     tensor_dic:tensor dic
     """
-    output_shape = cal_shape(dshape, stride_h, stride_w)
+    output_shape = _cal_shape(dshape, stride_h, stride_w)
     tensor_dic = {}
     op_list = []
     ins_list = []
@@ -191,7 +177,7 @@ def gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     return op_list, ins_list, tensor_dic
 
 
-def gen_upsample(input_x, dtype, scale, stride_h, stride_w):
+def _gen_upsample(input_x, dtype, scale, stride_h, stride_w):
     """
     gen upsample
     when int or uint
@@ -214,12 +200,12 @@ def gen_upsample(input_x, dtype, scale, stride_h, stride_w):
     dshape = input_x.get("shape")
     feature = tvm.placeholder(dshape, name="x", dtype=dtype)
     op_list, ins_list, tensor_dic \
-        = gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype)
+        = _gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype)
     res_y = op_list[-1]
     return op_list, ins_list, tensor_dic, feature, res_y
 
 
-def cal_tilling(input_x, stride_h, stride_w, data_type):
+def _cal_tilling(input_x, stride_h, stride_w, data_type):
     """
     cal tilling factor
 
@@ -237,7 +223,7 @@ def cal_tilling(input_x, stride_h, stride_w, data_type):
         ub_limit = 16 * 1024
     else:
         ub_limit = 32 * 1024
-    output_shape = cal_shape(dshape, stride_h, stride_w)
+    output_shape = _cal_shape(dshape, stride_h, stride_w)
     axis = len(output_shape)
     tmp_size = 1
     size = 1
@@ -251,7 +237,7 @@ def cal_tilling(input_x, stride_h, stride_w, data_type):
     return factor, axis
 
 
-def spilt_axis(schedule, tensor_dic, stride_h, stride_w):
+def _spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     '''
     :param schedule:
     :param tensor_dic:
@@ -279,7 +265,7 @@ def spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     return tilling_spilt_axis_dic
 
 
-def tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w):
+def _tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     """
     spilt axis for cal
     Parameters
@@ -293,12 +279,12 @@ def tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     tilling_spilt_axis_dic:after tilling axis dic
     """
     tilling_spilt_axis_dic = {}
-    tilling_spilt_axis_dic = spilt_axis(schedule, tensor_dic, stride_h, stride_w)
+    tilling_spilt_axis_dic = _spilt_axis(schedule, tensor_dic, stride_h, stride_w)
     return tilling_spilt_axis_dic
 
 
 #pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
-def cal_axis_spilt(input_x, stride_h, stride_w, tilling_spilt_axis_dic, tensor_dic, schedule):
+def _cal_axis_spilt(input_x, stride_h, stride_w, tilling_spilt_axis_dic, tensor_dic, schedule):
     """
    spilt  axis to cal
     Parameters
@@ -315,7 +301,7 @@ def cal_axis_spilt(input_x, stride_h, stride_w, tilling_spilt_axis_dic, tensor_d
 
     cal_axis_dic = {}
     data_type = input_x.get("dtype")
-    factor, axis = cal_tilling(input_x, stride_h, stride_w, data_type)
+    factor, axis = _cal_tilling(input_x, stride_h, stride_w, data_type)
     if axis == 2:
         if factor > stride_h:
             factor = factor // stride_h
@@ -392,7 +378,7 @@ def upsample_compute(schedule, cal_axis_dic, tensor_dic):
     return axis_list
 
 
-def ins_emit(schedule, op_list, axis_list, ins_list):
+def _ins_emit(schedule, op_list, axis_list, ins_list):
     """
     when int8 or uint8 spilt  axis to cal
     Parameters
@@ -412,7 +398,7 @@ def ins_emit(schedule, op_list, axis_list, ins_list):
         schedule[op_list[i]].emit_insn(axis_list[i], ins_list[i])
 
 
-def bind_multcore(axis, x, schedule, res_op):
+def _bind_multcore(axis, x, schedule, res_op):
     '''
     :param axis:axis to spilt
     :param x: input x
@@ -425,7 +411,7 @@ def bind_multcore(axis, x, schedule, res_op):
     shape_x = x.get("shape")
     n = shape_x[0]
     c1 = shape_x[1]
-    device_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     batch_factor = 1
 
     if axis == 1:
@@ -458,9 +444,9 @@ def bind_multcore(axis, x, schedule, res_op):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,too-many-locals
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT, 
-                          op_utils.OPTION_ATTR_FLOAT, op_utils.OPTION_ATTR_INT, 
-                          op_utils.OPTION_ATTR_INT, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+                          para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, 
+                          para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
     """
     calculating data
@@ -483,27 +469,27 @@ def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
     -------
     None
     """
-    upsample_check(x, stride_h, stride_w, kernel_name)
+    _upsample_check(x, stride_h, stride_w, kernel_name)
     dtype = x.get("dtype")
     op_list, ins_list, tensor_dic, feature, y \
-        = gen_upsample(x, dtype, scale, stride_h, stride_w)
+        = _gen_upsample(x, dtype, scale, stride_h, stride_w)
     schedule = tvm.create_schedule(y.op)
     # skip the res buffer
-    buffer_mapping(schedule, op_list[:-1])
+    _buffer_mapping(schedule, op_list[:-1])
     tilling_spilt_axis_dic \
-        = tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w)
+        = _tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w)
     cal_axis_dic, axis \
-        = cal_axis_spilt(x, stride_h, stride_w,
+        = _cal_axis_spilt(x, stride_h, stride_w,
                          tilling_spilt_axis_dic, tensor_dic, schedule)
 
     axis_list = upsample_compute(schedule, cal_axis_dic, tensor_dic)
     res_op = tensor_dic.get("res")
-    ins_emit(schedule, op_list, axis_list, ins_list)
+    _ins_emit(schedule, op_list, axis_list, ins_list)
     if axis == 0:
         schedule[y].bind(cal_axis_dic.get("axis_xo"), tvm.thread_axis("blockIdx.x"))
     else:
-        res_out, _ = bind_multcore(axis, x, schedule, res_op)
+        res_out, _ = _bind_multcore(axis, x, schedule, res_op)
         schedule[y].bind(res_out, tvm.thread_axis("blockIdx.x"))
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(schedule, [feature, y], "cce", name=kernel_name)

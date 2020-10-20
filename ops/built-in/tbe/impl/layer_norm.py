@@ -1,19 +1,19 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-layernorm
+layer_norm
 """
 import te.lang.cce
 from te import tvm
@@ -259,7 +259,8 @@ def _broadcast_nz(tensor, shape):
 def layer_norm_compute_nz(input_x, input_gamma, input_beta,
                           output_y, output_mean, output_variance,
                           begin_norm_axis, begin_params_axis,
-                          ori_shape, epsilon, kernel_name="layer_norm"):
+                          ori_shape, epsilon, kernel_name="layer_norm",
+                          impl_mode="high_performance"):
     """
     DSL description of the layernorm operator's mathematical calculation process
 
@@ -294,9 +295,14 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    cast_dtype_precision = dtype
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
         cast_dtype = "float32"
+        cast_dtype_precision = "float32"
         input_x = te.lang.cce.cast_to(input_x, "float32")
         input_gamma = te.lang.cce.cast_to(input_gamma, "float32")
         input_beta = te.lang.cce.cast_to(input_beta, "float32")
@@ -321,16 +327,29 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     variance = te.lang.cce.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
-    mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
-    normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
-    epsilon = tvm.const(epsilon, dtype=cast_dtype)
-    variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
-    normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-    normalize_log = te.lang.cce.vlog(normalize_add)
-    normalize_log_mul = \
-        te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
-    normalize_exp = te.lang.cce.vexp(normalize_log_mul)
-    normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+    if impl_mode == "high_performance":
+        mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
+        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        epsilon = tvm.const(epsilon, dtype=cast_dtype)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
+        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
+        normalize_log = te.lang.cce.vlog(normalize_add)
+        normalize_log_mul = \
+            te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+        normalize_exp = te.lang.cce.vexp(normalize_log_mul)
+        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+    else:
+        tesor_one = te.lang.cce.broadcast(tvm.const
+                                          (1, cast_dtype_precision),
+                                          shape_x)
+        mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
+        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
+        epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
+        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
+        normalize_sqrt = te.lang.cce.vsqrt(normalize_add, 0)
+        normalize_rsqrt = te.lang.cce.vdiv(tesor_one, normalize_sqrt)
+        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
@@ -342,8 +361,11 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
         scale_mul = te.lang.cce.vmul(gamma_broadcast, normalize_mul)
         res = te.lang.cce.vadd(scale_mul, beta_broadcast)
 
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
         mean = te.lang.cce.cast_to(mean, "float16")
         variance = te.lang.cce.cast_to(variance, "float16")
         res = te.lang.cce.cast_to(res, "float16")
@@ -391,9 +413,14 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32") and impl_mode == "high_performance":
+    cast_dtype_precision = dtype
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
         cast_dtype = "float32"
+        cast_dtype_precision = "float32"
         input_x = te.lang.cce.cast_to(input_x, "float32")
         input_gamma = te.lang.cce.cast_to(input_gamma, "float32")
         input_beta = te.lang.cce.cast_to(input_beta, "float32")
@@ -431,11 +458,13 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
         normalize_exp = te.lang.cce.vexp(normalize_log_mul)
         normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
     else:
-        tesor_one = te.lang.cce.broadcast(tvm.const(1, dtype), shape_x)
+        tesor_one = te.lang.cce.broadcast(tvm.const
+                                          (1, cast_dtype_precision),
+                                          shape_x)
         mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
         normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
         variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
-        epsilon = tvm.const(epsilon, dtype=dtype)
+        epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
         normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
         normalize_sqrt = te.lang.cce.vsqrt(normalize_add, 0)
         normalize_rsqrt = te.lang.cce.vdiv(tesor_one, normalize_sqrt)
@@ -451,8 +480,11 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
         scale_mul = te.lang.cce.vmul(gamma_broadcast, normalize_mul)
         res = te.lang.cce.vadd(scale_mul, beta_broadcast)
 
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32") and impl_mode == "high_performance":
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
         mean = te.lang.cce.cast_to(mean, "float16")
         variance = te.lang.cce.cast_to(variance, "float16")
         res = te.lang.cce.cast_to(res, "float16")
@@ -589,7 +621,7 @@ def layer_norm(input_x, input_gamma, input_beta,
             layer_norm_compute_nz(data_x, data_gamma, data_beta,
                                   output_y, output_mean, output_variance,
                                   begin_norm_axis, begin_params_axis,
-                                  ori_shape_x, epsilon, kernel_name)
+                                  ori_shape_x, epsilon, kernel_name, impl_mode)
     else:
 
         mean, variance, res = \

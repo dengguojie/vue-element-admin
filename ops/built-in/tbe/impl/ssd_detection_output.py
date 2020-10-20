@@ -1,31 +1,32 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-ssd_detection_out
+ssd_detection_output
 """
 import math
-from te import tik
-from topi.cce import util
-from te.utils import op_utils
-from te import platform as tbe_platform
 
+import te.platform as tbe_platform
+from te.utils import para_check
+from te import tik
+from impl import constant_util as constant
 from impl import ssd_decode_bbox
 from impl import topk
 from impl import nms
 
 
-def check_product_info(input_dict):
+def _check_product_info(input_dict):
     """
     check product info
 
@@ -37,8 +38,7 @@ def check_product_info(input_dict):
     -------
     None
     """
-    #tik_name = tik.Dprofile().get_product_name()
-    tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
     conf_dtype = input_dict.get("mbox_conf").get("dtype").lower()
     loc_dtype = input_dict.get("mbox_loc").get("dtype").lower()
@@ -48,19 +48,18 @@ def check_product_info(input_dict):
             and loc_dtype == priorbox_dtype:
         raise RuntimeError("input type is error")
 
-    if tik_name in ("Ascend310",):
-        op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in ("Ascend910",):
-        op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        op_utils.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in ("Ascend610", "Ascend710"):
-        op_utils.check_dtype(conf_dtype.lower(), ["float16", "float32"], param_name="input_conf")
+    if tik_name in (tbe_platform.ASCEND_310,):
+        para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
+    elif tik_name in (tbe_platform.ASCEND_910,):
+        para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
+    elif tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
+    elif tik_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
+        para_check.check_dtype(conf_dtype.lower(), ["float16", "float32"], param_name="input_conf")
 
 
-def check_param_range(param_name, min_value, max_value, real_value,
-                      op_name='ssd_detection_output',
-                      left_open_interval=False):
+def _check_param_range(param_name, min_value, max_value, real_value,
+                       op_name='ssd_detection_output', left_open_interval=False):
     """
     check param range,
 
@@ -76,13 +75,12 @@ def check_param_range(param_name, min_value, max_value, real_value,
     -------
     None
     """
-    error_info = {}
-    error_info['errCode'] = 'E80002'
-    error_info['op_name'] = op_name
-    error_info['param_name'] = param_name
-    error_info['min_value'] = str(min_value)
-    error_info['max_value'] = str(max_value)
-    error_info['value'] = str(real_value)
+    error_info = {'errCode': 'E80002',
+                  'op_name': op_name,
+                  'param_name': param_name,
+                  'min_value': str(min_value),
+                  'max_value': str(max_value),
+                  'value': str(real_value)}
     if left_open_interval:
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in "
@@ -100,7 +98,7 @@ def check_param_range(param_name, min_value, max_value, real_value,
                           error_info['value']))
 
 
-def check_input_attr_value(input_dict):
+def _check_input_attr_value(input_dict):
     """
     check input attr value,
 
@@ -114,15 +112,14 @@ def check_input_attr_value(input_dict):
     """
     if not (input_dict.get("num_classes") >= 1 and
             input_dict.get("num_classes") <= 1024):
-        check_param_range('num_classes', 1, 1024, input_dict.get("num_classes"))
+        _check_param_range('num_classes', 1, 1024, input_dict.get("num_classes"))
 
     if not input_dict.get("share_location"):
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['op_name'] = 'ssd_detection_output'
-        error_info['param_name'] = 'share_location'
-        error_info['excepted_value'] = 'True'
-        error_info['real_value'] = str(input_dict.get("share_location"))
+        error_info = {'errCode': 'E80000',
+                      'op_name': 'ssd_detection_output',
+                      'param_name': 'share_location',
+                      'excepted_value': 'True',
+                      'real_value': str(input_dict.get("share_location"))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
@@ -131,23 +128,22 @@ def check_input_attr_value(input_dict):
     if not (input_dict.get("background_label_id") >= -1 and input_dict.get(
             "background_label_id") <= (input_dict.get("num_classes") - 1)):
 
-        check_param_range('background_label_id', -1,
-                          input_dict.get("num_classes")-1,
-                          input_dict.get("background_label_id"))
+        _check_param_range('background_label_id', -1,
+                           input_dict.get("num_classes")-1,
+                           input_dict.get("background_label_id"))
 
     if not (input_dict.get("nms_threshold") > 0 and
             input_dict.get("nms_threshold") <= 1):
-        check_param_range('nms_threshold', 0, 1,
-                          input_dict.get("nms_threshold"),
-                          left_open_interval=True)
+        _check_param_range('nms_threshold', 0, 1,
+                           input_dict.get("nms_threshold"),
+                           left_open_interval=True)
 
     if not input_dict.get("eta") == 1:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['op_name'] = 'ssd_detection_output'
-        error_info['param_name'] = 'eta'
-        error_info['excepted_value'] = '1'
-        error_info['real_value'] = str(eta)
+        error_info = {'errCode': 'E80000',
+                      'op_name': 'ssd_detection_output',
+                      'param_name': 'eta',
+                      'excepted_value': '1',
+                      'real_value': str(input_dict.get("eta"))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
@@ -155,7 +151,7 @@ def check_input_attr_value(input_dict):
 
     if not (input_dict.get("code_type") >= 1 and
             input_dict.get("code_type") <= 3):
-        check_param_range('code_type', 1, 3, input_dict.get("code_type"))
+        _check_param_range('code_type', 1, 3, input_dict.get("code_type"))
 
     if not ((input_dict.get("keep_top_k") <= 1024 and input_dict.get("keep_top_k") > 0)
             or input_dict.get("keep_top_k") == -1):
@@ -175,14 +171,14 @@ def check_input_attr_value(input_dict):
 
     if not (input_dict.get("confidence_threshold") >= 0 and
             input_dict.get("confidence_threshold") <= 1):
-        check_param_range('confidence_threshold', 0, 1,
-                          input_dict.get("confidence_threshold"))
+        _check_param_range('confidence_threshold', 0, 1,
+                           input_dict.get("confidence_threshold"))
 
-    check_input_topk_value(input_dict.get("mbox_loc").get("dtype").lower(),
-                           input_dict.get("top_k"))
+    _check_input_topk_value(input_dict.get("mbox_loc").get("dtype").lower(),
+                            input_dict.get("top_k"))
 
 
-def check_input_topk_value(dtype, topk_value):
+def _check_input_topk_value(dtype, topk_value):
     """
     check input topk value,
 
@@ -194,30 +190,29 @@ def check_input_topk_value(dtype, topk_value):
     -------
     None
     """
-
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                             "Hi3796CV300CS"):
+    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300ES,
+                                                               tbe_platform.HI3796CV300CS):
         if dtype == "float32":
             if not topk_value <= 1500:
-                check_param_range('top_k', 1, 1500, topk_value)
+                _check_param_range('top_k', 1, 1500, topk_value)
         else:
             if not topk_value <= 3000:
-                check_param_range('top_k', 1, 3000, topk_value)
+                _check_param_range('top_k', 1, 3000, topk_value)
 
         if not topk_value <= 3000:
-            check_param_range('top_k', 1, 3000, topk_value)
+            _check_param_range('top_k', 1, 3000, topk_value)
     else:
         if dtype == "float32":
             if not topk_value <= 3000:
-                check_param_range('top_k', 1, 3000, topk_value)
+                _check_param_range('top_k', 1, 3000, topk_value)
         else:
             if not topk_value <= 6000:
-                check_param_range('top_k', 1, 6000, topk_value)
+                _check_param_range('top_k', 1, 6000, topk_value)
 
 
-def check_input_data_logical_relationship(input_dict):
+def _check_input_data_logical_relationship(input_dict):
     """
-    check_input_data_logical_relationship
+    _check_input_data_logical_relationship
 
     Parameters
     ----------
@@ -251,14 +246,14 @@ def check_input_data_logical_relationship(input_dict):
 
 
 # pylint: disable=invalid-name, too-many-arguments, too-many-locals
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_INT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.OPTION_ATTR_INT,
-                          op_utils.OPTION_ATTR_FLOAT, op_utils.OPTION_ATTR_INT,
-                          op_utils.OPTION_ATTR_FLOAT, op_utils.OPTION_ATTR_BOOL,
-                          op_utils.OPTION_ATTR_INT, op_utils.OPTION_ATTR_INT,
-                          op_utils.OPTION_ATTR_FLOAT, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def ssd_detection_output(bbox_delta, score, anchors,
                          out_boxnum, y,
                          num_classes,
@@ -272,7 +267,6 @@ def ssd_detection_output(bbox_delta, score, anchors,
                          keep_top_k=-1,
                          confidence_threshold=0.0,
                          kernel_name="ssd_detection_output"):
-
     """
     the entry function of ssd detection output
 
@@ -322,9 +316,9 @@ def ssd_detection_output(bbox_delta, score, anchors,
     }
 
     tik_instance = tik.Tik(tik.Dprofile())
-    check_product_info(input_dict)
-    check_input_attr_value(input_dict)
-    check_input_data_logical_relationship(input_dict)
+    _check_product_info(input_dict)
+    _check_input_attr_value(input_dict)
+    _check_input_data_logical_relationship(input_dict)
 
     decode_bbox_process = ssd_decode_bbox.SSDDecodeBBox(input_dict, tik_instance)
 
@@ -338,7 +332,7 @@ def ssd_detection_output(bbox_delta, score, anchors,
         batch = tik_instance.Scalar("int32", "batch", 0)
         with tik_instance.for_range(0, outer_loop) as outer_i:
             batch.set_as(block_i * outer_loop + outer_i)
-            if decode_bbox_process.ascend_name in ("Ascend610", "Ascend710"):
+            if decode_bbox_process.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
                 decode_bbox_process.parser_loc_data_v200(batch)
                 decode_bbox_process.parser_priorbox_data_v200(batch)
             else:
@@ -375,7 +369,6 @@ def ssd_detection_output(bbox_delta, score, anchors,
 class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
     """
     define SSDDetectionOutput class
-
     """
 
     def __init__(self, input_dict, tik_instance, topk_src_len):
@@ -395,40 +388,40 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         self.instance = tik_instance
         super(SSDDetectionOutput, self).__init__(input_dict)
 
-        #paser input args
+        # paser input args
         self.nms_threshold = input_dict.get("nms_threshold")
         self.top_k = input_dict.get("top_k")
         self.eta = input_dict.get("eta")
         self.keep_top_k = input_dict.get("keep_top_k")
         self.confidence_threshold = input_dict.get("confidence_threshold")
 
-        #define for topk1
+        # define for topk1
         self.topk1_in_gm_len = topk_src_len
         self.topk1_in_gm = self.instance.Tensor(self.dtype,
                                                 (self.batch, self.topk1_in_gm_len, 8),
                                                 name="topk1_in_gm",
                                                 is_workspace=True,
-                                                scope=tik.scope_gm)
+                                                scope=tbe_platform.scope_gm)
 
         self.topk1_swap_gm = self.instance.Tensor(self.dtype,
                                                   (self.batch, self.topk1_in_gm_len, 8),
                                                   name="topk1_swap_gm",
                                                   is_workspace=True,
-                                                  scope=tik.scope_gm)
+                                                  scope=tbe_platform.scope_gm)
 
         topk1_out_gm_len = math.ceil(input_dict["top_k"] / 16) * 16
         self.topk1_out_gm = self.instance.Tensor(self.dtype,
                                                  (self.batch, topk1_out_gm_len+4, 8),
                                                  name="topk1_out_gm",
                                                  is_workspace=True,
-                                                 scope=tik.scope_gm)
-        #define for nms
+                                                 scope=tbe_platform.scope_gm)
+        # define for nms
         self.nms_box_num_gm = self.instance.Tensor(
             "int32",
             (self.batch, self.num_classes, 8),
             name="nms_box_num_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
         self.post_nms_topn = math.ceil(self.keep_top_k / 16) * 16
         if self.keep_top_k <= 0 or self.keep_top_k > self.top_k:
@@ -438,68 +431,68 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             (self.num_classes * self.batch, self.post_nms_topn, 8),
             name="nms_swap_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
         self.nms_box_gm = self.instance.Tensor(
             self.dtype,
             (self.batch, self.num_classes, self.post_nms_topn, 8),
             name="nms_box_gm",
             is_workspace=True,
-            scope=tik.scope_gm)
+            scope=tbe_platform.scope_gm)
 
-        #define for topk2
+        # define for topk2
         topk2_in_gm_len = self.num_classes * self.post_nms_topn
         self.topk2_in_gm = self.instance.Tensor(self.dtype,
                                                 (self.batch, topk2_in_gm_len, 8),
                                                 name="topk2_in_gm",
                                                 is_workspace=True,
-                                                scope=tik.scope_gm)
+                                                scope=tbe_platform.scope_gm)
 
         self.topk2_swap_gm = self.instance.Tensor(self.dtype,
                                                   (self.batch, topk2_in_gm_len, 8),
                                                   name="topk2_swap_gm",
                                                   is_workspace=True,
-                                                  scope=tik.scope_gm)
+                                                  scope=tbe_platform.scope_gm)
         self.topk2_num = self.instance.Scalar("int32", "topk2_num", 0)
 
-        #define for outbox
+        # define for outbox
         out_box_len = math.ceil(self.keep_top_k / 128) * 128
         if self.keep_top_k <= 0:
             out_box_len = math.ceil(1024 / 128) * 128
         self.out_box_gm = self.instance.Tensor(self.dtype,
                                                (self.batch, out_box_len, 8),
                                                name="out_box_gm",
-                                               scope=tik.scope_gm)
+                                               scope=tbe_platform.scope_gm)
 
         self.out_box_gm_tmp = self.instance.Tensor(self.dtype,
                                                    (self.batch,
                                                     out_box_len, 8),
                                                    name="out_box_gm_tmp",
                                                    is_workspace=True,
-                                                   scope=tik.scope_gm)
+                                                   scope=tbe_platform.scope_gm)
 
         self.out_box_num_gm = self.instance.Tensor("int32",
                                                    (self.batch, 8),
                                                    name="out_box_num_gm",
-                                                   scope=tik.scope_gm)
-        #define for topk3
+                                                   scope=tbe_platform.scope_gm)
+        # define for topk3
         self.topk3_in_gm = self.instance.Tensor(self.dtype,
                                                 (self.batch, topk2_in_gm_len, 8),
                                                 name="topk3_in_gm",
                                                 is_workspace=True,
-                                                scope=tik.scope_gm)
+                                                scope=tbe_platform.scope_gm)
 
         self.topk3_swap_gm = self.instance.Tensor(self.dtype,
                                                   (self.batch, topk2_in_gm_len, 8),
                                                   name="topk3_swap_gm",
                                                   is_workspace=True,
-                                                  scope=tik.scope_gm)
+                                                  scope=tbe_platform.scope_gm)
         self.topk3_num = self.instance.Scalar("int32", "topk3_num", 0)
         self.topk3_out_gm = self.instance.Tensor(self.dtype,
                                                  (self.batch, out_box_len, 8),
                                                  name="topk3_out_gm",
                                                  is_workspace=True,
-                                                 scope=tik.scope_gm)
+                                                 scope=tbe_platform.scope_gm)
 
     def sort_each_class_prepare(self, batch, class_index, topk_src_data):
         """
@@ -520,7 +513,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             topk1_in_data_tmp_ub = self.instance.Tensor(self.dtype,
                                                         (self.ub_capacity, ),
                                                         name="topk1_in_data_tmp_ub",
-                                                        scope=tik.scope_ubuf)
+                                                        scope=tbe_platform.scope_ubuf)
 
             data_move_loop = self.topk1_in_gm_len * 8 // self.ub_capacity
             data_move_tail = self.topk1_in_gm_len * 8 % self.ub_capacity
@@ -537,7 +530,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                         0, 1,
                                         (self.ub_capacity // self.burnest_len), 0, 0)
 
-            with self.instance.if_scope(data_move_tail > 0):
+            if data_move_tail > 0:
                 topk1_in_offset = data_move_loop * self.ub_capacity // 8
                 self.instance.data_move(topk1_in_data_tmp_ub,
                                         topk_src_data[batch, class_index, topk1_in_offset, 0],
@@ -575,7 +568,6 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             with self.instance.if_scope(nms_box_num_tmp_scalar % 2 != 0):
                 nms_box_num_tmp_scalar.set_as(nms_box_num_tmp_scalar + 1)
 
-
             with self.instance.if_scope(self.dsize == 4):
                 burst_val_tmp_scalar.set_as(nms_box_num_tmp_scalar)
             with self.instance.else_scope():
@@ -600,11 +592,11 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             topk2_in_data_tmp_ub = self.instance.Tensor(
                 self.dtype, (topk2_in_data_len, 8),
                 name="topk2_in_data_tmp_ub",
-                scope=tik.scope_ubuf)
+                scope=tbe_platform.scope_ubuf)
 
             nms_bbox_num_ub = self.instance.Tensor("int32", (8, ),
                                                    name="nms_bbox_num_ub",
-                                                   scope=tik.scope_ubuf)
+                                                   scope=tbe_platform.scope_ubuf)
             self.instance.data_move(nms_bbox_num_ub,
                                     self.nms_box_num_gm[batch, class_index, 0],
                                     0, 1, 1, 0, 0)
@@ -653,11 +645,11 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             box_data_ub = self.instance.Tensor(self.dtype,
                                                (self.out_box_gm.shape[1], 8),
                                                name="box_data_ub",
-                                               scope=tik.scope_ubuf)
+                                               scope=tbe_platform.scope_ubuf)
             topk3_out_ub = self.instance.Tensor(self.dtype,
                                                 (self.out_box_gm.shape[1], 8),
                                                 name="topk3_out_ub",
-                                                scope=tik.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
             burst_val_tmp_scalar = self.instance.Scalar("int32",
                                                         "burst_val_tmp_scalar", 0)
 
@@ -683,7 +675,6 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                             0, 1, burst_val_tmp_scalar, 0, 0)
             self.set_crood_data_order(batch, topk_num_ecah_class, box_data_ub, topk3_out_ub)
 
-
     def set_crood_data_order(self, batch, topk_num_ecah_class, box_data_ub, topk3_out_ub):
         """
         modify out box data order as same as caffe
@@ -698,11 +689,21 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         None
         """
         combin_out = self.instance.Tensor(self.dtype, (8, self.out_box_gm.shape[1]),
-                                          name="combin_out", scope=tik.scope_ubuf)
+                                          name="combin_out", scope=tbe_platform.scope_ubuf)
         vnchw_src = self.instance.Tensor(self.dtype, (16 * self.out_box_gm.shape[1],),
-                                         name="vnchw_src", scope=tik.scope_ubuf)
+                                         name="vnchw_src", scope=tbe_platform.scope_ubuf)
         vnchw_dst = self.instance.Tensor(self.dtype, (16 * self.out_box_gm.shape[1],),
-                                         name="vnchw_dst", scope=tik.scope_ubuf)
+                                         name="vnchw_dst", scope=tbe_platform.scope_ubuf)
+        # fill in zero
+        with self.instance.if_scope(topk_num_ecah_class < self.out_box_gm.shape[1]):
+            start_offset = topk_num_ecah_class * self.dsize * 8 / constant.BLOCK_SIZE
+            data_move_burst = (self.out_box_gm.shape[1] - start_offset) * 8 * self.dsize / constant.BLOCK_SIZE
+            vector_dup_repeat = (data_move_burst * constant.BLOCK_SIZE + 127) / 128
+            with self.instance.if_scope(data_move_burst > 0):
+                scalar_zero = self.instance.Scalar(init_value=0, dtype=self.dtype)
+                self.instance.vector_dup(self.mask, vnchw_dst, scalar_zero, vector_dup_repeat, 1, 8)
+                self.instance.data_move(self.out_box_gm[batch, start_offset, 0],
+                                        vnchw_dst, 0, 1, data_move_burst, 0, 0)
 
         with self.instance.for_range(0, topk_num_ecah_class) as combin_index:
 
@@ -760,7 +761,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                 1, 0, 15)
 
         length = self.out_box_gm.shape[1] * 16 // 16
-        tail_loop_times = ((length*16)//(16*16)) % 255
+        tail_loop_times = ((length*16) // (16*16)) % 255
 
         src_list = [vnchw_src[16*i] for i in range(16)]
         dst_list = [vnchw_dst[16*i] for i in range(16)]
@@ -777,17 +778,11 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             with self.instance.for_range(0, topk_num_ecah_class) as index:
                 self.instance.data_move(self.out_box_gm[batch, index, 0],
                                         vnchw_dst[index*16], 0, 1, 1, 0, 0)
-            # fill in zero
-            remain_size = self.keep_top_k - topk_num_ecah_class
-            with self.instance.if_scope(remain_size > 0):
-                scalar_zero = self.instance.Scalar(init_value=0,
-                                                   dtype="float16")
-                self.instance.vector_dup(128, vnchw_src, scalar_zero,
-                                         (remain_size + 15) // 16, 1, 8)
-                self.instance.data_move(
-                    self.out_box_gm[batch, topk_num_ecah_class, 0],
-                    vnchw_src, 0, 1, (remain_size + 1) // 2, 0, 0)
-
+            # just fill first block
+            scalar_zero = self.instance.Scalar(init_value=0, dtype=self.dtype)
+            self.instance.vector_dup(self.mask, vnchw_dst, scalar_zero, 1, 1, 8)
+            self.instance.data_move(self.out_box_gm[batch, topk_num_ecah_class, 0],
+                                    vnchw_dst, 0, 1, 1, 0, 0)
 
 
     def sort_each_class(self, batch, topk1_data_num, topk1_out_actual_num):
@@ -832,7 +827,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         -------
         None
         """
-        input_offset = batch*(((self.top_k+15)//16)*16 + 4)*8
+        input_offset = batch*(((self.top_k + 15) // 16)*16 + 4)*8
         image_info = (817.55, 40)
         nms.cce_nms((self.dtype, self.ub_size,
                      self.nms_threshold, batch,
@@ -861,7 +856,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                             topk_num_ecah_class > self.keep_top_k)):
             with self.instance.new_stmt_scope():
                 topk2_tail_init_tmp_ub = self.instance.Tensor(
-                    self.dtype, (128, ), name="topk2_in_data_tmp_ub", scope=tik.scope_ubuf)
+                    self.dtype, (128, ), name="topk2_in_data_tmp_ub", scope=tbe_platform.scope_ubuf)
                 self.instance.vector_dup(self.mask, topk2_tail_init_tmp_ub, 0,
                                          128 // self.mask, 1, 8)
 
@@ -880,9 +875,9 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
             self.sort_for_get_label(batch)
 
         with self.instance.new_stmt_scope():
-            #set out box num and tensor
+            # set out box num and tensor
             out_box_num_ub = self.instance.Tensor(
-                "int32", (8, ), name="out_box_num_ub", scope=tik.scope_ubuf)
+                "int32", (8, ), name="out_box_num_ub", scope=tbe_platform.scope_ubuf)
             with self.instance.if_scope(tik.all(self.keep_top_k > -1,
                                                 topk_num_ecah_class > self.keep_top_k)):
                 out_box_num_ub[0].set_as(self.topk2_num)
@@ -892,7 +887,6 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                     0, 1, 1, 0, 0)
 
         self.adjust_topk_crood(batch, topk_num_ecah_class)
-
 
     def get_topk_target_info(self, batch, topk_src_data):
         """
@@ -912,7 +906,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                                                    init_value=0)
         with self.instance.new_stmt_scope():
             topk2_init_tmp_ub = self.instance.Tensor(
-                self.dtype, (128, ), name="topk2_init_tmp_ub", scope=tik.scope_ubuf)
+                self.dtype, (128, ), name="topk2_init_tmp_ub", scope=tbe_platform.scope_ubuf)
             self.instance.vector_dup(self.mask, topk2_init_tmp_ub, 0,
                                      128 // self.mask, 1, 8)
 
@@ -941,7 +935,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                 with self.instance.new_stmt_scope():
                     nms_bbox_num_ub = self.instance.Tensor("int32", (8, ),
                                                            name="nms_bbox_num_ub",
-                                                           scope=tik.scope_ubuf)
+                                                           scope=tbe_platform.scope_ubuf)
                     self.instance.data_move(nms_bbox_num_ub,
                                             self.nms_box_num_gm[batch, class_index, 0],
                                             0, 1, 1, 0, 0)
@@ -949,13 +943,13 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
                     topk_num_ecah_class_ub = self.instance.Tensor(
                         "int32", (8, ),
                         name="topk_num_ecah_class_ub",
-                        scope=tik.scope_ubuf)
+                        scope=tbe_platform.scope_ubuf)
                     topk_num_ecah_class_ub[0].set_as(topk_num_ecah_class)
 
                     topk_num_ecah_class_vadd_ub = self.instance.Tensor(
                         "int32", (8, ),
                         name="topk_num_ecah_class_vadd_ub",
-                        scope=tik.scope_ubuf)
+                        scope=tbe_platform.scope_ubuf)
 
                     self.instance.vadd(1, topk_num_ecah_class_vadd_ub,
                                        nms_bbox_num_ub, topk_num_ecah_class_ub,
@@ -995,7 +989,6 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
 
         topk.tik_topk(self.instance, topk_input_data, topk_out_data)
 
-
     def sort_for_get_label(self, batch):
         """
         sort box
@@ -1007,7 +1000,6 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         -------
         None
         """
-
         topK_in_num = self.keep_top_k
         if self.keep_top_k <= 0:
             topK_in_num = self.top_k

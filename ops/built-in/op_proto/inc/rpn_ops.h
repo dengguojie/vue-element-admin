@@ -1,39 +1,40 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file rpn_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
- **/
-#ifndef GE_OP_RPN_OPS_H
-#define GE_OP_RPN_OPS_H
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file rpn_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_RPN_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_RPN_OPS_H_
 
 #include "graph/operator_reg.h"
 namespace ge {
 /**
 *@brief Iteratively removes lower scoring boxes which have an IoU greater than
 * iou_threshold with higher scoring box according to their
-* intersection-over-union (IoU).
+* intersection-over-union (IoU) . \n
 
 *@par Input:
 * @li box_scores: 2-D tensor with shape of [N, 8], including proposal boxes and
-* corresponding confidence scores.
+* corresponding confidence scores . \n
 
 * @par Attributes:
 * @li iou_threshold: An optional float. The threshold for deciding whether boxes
-* overlap too much with respect to IOU.
+* overlap too much with respect to IOU . \n
 
 * @par Outputs:
 * @li selected_boxes: 2-D tensor with shape of [N,5], representing filtered
@@ -41,7 +42,7 @@ namespace ge {
 * @li selected_idx: 1-D tensor with shape of [N], representing the index of
 * input proposal boxes.
 * @li selected_mask: 1-D tensor with shape of [N], the symbol judging whether
-* the output proposal boxes is valid.
+* the output proposal boxes is valid . \n
 
 * @attention Constraints:
 * The 2nd-dim of input box_scores must be equal to 8.\n
@@ -57,4 +58,4 @@ REG_OP(NMSWithMask)
     .OP_END_FACTORY_REG(NMSWithMask)
 }  // namespace ge
 
-#endif // GE_OP_TRAINING_OPS_H
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_RPN_OPS_H_

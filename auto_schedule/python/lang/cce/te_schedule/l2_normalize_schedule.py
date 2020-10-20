@@ -1,27 +1,22 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-# pylint: unused-import
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 l2 normalize schedule
 """
-# pylint: disable=unused-import
-import math
 from te import platform as cceconf
 from te import tvm
-from te.platform import cce_util
-import te.platform.cce_params as cce
 from te.platform import cce_emitinsn_params
 from . import util
 from .vector_schedule import VectorSchedule
@@ -132,7 +127,6 @@ class L2NormalizeSchedule(VectorSchedule):
         self._do_double_buffer()
 
         return True
-
 
     def _construct_compute_graph(self, out_tensors, spec_node_list):
         """
@@ -304,7 +298,6 @@ class L2NormalizeSchedule(VectorSchedule):
             ((len(shape_before_reduce) - 1) in reduce_axis_index)
         return has_last_reduce_axis
 
-
     def _is_reduce_axis_32byte_align(self, shape_before_reduce,
                                      reduce_axis_index, dtype):
 
@@ -441,9 +434,9 @@ class L2NormalizeSchedule(VectorSchedule):
 
         if self._need_multi_core and \
                 self._is_need_modify_block_and_ub_tiling(
-                        shape_before_reduce, dtype, block_split_axis,
-                        block_split_inner_size, ub_split_axis,
-                        ub_split_inner, max_ub_count):
+                    shape_before_reduce, dtype, block_split_axis,
+                    block_split_inner_size, ub_split_axis,
+                    ub_split_inner, max_ub_count):
             block_split_axis = 0
             block_split_inner_size = shape_before_reduce[block_split_axis]
             ub_split_axis, ub_split_inner = \
@@ -1005,8 +998,6 @@ class L2NormalizeSchedule(VectorSchedule):
             tmp_op["op"] = str_list[0]
 
         return tmp_op
-
-
 
     def _is_broadcast_last_axis_tensor(self, tensor):
         if tensor.op.tag == "broadcast_for_tensor":

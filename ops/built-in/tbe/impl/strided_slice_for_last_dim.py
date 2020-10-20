@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-NPUClearFloatStatus
+strided_slice_for_last_dim
 """
-
 from te import tik
 from te import platform as tbe_platform
 
@@ -40,13 +39,11 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     -------
     tik_instance: tik_instance
     """
-    vmul_support = \
-        tbe_platform.cce_conf.api_check_support("tik.vmul", "float32")
+    vmul_support = tbe_platform.cce_conf.api_check_support("tik.vmul", "float32")
     if not vmul_support:
         return False
     tik_instance = tik.Tik()
-    aicore_num = \
-        tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
     input_size = 1
     for i in input_shape:
         input_size = input_size * i
@@ -67,16 +64,16 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     else:
         consecutive_num = output_shape[len(output_shape) - 1]
 
-    ouput_core_data_num = output_size // aicore_num  #
-    input_core_data_num = input_size // aicore_num  #
+    ouput_core_data_num = output_size // aicore_num
+    input_core_data_num = input_size // aicore_num
 
-    output_group_1 = ouput_core_data_num  #
-    input_group_1 = ouput_core_data_num // consecutive_num * input_shape[len(input_shape) - 1]  #
-    output_group_2 = 0  #
-    input_group_2 = 0  #
+    output_group_1 = ouput_core_data_num
+    input_group_1 = ouput_core_data_num // consecutive_num * input_shape[len(input_shape) - 1]
+    output_group_2 = 0
+    input_group_2 = 0
 
-    tail_core_num = 0  #
-    total_core_num = aicore_num  #
+    tail_core_num = 0
+    total_core_num = aicore_num
     tail_flag = False
     if output_size % aicore_num != 0 or ouput_core_data_num % type_block_num != 0:
         aicore_num = aicore_num - 1
@@ -92,24 +89,21 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
             input_group_1 = output_group_1 // consecutive_num * input_shape[len(input_shape) - 1]
             input_group_2 = input_size - (input_group_1 * aicore_num)
 
-            tail_core_num = 1  #
+            tail_core_num = 1
             total_core_num = aicore_num + tail_core_num
             tail_flag = True
         else:
-            output_group_1 = ouput_core_data_num  #
-            input_group_1 = ouput_core_data_num // consecutive_num \
-                            * input_shape[len(input_shape) - 1]  #
-            output_group_2 = 0  #
-            input_group_2 = 0  #
-            total_core_num = aicore_num  #
+            output_group_1 = ouput_core_data_num
+            input_group_1 = ouput_core_data_num // consecutive_num * input_shape[len(input_shape) - 1]
+            output_group_2 = 0
+            input_group_2 = 0
+            total_core_num = aicore_num
 
     def _get_ub_block_num():
         """
         get the ub_size for dtype, get the block_size for dtype
         """
-        ub_size_bytes = \
-            tbe_platform.cce_conf.get_soc_spec(
-                tbe_platform.cce_conf.UB_SIZE) - 1024
+        ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 1024
         # Convert byts to Bytes
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
         ub_number = ub_size_bytes // dtype_bytes_size
@@ -220,14 +214,12 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
                                        0, 1,
                                        stride_length,
                                        0, 0)
-                max_num = output_group_1 // consecutive_num \
-                          // split_factor_group_1
+                max_num = output_group_1 // consecutive_num // split_factor_group_1
                 with tik_instance.for_range(0, max_num)as group:
                     for cur_num in range(0, consecutive_num):
                         output_data_ub[group * consecutive_num + cur_num].set_as(
                             input_data_ub[group * len_burst + start_num + cur_num])
-                gm_deviation = axis_outer * output_group_1 \
-                               // split_factor_group_1
+                gm_deviation = axis_outer * output_group_1 // split_factor_group_1
                 output_data_src1 = total_cycle * output_group_1 + gm_deviation
 
                 if (output_group_1 % type_block_num) == 0:
@@ -243,15 +235,12 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
         if tail_flag:
             with tik_instance.else_scope():
                 with tik_instance.for_range(0, split_factor_group_2)as axis_outer:
-                    input_deviation = axis_outer * input_group_2 \
-                                      // split_factor_group_2
-                    stride_input_dev = group_2_input_length \
-                                       // split_factor_group_2
+                    input_deviation = axis_outer * input_group_2 // split_factor_group_2
+                    stride_input_dev = group_2_input_length // split_factor_group_2
                     tik_instance.data_move(input_data_ub, input_data[
                         (aicore_num * input_group_1) + input_deviation],
                                            0, 1, stride_input_dev, 0, 0)
-                    max_num = output_group_2 // consecutive_num \
-                              // split_factor_group_2
+                    max_num = output_group_2 // consecutive_num // split_factor_group_2
                     with tik_instance.for_range(0, max_num)as group:
                         for cur_num in range(0, consecutive_num):
                             output_data_ub[group * consecutive_num + cur_num].set_as(

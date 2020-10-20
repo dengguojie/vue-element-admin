@@ -1,23 +1,23 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file npu_loss_scale_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
-**/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+/*!
+ * \file npu_loss_scale_ops.cpp
+ * \brief
+ */
 #include "inc/npu_loss_scale_ops.h"
 #include <string>
 #include <vector>
@@ -25,9 +25,7 @@
 #include "util/util.h"
 #include "op_log.h"
 
-
-namespace ge
-{
+namespace ge {
 
 IMPLEMT_COMMON_INFERFUNC(NPUClearFloatStatusOperatorInferShape) {
   TensorDesc td = op.GetOutputDesc("data");
@@ -71,7 +69,7 @@ IMPLEMT_VERIFIER(NPUAllocFloatStatusOperator, NPUAllocFloatStatusOperatorVerify)
 INFER_FUNC_REG(NPUAllocFloatStatusOperator, NPUAllocFloatStatusOperatorInferShape);
 VERIFY_FUNC_REG(NPUAllocFloatStatusOperator, NPUAllocFloatStatusOperatorVerify);
 
-//----------------------------TBE Loss Scale------------------------------------//
+// ----------------------------TBE Loss Scale------------------------------------//
 IMPLEMT_COMMON_INFERFUNC(NPUClearFloatStatusInferShape) {
   TensorDesc td = op.GetOutputDesc("data");
   td.SetShape(Shape({8}));
@@ -114,4 +112,4 @@ IMPLEMT_VERIFIER(NPUAllocFloatStatus, NPUAllocFloatStatusVerify) {
 INFER_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusVerify);
 
-} // namespace ge
+}  // namespace ge

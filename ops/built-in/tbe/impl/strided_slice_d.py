@@ -1,40 +1,34 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-strided slice
+strided_slice_d
 """
-
 import copy
 import math
-from functools import reduce as functools_reduce
+import functools
 
-from te.lang.cce.rl_bank import rl_bank
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.cce_build import build_config
-from topi.cce import util
-from te.platform import insn_cmd
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import *
-
-from .strided_slice_for_last_dim import strided_slice_last_dim
-from .copy_only import copy_only
-from .strided_slice_two_turn_one import strided_slice_two_turn_one
-from .strided_slice_fast_last_dim import strided_slice_last_dim_only
-from .strided_slice_last_dim_one import strided_slice_last_dim_one
-from .strided_slice_for_last_dim_mte import strided_slice_last_dim_mte
+from te.lang.cce.rl_bank import rl_bank
+from impl import strided_slice_for_last_dim
+from impl import copy_only
+from impl import strided_slice_two_turn_one
+from impl import strided_slice_fast_last_dim
+from impl import strided_slice_last_dim_one
+from impl import strided_slice_for_last_dim_mte
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -87,8 +81,10 @@ def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
     if ellipsis_mask != 0:
         if end_mask != 0 and input_len != formal_begin_len:
             end_mask *= end_mask * 2**(input_len - formal_begin_len - 1)
+            end_mask = int(end_mask)
         if begin_mask != 0 and input_len != formal_begin_len:
             begin_mask *= begin_mask * 2**(input_len - formal_begin_len - 1)
+            begin_mask = int(begin_mask)
         for i, _ in enumerate(input_calc):
             if (ellipsis_mask & 2**i) == 2**i:
                 ellipsis_dim = i
@@ -339,6 +335,13 @@ def strided_slice_d_compute(input_data,
         int(math.ceil((end - begin) / (stride * 1.0)))
         for begin, end, stride in zip(begin_shape, end_shape, stride_shape)
     ]
+    # output shape should be same with input shape,if shrink_axis_mask new_axis_mask == 0
+    if shrink_axis_mask == 0 and new_axis_mask == 0 and \
+       (len(input_list) < len(begin_shape)):
+       output_shape = output_shape[0:len(input_list)]
+       begin_shape = begin_shape[0:len(input_list)]
+       end_shape = end_shape[0:len(input_list)]
+       stride_shape = stride_shape[0:len(input_list)]
 
     if shrink_axis_mask > 0 or new_axis_mask > 0:
         select_run_branch = 1
@@ -462,7 +465,7 @@ def _tilling_axis(shape, dtype):
     split_axis = 0
     split_factor = 1
     for i, _ in enumerate(shape_new):
-        ele_cnt = functools_reduce(lambda x, y: x * y, shape_new[i:])
+        ele_cnt = functools.reduce(lambda x, y: x * y, shape_new[i:])
         if ele_cnt <= total_ele:
             split_axis = i - 1
             split_factor = total_ele // ele_cnt
@@ -639,20 +642,20 @@ def _schedule_last_axis(sch, shape, in_data, output, dtype):
 
     if compute_axis == "axis_inner_inner":
         sch[in_data].compute_at(sch[output], axis_inner_inner)
-        sch[in_data].emit_insn(input_axis_two_inner, insn_cmd.DMA_COPY)  # gm-ub
-        sch[output].emit_insn(axis_two_inner, insn_cmd.DMA_COPY)  # ub-gm
+        sch[in_data].emit_insn(input_axis_two_inner, tbe_platform.DMA_COPY)  # gm-ub
+        sch[output].emit_insn(axis_two_inner, tbe_platform.DMA_COPY)  # ub-gm
     elif compute_axis == "axis_inner_outer":
         sch[in_data].compute_at(sch[output], axis_inner_outer)
-        sch[in_data].emit_insn(input_axis_inner_inner, insn_cmd.DMA_COPY)  # gm-ub
-        sch[output].emit_insn(axis_inner_inner, insn_cmd.DMA_COPY)  # ub-gm
+        sch[in_data].emit_insn(input_axis_inner_inner, tbe_platform.DMA_COPY)  # gm-ub
+        sch[output].emit_insn(axis_inner_inner, tbe_platform.DMA_COPY)  # ub-gm
     elif compute_axis == "axis_two":
         sch[in_data].compute_at(sch[output], axis_two_outter)
-        sch[in_data].emit_insn(input_axis_two_inner, insn_cmd.DMA_COPY)  # gm-ub
-        sch[output].emit_insn(axis_two_inner, insn_cmd.DMA_COPY)  # ub-gm
+        sch[in_data].emit_insn(input_axis_two_inner, tbe_platform.DMA_COPY)  # gm-ub
+        sch[output].emit_insn(axis_two_inner, tbe_platform.DMA_COPY)  # ub-gm
     else:
         sch[in_data].compute_at(sch[output], axis_outer)
-        sch[in_data].emit_insn(input_axis_inner_inner, insn_cmd.DMA_COPY)  # gm-ub
-        sch[output].emit_insn(axis_inner_inner, insn_cmd.DMA_COPY)  # ub-gm
+        sch[in_data].emit_insn(input_axis_inner_inner, tbe_platform.DMA_COPY)  # gm-ub
+        sch[output].emit_insn(axis_inner_inner, tbe_platform.DMA_COPY)  # ub-gm
 
     if cores:
         thread_block = tvm.thread_axis("blockIdx.x")
@@ -743,8 +746,10 @@ def _check_tik_branch(sch_input_shape, output_shape, begin, end, strides):
     return result
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
-                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def strided_slice_d(input_x,
                     output_x,
                     begin,
@@ -803,8 +808,8 @@ def strided_slice_d(input_x,
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "uint8", "bool", "int8")
 
-    check_dtype(input_dtype, check_list, param_name="input_x")
-    check_shape(input_shape, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_shape(input_shape, param_name="input_x")
 
     begin = list(begin)
     end = list(end)
@@ -840,8 +845,8 @@ def strided_slice_d(input_x,
                              name='out_tensor',
                              tag='strided_slice_d|3')
 
-    input_size = functools_reduce(lambda x, y: x * y, input_shape[0:])
-    out_size = functools_reduce(lambda x, y: x * y, out_shape[0:])
+    input_size = functools.reduce(lambda x, y: x * y, input_shape[0:])
+    out_size = functools.reduce(lambda x, y: x * y, out_shape[0:])
 
     output_dtype = output_x.get("dtype").lower()
     output_shape = output_x.get("shape")
@@ -851,15 +856,21 @@ def strided_slice_d(input_x,
             output_x["dtype"] = "int8"
         if len(output_shape) == 0:
             output_x["shape"] = (1,)
-        copy_only(input_x, output_x, kernel_name)
+        copy_only.copy_only(input_x, output_x, kernel_name)
         return
+    output_shape_one = list(output_shape)
+    if ellipsis_mask == 0 and shrink_axis_mask != 0:
+        for i, _ in enumerate(list(input_shape)):
+            if (shrink_axis_mask & 2**i) == 2**i:
+                output_shape_one.insert(i, 1)
+    output_shape = tuple(output_shape_one)
 
     # for RL tune getting res
-    fusion_manager.set_op_res(out_tensor)
+    tbe_platform.fusion_manager.set_op_res(out_tensor)
 
     ret, sch = rl_bank.query_rl_bank([out_tensor])
     if ret and sch:
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)
         return
 
@@ -874,7 +885,7 @@ def strided_slice_d(input_x,
     if check_result:
         _schedule_last_axis(sch, sch_input_shape, output, out_tensor,
                             input_dtype)
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)
         return
 
@@ -895,29 +906,29 @@ def strided_slice_d(input_x,
         if input_dtype == "float32" and input_shape[-1] == 2 and \
            begin_shape[len(begin_shape) - 1] == 0  and end_shape[len(begin_shape) - 1] == 1 \
            and head_size > 128:
-            strided_slice_two_turn_one(input_x, output_x, kernel_name)
+            strided_slice_two_turn_one.strided_slice_two_turn_one(input_x, output_x, kernel_name)
             return
         if input_list[-1] > 80 and output_shape[-1] == 80:
-            res1 = strided_slice_last_dim_only(input_shape, input_dtype,
+            res1 = strided_slice_fast_last_dim.strided_slice_last_dim_only(input_shape, input_dtype,
                                                output_shape, begin_shape,
                                                kernel_name)
             if res1:
                 return
         if input_list[-1] >= 32 and input_list[-1] < 7500 and len(output_shape) > 1 and \
            output_shape[-1] >= 32:
-            res = strided_slice_last_dim_mte(input_shape, input_dtype,
+            res = strided_slice_for_last_dim_mte.strided_slice_last_dim_mte(input_shape, input_dtype,
                                              output_shape, begin_shape,
                                              kernel_name)
             if res:
                 return
-        res = strided_slice_last_dim(input_shape, input_dtype,
+        res = strided_slice_for_last_dim.strided_slice_last_dim(input_shape, input_dtype,
                                      output_shape, begin_shape,
                                      end_shape, stride_shape,
                                      kernel_name)
         if res:
             return
         else:
-            res1 = strided_slice_last_dim_one(input_shape, input_dtype,
+            res1 = strided_slice_last_dim_one.strided_slice_last_dim_one(input_shape, input_dtype,
                                               output_shape, begin_shape,
                                               kernel_name)
             if res1:
@@ -944,7 +955,7 @@ def strided_slice_d(input_x,
 
     sch[output].compute_at(sch[out_tensor], axis_outer_inter)
 
-    sch[output].emit_insn(output.op.axis[0], insn_cmd.DMA_COPY)  # gm-ub
+    sch[output].emit_insn(output.op.axis[0], tbe_platform.DMA_COPY)  # gm-ub
     if len(out_shape) >= 2:
         # Convert bytes to Bytes
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(input_dtype) // 8
@@ -959,7 +970,7 @@ def strided_slice_d(input_x,
         thread_block = tvm.thread_axis("blockIdx.x")
         sch[out_tensor].bind(axis_outer_outer, thread_block)
 
-    sch[out_tensor].emit_insn(axis_inner, insn_cmd.DMA_COPY)  # ub-gm
+    sch[out_tensor].emit_insn(axis_inner, tbe_platform.DMA_COPY)  # ub-gm
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)

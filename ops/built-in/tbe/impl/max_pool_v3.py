@@ -22,10 +22,156 @@ from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_op_params, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, \
-    OPTION_ATTR_BOOL, OPTION_ATTR_STR, OPTION_ATTR_LIST_INT, REQUIRED_ATTR_STR, KERNEL_NAME, check_shape, check_dtype
+from te.utils.op_utils import *
 from topi import generic
 from topi.cce import util
+
+
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=invalid-name,too-many-statements
+def check_window_rule(ksize, strides, padding_mode, pads, data_format):
+    """
+    check ksize and strides of window in pooling
+    """
+    if len(pads) != 4:
+        errorInfo = {}
+        errorInfo['errCode'] = OP_ERROR_CODE_012
+        errorInfo['op_name'] = 'max_pool_v3'
+        errorInfo['param_name'] = 'pads'
+        errorInfo['min_value'] = '4'
+        errorInfo['max_value'] = '4'
+        errorInfo['real_value'] = len(pads)
+        raise RuntimeError(errorInfo,
+                           "In op[%s], the num of dimensions of input[%s] should"
+                           " be in the range of [%s, %s], but actually is [%s]." %
+                           (errorInfo['op_name'], errorInfo['param_name'],
+                            errorInfo['min_value'], errorInfo['max_value'],
+                            errorInfo['real_value']))
+    if data_format in ("NHWC",):
+        if len(ksize) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'ksize'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(ksize)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should "
+                               "be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+
+        elif ksize[0] != 1 or ksize[3] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((ksize[1], ksize[3]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
+                               "but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+        if len(strides) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'strides'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(strides)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif strides[0] != 1 or strides[3] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("strides[1]", "strodes[3]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((strides[1], strides[3]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+    elif data_format in ("NC1HWC0", "NCHW"):
+        if len(ksize) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'ksize'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(ksize)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif ksize[0] != 1 or ksize[1] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("ksize[0]", "ksize[1]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((ksize[0], ksize[1]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+        if len(strides) != 4:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_012
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = 'strides'
+            errorInfo['min_value'] = '4'
+            errorInfo['max_value'] = '4'
+            errorInfo['real_value'] = len(strides)
+            raise RuntimeError(errorInfo,
+                               "In op[%s], the num of dimensions of input[%s] should"
+                               " be in the range of [%s, %s], but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['min_value'], errorInfo['max_value'],
+                                errorInfo['real_value']))
+        elif strides[0] != 1 or strides[1] != 1:
+            errorInfo = {}
+            errorInfo['errCode'] = OP_ERROR_CODE_000
+            errorInfo['op_name'] = 'max_pool_v3'
+            errorInfo['param_name'] = ",".join(("strides[0]", "strodes[1]"))
+            errorInfo['expected_value'] = '1'
+            errorInfo['real_value'] = ",".join((strides[1], strides[1]))
+            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
+                               " but actually is [%s]." %
+                               (errorInfo['op_name'], errorInfo['param_name'],
+                                errorInfo['expected_value'], errorInfo['real_value']))
+    else:
+        errorInfo = {}
+        errorInfo['errCode'] = OP_ERROR_CODE_015
+        errorInfo['op_name'] = 'max_pool_v3'
+        errorInfo['param_name'] = 'x'
+        errorInfo['excepted_format_list'] = ",".join(("NC1HWC0", "NCHW", "NHWC"))
+        errorInfo['format'] = data_format
+        raise RuntimeError(errorInfo, "In op[%s], the format[%s] of input should"
+                                      " be one of [%s], but actually is [%s]."
+                           % (errorInfo['op_name'], errorInfo['param_name'],
+                              errorInfo['excepted_format_list'], errorInfo['format']))
+
+    if padding_mode not in ("SAME", "VALID", "CALCULATED"):
+        errorInfo = {}
+        errorInfo['errCode'] = OP_ERROR_CODE_012
+        errorInfo['op_name'] = 'max_pool_v3'
+        errorInfo['param_name'] = 'pads'
+        errorInfo['min_value'] = '4'
+        errorInfo['max_value'] = '4'
+        errorInfo['real_value'] = len(pads)
+        raise RuntimeError(
+            "MaxPool can only support SAME or VALID or CALCULATED padding mode.")
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
@@ -79,7 +225,7 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
     if conv_pooling_flag:
         res = te.lang.cce.max_pool_compute(input_data, (window_h, window_w),
                                            (stride_h, stride_w), padding,
-                                           data_mode=1)
+                                           data_mode=0)
     else:
         # call pooling2d for max(pooling)&gmp
         res = te.lang.cce.pooling2d(input_data, (window_h, window_w), (stride_h, stride_w),
@@ -128,8 +274,9 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
 
     if global_pooling:
         pads = (0, 0, 0, 0)
-        input_shape = input_data.shape
+        input_shape = te.lang.cce.util.shape_to_list(input_data.shape)
         window_h, window_w = input_shape[2], input_shape[3]
+        padding_mode = "VALID"
 
     if padding_mode == "CALCULATED":
         padding_mode = "SAME"
@@ -248,39 +395,8 @@ def max_pool_v3(input_data, output_data, ksize, strides, padding_mode="CALCULATE
 
     check_list = ("float16", "int8", "uint8")
     check_dtype(dtype_input, check_list, param_name="input_data")
-
-    if data_format in ("NHWC",):
-        if len(ksize) != 4:
-            raise RuntimeError("Invalid ksize params, ksize dim must be 4.")
-        if ksize[0] != 1 or ksize[3] != 1:
-            raise RuntimeError(
-                "MaxPool only supports pooling across width/height,"
-                "and other ksize dimension should be one")
-        if len(strides) != 4:
-            raise RuntimeError("Invalid strides params, strides dim must be 4.")
-        if strides[0] != 1 or strides[3] != 1:
-            raise RuntimeError(
-                "MaxPool only supports pooling across width/height,"
-                "and other strides dimension should be one")
-    elif data_format in ("NC1HWC0", "NCHW"):
-        if len(ksize) != 4:
-            raise RuntimeError("Invalid ksize params, ksize dim must be 4.")
-        if ksize[0] != 1 or ksize[1] != 1:
-            raise RuntimeError(
-                "MaxPool only supports pooling across width/height,"
-                "and other ksize dimension should be one")
-        if len(strides) != 4:
-            raise RuntimeError("Invalid strides params, strides dim must be 4.")
-        if strides[0] != 1 or strides[1] != 1:
-            raise RuntimeError(
-                "MaxPool only supports pooling across width/height,"
-                "and other strides dimension should be one")
-    else:
-        raise RuntimeError("The data_format is not supported")
-
-    if padding_mode not in ("SAME", "VALID", "CALCULATED"):
-        raise RuntimeError(
-            "MaxPool can only support SAME or VALID or CALCULATED padding mode.")
+    # check ksize and strides of window
+    check_window_rule(ksize, strides, padding_mode, pads, data_format)
 
     # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
     addr_type = input_data.get("addr_type", 0)

@@ -1,33 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bitwise_or
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,invalid-name
-@fusion_manager.register("bitwise_or")
+@tbe_platform.fusion_manager.fusion_manager.register("bitwise_or")
 def bitwise_or_compute(placeholders, shape_x, shape_y):
     """
     calculating data's element_or, c = a | b
@@ -46,18 +43,19 @@ def bitwise_or_compute(placeholders, shape_x, shape_y):
     """
     data_x = placeholders[0]
     data_y = placeholders[1]
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
-                                                   shape_y,
-                                                   param_name_input1="x1",
-                                                   param_name_input2="x2")
-    data_x_broadcast = te.lang.cce.broadcast(data_x, shape_max)
-    data_y_broadcast = te.lang.cce.broadcast(data_y, shape_max)
-    res = te.lang.cce.vor(data_x_broadcast, data_y_broadcast)
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                              shape_y,
+                                                              param_name_input1="x1",
+                                                              param_name_input2="x2")
+    data_x_broadcast = tbe.broadcast(data_x, shape_max)
+    data_y_broadcast = tbe.broadcast(data_y, shape_max)
+    res = tbe.vor(data_x_broadcast, data_y_broadcast)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     """
     algorithm: bitwise_or
@@ -83,21 +81,21 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     dtype_x = x1.get("dtype")
     dtype_y = x2.get("dtype")
 
-    check_shape(shape_x, param_name="x1")
-    check_shape(shape_y, param_name="x2")
+    para_check.check_shape(shape_x, param_name="x1")
+    para_check.check_shape(shape_y, param_name="x2")
 
     check_tuple = ("int16", "uint16", "int32")
     input_data_type = dtype_x.lower()
-    check_dtype(input_data_type, check_tuple, param_name="x1")
+    para_check.check_dtype(input_data_type, check_tuple, param_name="x1")
 
     if dtype_x != dtype_y:
         raise RuntimeError("The type of input must be the same")
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x,
-                                                   shape_y,
-                                                   param_name_input1="x1",
-                                                   param_name_input2="x2")
-    shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                              shape_y,
+                                                              param_name_input1="x1",
+                                                              param_name_input2="x2")
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
     if input_data_type == "int32":
         input_data_type = "int16"
@@ -110,9 +108,9 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     y = {'shape': res.shape, 'dtype': input_data_type}
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": (data_x, data_y, res)}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)

@@ -1,31 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 relu_grad
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("relu_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("relu_grad")
 def relu_grad_compute(input_gradients, input_features, output_backprops,
                       kernel_name="relu_grad"):
     """
@@ -50,40 +47,41 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     """
     dtype = input_gradients.dtype
     trans_type = dtype
-    shape_input_gradients = te.lang.cce.util.shape_to_list(input_gradients.shape)
-    shape_input_features = te.lang.cce.util.shape_to_list(input_features.shape)
+    shape_input_gradients = shape_util.shape_to_list(input_gradients.shape)
+    shape_input_features = shape_util.shape_to_list(input_features.shape)
     shape = shape_input_gradients
 
     # need cast int8 or uint8 to float16
     if dtype in ("int8", "uint8"):
-        input_gradients = te.lang.cce.cast_to(input_gradients, "float16")
-        input_features = te.lang.cce.cast_to(input_features, "float16")
+        input_gradients = tbe.cast_to(input_gradients, "float16")
+        input_features = tbe.cast_to(input_features, "float16")
         trans_type = "float16"
 
     # broadcast in case the input shapes are not same
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape = \
-            broadcast_shapes(shape_input_gradients, shape_input_features,
+            shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
                              param_name_input1="input_gradients",
                              param_name_input2="input_features")
-        input_gradients = te.lang.cce.broadcast(input_gradients, shape,
+        input_gradients = tbe.broadcast(input_gradients, shape,
                                                 trans_type)
-        input_features = te.lang.cce.broadcast(input_features, shape,
+        input_features = tbe.broadcast(input_features, shape,
                                                trans_type)
 
-    derivative_relu = te.lang.cce.calculate_one_or_zero(input_features,
+    derivative_relu = tbe.calculate_one_or_zero(input_features,
                                                         shape, trans_type)
 
-    result = te.lang.cce.vmul(input_gradients, derivative_relu)
+    result = tbe.vmul(input_gradients, derivative_relu)
 
     # cast int8 or uint8 back
     if dtype in ("int8", "uint8"):
-        result = te.lang.cce.cast_to(result, dtype, f1628IntegerFlag=True)
+        result = tbe.cast_to(result, dtype, f1628IntegerFlag=True)
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops,
               kernel_name="relu_grad"):
     """
@@ -109,13 +107,13 @@ def relu_grad(input_gradients, input_features, output_backprops,
     shape_input_gradients = input_gradients.get("shape")
     shape_input_features = input_features.get("shape")
 
-    util.compare_tensor_dict_key(input_gradients, input_features, "dtype")
-    check_shape(shape_input_gradients, param_name="input_gradients")
-    check_shape(shape_input_features, param_name="input_features")
+    shape_util.compare_tensor_dict_key(input_gradients, input_features, "dtype")
+    para_check.check_shape(shape_input_gradients, param_name="input_gradients")
+    para_check.check_shape(shape_input_features, param_name="input_features")
 
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape_max = \
-            broadcast_shapes(shape_input_gradients, shape_input_features,
+            shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
                              param_name_input1="input_gradients",
                              param_name_input2="input_features")
 
@@ -123,11 +121,11 @@ def relu_grad(input_gradients, input_features, output_backprops,
     dtype_input_features = input_features.get("dtype").lower()
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(dtype_input_gradients, check_list, param_name="input_gradients")
-    check_dtype(dtype_input_features, check_list, param_name="input_features")
+    para_check.check_dtype(dtype_input_gradients, check_list, param_name="input_gradients")
+    para_check.check_dtype(dtype_input_features, check_list, param_name="input_features")
 
     shape_input_gradients, shape_input_features = \
-        refine_shapes_for_broadcast(shape_input_gradients,
+        shape_util.refine_shapes_for_broadcast(shape_input_gradients,
                                     shape_input_features)
     data_input_gradients = tvm.placeholder(shape_input_gradients,
                                            name="data_input_gradients",
@@ -139,8 +137,8 @@ def relu_grad(input_gradients, input_features, output_backprops,
     res = relu_grad_compute(data_input_gradients, data_input_features,
                             output_backprops, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input_gradients, data_input_features, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

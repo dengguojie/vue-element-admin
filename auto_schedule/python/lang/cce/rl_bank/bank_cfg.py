@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Define some config for rl bank
 """
 from te import platform as cceconf
@@ -111,7 +111,16 @@ TAG_INDEX = {
     'elewise_empty_intrin': 73,
     'strided_slice_d': 74,
     'split_com': 75,
-    'write_select': 76
+    'write_select': 76,
+    'elewise_single_round_d': 77,
+    'elewise_single_lrelu': 78,
+    'elewise_binary_addrelu': 79,
+    'elewise_binary_subrelu': 80,
+    'elewise_binary_phony': 81,
+    'elewise_binary_cmpsel_eq': 82,
+    'elewise_binary_cmpsel_ne': 83,
+    'out_to_ub': 84,
+    'ub_to_out': 85,
 }
 
 INTRIN_MAP = {
@@ -199,7 +208,18 @@ INTRIN_MAP = {
     81: 'vector_madd',
     82: 'vector_maddrelu',
     83: 'reuse_output',
-    84: 'json_info_cache_read_mode'
+    84: 'json_info_cache_read_mode',
+    85: 'vector_conv_round',
+    86: 'vector_lrelu',
+    87: 'vector_addrelu',
+    88: 'vector_subrelu',
+    89: 'elewise_binary_phony',
+    90: 'vector_multiple',
+    91: 'vector_conv_rint',
+    92: 'vector_conv_floor',
+    93: 'vector_conv_trunc',
+    94: "vector_select_eq",
+    95: "vector_select_ne",
 }
 
 PRIMITIVE_DICT = {
@@ -280,6 +300,7 @@ class ScheduleTarget():  # pylint: disable=too-few-public-methods
     '''
     ScheduleTarget
     '''
+
     def __init__(self, name, obj, axes):
         self.name = name.strip()
         self.obj = obj
@@ -291,6 +312,7 @@ class Axis():  # pylint: disable=too-few-public-methods
     '''
     Axis
     '''
+
     def __init__(self, name, obj):
         self.name = name.strip()
         self.obj = obj

@@ -1,34 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-parallel_concact
+parallel_concat
 """
 # pylint: disable=import-error
-from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
-from impl import common_util
-from te.utils.op_utils import *
+import functools
 
-# pylint: disable=redefined-builtin
-if "reduce" not in dir(__builtins__):
-    from functools import reduce
+import te.platform as tbe_platform
+from te.utils import para_check
+from te import tik
+from impl import common_util
+
 
 # available ub size
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(
-    tbe_platform.cce_conf.UB_SIZE)
+UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
 def ceil_align(ori_num, divider):
@@ -89,8 +86,8 @@ def _check_param(input_values, shape, kernel_name):
     for i, input_dict in enumerate(input_values):
         shape_input = input_dict.get("shape")
         dtype_input = input_dict.get("dtype").lower()
-        check_shape(shape_input, param_name="values")
-        check_dtype(dtype_input, check_list, param_name="values")
+        para_check.check_shape(shape_input, param_name="values")
+        para_check.check_dtype(dtype_input, check_list, param_name="values")
         if shape_input != first_shape:
             raise RuntimeError(
                 "the input tensors shape must be same, "
@@ -112,8 +109,10 @@ def _check_param(input_values, shape, kernel_name):
         raise RuntimeError(
             "the input shape {} do not match the output shape {}".format(first_shape, shape))
 
+
 # pylint: disable=too-many-locals,invalid-name,unused-argument
-@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def parallel_concat(values, output_data, shape, num, kernel_name="parallel_concat"):
     """
     algorithm: parallel_concat
@@ -163,8 +162,8 @@ class ParallelConcatBase:
         self.output_shape = shape
         self.kernel_name = kernel_name
         self.dtype_size = common_util.get_data_size(self.data_dtype[0])
-        self.product_core_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
+        self.product_core_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
         self.tik_instance = tik.Tik()
 
     def get_input_size(self):
@@ -177,7 +176,7 @@ class ParallelConcatBase:
         -------
         size: the size of input data
         """
-        return reduce(lambda x1, x2: x1 * x2, self.data_shape[0])
+        return functools.reduce(lambda x1, x2: x1 * x2, self.data_shape[0])
 
     def get_output_size(self):
         """
@@ -189,7 +188,7 @@ class ParallelConcatBase:
         -------
         size: the size of output data
         """
-        return reduce(lambda x1, x2: x1 * x2, self.output_shape)
+        return functools.reduce(lambda x1, x2: x1 * x2, self.output_shape)
 
 
 # pylint: disable=too-many-instance-attributes

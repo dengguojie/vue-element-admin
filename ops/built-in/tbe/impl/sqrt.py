@@ -1,37 +1,34 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sqrt
 """
-from __future__ import absolute_import
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from functools import reduce as reduceIns
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("sqrt")
+@tbe_platform.fusion_manager.fusion_manager.register("sqrt")
 def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))
@@ -52,20 +49,19 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     """
     dtype = input_data.dtype
     has_improve_precision = False
-    if dtype == "float16" and\
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vsqrt",
-                                                    "float32"):
-        input_data = te.lang.cce.cast_to(input_data, "float32")
+    if dtype == "float16" and \
+            tbe_platform.api_check_support("te.lang.cce.vsqrt", "float32"):
+        input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True
-    result = te.lang.cce.vsqrt(input_data)
+    result = tbe.vsqrt(input_data)
 
     if has_improve_precision:
-        result = te.lang.cce.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sqrt(input_x, output_y, kernel_name="sqrt"):
     """
     algorithm: sqrt
@@ -87,20 +83,20 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    check_shape(input_shape, param_name="input_x")
-    check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
+    para_check.check_shape(input_shape, param_name="input_x")
+    para_check.check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
 
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, input_shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, input_shape)
     input_data = tvm.placeholder(fuseshape, name="input_data",
                                  dtype=input_dtype)
     result = sqrt_compute(input_data, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [input_data, result]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,36 +1,48 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 elewise schedule
 """
 from typing import Optional
 from functools import reduce
+from math import ceil
 
-import te
 from te import tvm
 
-from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG
+from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, BROADCAST_INSNS
+from . import CompileInfo
 from . import util
 from .elewise_tilingcase import TilingStrategy
-from te.platform.operation import register_schedule, add_compile_info
+from te.platform.operation import register_schedule
+from te.platform.operation import add_compile_info
+from te.platform.operation import get_compile_info
 from te.platform import operation
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
+MULTI_CORE_THRESHOLD = 1024
 
+N_LAST_BROADCAST_THRESHOLD = 512
 
+CONST = "const"
+VECTOR = "vector"
+SPECIAL_SCALAR = "special_scalar"
+
+# vcmpsel constant
+VSEL_INPUT_NUMBER = 3
+VCMPSEL_INPUT_NUMBER = 4
 
 @register_schedule(pattern=Pattern.ELEMWISE)
 def schedule(outs, tiling_case):
@@ -54,6 +66,7 @@ class ElewiseSchedule:
         self._schedule = None
         self._tiling_case = tiling_case
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
+        self._mode = operation.get_context().get("mode")
 
         self._scope = "local.UB"
 
@@ -92,6 +105,14 @@ class ElewiseSchedule:
 
         self._db_tensors = set()
 
+        # just for const tiling
+        self._need_do_block = False
+        self._block_dims = 1
+        self._block_split_axis = -1
+        self._block_factor = 1
+        self._ub_split_axis = -1
+        self._ub_factor = 1
+
         self._block_tiling_vars = {}
         self._ub_tiling_vars = {}
         self._block_bind_axis = None
@@ -105,6 +126,7 @@ class ElewiseSchedule:
         self._constraints = set()
 
         self._mem_reuse_map = {}
+        self._data_reuse_map = {}
 
         self._emit_insn_map = {}
 
@@ -236,6 +258,7 @@ class ElewiseSchedule:
                  TilingStrategy.NONE_CUT: self._calc_tiling_none_cut,
                  TilingStrategy.ONE_CUT: self._calc_tiling_one_cut,
                  TilingStrategy.STATIC: self._calc_tiling_static,
+                 TilingStrategy.CONST: self._calc_tiling_const,
                  }
         funcs[self._tiling_strategy]()
 
@@ -270,11 +293,123 @@ class ElewiseSchedule:
         self._block_tiling_vars[b_i] = operation.var("block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = self._tiling_case["ub_tiling_factor"]
 
+    def _calc_tiling_const(self):
+        def _get_type_size(dtype):
+            type_size = 2
+            if dtype == "int8" or dtype == "uint8":
+                type_size = 1
+            elif dtype == "float32" or dtype == "int32" or dtype == "uint32":
+                type_size = 4
+            elif dtype == "int64" or dtype == "uint64":
+                type_size = 8
+            elif dtype == "bool":
+                type_size = 1
+            return type_size
+
+        def _calc_block_tiling():
+            rank = len(shape)
+            block_dims = 1
+            if rank == 1:
+                self._block_split_axis = 0
+                type_size = _get_type_size(res.dtype)
+                ele_in_block = BLOCK_SIZE_BYTE // type_size
+                block_factor = ceil(output_size / util.get_core_num())
+                self._block_factor = ceil((block_factor / ele_in_block)
+                                          * ele_in_block)
+                block_dims = ceil(shape[0] / self._block_factor)
+                shape[0] = self._block_factor
+            else:
+                cur_core = util.get_core_num()
+                for index, _shape in enumerate(shape):
+                    if _shape > cur_core:
+                        self._block_split_axis = index
+                        self._block_factor = ceil(_shape / cur_core)
+                        block_dims *= ceil(shape[index] / self._block_factor)
+                        shape[index] = self._block_factor
+                        break
+                    else:
+                        cur_core //= _shape
+                        block_dims *= shape[index]
+                        shape[index] = 1
+            self._block_dims = block_dims
+
+        def _find_bottoms_broadcast_axis():
+            broadcast_axis = -(1 << (32-1))
+            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
+                if tensor_i.op.input_tensors:
+                    input = util.shape_to_list(tensor_i.op.input_tensors[0].shape)
+                    output = util.shape_to_list(tensor_i.shape)
+                    for axis in range(min(len(input), len(output))):
+                        if input[-(axis + 1)] == 1 and output[-(axis + 1)] != 1:
+                            cur_broadcast_axis = -(axis + 1)
+                            if cur_broadcast_axis > broadcast_axis:
+                                broadcast_axis = cur_broadcast_axis
+                                break
+            return broadcast_axis
+
+        def _calc_ub_tiling():
+            ub_limit = ((self._ub_size // self._coexisting_quantity
+                         // BLOCK_SIZE_BYTE) * BLOCK_SIZE_BYTE) // \
+                self._max_dtype_bytes
+            type_size = _get_type_size(res.dtype)
+            ele_in_block = BLOCK_SIZE_BYTE // type_size
+            if len(shape) == 1:
+                self._ub_split_axis = 0
+                ub_factor = shape[0]
+                ub_for_num = ceil(ub_factor / ub_limit)
+                adjust_factor = ceil(ub_factor / ub_for_num)
+                align_factor = ceil(adjust_factor / ele_in_block)
+                self._ub_factor = align_factor * ele_in_block
+                if self._ub_factor > ub_limit:
+                    self._ub_factor = adjust_factor // ele_in_block * ele_in_block
+            else:
+                broadcast_axis = _find_bottoms_broadcast_axis()
+                shape_len = len(shape) - 1
+                under_broadcast_shape = 1
+                broadcast_axis = len(shape) + broadcast_axis
+                for index in range(shape_len, self._block_split_axis - 1, -1):
+                    if broadcast_axis == index and broadcast_axis != shape_len:
+                        is_miass_align = under_broadcast_shape % ele_in_block != 0
+                        is_cut_under_b = (under_broadcast_shape > N_LAST_BROADCAST_THRESHOLD or
+                                          (under_broadcast_shape > (ele_in_block * 2) and shape[index] < ele_in_block))\
+                                         and is_miass_align
+                        if is_cut_under_b:
+                            self._ub_split_axis = index + 1
+                            self._ub_factor = shape[index + 1]
+                            break
+                        if shape[index] > (ele_in_block * 3) and is_miass_align:
+                            self._ub_split_axis = index
+                            self._ub_factor = min(shape[index], ub_limit)
+                            break
+                    if shape[index] >= ub_limit:
+                        self._ub_split_axis = index
+                        self._ub_factor = ub_limit
+                        break
+                    else:
+                        ub_limit //= shape[index]
+                        under_broadcast_shape *= shape[index]
+                if self._ub_split_axis < 0:
+                    self._ub_split_axis = self._block_split_axis
+                    self._ub_factor = shape[self._ub_split_axis]
+
+        res = self._out
+        shape = util.shape_to_list(res.shape)
+        output_size = reduce(lambda x, y: x * y, shape)
+        block_dims = 1
+        if output_size > MULTI_CORE_THRESHOLD:
+            self._need_do_block = True
+            _calc_block_tiling()
+            _calc_ub_tiling()
+        else:
+            self._ub_split_axis = 0
+            self._ub_factor = shape[0]
+
     def _do_tiling(self):
         funcs = {TilingStrategy.ALL_CUT: self._do_tiling_all_cut,
                  TilingStrategy.NONE_CUT: self._do_tiling_none_cut,
                  TilingStrategy.ONE_CUT: self._do_tiling_one_cut,
                  TilingStrategy.STATIC: self._do_tiling_static,
+                 TilingStrategy.CONST: self._do_tiling_const,
                  }
         funcs[self._tiling_strategy]()
 
@@ -348,6 +483,26 @@ class ElewiseSchedule:
     def _do_tiling_static(self):
         self._do_tiling_one_cut()
 
+    def _do_tiling_const(self):
+        sch = self._schedule
+        res = self._out
+        block_axes = []
+        if self._need_do_block:
+            for i in range(self._block_split_axis):
+                block_axes.append([res.op.axis[i], i])
+            b_o, b_i = sch[res].split(res.op.axis[self._block_split_axis],
+                                      factor=self._block_factor)
+            block_axes.append([b_o, self._block_split_axis])
+            self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
+
+        if self._block_split_axis == self._ub_split_axis:
+            u_o, u_i = sch[res].split(b_i, factor=self._ub_factor)
+        else:
+            u_o, u_i = sch[res].split(res.op.axis[self._ub_split_axis],
+                                      factor=self._ub_factor)
+        self._compute_at_axis = u_o
+        self._emit_insn_axis = u_i
+
     def _calc_compute_inline(self):
         def _no_broadcast(_src_shapes, _dst_shapes):
             _src_shapes = util.shape_to_list(_src_shapes)
@@ -369,6 +524,14 @@ class ElewiseSchedule:
                     dst_shapes = tensor_i.shape[ub_idx:]
                     if _no_broadcast(src_shapes, dst_shapes):
                         self._compute_inline_broadcast.add(tensor_i)
+        if self._tiling_strategy == TilingStrategy.CONST:
+            ub_idx = self._ub_split_axis
+            for tensor_i in self._broadcast_tensors:
+                if tensor_i.op.tag != "broadcast":
+                    src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
+                    dst_shapes = tensor_i.shape[ub_idx:]
+                    if _no_broadcast(src_shapes, dst_shapes):
+                        self._compute_inline_tensors.add(tensor_i)
 
     def _do_compute_inline(self):
         sch = self._schedule
@@ -412,7 +575,8 @@ class ElewiseSchedule:
                 src_shapes = tensor_i.op.input_tensors[0].shape
                 dst_shapes = tensor_i.shape
                 for src_shape, dst_shape in zip(src_shapes, dst_shapes):
-                    self._constraints.add(src_shape <= dst_shape)
+                    if src_shape != dst_shape:
+                        self._constraints.add(src_shape <= dst_shape)
                 # add build args: constant_realize_extent_in_infer_bound
                 operation.add_build_arg(
                     "constant_realize_extent_in_infer_bound", False)
@@ -464,7 +628,7 @@ class ElewiseSchedule:
                     u_idx = self._tiling_case["ub_tiling_axis"]
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
                 tensor_bound = self._tensor_space // \
-                               DTYPE_BYTE_MAPPING[tensor_i.dtype]
+                    DTYPE_BYTE_MAPPING[tensor_i.dtype]
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple',
                                           src_shapes,
                                           tvm.expr.Call.PureIntrinsic,
@@ -474,7 +638,14 @@ class ElewiseSchedule:
                                                    storage_bound=[
                                                        tensor_bound]))
             else:
-                sch[tensor_i].emit_insn(param[0], param[1])
+                if param[1][0:6] == VECTOR:
+                    tensor_bound = self._tensor_space // \
+                        DTYPE_BYTE_MAPPING[tensor_i.dtype]
+                    sch[tensor_i].emit_insn(param[0], param[1],
+                                            attrs=dict(storage_bound=[
+                                                tensor_bound]))
+                else:
+                    sch[tensor_i].emit_insn(param[0], param[1])
 
     def _calc_double_buffer(self):
         if self._tiling_strategy == TilingStrategy.NONE_CUT:
@@ -497,7 +668,7 @@ class ElewiseSchedule:
             if broadcast_tensor in self._cache_write_tensor_map:
                 broadcast_tensor = \
                     self._cache_write_tensor_map[broadcast_tensor]
-            util.merge_value(self._mem_reuse_map,
+            util.merge_value(self._data_reuse_map,
                              broadcast_tensor,
                              input_tensor)
 
@@ -506,6 +677,10 @@ class ElewiseSchedule:
         for _a, _b in self._mem_reuse_map.items():
             for b_i in _b:
                 sch[_a].reused_by(b_i)
+        for _a, _b in self._data_reuse_map.items():
+            for b_i in _b:
+                sch[_a].reused_by(b_i)
+                sch[b_i].reused_by(reuse_data=True)
 
     def _calc_storage_bound(self):
         def _r_coexisting(_tensor):
@@ -515,9 +690,13 @@ class ElewiseSchedule:
             for _tensor_i in _tensor.op.input_tensors:
                 _need_space.append(_r_coexisting(_tensor_i))
             _current_space = len(dependent_map) + 1
-            if util.need_temp_space(_tensor) and \
-                    _tensor not in self._compute_inline_broadcast:
+            if (util.need_temp_space(_tensor) and _tensor not in self._compute_inline_broadcast) \
+                    or _need_external_space(_tensor):
                 _current_space += 1
+            if util.is_vsel_insn(_tensor):
+                _current_space += VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)
+            if util.is_vcmpsel_insn(_tensor):
+                _current_space += VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)
             _need_space.append(_current_space)
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
@@ -532,13 +711,34 @@ class ElewiseSchedule:
                 if not dependent_map[_tensor_i]:
                     dependent_map.pop(_tensor_i)
 
+        def _need_external_space(_tensor):
+            # pass memory reuse exists error, avoid it in schedule
+
+            exist_absorbable_broadcast = any([x in self._absorbable_broadcast_tensors
+                                              for x in _tensor.op.input_tensors])
+            if not exist_absorbable_broadcast:
+                return False
+
+            op_tag = util.get_dsl_insn(_tensor)
+            if op_tag in ("elewise_binary_sub", "elewise_binary_div"):
+                return True
+
+            if op_tag in ("elewise_binary_add", "elewise_binary_mul") and _tensor.dtype == "int32":
+                return True
+
         coexisting_quantities = []
         dependent_map = {}
         for tensor_i in self._out.op.input_tensors:
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
             current_space = len(dependent_map) + 1
-            if util.need_temp_space(self._out):
+
+            if util.is_vsel_insn(self._out):
+                current_space += VSEL_INPUT_NUMBER - len(self._out.op.input_tensors)
+            if util.is_vcmpsel_insn(self._out):
+                current_space += VCMPSEL_INPUT_NUMBER - len(self._out.op.input_tensors)
+
+            if util.need_temp_space(self._out) or _need_external_space(self._out):
                 current_space += 1
             coexisting_quantities.append(current_space)
 
@@ -556,7 +756,7 @@ class ElewiseSchedule:
             .union(self._cache_write_buffer_tensor_map.keys())
         for tensor_i in tensors:
             storage_bound = self._tensor_space // \
-                            DTYPE_BYTE_MAPPING[tensor_i.dtype]
+                DTYPE_BYTE_MAPPING[tensor_i.dtype]
             sch[tensor_i].set_storage_bound(storage_bound)
 
     def _check_tiling_case(self):
@@ -566,14 +766,48 @@ class ElewiseSchedule:
             if cur_bound is None:
                 return False
             lower_bound *= cur_bound
-        return self._tensor_space // self._max_dtype_bytes >= lower_bound
+        if not self._tensor_space // self._max_dtype_bytes >= lower_bound:
+            return False
+        if operation.get_context().get("mode") == SPECIAL_SCALAR:
+            if self._broadcast_tensors == self._absorbable_broadcast_tensors:
+                operation.get_context().add("support_absorbable_broadcast", True)
+            else:
+                return False
+        return True
 
     def _add_compile_info(self):
-        add_compile_info("_max_dtype_bytes", self._max_dtype_bytes)
-        add_compile_info("_coexisting_quantity", self._coexisting_quantity)
-        add_compile_info("_ub_size", self._ub_size)
-        add_compile_info("_core_num", util.get_core_num())
-        add_compile_info("_fusion", util.get_build_cfg())
+        def _update_compile_info(key, value, keep_max):
+            cur_value = get_compile_info().get(key)
+            if cur_value is None:
+                add_compile_info(key, value)
+            else:
+                if keep_max:
+                    add_compile_info(key, max(value, cur_value))
+                else:
+                    add_compile_info(key, min(value, cur_value))
+
+        if self._mode == CONST:
+            const_shapes = operation.get_context().get("const_shapes")
+            const_shape = operation.get_context().\
+                get_current_compute().get("const_shape")
+            if const_shapes is None:
+                const_shapes = [const_shape]
+            else:
+                const_shapes.append(const_shape)
+            operation.get_context().add("const_shapes", const_shapes)
+            block_dims = operation.get_context().get("const_block_dims")
+            if block_dims is None:
+                block_dims = [self._block_dims]
+            else:
+                block_dims.append(self._block_dims)
+            operation.get_context().add("const_block_dims", block_dims)
+        else:
+            _update_compile_info(CompileInfo.MAX_DTYPE, self._max_dtype_bytes,
+                                 True)
+            _update_compile_info(CompileInfo.COEXISTING_QUANTITY,
+                                 self._coexisting_quantity, True)
+            _update_compile_info(CompileInfo.UB_SIZE, self._ub_size, False)
+            add_compile_info(CompileInfo.CORE_NUM, util.get_core_num())
 
     def __dfs_sub_graph(self, out, visited_tensors: set):
         for tensor_i in out.op.input_tensors:

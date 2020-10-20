@@ -1,36 +1,32 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 unpack
 """
+import functools
 
-from functools import reduce as function_reduce
-
-import te.lang.cce
-from impl.copy_only import copy_only
-from impl.split_d import split_d
-from impl.util.util_select_op_base import gen_param, get_dynamic_param_in_json
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from impl import copy_only
+from impl import split_d
+from impl.util import util_select_op_base
 from te import tvm
-from te.platform import cce_params, insn_cmd
-from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
+from te.utils import para_check
+from te.utils import shape_util
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-boolean-expressions
-# pylint: disable=chained-comparison,too-many-locals
-# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=unused-argument,invalid-name,too-many-arguments
 def op_select_format(x, y, num, axis, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
@@ -45,14 +41,10 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     axis = axis % len(ori_shape)
 
     is_support_5hd = False
-    if ori_format in support_ori_format and len(
-            ori_shape) == 4 and ori_format[axis] != "C":
+    if ori_format in support_ori_format and len(ori_shape) == 4 and ori_format[axis] != "C":
         is_support_5hd = True
 
-    dtype_base = [
-        "float16", "float", "int32", "int8", "int16", "int64", "uint8",
-        "uint16", "uint32", "uint64"
-    ]
+    dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]
 
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
@@ -64,23 +56,17 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = gen_param(classify="input0",
-                       name="x",
-                       datatype=dtype_str,
-                       format=format_str)
-    output0 = gen_param(classify="output0",
-                        name="y",
-                        datatype=dtype_str,
-                        format=format_str)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=dtype_str, format=format_str)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=dtype_str, format=format_str)
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-def _check_params(shape, num, axis, format, dtype, kernel_name):
+def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     """
-    check the parameters including shape, num, axis, format, dtype, kernel_name
+    check the parameters including shape, num, axis, dformat, dtype, kernel_name
 
     Parameters
     ----------
@@ -90,7 +76,7 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
         the length of the dim axis.
     axis: int.
         the axis of unapck.
-    format: str.
+    dformat: str.
         the data format of input.
     dtype: str
         the data type.
@@ -101,11 +87,11 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
     -------
     None
     """
-    op_utils.check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
 
     # check format
     format_list = ("ND", "NHWC", "NCHW", "HWCN", "NC1HWC0")
-    if format == "NC1HWC0":
+    if dformat == "NC1HWC0":
         if len(shape) != 5:
             raise RuntimeError("NC1HWC0 shape length should be equal to 5")
         # index list of H W axis.
@@ -113,13 +99,12 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
         if axis not in suporrted_list:
             raise RuntimeError("NC1HWC0 supports unpack of N H W axis")
     else:
-        if format not in format_list:
+        if dformat not in format_list:
             raise RuntimeError("Format supports ND,NCHW,NHWC,HWCN and NC1HWC0")
 
     # check axis value
     if axis < -len(shape) or axis >= len(shape):
-        raise RuntimeError("axis= %d not in the union of [%d, %d) " %
-                           (axis, -len(shape), len(shape)))
+        raise RuntimeError("axis= %d not in the union of [%d, %d) " % (axis, -len(shape), len(shape)))
 
     # check num value
     if num is None:
@@ -127,24 +112,21 @@ def _check_params(shape, num, axis, format, dtype, kernel_name):
     if num is None:
         raise RuntimeError("Cannot infer num value from shape.")
     if num != shape[axis]:
-        raise RuntimeError("Num should be equal to length of dim axis %d" %
-                           shape[axis])
+        raise RuntimeError("Num should be equal to length of dim axis %d" % shape[axis])
 
     # 1536B means stack holding the param provided to the platform,
     # 1 param takes 8 bytes, needs Multiple output param and 1 input param
     # mini has more parameters (offset, index) than cloud
-    compile_plat = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
     if compile_plat in ("Ascend310", ):
         if num > (1536 // 3) // 8 - 1:
             raise RuntimeError("Exceeds stack holding the parameters for mini")
     else:
         if num > 1536 // 8 - 1:
-            raise RuntimeError(
-                "Exceeds stack holding the parameters for cloud")
+            raise RuntimeError("Exceeds stack holding the parameters for cloud")
 
-    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
-                  "uint32", "uint64", "float16", "float32")
-    op_utils.check_dtype(dtype, check_list, param_name="x")
+    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
 
 def _get_public_param(dtype):
@@ -165,28 +147,26 @@ def _get_public_param(dtype):
     device_core_num: int
         the numbers of blockdim.
     """
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.UB_SIZE) // 2
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 2
     # Convert bits to Bytes
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
     # gm->ub maximum copy data at a time
     total_ele = ub_size_bytes // dtype_size
 
     # 32 means one block size(32 Bytes), divide by 32 to get the numbers
     # of data that can be stored in one block.
-    one_block_bytes_size = cce_params.VECTOR_INST_BLOCK_WIDTH // \
-                           cce_params.VECTOR_INST_BLOCK_NUM
+    one_block_bytes_size = tbe_platform.VECTOR_INST_BLOCK_WIDTH // tbe_platform.VECTOR_INST_BLOCK_NUM
     ele_each_block = one_block_bytes_size // dtype_size
 
     # get core num according to the product
-    device_core_num = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
     return total_ele, ele_each_block, device_core_num
 
 
-def check_use_special_optimize(dtype, afterdim, flag=False):
-    """Function: use to optimize special scene.
+def _check_use_special_optimize(dtype, afterdim, flag=False):
+    """
+    Function: use to optimize special scene.
     """
     is_dtype_support = dtype in ("float16", "float32")
     is_shape_support = (afterdim in (8, 16, 32, 64) or afterdim < 8)
@@ -210,7 +190,8 @@ def check_use_special_optimize(dtype, afterdim, flag=False):
 
 
 def _index_offset(shape, axis, offset, *index):
-    """Compute the offset of index along one dimension.
+    """
+    Compute the offset of index along one dimension.
 
     Parameters
     ----------
@@ -260,14 +241,13 @@ def _tiling_axis(shape, dtype):
 
     tiling_shape = [dim for dim in shape]
     if shape[-1] % ele_each_block != 0:
-        last_ele = ((shape[-1] + ele_each_block - 1) //
-                    ele_each_block) * ele_each_block
+        last_ele = ((shape[-1] + ele_each_block - 1) // ele_each_block) * ele_each_block
         tiling_shape[-1] = int(last_ele)
 
     split_axis = 0
     split_factor = 1
     for index, _ in enumerate(tiling_shape):
-        ele_cnt = function_reduce(lambda x, y: x * y, tiling_shape[index:])
+        ele_cnt = functools.reduce(lambda x, y: x * y, tiling_shape[index:])
         if ele_cnt <= total_ele:
             split_axis = index - 1
             split_factor = total_ele // ele_cnt
@@ -284,7 +264,8 @@ def _tiling_axis(shape, dtype):
     return split_axis, split_factor
 
 
-@fusion_manager.register("unpack")
+# pylint: disable=unnecessary-lambda
+@tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     """
     unpack a tensor into `num` tensors along axis dimension.
@@ -313,11 +294,9 @@ def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     virtual_node:
         the tensors of virtual output node, tensor type is TVM tensor.
     """
-    input_shape = te.lang.cce.util.shape_to_list(input_place.shape)
+    input_shape = shape_util.shape_to_list(input_place.shape)
 
-    gm2ub_tensor = tvm.compute(input_shape,
-                               lambda *index: input_place(*index),
-                               name="gm2ub_tensor")
+    gm2ub_tensor = tvm.compute(input_shape, lambda *index: input_place(*index), name="gm2ub_tensor")
 
     output_shape = input_shape
     for index, _ in enumerate(output_shape):
@@ -328,13 +307,12 @@ def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     ub2gm_tensor_list = []
     for i in range(num):
         ub2ub_tensor = tvm.compute(output_shape,
-                                   lambda *index: gm2ub_tensor(*_index_offset(
-                                       output_shape, axis, offset, *index)),
+                                   lambda *index: gm2ub_tensor(*_index_offset(output_shape, axis, offset, *index)),
                                    name=''.join(['tensor', str(i)]))
         ub2ub_tensor_list.append(ub2ub_tensor)
 
         ub2gm_tensor = tvm.compute(output_shape,
-                                   lambda *index: ub2ub_tensor(*index),
+                                   lambda *index, tensor_in=ub2ub_tensor: tensor_in(*index),
                                    name=''.join(['res', str(i)]))
         ub2gm_tensor_list.append(ub2gm_tensor)
 
@@ -347,14 +325,12 @@ def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
             virtual_tensor += ub2gm_tensor(*index)
         return virtual_tensor
 
-    virtual_node = tvm.compute(output_shape,
-                               lambda *index: _add_compute(*index),
-                               name="virtual_node")
+    virtual_node = tvm.compute(output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
     return gm2ub_tensor, ub2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
-@fusion_manager.register("unpack")
+@tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     """
     unpack a tensor into `num` tensors along axis dimension.
@@ -381,7 +357,7 @@ def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     virtual_node:
         the tensors of virtual output node, tensor type is TVM tensor.
     """
-    input_shape = te.lang.cce.util.shape_to_list(input_place.shape)
+    input_shape = shape_util.shape_to_list(input_place.shape)
     output_shape = input_shape
     for index, _ in enumerate(output_shape):
         output_shape[index] = output_shape[index] if index != axis else 1
@@ -391,13 +367,12 @@ def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     ub2gm_tensor_list = []
     for i in range(num):
         gm2ub_tensor = tvm.compute(output_shape,
-                                   lambda *index: input_place(*_index_offset(
-                                       output_shape, axis, offset, *index)),
+                                   lambda *index: input_place(*_index_offset(output_shape, axis, offset, *index)),
                                    name=''.join(['tensor', str(i)]))
         gm2ub_tensor_list.append(gm2ub_tensor)
 
         ub2gm_tensor = tvm.compute(output_shape,
-                                   lambda *index: gm2ub_tensor(*index),
+                                   lambda *index, tensor_in=gm2ub_tensor: tensor_in(*index),
                                    name=''.join(['res', str(i)]))
         ub2gm_tensor_list.append(ub2gm_tensor)
 
@@ -410,15 +385,14 @@ def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
             virtual_tensor += ub2gm_tensor(*index)
         return virtual_tensor
 
-    virtual_node = tvm.compute(output_shape,
-                               lambda *index: _add_compute(*index),
-                               name="virtual_node")
+    virtual_node = tvm.compute(output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
     return gm2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
 def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
-    """Create unpack schedule.
+    """
+    Create unpack schedule.
 
     Parameters
     ----------
@@ -450,8 +424,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     if befordim >= ele_each_block and afterdim < ele_each_block:
         befordim_in = ele_each_block // afterdim + 1
         befordim_out = (befordim + befordim_in - 1) // befordim_in
-        while (befordim + befordim_out -
-               1) // befordim_out * afterdim < ele_each_block:
+        while (befordim + befordim_out - 1) // befordim_out * afterdim < ele_each_block:
             befordim_out -= 1
         if befordim_out >= device_core_num:
             befordim_out = device_core_num
@@ -471,44 +444,34 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
         for tensor in ub2ub_tensor_list:
             sch[tensor].set_scope(tbe_platform.scope_ubuf)
 
-        befordim_outer, befordim_inner = sch[virtual_node].split(
-            virtual_node.op.axis[0], nparts=befordim_out)
-        afterdim_outer, afterdim_inner = sch[virtual_node].split(
-            virtual_node.op.axis[2], factor=afterdim_in)
+        befordim_outer, befordim_inner = sch[virtual_node].split(virtual_node.op.axis[0], nparts=befordim_out)
+        afterdim_outer, afterdim_inner = sch[virtual_node].split(virtual_node.op.axis[2], factor=afterdim_in)
 
-        sch[virtual_node].reorder(befordim_outer, afterdim_outer,
-                                  befordim_inner, afterdim_inner)
+        sch[virtual_node].reorder(befordim_outer, afterdim_outer, befordim_inner, afterdim_inner)
         fused_axis = sch[virtual_node].fuse(befordim_outer, afterdim_outer)
         sch[virtual_node].bind(fused_axis, block_idx)
 
-        new_shape = ((befordim + befordim_out - 1) // befordim_out, num,
-                     afterdim_in)
+        new_shape = ((befordim + befordim_out - 1) // befordim_out, num, afterdim_in)
         split_axis, split_factor = _tiling_axis(new_shape, dtype)
         if split_axis == 0:
-            axis_outer, axis_inner = sch[virtual_node].split(
-                befordim_inner, factor=split_factor)
+            axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
         else:
-            axis_outer, axis_inner = sch[virtual_node].split(
-                afterdim_inner, factor=split_factor)
+            axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
 
         sch[gm2ub_tensor].compute_at(sch[virtual_node], axis_outer)
-        sch[gm2ub_tensor].emit_insn(gm2ub_tensor.op.axis[split_axis],
-                                    insn_cmd.DMA_COPY)
+        sch[gm2ub_tensor].emit_insn(gm2ub_tensor.op.axis[split_axis], tbe_platform.DMA_COPY)
 
         for i in range(num):
             sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
             sch[ub2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
 
-            sch[ub2ub_tensor_list[i]].emit_insn(
-                ub2ub_tensor_list[i].op.axis[split_axis], insn_cmd.DATA_MOV)
-            sch[ub2gm_tensor_list[i]].emit_insn(
-                ub2gm_tensor_list[i].op.axis[split_axis], insn_cmd.DMA_COPY)
+            sch[ub2ub_tensor_list[i]].emit_insn(ub2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DATA_MOV)
+            sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
 
-        sch[virtual_node].emit_insn(axis_inner, insn_cmd.PHONY_INSN)
+        sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
     else:
-        gm2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_copy(
-            input_place, y, num, axis)
+        gm2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_copy(input_place, y, num, axis)
         res_op = []
         build_list = [input_place]
         for ub2gm_tensor in ub2gm_tensor_list:
@@ -526,8 +489,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
                 afterdim_in = afterdim
             elif befordim == 1:
                 befordim_out = befordim
-                afterdim_in = (afterdim + device_core_num -
-                               1) // device_core_num
+                afterdim_in = (afterdim + device_core_num - 1) // device_core_num
             else:
                 afterdim_outer = device_core_num // befordim
                 afterdim_in = (afterdim + afterdim_outer - 1) // afterdim_outer
@@ -535,52 +497,41 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
                     afterdim_in += 1
                 befordim_out = befordim
 
-            befordim_outer, befordim_inner = sch[virtual_node].split(
-                virtual_node.op.axis[0], nparts=befordim_out)
-            afterdim_outer, afterdim_inner = sch[virtual_node].split(
-                virtual_node.op.axis[2], factor=afterdim_in)
+            befordim_outer, befordim_inner = sch[virtual_node].split(virtual_node.op.axis[0], nparts=befordim_out)
+            afterdim_outer, afterdim_inner = sch[virtual_node].split(virtual_node.op.axis[2], factor=afterdim_in)
 
-            sch[virtual_node].reorder(befordim_outer, afterdim_outer,
-                                      befordim_inner, afterdim_inner)
+            sch[virtual_node].reorder(befordim_outer, afterdim_outer, befordim_inner, afterdim_inner)
             fused_axis = sch[virtual_node].fuse(befordim_outer, afterdim_outer)
             sch[virtual_node].bind(fused_axis, block_idx)
 
-            new_shape = ((befordim + befordim_out - 1) // befordim_out, 1,
-                         afterdim_in)
+            new_shape = ((befordim + befordim_out - 1) // befordim_out, 1, afterdim_in)
             split_axis, split_factor = _tiling_axis(new_shape, dtype)
             if split_axis == 0:
-                axis_outer, axis_inner = sch[virtual_node].split(
-                    befordim_inner, factor=split_factor)
+                axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
             else:
-                axis_outer, axis_inner = sch[virtual_node].split(
-                    afterdim_inner, factor=split_factor)
+                axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
         else:
             split_axis, split_factor = _tiling_axis(output_shape, dtype)
-            axis_outer, axis_inner = sch[virtual_node].split(
-                virtual_node.op.axis[split_axis], factor=split_factor)
+            axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
 
         for i in range(num):
             storage_axis = split_axis - 1 if split_axis != 0 else 0
-            sch[gm2ub_tensor_list[i]].storage_align(
-                gm2ub_tensor_list[i].op.axis[storage_axis], ele_each_block, 0)
+            sch[gm2ub_tensor_list[i]].storage_align(gm2ub_tensor_list[i].op.axis[storage_axis], ele_each_block, 0)
 
             sch[gm2ub_tensor_list[i]].double_buffer()
             sch[gm2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
             sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
 
-            sch[gm2ub_tensor_list[i]].emit_insn(
-                gm2ub_tensor_list[i].op.axis[split_axis], insn_cmd.DMA_COPY)
-            sch[ub2gm_tensor_list[i]].emit_insn(
-                ub2gm_tensor_list[i].op.axis[split_axis], insn_cmd.DMA_COPY)
+            sch[gm2ub_tensor_list[i]].emit_insn(gm2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
+            sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
 
-        sch[virtual_node].emit_insn(axis_inner, insn_cmd.PHONY_INSN)
+        sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
     return sch, build_list
 
 
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.DYNAMIC_OUTPUT,
-                          op_utils.OPTION_ATTR_INT, op_utils.REQUIRED_ATTR_INT,
-                          op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
@@ -604,8 +555,8 @@ def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
-    format = x.get("format")
-    _check_params(shape, num, axis, format, dtype, kernel_name)
+    dformat = x.get("format")
+    _check_params(shape, num, axis, dformat, dtype, kernel_name)
 
     # infer the value of num
     real_axis = axis + len(shape) if axis < 0 else axis
@@ -620,33 +571,22 @@ def unpack(x, y, num=None, axis=0, kernel_name="unpack"):
         afterdim *= after_dim
     reshape = (beferdim, shape[real_axis], afterdim)
 
-    _, _, is_use_split = check_use_special_optimize(dtype,
-                                                    afterdim,
-                                                    flag=False)
+    _, _, is_use_split = _check_use_special_optimize(dtype, afterdim, flag=False)
     reshape_input = x.copy()
     reshape_input["shape"] = reshape
     real_axis = 1
     # only 1 output tensor, so output equals to input
     if num == 1:
-        copy_only(reshape_input, reshape_input, kernel_name)
+        copy_only.copy_only(reshape_input, reshape_input, kernel_name)
     # use split
     elif is_use_split:
-        split_d(reshape_input,
-                y,
-                split_dim=real_axis,
-                num_split=num,
-                kernel_name=kernel_name)
+        split_d.split_d(reshape_input, y, split_dim=real_axis, num_split=num, kernel_name=kernel_name)
     else:
-        new_dtype, afterdim, _ = check_use_special_optimize(dtype,
-                                                            afterdim,
-                                                            flag=False)
+        new_dtype, afterdim, _ = _check_use_special_optimize(dtype, afterdim, flag=False)
         new_shape = (beferdim, reshape[real_axis], afterdim)
 
-        input_place = tvm.placeholder(new_shape,
-                                      name="input_place",
-                                      dtype=new_dtype)
-        sch, build_list = _unpack_schedule(input_place, reshape, y, num,
-                                           real_axis, dtype)
+        input_place = tvm.placeholder(new_shape, name="input_place", dtype=new_dtype)
+        sch, build_list = _unpack_schedule(input_place, reshape, y, num, real_axis, dtype)
 
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)

@@ -1,31 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 scatter_nd_d
 """
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
 from impl import scatter_nd_d_help
-from impl import constant_util as constant
+from impl import constant_util
 from impl import common_util
-from te.utils.op_utils import *
-
 
 
 # pylint: disable=invalid-name, too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
     """
     the main function of scatter_nd_d
@@ -53,8 +53,7 @@ def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
     indice_len = scatter_nd_d_help.get_indice_len(indices_shape)
     update_each_size = scatter_nd_d_help.get_shape_total_number(
         x.get("shape")) // indice_len
-    block_dim, loop_cycle = get_blockdim_and_loop_cycle(x, shape,
-                                                        update_each_size)
+    block_dim, loop_cycle = get_blockdim_and_loop_cycle(x, shape, update_each_size)
     output_shape = scatter_nd_d_help.get_shape_total_number(shape)
     output_spilts = output_shape // update_each_size
     last_spilt = output_spilts - output_spilts // block_dim*block_dim
@@ -75,7 +74,7 @@ def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
         output_size.set_as(cycle_each_block*process.update_each_size)
 
         with tik_instance.if_scope(tik.all(block_dim == \
-                                           constant.MAX_BLOCK_NUMBER,
+                                           constant_util.MAX_BLOCK_NUMBER,
                                            last_spilt != 0,
                                            block_id < last_spilt)):
             cycle_each_block.set_as(loop_cycle + 1)
@@ -110,10 +109,8 @@ def get_blockdim_and_loop_cycle(updates, shape_out, update_each_size):
 
     Returns
     -------
-    None
     """
-    blockdim = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.CORE_NUM)
+    blockdim = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     data_size = common_util.get_data_size(updates.get("dtype").lower())
     output_shape = scatter_nd_d_help.get_shape_total_number(shape_out)
     output_spilts = output_shape // update_each_size
@@ -121,7 +118,7 @@ def get_blockdim_and_loop_cycle(updates, shape_out, update_each_size):
     # update_each_size less than 32b,use one core,
     # beacuse Less than 32B alignment to prevent multi-core coverage,
     # using single-core processing
-    if update_each_size*data_size < constant.BLOCK_SIZE:
+    if update_each_size*data_size < constant_util.BLOCK_SIZE:
         return 1, output_spilts
     if output_spilts < blockdim:
         return output_spilts, output_spilts // output_spilts
@@ -163,20 +160,20 @@ def check_param(indices, updates, output_y, shape, kernel_name):
     y_dtype = output_y.get("dtype").lower()
 
 
-    check_shape(indices_shape, param_name="indices")
-    check_dtype(indices_dtype, (constant.DATA_TYPE_INT32), param_name="indices")
+    para_check.check_shape(indices_shape, param_name="indices")
+    para_check.check_dtype(indices_dtype, (constant_util.DATA_TYPE_INT32), param_name="indices")
 
-    check_shape(updates_shape, param_name="updates")
-    check_dtype(updates_dtype, (
-        constant.DATA_TYPE_FP16, constant.DATA_TYPE_FP32,
-        constant.DATA_TYPE_INT32,
-        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8), param_name="updates")
+    para_check.check_shape(updates_shape, param_name="updates")
+    para_check.check_dtype(updates_dtype, (
+        constant_util.DATA_TYPE_FP16, constant_util.DATA_TYPE_FP32,
+        constant_util.DATA_TYPE_INT32,
+        constant_util.DATA_TYPE_INT8, constant_util.DATA_TYPE_UINT8), param_name="updates")
 
-    check_shape(y_shape, param_name="output_y")
-    check_dtype(y_dtype, (
-        constant.DATA_TYPE_FP16, constant.DATA_TYPE_FP32,
-        constant.DATA_TYPE_INT32,
-        constant.DATA_TYPE_INT8, constant.DATA_TYPE_UINT8), param_name="output_y")
+    para_check.check_shape(y_shape, param_name="output_y")
+    para_check.check_dtype(y_dtype, (
+        constant_util.DATA_TYPE_FP16, constant_util.DATA_TYPE_FP32,
+        constant_util.DATA_TYPE_INT32,
+        constant_util.DATA_TYPE_INT8, constant_util.DATA_TYPE_UINT8), param_name="output_y")
 
     if updates_dtype != y_dtype:
         raise RuntimeError("updates's datatype must be the same as output_y's datatype")
@@ -216,7 +213,7 @@ def _check_1d_updates(indices, updates, output_y):
     check if updates are 1-D shape or not
     """
     # only support v100 cloud
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ("Ascend910",):
+    if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend910",):
         return False
     indices_shape = indices.get("shape")
     updates_shape = updates.get("shape")
@@ -277,11 +274,9 @@ def _get_core_var_elements(var):
     """
     shape = var.get("shape")
     dtype = var.get("dtype")
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    blockdim = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.CORE_NUM)
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.UB_SIZE)
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
+    blockdim = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     half_ub_bytes = ub_size_bytes // 2
     max_elements = half_ub_bytes // dtype_size
 
@@ -302,9 +297,8 @@ def _get_batch_elements(updates, core_var_elements):
     """
     dtype = updates.get("dtype")
     shape = updates.get("shape")
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.UB_SIZE)
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
     left_ub_bytes = ub_size_bytes - core_var_elements*dtype_size
     num = left_ub_bytes // (dtype_size + 4)  # +4 for indices
     if num > shape[0]:

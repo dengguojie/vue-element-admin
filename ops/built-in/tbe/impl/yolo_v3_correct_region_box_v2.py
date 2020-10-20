@@ -1,31 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+yolo_v3_correct_region_box_v2
+"""
 # pylint: disable=too-many-lines,import-error,no-self-use
-"""
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-yolo_v3_correct_region_box
-"""
-
 import math
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-from impl.constant_util import BLOCK_SIZE
-from impl.constant_util import DATA_SIZE_TWO
-from impl.constant_util import DATA_SIZE_FOUR
-from impl.constant_util import VECTOR_BYTE_SIZE
-from impl.constant_util import STRIDE_ONE
-from impl.constant_util import DATA_TYPE_FP16
+
+from impl import constant_util as constant
 
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
@@ -95,7 +91,7 @@ class CorrectBoxComputer():
         """
         self.instance = tik.Tik(tik.Dprofile())
         self.one_max_size = (
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) -
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
             RESERVE_SIZE) // 8
         self.batch = input_dict.get("box_info")[0].get("shape")[0]
         self.dtype = input_dict.get("box_info")[0].get("dtype")
@@ -115,11 +111,11 @@ class CorrectBoxComputer():
         self.resize_origin_img_to_net = input_dict.get("resize_origin_img_to_net")
 
         self.input_dict = input_dict
-        self.dsize = DATA_SIZE_FOUR
-        if self.dtype == DATA_TYPE_FP16:
-            self.dsize = DATA_SIZE_TWO
-        self.len_32b = BLOCK_SIZE // self.dsize
-        self.mask = VECTOR_BYTE_SIZE // self.dsize
+        self.dsize = constant.DATA_SIZE_FOUR
+        if self.dtype == constant.DATA_TYPE_FP16:
+            self.dsize = constant.DATA_SIZE_TWO
+        self.len_32b = constant.BLOCK_SIZE // self.dsize
+        self.mask = constant.VECTOR_BYTE_SIZE // self.dsize
 
         self.height = []
         self.width = []
@@ -129,8 +125,8 @@ class CorrectBoxComputer():
             self.width.append(box_info.get("shape")[3])
 
         self.img_info = self.instance.Tensor(self.dtype,
-                                             (self.batch * 4 + BLOCK_SIZE,),
-                                             scope=tik.scope_gm,
+                                             (self.batch * 4 + constant.BLOCK_SIZE,),
+                                             scope=tbe_platform.scope_gm,
                                              name="img_info")
 
         self.coord_data = []
@@ -145,11 +141,11 @@ class CorrectBoxComputer():
         self.inter_coords = self.instance.Tensor(
             self.dtype, self.get_shape(
                 (self.batch, 4, self.boxes * self.totalwh), True),
-            scope=tik.scope_gm, name="inter_coords", is_workspace=True)
+            scope=tbe_platform.scope_gm, name="inter_coords", is_workspace=True)
         self.inter_classes = self.instance.Tensor(
             self.dtype, self.get_shape(
                 (self.batch, self.classes, self.boxes * self.totalwh), True),
-            scope=tik.scope_gm, name="inter_classes", is_workspace=True)
+            scope=tbe_platform.scope_gm, name="inter_classes", is_workspace=True)
 
         self.hwtail_len = self.height[-1] * self.width[-1] % (self.len_32b)
         self.block_num, self.outer_loop, self.outer_tail = self.get_block_param()
@@ -164,20 +160,20 @@ class CorrectBoxComputer():
             adj_hw = self.get_adj_hw(self.height[i], self.width[i])
             self.coord_data.append(self.instance.Tensor(
                 self.dtype, (self.batch, self.boxes * 4, adj_hw),
-                scope=tik.scope_gm, name="coord_data" + str(i + 1)))
+                scope=tbe_platform.scope_gm, name="coord_data" + str(i + 1)))
             self.windex.append(self.instance.Tensor(
-                self.dtype, (adj_hw,), scope=tik.scope_gm,
+                self.dtype, (adj_hw,), scope=tbe_platform.scope_gm,
                 name="windex" + str(i + 1)))
             self.hindex.append(self.instance.Tensor(
-                self.dtype, (adj_hw,), scope=tik.scope_gm,
+                self.dtype, (adj_hw,), scope=tbe_platform.scope_gm,
                 name="hindex" + str(i + 1)))
             adj_hw = self.get_adj_hw(self.boxes * self.height[i], self.width[i])
             self.obj_datas.append(self.instance.Tensor(
-                self.dtype, (self.batch, adj_hw), scope=tik.scope_gm,
+                self.dtype, (self.batch, adj_hw), scope=tbe_platform.scope_gm,
                 name="obj_data" + str(i + 1)))
             self.classes_data.append(self.instance.Tensor(
                 self.dtype, (self.batch, self.classes, adj_hw),
-                scope=tik.scope_gm, name="classes_data" + str(i + 1)))
+                scope=tbe_platform.scope_gm, name="classes_data" + str(i + 1)))
 
     def get_block_param(self):
         """
@@ -192,7 +188,7 @@ class CorrectBoxComputer():
           None
           """
 
-        block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         if block_num > self.batch:
             outer_loop = 1
             block_num = self.batch
@@ -250,7 +246,7 @@ class CorrectBoxComputer():
         length = len(old_shape)
 
         if length == 1:
-            old_shape[0] += BLOCK_SIZE
+            old_shape[0] += constant.BLOCK_SIZE
             return tuple(old_shape)
 
         if not need_low_dim:
@@ -264,10 +260,10 @@ class CorrectBoxComputer():
             size = self.dsize * old_shape[length - 1]
             unit_rev = size
 
-        if size % BLOCK_SIZE == 0:
+        if size % constant.BLOCK_SIZE == 0:
             rev = 0
         else:
-            rev = BLOCK_SIZE // unit_rev + 1
+            rev = constant.BLOCK_SIZE // unit_rev + 1
         old_shape[0] += rev
 
         return tuple(old_shape)
@@ -319,14 +315,14 @@ class CorrectBoxComputer():
           None
           """
         tail_idx = self.instance.Scalar(name="tail_idx", init_value=0)
-        if (param['h'] * param['w'] * self.dsize) % BLOCK_SIZE != 0:
+        if (param['h'] * param['w'] * self.dsize) % constant.BLOCK_SIZE != 0:
             with self.instance.if_scope(param['box_id'] == self.boxes - 1):
                 tail_idx.set_as(
-                    (param['burlen'] - 2) * (BLOCK_SIZE // self.dsize)
-                    + (param['h'] * param['w']) % (BLOCK_SIZE // self.dsize))
+                    (param['burlen'] - 2) * (constant.BLOCK_SIZE // self.dsize)
+                    + (param['h'] * param['w']) % (constant.BLOCK_SIZE // self.dsize))
                 param['burlen'].set_as(param['burlen'] - 1)
                 with self.instance.for_range(0,
-                                             BLOCK_SIZE // self.dsize) as loop:
+                                             constant.BLOCK_SIZE // self.dsize) as loop:
                     tmp_scalar = self.instance.Scalar(self.dtype)
                     tmp_scalar.set_as(param['ub_b'][tail_idx + loop])
                     param['last_32b'][loop].set_as(tmp_scalar)
@@ -337,7 +333,7 @@ class CorrectBoxComputer():
                 param['h'] * param['box_id']],
             param['ub_b'], SID, NBURST_ONE, param['burlen'], GAP_ZERO,
             GAP_ZERO)
-        if (param['h'] * param['w'] * self.dsize) % BLOCK_SIZE != 0:
+        if (param['h'] * param['w'] * self.dsize) % constant.BLOCK_SIZE != 0:
             with self.instance.if_scope(param['box_id'] == self.boxes - 1):
                 self.instance.data_move(
                     self.inter_coords[batch, param['co_id'],
@@ -386,14 +382,14 @@ class CorrectBoxComputer():
           -------
           None
           """
-        if tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
+        if tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.instance.vdiv(self.mask, dst, divisor, dividend, repeat,
-                               STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
+                               constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
                                STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
         else:
             with self.instance.new_stmt_scope():
                 tmp_tensor = self.instance.Tensor(self.dtype, dividend.shape,
-                                                  scope=tik.scope_ubuf,
+                                                  scope=tbe_platform.scope_ubuf,
                                                   name="tmp_tensor")
                 # 1/dividend
                 self.instance.vec_rec(self.mask, tmp_tensor, dividend, repeat,
@@ -425,10 +421,10 @@ class CorrectBoxComputer():
           -------
           burlen: data move nburst
           """
-        if (length * self.dsize) % BLOCK_SIZE == 0:
-            return (length * self.dsize) // BLOCK_SIZE
+        if (length * self.dsize) % constant.BLOCK_SIZE == 0:
+            return (length * self.dsize) // constant.BLOCK_SIZE
 
-        return (length * self.dsize) // BLOCK_SIZE + 1
+        return (length * self.dsize) // constant.BLOCK_SIZE + 1
 
     def get_repeat(self, length):
         """
@@ -441,10 +437,10 @@ class CorrectBoxComputer():
           -------
           repeats: vector instructs repeat times
           """
-        if (length * self.dsize) % VECTOR_BYTE_SIZE == 0:
-            return (length * self.dsize) // VECTOR_BYTE_SIZE
+        if (length * self.dsize) % constant.VECTOR_BYTE_SIZE == 0:
+            return (length * self.dsize) // constant.VECTOR_BYTE_SIZE
 
-        return (length * self.dsize) // VECTOR_BYTE_SIZE + 1
+        return (length * self.dsize) // constant.VECTOR_BYTE_SIZE + 1
 
     def get_x_y_params(self, img_info):
         """
@@ -470,28 +466,28 @@ class CorrectBoxComputer():
 
         with self.instance.new_stmt_scope():
             param['ub_d'] = self.instance.Tensor(self.dtype,
-                                                 (VECTOR_BYTE_SIZE,),
-                                                 scope=tik.scope_ubuf,
+                                                 (constant.VECTOR_BYTE_SIZE,),
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_d")
             param['ub_e'] = self.instance.Tensor(self.dtype,
-                                                 (VECTOR_BYTE_SIZE,),
-                                                 scope=tik.scope_ubuf,
+                                                 (constant.VECTOR_BYTE_SIZE,),
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_e")
             param['ub_f'] = self.instance.Tensor(self.dtype,
-                                                 (VECTOR_BYTE_SIZE,),
-                                                 scope=tik.scope_ubuf,
+                                                 (constant.VECTOR_BYTE_SIZE,),
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_f")
             param['ub_g'] = self.instance.Tensor(self.dtype,
-                                                 (VECTOR_BYTE_SIZE,),
-                                                 scope=tik.scope_ubuf,
+                                                 (constant.VECTOR_BYTE_SIZE,),
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_g")
             param['lgt_tensor'] = self.instance.Tensor(self.dtype,
-                                                       (VECTOR_BYTE_SIZE,),
-                                                       scope=tik.scope_ubuf,
+                                                       (constant.VECTOR_BYTE_SIZE,),
+                                                       scope=tbe_platform.scope_ubuf,
                                                        name="lgt_tensor")
             param['ret_tensor'] = self.instance.Tensor(self.dtype,
-                                                       (VECTOR_BYTE_SIZE,),
-                                                       scope=tik.scope_ubuf,
+                                                       (constant.VECTOR_BYTE_SIZE,),
+                                                       scope=tbe_platform.scope_ubuf,
                                                        name="ret_tensor")
 
             new_h, new_w = self.get_new_h_w(img_info, param)
@@ -605,7 +601,7 @@ class CorrectBoxComputer():
         self.newton_div(param['ub_e'], param['ub_e'], param['ub_g'], REPEAT_ONE)
 
         sel = self.instance.Tensor("uint16", (8, ), name="sel",
-                                   scope=tik.scope_ubuf)
+                                   scope=tbe_platform.scope_ubuf)
         self.instance.vec_dup(8, sel, 0, 1, 8)
         self.instance.vec_cmpv_lt(sel, param['ub_e'], param['ub_d'], 1, 8, 8)
 
@@ -617,7 +613,7 @@ class CorrectBoxComputer():
                                tmp_scalar, REPEAT_ONE, STRIDE_EIGHT,
                                STRIDE_EIGHT)
         self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
-                              param['lgt_tensor'], param['ub_d'], STRIDE_ONE)
+                              param['lgt_tensor'], param['ub_d'], constant.STRIDE_ONE)
         new_w.set_as(param['ret_tensor'][0])
         # get new h
         tmp_scalar.set_as(img_info[2])
@@ -627,7 +623,7 @@ class CorrectBoxComputer():
         tmp_scalar.set_as(img_info[0])
         param['lgt_tensor'][0].set_as(tmp_scalar)
         self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
-                              param['ub_e'], param['lgt_tensor'], STRIDE_ONE)
+                              param['ub_e'], param['lgt_tensor'], constant.STRIDE_ONE)
         new_h.set_as(param['ret_tensor'][0])
         return new_h, new_w
 
@@ -644,8 +640,8 @@ class CorrectBoxComputer():
            -------
            ub_bias: a tensor,store bias
            """
-        ub_bias = self.instance.Tensor(self.dtype, (VECTOR_BYTE_SIZE,),
-                                       scope=tik.scope_ubuf,
+        ub_bias = self.instance.Tensor(self.dtype, (constant.VECTOR_BYTE_SIZE,),
+                                       scope=tbe_platform.scope_ubuf,
                                        name="ub_bias")
         t_scalar = self.instance.Scalar(self.dtype)
         biases = self.input_dict['biases'][param['box_id'] - 1]
@@ -765,16 +761,16 @@ class CorrectBoxComputer():
         shape = self.one_max_size // self.dsize
         with self.instance.for_range(0, self.boxes * self.coords) as cycle:
             param['ub_a'] = self.instance.Tensor(self.dtype, (shape,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_a")
             param['ub_b'] = self.instance.Tensor(self.dtype, (shape,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_b")
             param['ub_c'] = self.instance.Tensor(self.dtype, (shape,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_c")
-            param['last_32b'] = self.instance.Tensor(self.dtype, (BLOCK_SIZE,),
-                                                     scope=tik.scope_ubuf,
+            param['last_32b'] = self.instance.Tensor(self.dtype, (constant.BLOCK_SIZE,),
+                                                     scope=tbe_platform.scope_ubuf,
                                                      name="last_32b")
 
             param['co_id'] = self.instance.Scalar()
@@ -930,11 +926,9 @@ class CorrectBoxComputer():
                                     SID, NBURST_ONE, param['burlen'],
                                     GAP_ZERO, GAP_ZERO)
 
-            # a = x + windex
             self.instance.vec_add(self.mask, param['ub_a'], param['ub_a'],
                                   param['ub_b'], repeat,
                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
-            # a = (x + windex)*(1/lw)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_a'],
                                    (1.0 / param['w']), repeat,
                                    STRIDE_EIGHT, STRIDE_EIGHT)
@@ -963,11 +957,9 @@ class CorrectBoxComputer():
                                     param['burlen'],
                                     GAP_ZERO, GAP_ZERO)
 
-            # a = y + hindex
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_a'],
                                   param['ub_b'], repeat,
                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
-            # a = (y + hindex)*(1/lh)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    (1.0 / param['h']), repeat,
                                    STRIDE_EIGHT, STRIDE_EIGHT)
@@ -1102,21 +1094,21 @@ class CorrectBoxComputer():
             param['ub_a'] = self.instance.Tensor(self.dtype,
                                                  (
                                                      self.one_max_size // self.dsize,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_a")
             param['ub_b'] = self.instance.Tensor(self.dtype,
                                                  (
                                                      self.one_max_size // self.dsize,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_b")
             param['ub_c'] = self.instance.Tensor(self.dtype,
                                                  (
                                                      self.one_max_size // self.dsize,),
-                                                 scope=tik.scope_ubuf,
+                                                 scope=tbe_platform.scope_ubuf,
                                                  name="ub_c")
             param['last_32b'] = self.instance.Tensor(self.dtype,
-                                                     (BLOCK_SIZE,),
-                                                     scope=tik.scope_ubuf,
+                                                     (constant.BLOCK_SIZE,),
+                                                     scope=tbe_platform.scope_ubuf,
                                                      name="last_32b")
 
             param['faces'] = self.instance.Scalar("int32")
@@ -1127,7 +1119,7 @@ class CorrectBoxComputer():
 
             param['burlen'] = self.instance.Scalar()
             param['burlen'].set_as(
-                (param['faces'] * param['adj_hw'] * self.dsize) // BLOCK_SIZE)
+                (param['faces'] * param['adj_hw'] * self.dsize) // constant.BLOCK_SIZE)
 
             # move coords gm to ub_a
             self.instance.data_move(param['ub_a'],
@@ -1305,12 +1297,10 @@ class CorrectBoxComputer():
                                     NBURST_ONE,
                                     param['burlen'], GAP_ZERO, GAP_ZERO)
 
-            # a = y + hindex
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_a'][start_idx],
                                   param['ub_b'], repeat,
                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
 
-            # a = (y + hindex)*(1/lh)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    (1.0 / param['h']), repeat,
                                    STRIDE_EIGHT, STRIDE_EIGHT)

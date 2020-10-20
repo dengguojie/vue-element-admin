@@ -1,19 +1,20 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic_lstm
 """
-
 import os
 import json
 import stat
@@ -25,7 +26,7 @@ from topi.cce import util
 from te import tvm
 from te import platform as cce
 from te.platform.cce_build import build_config
-
+from te.utils.error_manager import error_manager_vector
 
 def sigmoid_compute(input_x):
     """
@@ -38,8 +39,8 @@ def sigmoid_compute(input_x):
     mul_support = cce.cce_conf.api_check_support(
         "te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
-        raise RuntimeError(
-            "Input dtype only support float16 while input dtype is float32")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM",
+                                                      "Input dtype only support float16 while input dtype is float32")
 
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
@@ -158,7 +159,7 @@ def _get_lstm_tiling(m_size, k_size, n_size):
     key = "_".join(str(i) for i in (m_size*16, k_size*16, n_size*16))
 
     if key not in lstm_tiling_map:
-        raise RuntimeError("Unsupported lstm shape tiling!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "Unsupported lstm shape tiling!")
     return lstm_tiling_map[key]
 
 
@@ -169,7 +170,7 @@ def check_dtype(input_x, weight, bias, output_h):
     """
     if input_x["dtype"] != "float32" or weight["dtype"] != "float32" \
        or weight["dtype"] != "float32" or output_h["dtype"] != "float32":
-        raise RuntimeError("x, w, b, output_h supports dtype float32 only!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "x, w, b, output_h supports dtype float32 only!")
     return
 
 
@@ -179,19 +180,19 @@ def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
     :return:
     """
     if shape_x_input[2] != shape_output[2]:
-        raise RuntimeError("x, output_h shape is wrong, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "x, output_h shape is wrong, please check!")
     if shape_w_input[0] != shape_x_input[1] + shape_output[1]:
-        raise RuntimeError("x, w, output_h shape is wrong, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "x, w, output_h shape is wrong, please check!")
     if shape_w_input[1] != 4 * shape_output[1]:
-        raise RuntimeError("w, output_h shape is wrong, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, output_h shape is wrong, please check!")
     if (shape_b_input[0] + 15) // 16 != shape_w_input[1]:
-        raise RuntimeError("w, b shape is wrong, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, b shape is wrong, please check!")
     return
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 @util.check_input_type(dict, dict, dict, dict, str)
-def dynamic_lstm(input_x, weight, bias, 
+def dynamic_lstm(input_x, weight, bias,
                  output_h, kernel_name="dynamic_lstm"):
     """
     x : dict
@@ -306,7 +307,6 @@ def dynamic_lstm(input_x, weight, bias,
                        lambda *indices: weight_fp16(*indices),
                        name='b_l1')
 
-    # shape_a_z_bigz_1 = (1, m_size, k_size, 16, 16)
     a_l0a = tvm.compute(shape_a_z_bigz, lambda *indices: a_l1(*indices), name="a_l0a")
     b_l0b = tvm.compute(shape_b, lambda *indices: b_l1(*indices), name="b_l0b")
 

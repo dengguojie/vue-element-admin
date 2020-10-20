@@ -1,25 +1,25 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file images_ops_shape_fns.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef GE_IMAGES_OPS_SHAPE_FNS_H
-#define GE_IMAGES_OPS_SHAPE_FNS_H
+/*!
+ * \file images_ops_shape_fns.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_UTIL_IMAGES_OPS_SHAPE_FNS_H_
+#define OPS_BUILT_IN_OP_PROTO_UTIL_IMAGES_OPS_SHAPE_FNS_H_
 
 #include <string>
 
@@ -32,7 +32,7 @@ namespace ge {
  * @param output_name, the name of output
  * @return status whether infer shape success
  */
-graphStatus ColorspaceShapeFn(Operator &op, const std::string output_name);
+graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name);
 
 /**
  * ResizeShapeFn, infereshape funtion of image resize op
@@ -42,9 +42,7 @@ graphStatus ColorspaceShapeFn(Operator &op, const std::string output_name);
  * @param output_name, the name of output
  * @return status whether infer shape success
  */
-graphStatus ResizeShapeFn(Operator &op,
-                          const std::string input_name,
-                          const std::string size_input_name,
+graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std::string size_input_name,
                           const std::string output_name);
 
 /**
@@ -56,18 +54,15 @@ graphStatus ResizeShapeFn(Operator &op,
  * @param output_name, the name of output
  * @return status whether set output shape success
  */
-graphStatus SetOutputToSizedImage(Operator &op,
-                                  const int64_t batch_dim,
-                                  const std::string size_input_name,
-                                  const int64_t channel_dim,
-                                  const std::string output_name);
+graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const std::string size_input_name,
+                                  const int64_t channel_dim, const std::string output_name);
 
 /**
  * EncodeImageShapeFn, infereshape funtion of EncodeImage op
  * @param op, Operators that need to reason about shape
  * @return status whether infer shape success
  */
-graphStatus EncodeImageShapeFn(Operator &op);
+graphStatus EncodeImageShapeFn(Operator& op);
 
 /**
  * EncodeImageShapeFn, infereshape funtion of EncodeImage op
@@ -75,9 +70,9 @@ graphStatus EncodeImageShapeFn(Operator &op);
  * @param unknown_dim_val, the definithion of UNKNOWN_DIM
  * @return status whether infer shape success
  */
-template<typename T = int64_t>
-bool DimsAllEqualOrUnknown(std::initializer_list<T> && inputs, T unknown_dim_val = UNKNOWN_DIM);
+template <typename T = int64_t>
+bool DimsAllEqualOrUnknown(std::initializer_list<T>&& inputs, T unknown_dim_val = UNKNOWN_DIM);
 
-}
+}  // namespace ge
 
-#endif
+#endif  // OPS_BUILT_IN_OP_PROTO_UTIL_IMAGES_OPS_SHAPE_FNS_H_

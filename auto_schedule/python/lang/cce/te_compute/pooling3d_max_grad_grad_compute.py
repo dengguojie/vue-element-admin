@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache Licenses for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pooling3d_max_grad_grad compute
 """
-
 import math
 from te import tvm
 
@@ -29,6 +28,7 @@ MAX_KERNEL_SIZE = 10 * 10 * 10
 MIN_VAL_MAP = {"float16": -65504.0, "float32": 3.4e-38, "double": 1.7e-308}
 SIZEOF_DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
 DTYPE_MAP = {"float16": "uint16", "float32": "uint32", "double": "uint64"}
+
 
 # 'pylint: disable=too-many-locals, too-many-arguments, invalid-name,
 # 'pylint: disable=unused-argument,too-many-statements, cell-var-from-loop
@@ -57,11 +57,9 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             dtype=orig_input.dtype)
         return tvm.select(cond, min_val)
 
-
     def _pad_zero(cond):
         fixed_val = tvm.const(0, dtype=orig_input.dtype)
         return tvm.select(cond, fixed_val)
-
 
     def _copy_orig_input():
         def __select_orig_in(indices):
@@ -79,7 +77,7 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
 
         def __fake_orig_in(i):
             return tx_orig_in_c[i] + tx_orig_in_ft[i] + tx_orig_in_bk[i] + \
-                   tx_orig_in_t[i] + tx_orig_in_b[i] + tx_orig_in_l[i] + tx_orig_in_r[i]
+                tx_orig_in_t[i] + tx_orig_in_b[i] + tx_orig_in_l[i] + tx_orig_in_r[i]
 
         tx_orig_in_c = tvm.compute(shape_trans, lambda *i: __select_orig_in(i),
                                    name="tx_orig_in_c", tag="tx_orig_in_c")
@@ -98,7 +96,6 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         tx_orig_in = tvm.compute(shape_trans, lambda *i: __fake_orig_in(i),
                                  name="tx_orig_in", tag="tx_orig_in")
         return tx_orig_in
-
 
     def _copy_grad_grad():
         def __select_grad_grad(indices):
@@ -123,40 +120,35 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                                    name="tx_grad_grad", tag="tx_grad_grad")
         return tx_grad_grad
 
-
     def _copy_orig_output():
         tx_orig_out = tvm.compute(shape_orig_out, lambda *i: orig_output(i[0], i[2], i[1], i[3], i[4], i[5]),
-                                     name="tx_orig_out", tag="tx_orig_out")
+                                  name="tx_orig_out", tag="tx_orig_out")
         return tx_orig_out
-
 
     def _copy_decrease_kernel():
         tx_decrease_kernel = tvm.compute(shape_assist, lambda *i: assist_tensor(i[0], i[2], i[1], i[3], i[4], i[5]),
                                          name="tx_decrease_kernel", tag="tx_decrease_kernel")
         return tx_decrease_kernel
 
-
     def _extend_orig_in():
         tx_orig_in_ext = tvm.compute(shape_trans_ext, lambda *i:
-                                                             tx_orig_in(i[0], i[1],
-                                                                        i[2] // k_d * s_d + i[2] % k_d,
-                                                                        i[3] // k_h * s_h + i[3] % k_h,
-                                                                        i[4] // k_w * s_w + i[4] % k_w,
-                                                                        i[5]),
-                                                                        name="tx_orig_in_ext", tag="tx_orig_in_ext")
+                                     tx_orig_in(i[0], i[1],
+                                                i[2] // k_d * s_d + i[2] % k_d,
+                                                i[3] // k_h * s_h + i[3] % k_h,
+                                                i[4] // k_w * s_w + i[4] % k_w,
+                                                i[5]),
+                                     name="tx_orig_in_ext", tag="tx_orig_in_ext")
         return tx_orig_in_ext
-
 
     def _extend_grad_grad():
         tx_grad_grad_ext = tvm.compute(shape_trans_ext, lambda *i:
-                                                                tx_grad_grad(i[0], i[1],
-                                                                            i[2] // k_d * s_d + i[2] % k_d,
-                                                                            i[3] // k_h * s_h + i[3] % k_h,
-                                                                            i[4] // k_w * s_w + i[4] % k_w,
-                                                                            i[5]),
-                                                                            name="tx_grad_grad_ext", tag="tx_grad_grad_ext")
+                                       tx_grad_grad(i[0], i[1],
+                                                    i[2] // k_d * s_d + i[2] % k_d,
+                                                    i[3] // k_h * s_h + i[3] % k_h,
+                                                    i[4] // k_w * s_w + i[4] % k_w,
+                                                    i[5]),
+                                       name="tx_grad_grad_ext", tag="tx_grad_grad_ext")
         return tx_grad_grad_ext
-
 
     def _extend_orig_output():
         def __select_orig_output(i):
@@ -165,7 +157,6 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                                       name="tx_orig_out_ext", tag="tx_orig_out_ext")
         return tx_orig_out_ext
 
-
     def _extend_decrease_kernel():
         def __select_decrease_kernel(i):
             return tx_decrease_kernel(0, 0, i[2] % k_d, i[3] % k_h, i[4] % k_w, i[5])
@@ -173,24 +164,21 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                                              name="tx_decrease_kernel_ext", tag="tx_decrease_kernel_ext")
         return tx_decrease_kernel_ext
 
-
     def _build_tx_all_zero():
         fixed_vale = tvm.const(0.0, dtype="float16")
         return tvm.compute(shape_trans_ext, lambda *i: fixed_vale, name="tx_all_zero", tag="tx_all_zero")
-
 
     def _compare_mask():
         tx_mask = tvm.compute(shape_trans_ext, lambda *i: tx_orig_out_ext(*i) == tx_orig_in_ext(*i),
                               name="tx_mask", tag="tx_mask")
         return tx_mask
 
-
     def _construct_sparse_matrix():
-        tx_decrease_sparse_matrix = tvm.compute(shape_trans_ext, lambda *i: tvm.select(tx_mask(*i),
-                                                             tx_decrease_kernel_ext(*i), tx_all_zero(*i)),
+        tx_decrease_sparse_matrix = tvm.compute(shape_trans_ext,
+                                                lambda *i: tvm.select(tx_mask(*i),
+                                                                      tx_decrease_kernel_ext(*i), tx_all_zero(*i)),
                                                 name="tx_decrease_sparse_matrix", tag="tx_decrease_sparse_matrix")
         return tx_decrease_sparse_matrix
-
 
     def _reduce_decrease_sparse_matrix():
         def __reduce_w():
@@ -203,20 +191,19 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                 return tx_rw
 
             tx_rw1 = tvm.compute(
-                     shape,
-                     lambda *i: tvm.max(tx_decrease_sparse_matrix(i[0], i[1], i[2], i[3], i[4] * k_w, i[5]),
-                                        tx_decrease_sparse_matrix(i[0], i[1], i[2], i[3], i[4] * k_w + 1, i[5])),
-                     name="tx_rw1", tag="reduce_max")
+                shape,
+                lambda *i: tvm.max(tx_decrease_sparse_matrix(i[0], i[1], i[2], i[3], i[4] * k_w, i[5]),
+                                   tx_decrease_sparse_matrix(i[0], i[1], i[2], i[3], i[4] * k_w + 1, i[5])),
+                name="tx_rw1", tag="reduce_max")
             tx_rw = tx_rw1
             for j in range(2, k_w):
                 tx_rwx = tvm.compute(
-                         shape,
-                         lambda *i: tvm.max(tx_decrease_sparse_matrix[i[0], i[1], i[2], i[3], i[4] * k_w + j, i[5]],
-                                            tx_rw[i[0], i[1], i[2], i[3], i[4], i[5]]),
-                         name="tx_rw" + str(j), tag="reduce_max")
+                    shape,
+                    lambda *i: tvm.max(tx_decrease_sparse_matrix[i[0], i[1], i[2], i[3], i[4] * k_w + j, i[5]],
+                                       tx_rw[i[0], i[1], i[2], i[3], i[4], i[5]]),
+                    name="tx_rw" + str(j), tag="reduce_max")
                 tx_rw = tx_rwx
             return tx_rw
-
 
         def __reduce_h():
             shape = (n, c1, d_p_ext, o_h, o_w, c0)
@@ -246,7 +233,6 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                 tx_rh = tx_rhx
             return tx_rh
 
-
         def __reduce_d():
             shape = (n, c1, o_d, o_h, o_w, c0)
 
@@ -266,10 +252,10 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
             tx_rd = tx_rd1
             for j in range(2, k_d):
                 tx_rdx = tvm.compute(
-                         shape,
-                         lambda *i: tvm.max(tx_rh[i[0], i[1], i[2] * k_d + j, i[3], i[4], i[5]],
-                                            tx_rd[i[0], i[1], i[2], i[3], i[4], i[5]]),
-                         name="tx_rd" + str(j), tag="reduce_max")
+                    shape,
+                    lambda *i: tvm.max(tx_rh[i[0], i[1], i[2] * k_d + j, i[3], i[4], i[5]],
+                                       tx_rd[i[0], i[1], i[2], i[3], i[4], i[5]]),
+                    name="tx_rd" + str(j), tag="reduce_max")
                 tx_rd = tx_rdx
             return tx_rd
 
@@ -286,20 +272,17 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                                          name="tx_max_broadcasted", tag="tx_max_broadcasted")
         return tx_max_broadcasted
 
-
     def _construct_mask_no_dup():
         tx_mask_no_dup = tvm.compute(shape_trans_ext,
                                      lambda *i: (tx_max_broadcasted(*i) == tx_decrease_sparse_matrix(*i)),
                                      name="tx_mask_no_dup", tag="tx_mask_no_dup")
         return tx_mask_no_dup
 
-
     def _fill_grad_by_mask():
         tx_grad_by_mask = tvm.compute(shape_trans_ext,
                                       lambda *i: tvm.select(tx_mask_no_dup(*i), tx_grad_grad_ext(*i), tx_all_zero(*i)),
                                       name="tx_grad_by_mask", tag="tx_grad_by_mask")
         return tx_grad_by_mask
-
 
     def _reduce_grad():
         def __reduce_grad_w():
@@ -314,16 +297,15 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                 shape,
                 lambda *i: tvm.sum(tx_grad_by_mask[i[0], i[1], i[2], i[3], i[4] * k_w, i[5]],
                                    tx_grad_by_mask[i[0], i[1], i[2], i[3], i[4] * k_w + 1, i[5]]),
-                                   name="tx_grad_rw1", tag="reduce_grad_max")
+                name="tx_grad_rw1", tag="reduce_grad_max")
             tx_grad_rw = tx_grad_rw1
             for j in range(2, k_w):
                 tx_grad_rwx = tvm.compute(
-                              shape, lambda *i: tvm.sum(tx_grad_by_mask[i[0], i[1], i[2], i[3], i[4] * k_w + j, i[5]],
-                              tx_grad_rw[i[0], i[1], i[2], i[3], i[4], i[5]]),
-                              name="tx_grad_rw" + str(j), tag="reduce_grad_max")
+                    shape, lambda *i: tvm.sum(tx_grad_by_mask[i[0], i[1], i[2], i[3], i[4] * k_w + j, i[5]],
+                                              tx_grad_rw[i[0], i[1], i[2], i[3], i[4], i[5]]),
+                    name="tx_grad_rw" + str(j), tag="reduce_grad_max")
                 tx_grad_rw = tx_grad_rwx
             return tx_grad_rw
-
 
         def __reduce_grad_h():
             shape = (n, c1, d_p_ext, o_h, o_w, c0)
@@ -335,18 +317,17 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
 
             tx_grad_rh1 = tvm.compute(shape,
                                       lambda *i: tvm.sum(tx_grad_rw[i[0], i[1], i[2], i[3] * k_h, i[4], i[5]],
-                                      tx_grad_rw[i[0], i[1], i[2], i[3] * k_h + 1, i[4], i[5]]),
+                                                         tx_grad_rw[i[0], i[1], i[2], i[3] * k_h + 1, i[4], i[5]]),
                                       name="tx_grad_rh1", tag="reduce_grad_max")
             tx_grad_rh = tx_grad_rh1
             for j in range(2, k_h):
                 tx_grad_rhx = tvm.compute(
-                              shape,
-                              lambda *i: tvm.sum(tx_grad_rw[i[0], i[1], i[2], i[3] * k_h + j, i[4], i[5]],
-                                                 tx_grad_rh[i[0], i[1], i[2], i[3], i[4], i[5]]),
-                              name="tx_grad_rh" + str(j), tag="reduce_grad_max")
+                    shape,
+                    lambda *i: tvm.sum(tx_grad_rw[i[0], i[1], i[2], i[3] * k_h + j, i[4], i[5]],
+                                       tx_grad_rh[i[0], i[1], i[2], i[3], i[4], i[5]]),
+                    name="tx_grad_rh" + str(j), tag="reduce_grad_max")
                 tx_grad_rh = tx_grad_rhx
             return tx_grad_rh
-
 
         def __reduce_grad_d():
             shape = (n, c1, o_d, o_h, o_w, c0)
@@ -375,16 +356,13 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         tx_grad_rd = __reduce_grad_d()
         return tx_grad_rd
 
-
     def _is_fast_path():
         return k_d == 1 and k_h == 1 and k_w == 1
-
 
     def _fast_path_res():
         tx_res = tvm.compute(shape_orig_out, lambda *i: tx_grad_grad(i[0], i[1], i[2] * s_d, i[3] * s_h, i[4] * s_w, i[5]),
                              name="fast_path_res", tag="fast_path_res")
         return tx_res
-
 
     def _build_pooling_params():
         pooling_params = {}
@@ -411,7 +389,6 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
             pooling_params["fast_path"] = "False"
         return pooling_params
 
-
     def _get_dim_param():
         n = orig_input.shape[0].value
         d = orig_input.shape[1].value
@@ -421,14 +398,11 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         c0 = orig_input.shape[5].value
         return n, d, c1, h, w, c0
 
-
     def _get_kernel_param():
         return ksize[0], ksize[1], ksize[2]
 
-
     def _get_stride_param():
         return strides[0], strides[1], strides[2]
-
 
     def _copy_res_out():
         res = tvm.compute(shape_out, lambda *i: tx_res[i[0], i[2], i[1], i[3], i[4], i[5]],
@@ -436,17 +410,15 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                           attrs={"pooling_params": pooling_params, "template": "max_pool3d_grad_grad"})
         return res
 
-
     def _detect_align_axis(pooling_params):
         pooling_params["align_axis"] = "axis_w"
-        #if all kernel is 1, no need to align, so just form low address to high address.
+        # if all kernel is 1, no need to align, so just form low address to high address.
         if k_d == 1 and k_h == 1 and k_w == 1:
             return
         if d_p > h_p and d_p > w_p:
             pooling_params["align_axis"] = "axis_d"
         if h_p > w_p and h_p > d_p:
             pooling_params["align_axis"] = "axis_h"
-
 
     def _calc_padding_ext(pooling_params):
         if pooling_params["align_axis"] == "axis_w":
@@ -455,7 +427,6 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
             return 0, 2000, 0
         elif pooling_params["align_axis"] == "axis_d":
             return 2000, 0, 0
-
 
     if _check_max_grad_grad_params():
         raise RuntimeError("Failed to check max grad grad params.")
@@ -506,6 +477,7 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         tx_grad_by_mask = _fill_grad_by_mask()
         tx_res = _reduce_grad()
     return _copy_res_out()
+
 
 def _check_max_grad_grad_params():
     return False
@@ -570,5 +542,4 @@ def _get_tensorflow_out_and_pad(padding_mode, in_size_d, in_size_h, in_size_w,
         out_size_w = (in_size_w - window[2] + 1 + (stride[2] - 1)) // stride[2]
 
     return out_size_d, out_size_h, out_size_w, pad_front, pad_back, pad_top, \
-           pad_bottom, pad_left, pad_right
-
+        pad_bottom, pad_left, pad_right

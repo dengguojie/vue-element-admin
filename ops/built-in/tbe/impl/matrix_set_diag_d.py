@@ -1,28 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 MatrixSetDiagD: Returns a batched matrix tensor with new batched diagonal values
 """
-from __future__ import absolute_import
 
 from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # define a scalar, value = -1
 SCALAR_NEGATIVE_ONE = -1
@@ -60,7 +60,7 @@ def _check_tensor_size(shape_x, shape_y):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("matrix_set_diag_d")
+@tbe_platform.fusion_manager.fusion_manager.register("matrix_set_diag_d")
 def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
                               output_matrix, kernel_name="matrix_set_diag_d"):
     """
@@ -88,30 +88,32 @@ def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
     res: TVM tensor
         the result of matrix_set_diag_d_compute
     """
-    shape_input = te.lang.cce.util.shape_to_list(input_matrix.shape)
+    shape_input = shape_util.shape_to_list(input_matrix.shape)
     input_dtype = input_matrix.dtype
 
     if input_dtype in ("int8", "uint8"):
-        input_matrix = te.lang.cce.cast_to(input_matrix, "float16")
-        input_diagonal = te.lang.cce.cast_to(input_diagonal, "float16")
-        input_help = te.lang.cce.cast_to(input_help, "float16")
+        input_matrix = tbe.cast_to(input_matrix, "float16")
+        input_diagonal = tbe.cast_to(input_diagonal, "float16")
+        input_help = tbe.cast_to(input_help, "float16")
 
-    diag_tmp = te.lang.cce.broadcast(input_diagonal, shape_input)
-    help_tmp = te.lang.cce.vadds(input_help, SCALAR_NEGATIVE_ONE)
-    help_y = te.lang.cce.vabs(help_tmp)
+    diag_tmp = tbe.broadcast(input_diagonal, shape_input)
+    help_tmp = tbe.vadds(input_help, SCALAR_NEGATIVE_ONE)
+    help_y = tbe.vabs(help_tmp)
 
-    res_vmul_x = te.lang.cce.vmul(input_matrix, help_y)
-    res_vmul_y = te.lang.cce.vmul(diag_tmp, input_help)
-    res = te.lang.cce.vadd(res_vmul_x, res_vmul_y)
+    res_vmul_x = tbe.vmul(input_matrix, help_y)
+    res_vmul_y = tbe.vmul(diag_tmp, input_help)
+    res = tbe.vadd(res_vmul_x, res_vmul_y)
 
     if input_dtype in ("int8", "uint8"):
-        res = te.lang.cce.cast_to(res, input_dtype, f1628IntegerFlag=True)
+        res = tbe.cast_to(res, input_dtype, f1628IntegerFlag=True)
 
     return res
 
 
 # pylint: disable=locally-disabled,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
                       kernel_name="matrix_set_diag_d"):
     """
@@ -141,9 +143,9 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     help_matrix = input_help.get("shape")
     dtype = input_matrix.get("dtype")
 
-    check_shape(shape_input, param_name="input_matrix")
-    check_shape(shape_diag, param_name="input_diagonal")
-    check_shape(help_matrix, param_name="input_help")
+    para_check.check_shape(shape_input, param_name="input_matrix")
+    para_check.check_shape(shape_diag, param_name="input_diagonal")
+    para_check.check_shape(help_matrix, param_name="input_help")
 
 
     # Check help_matrix can really help.
@@ -162,9 +164,9 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     input_dtype = dtype.lower()
     input_dtype_diagonal = dtype_diagonal.lower()
     input_dtype_help = dtype_help.lower()
-    check_dtype(input_dtype, check_list, param_name="input_matrix")
-    check_dtype(input_dtype_diagonal, check_list, param_name="input_diagonal")
-    check_dtype(input_dtype_help, check_list, param_name="input_help")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_matrix")
+    para_check.check_dtype(input_dtype_diagonal, check_list, param_name="input_diagonal")
+    para_check.check_dtype(input_dtype_help, check_list, param_name="input_help")
 
     data_a = tvm.placeholder(shape_input, name="data_a", dtype=input_dtype)
     data_b = tvm.placeholder(shape_b_newshape, name="data_b", dtype=input_dtype)
@@ -173,8 +175,8 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     res = matrix_set_diag_d_compute(data_a, data_b, help_x,
                                     output_matrix, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_a, data_b, help_x, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

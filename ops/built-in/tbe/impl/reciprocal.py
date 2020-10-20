@@ -1,30 +1,28 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reciprocal
 """
-
 import json
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from topi import generic
-from topi.cce import util
-import te.lang.cce
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from functools import reduce as reduceIns
-from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -73,24 +71,24 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
     return json.dumps(ini_dict, indent=4)
 
 
-@fusion_manager.register("reciprocal")
+@tbe_platform.fusion_manager.fusion_manager.register("reciprocal")
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         dtype = input_x.dtype
-        shape = te.lang.cce.util.shape_to_list(input_x.shape)
+        shape = shape_util.shape_to_list(input_x.shape)
         if dtype == "float16":
-            input_x = te.lang.cce.cast_to(input_x, "float32")
-        data_one = te.lang.cce.broadcast(tvm.const(1, "float32"), shape)
-        res = te.lang.cce.vdiv(data_one, input_x)
+            input_x = tbe.cast_to(input_x, "float32")
+        data_one = tbe.broadcast(tvm.const(1, "float32"), shape)
+        res = tbe.vdiv(data_one, input_x)
         if dtype == "float16":
-            res = te.lang.cce.cast_to(res, "float16")
+            res = tbe.cast_to(res, "float16")
     else:
-        res = te.lang.cce.vrec(input_x)
+        res = tbe.vrec(input_x)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     """
     algorithm: reciprocal
@@ -110,25 +108,25 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     -------
     None
     """
-    shape = util.scalar2tensor_one(input_x.get("shape"))
-    check_shape(shape, param_name="input_x")
+    shape = shape_util.scalar2tensor_one(input_x.get("shape"))
+    para_check.check_shape(shape, param_name="input_x")
 
     check_list = ["float16", "float32"]
     inp_dtype = input_x.get("dtype").lower()
-    check_dtype(inp_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(inp_dtype, check_list, param_name="input_x")
 
-    shape = util.shape_refine(shape)
+    shape = shape_util.shape_refine(shape)
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=inp_dtype)
 
     res = reciprocal_compute(data, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

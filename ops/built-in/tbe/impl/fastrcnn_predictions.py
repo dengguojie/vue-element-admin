@@ -1113,7 +1113,7 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
     final_tensor = InitFinalTensorV100(tik_instance, topk_k)
 
     # extract scores and classes from sorted proposals
-    if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM) == "Ascend310":
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310":
         with tik_instance.for_range(0, middle_tensor.cal_topk_k) as i:
             final_tensor.sorted_scores_ub[i].set_as(middle_tensor.data_ub_proposal[i * EIGHT
                                                                                    + FOUR])
@@ -1191,11 +1191,19 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
                        ONE, ONE, ONE, ONE)
 
     # cut out topk * FOUR from topk * SIXTEEN
-    tik_instance.vmrgch(
-        final_tensor.sorted_rois_ub_str1,
-        final_tensor.sorted_rois_ub_str,
-        TWO * topk_k // SIXTEEN)
-
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend615":
+        mask_final = tik_instance.Tensor('uint16', (1, 48), name='mask_final',
+                                         scope=tik.scope_ubuf)
+        mask_num = tik_instance.Scalar('uint16', name='mask_num',
+                                       init_value=15)   # mask of vreduce
+        tik_instance.vector_dup(48, mask_final, mask_num, 1, 1, 8)
+        tik_instance.vreduce(128, final_tensor.sorted_rois_ub_str1,
+                              final_tensor.sorted_rois_ub_str,
+                              mask_final, topk_k // SIXTEEN, 1, 4, 0, 0, None, 'normal')
+    else:
+        tik_instance.vmrgch(final_tensor.sorted_rois_ub_str1,
+                            final_tensor.sorted_rois_ub_str,
+                            TWO * topk_k // SIXTEEN)
     # copy ub to gm
     tik_instance.data_move(gm_tensor.gm_sorted_rois,
                            final_tensor.sorted_rois_ub_str1,

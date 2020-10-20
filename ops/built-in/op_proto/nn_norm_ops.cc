@@ -1,21 +1,22 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file nn_norm_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file nn_norm_ops.cpp
+ * \brief
  */
 #include "inc/nn_norm_ops.h"
 #include <string>
@@ -24,8 +25,7 @@
 #include "op_log.h"
 #include "./util/error_util.h"
 
-namespace ge
-{
+namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(LogSoftmaxGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
@@ -40,12 +40,10 @@ COMMON_INFER_FUNC_REG(LogSoftmaxGrad, LogSoftmaxGradInferShape);
 // --------------------------LogSoftmaxGrad END---------------------
 
 //-------------SparseSoftmaxCrossEntropyWithLogits----------------
-IMPLEMT_VERIFIER(SparseSoftmaxCrossEntropyWithLogits,
-                 SparseSoftmaxCrossEntropyWithLogitsVerify) {
+IMPLEMT_VERIFIER(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsVerify) {
   return GRAPH_SUCCESS;
 }
-IMPLEMT_INFERFUNC(SparseSoftmaxCrossEntropyWithLogits,
-                  SparseSoftmaxCrossEntropyWithLogitsInferShape) {
+IMPLEMT_INFERFUNC(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsInferShape) {
   TensorDesc tensordesc_loss = op.GetOutputDesc(0);
   TensorDesc tensordesc_backprop = op.GetOutputDesc(1);
   ge::Shape shape_fetures = op.GetInputDesc(0).GetShape();
@@ -60,10 +58,8 @@ IMPLEMT_INFERFUNC(SparseSoftmaxCrossEntropyWithLogits,
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits,
-                SparseSoftmaxCrossEntropyWithLogitsInferShape);
-VERIFY_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits,
-                SparseSoftmaxCrossEntropyWithLogitsVerify);
+INFER_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsInferShape);
+VERIFY_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsVerify);
 //-------------SparseSoftmaxCrossEntropyWithLogits----------------
 
 // ---------------------------SoftmaxV2-----------------------------
@@ -93,15 +89,13 @@ COMMON_INFER_FUNC_REG(LogSoftmaxV2, LogSoftmaxV2InferShape);
 
 // ----------------SigmoidCrossEntropyWithLogitsGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsGradInferShape) {
-  if(InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "target",
-                                           "gradient")) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "target", "gradient")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
 }
 
-COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad,
-                      SigmoidCrossEntropyWithLogitsGradInferShape);
+COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWithLogitsGradInferShape);
 // ---------------SigmoidCrossEntropyWithLogitsGrad END-----------------
 
 // -------------------SigmoidCrossEntropyWithLogits---------------------
@@ -116,13 +110,42 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsInferShape) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits,
-                      SigmoidCrossEntropyWithLogitsInferShape);
+COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogitsInferShape);
 // ------------------SigmoidCrossEntropyWithLogits END------------------
+
+// -------------------SigmoidCrossEntropyWithLogitsV2---------------------
+IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
+  TensorDesc outputTensordesc = op.GetOutputDesc("loss");
+
+  std::string reduction = "mean";
+  if (op.GetAttr("reduction", reduction) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "reduction");
+    OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
+    return GRAPH_FAILED;
+  }
+
+  if (reduction == "none") {
+    // if reduction == "none" , output shape == x.shape
+    OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
+    outputTensordesc.SetShape(op.GetInputDesc("predict").GetShape());
+  } else {
+    // if reduction == "mean" or reduction == "sum" , output a scalar
+    std::vector<int64_t> oShapeVector;
+    Shape oShape(oShapeVector);
+    outputTensordesc.SetShape(ge::Shape(oShape));
+  }
+
+  outputTensordesc.SetDataType(op.GetInputDesc("predict").GetDataType());
+  (void)op.UpdateOutputDesc("loss", outputTensordesc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsV2, SigmoidCrossEntropyWithLogitsV2InferShape);
+// ------------------SigmoidCrossEntropyWithLogitsV2 END------------------
 
 // ----------------SmoothL1LossGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(SmoothL1LossGradInferShape) {
-  if(InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "gradient")) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "gradient")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -192,8 +215,7 @@ COMMON_INFER_FUNC_REG(BinaryCrossEntropyGrad, BinaryCrossEntropyGradInferShape);
 // --------------------------BinaryCrossEntropyGrad END---------------------
 
 //----------------SoftmaxCrossEntropyWithLogits-------------------
-IMPLEMT_VERIFIER(SoftmaxCrossEntropyWithLogits,
-                 SoftmaxCrossEntropyWithLogitsVerify) {
+IMPLEMT_VERIFIER(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVerify) {
   if (!CheckTwoInputDtypeSame(op, "features", "labels")) {
     return GRAPH_FAILED;
   }
@@ -217,47 +239,44 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   if (dimsX.size() != dimsY.size()) {
     int dec = dimsX.size() - dimsY.size();
     for (int i = 0; i < dec; i++) {
-       dimsY.insert(dimsY.begin(), (int64_t)1);
+      dimsY.insert(dimsY.begin(), (int64_t)1);
     }
   }
 
   std::vector<int64_t> dimVec;
   for (size_t i = 0; i < dimsX.size(); i++) {
     if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1)) {
-      OpsInputShapeBroadcastErrReport(op.GetName(), "loss", "backprop", Strcat(dimsX[i]), Strcat(dimsY[i]));
-      OP_LOGE(op.GetName().c_str(), "The %s op dimensions does not match the broadcast"
-             "rule(%lu %lu).", op.GetName().c_str(), dimsX[i], dimsY[i]);
+      OpsInputShapeBroadcastErrReport(op.GetName(), "loss", "backprop", ConcatString(dimsX[i]), ConcatString(dimsY[i]));
+      OP_LOGE(op.GetName().c_str(),
+              "The %s op dimensions does not match the broadcast"
+              "rule(%lu %lu).",
+              op.GetName().c_str(), dimsX[i], dimsY[i]);
       return GRAPH_FAILED;
     }
     if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
       if (dimsY[i] > 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
-      }
-      else if (dimsY[i] == 1) {
+      } else if (dimsY[i] == 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
         dimVec[i] = -1;
       }
-    }
-    else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
+    } else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
       if (dimsX[i] > 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
-      }
-      else if (dimsX[i] == 1) {
+      } else if (dimsX[i] == 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
         dimVec[i] = -1;
       }
-    }
-    else {
+    } else {
       if ((dimsX[i] == -1) && (dimsY[i] == -1)) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
         dimVec[i] = -1;
-      }
-      else {
+      } else {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
       }
@@ -265,11 +284,11 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   }
 
   std::vector<int64_t> dimVec_backprop = dimVec;
-  Shape out_backprop_shape(dimVec_backprop); //second output shape
-  tensordesc_backprop.SetShape(out_backprop_shape); // set NC or NCHW
+  Shape out_backprop_shape(dimVec_backprop);         // second output shape
+  tensordesc_backprop.SetShape(out_backprop_shape);  // set NC or NCHW
   dimVec.pop_back();
-  Shape out_loss_shape(dimVec); //N or NHW
-  tensordesc_loss.SetShape(out_loss_shape); //first output shape
+  Shape out_loss_shape(dimVec);              // N or NHW
+  tensordesc_loss.SetShape(out_loss_shape);  // first output shape
 
   DataType input_dtype = op.GetInputDesc(0).GetDataType();
   tensordesc_loss.SetDataType(input_dtype);
@@ -281,16 +300,13 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(SoftmaxCrossEntropyWithLogits,
-                      SoftmaxCrossEntropyWithLogitsInferShape);
-VERIFY_FUNC_REG(SoftmaxCrossEntropyWithLogits,
-                SoftmaxCrossEntropyWithLogitsVerify);
+COMMON_INFER_FUNC_REG(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsInferShape);
+VERIFY_FUNC_REG(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVerify);
 // ----------------SoftmaxCrossEntropyWithLogits END---------------------
 
 // -----------------------------SoftmaxGrad------------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradInferShape) {
-  if(InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax",
-                                           "grad_x")) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax", "grad_x")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -326,20 +342,19 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxGradExtInferShape) {
 COMMON_INFER_FUNC_REG(SoftmaxGradExt, SoftmaxGradExtInferShape);
 // ------------------------SoftmaxGradExt END-----------------------
 
-
 //------------------------MVN---------------------------
 IMPLEMT_INFERFUNC(MVN, MVNInferShape) {
-    auto outShape = op.GetInputDesc("x").GetShape();
-    auto outDtype = op.GetInputDesc("x").GetDataType();
-    TensorDesc td = op.GetOutputDesc("y");
-    td.SetShape(outShape);
-    td.SetDataType(outDtype);
-    (void)op.UpdateOutputDesc("y", td);
-    return GRAPH_SUCCESS;
+  auto outShape = op.GetInputDesc("x").GetShape();
+  auto outDtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(outShape);
+  td.SetDataType(outDtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(MVN, MVNVerify) {
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(MVN, MVNInferShape);
@@ -347,21 +362,20 @@ VERIFY_FUNC_REG(MVN, MVNVerify);
 //-----------------------MVN---------------------------
 
 //------------------------Normalize---------------------------
- IMPLEMT_INFERFUNC(Normalize, NormalizeInfer) {
-   auto input_dType = op.get_input_desc_x1().GetDataType();
-   auto output_dType = input_dType;
-   op.update_output_desc_y(
-       TensorDesc(Shape(op.get_input_desc_x1().GetShape()),
-       op.get_input_desc_x1().GetFormat(), output_dType ));
-   return GRAPH_SUCCESS;
- }
+IMPLEMT_INFERFUNC(Normalize, NormalizeInfer) {
+  auto input_dType = op.get_input_desc_x1().GetDataType();
+  auto output_dType = input_dType;
+  op.update_output_desc_y(
+      TensorDesc(Shape(op.get_input_desc_x1().GetShape()), op.get_input_desc_x1().GetFormat(), output_dType));
+  return GRAPH_SUCCESS;
+}
 
- IMPLEMT_VERIFIER(Normalize, NormalizeVerify) {
-   return GRAPH_SUCCESS;
- }
+IMPLEMT_VERIFIER(Normalize, NormalizeVerify) {
+  return GRAPH_SUCCESS;
+}
 
- INFER_FUNC_REG(Normalize, NormalizeInfer);
- VERIFY_FUNC_REG(Normalize, NormalizeVerify);
+INFER_FUNC_REG(Normalize, NormalizeInfer);
+VERIFY_FUNC_REG(Normalize, NormalizeVerify);
 //------------------------Normalize---------------------------
 
 // ----------------------LayerNormGrad------------------------
@@ -406,21 +420,22 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
 
   size_t real_dim_num = output_shape1.GetDimNum();
   if (begin_norm_axis >= (int64_t)real_dim_num) {
-    string excepted_value = Strcat("less than x's dims [", (int64_t)real_dim_num,"]");
-    OpsAttrValueErrReport(op.GetName(), "begin_norm_axis", excepted_value, Strcat(begin_norm_axis));
-    OP_LOGE("[Plugin][ERROR]the op layernorm do not support beginNormAxis"
-            "(%ld) large than shape dims(%lu)",
-            begin_norm_axis, real_dim_num);
+    string excepted_value = ConcatString("less than x's dims [", (int64_t)real_dim_num, "]");
+    OpsAttrValueErrReport(op.GetName(), "begin_norm_axis", excepted_value, ConcatString(begin_norm_axis));
+    OP_LOGE(
+        "[Plugin][ERROR]the op layernorm do not support beginNormAxis"
+        "(%ld) large than shape dims(%lu)",
+        begin_norm_axis, real_dim_num);
     return GRAPH_FAILED;
   }
   if (begin_norm_axis == -1) {
     begin_norm_axis = real_dim_num - 1;
   }
   for (size_t i = 0; i < real_dim_num; ++i) {
-  if (i >= (size_t)begin_norm_axis) {
-     output_shape2.SetDim(i, 1);
-  }else {
-     output_shape2.SetDim(i, output_shape1.GetDim(i));
+    if (i >= (size_t)begin_norm_axis) {
+      output_shape2.SetDim(i, 1);
+    } else {
+      output_shape2.SetDim(i, output_shape1.GetDim(i));
     }
   }
   td_output_y.SetShape(output_shape1);
@@ -466,13 +481,11 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormBetaGammaBackpropInferShape) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(LayerNormBetaGammaBackprop,
-                      LayerNormBetaGammaBackpropInferShape);
+COMMON_INFER_FUNC_REG(LayerNormBetaGammaBackprop, LayerNormBetaGammaBackpropInferShape);
 // -------------------LayerNormBetaGammaBackprop END------------------
 
 // --------------------------LayerNormXBackprop-----------------------
-IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropInferShape)
-{
+IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropInferShape) {
   TensorDesc tensordesc_output_pd_x = op.GetOutputDesc("pd_x");
 
   tensordesc_output_pd_x.SetShape(op.GetInputDesc("dy").GetShape());
@@ -545,8 +558,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   int64_t axis_;
   if (axis < 0) {
     axis_ = length_x + axis;
-  }
-  else {
+  } else {
     axis_ = axis;
   }
 
@@ -559,22 +571,20 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
       return GRAPH_FAILED;
     }
     int64_t begin_idx = length_scale - 1;
-    for (int64_t i = begin_idx; i >= 0; i--){
-      if (dims_x[axis_ + i] == dims_scale[i]){
-        for (int64_t j = 0; j <= i; j++){
+    for (int64_t i = begin_idx; i >= 0; i--) {
+      if (dims_x[axis_ + i] == dims_scale[i]) {
+        for (int64_t j = 0; j <= i; j++) {
           scale_shape_new.push_back(dims_scale[j]);
         }
         break;
-      }
-      else if (dims_scale[i] > 1){
-        for (int64_t j = 0; j <= i; j++){
+      } else if (dims_scale[i] > 1) {
+        for (int64_t j = 0; j <= i; j++) {
           scale_shape_new.push_back(dims_scale[j]);
         }
         break;
+      } else if (dims_scale[i] == 1) {
+        continue;
       }
-      else if (dims_scale[i] == 1){
-          continue;
-        }
     }
   }
 
@@ -592,8 +602,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
         for (int64_t i = 0; i < axis_; i++) {
           dims_scale_tmp.insert(dims_scale_tmp.begin(), (int64_t)1);
         }
-      }
-      else if (num_axes > 0) {
+      } else if (num_axes > 0) {
         int64_t left_length = length_x - num_axes - axis_;
         for (int64_t i = 0; i < axis_; i++) {
           dims_scale_tmp.insert(dims_scale_tmp.begin(), (int64_t)1);
@@ -602,8 +611,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
           dims_scale_tmp.push_back((int64_t)1);
         }
       }
-    }
-    else {
+    } else {
       int64_t length_scale_new = scale_shape_new.size();
       for (int64_t i = 0; i < length_scale_new; i++) {
         dims_scale_tmp.push_back(scale_shape_new[i]);
@@ -628,7 +636,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
     DataType dtype_bias = op.GetInputDesc("bias").GetDataType();
     Format format_bias = op.GetInputDesc("bias").GetFormat();
     if (!((dtype_bias == DT_UNDEFINED) && (format_bias == FORMAT_RESERVED))) {
-      //bias input
+      // bias input
       ge::Shape output_bias_shape = ge::Shape(dims_scale_tmp);
       TensorDesc bias_desc = op.GetInputDesc("bias");
       bias_desc.SetShape(output_bias_shape);
@@ -653,17 +661,17 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
   bool scale_from_blob;
   if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     OP_LOGE("[ERROR] GetOpAttr axis failed!");
-    OpsGetAttrErrReport(op.GetName().c_str(),"axis");
+    OpsGetAttrErrReport(op.GetName().c_str(), "axis");
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("num_axes", num_axes)) {
     OP_LOGE("[ERROR] GetOpAttr num_axes failed!");
-    OpsGetAttrErrReport(op.GetName().c_str(),"num_axes");
+    OpsGetAttrErrReport(op.GetName().c_str(), "num_axes");
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("scale_from_blob", scale_from_blob)) {
     OP_LOGE("[ERROR] GetOpAttr scale_from_blob failed!");
-    OpsGetAttrErrReport(op.GetName().c_str(),"scale_from_blob");
+    OpsGetAttrErrReport(op.GetName().c_str(), "scale_from_blob");
     return GRAPH_FAILED;
   }
 
@@ -682,8 +690,7 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
   int64_t axis_;
   if (axis < 0) {
     axis_ = length_x + axis;
-  }
-  else {
+  } else {
     axis_ = axis;
   }
 
@@ -696,29 +703,27 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
       return GRAPH_FAILED;
     }
     int64_t begin_idx = length_scale - 1;
-    for (int64_t i = begin_idx; i >= 0; i--){
-      if (dims_x[axis_ + i] == dims_scale[i]){
-        for (int64_t j = 0; j <= i; j++){
+    for (int64_t i = begin_idx; i >= 0; i--) {
+      if (dims_x[axis_ + i] == dims_scale[i]) {
+        for (int64_t j = 0; j <= i; j++) {
           scale_shape_new.push_back(dims_scale[j]);
         }
         break;
-      }
-      else if (dims_scale[i] > 1){
-        for (int64_t j = 0; j <= i; j++){
+      } else if (dims_scale[i] > 1) {
+        for (int64_t j = 0; j <= i; j++) {
           scale_shape_new.push_back(dims_scale[j]);
         }
         break;
+      } else if (dims_scale[i] == 1) {
+        continue;
       }
-      else if (dims_scale[i] == 1){
-          continue;
-        }
     }
   }
 
   if (scale_from_blob) {
     if (num_axes == -1) {
       int64_t scale_num = length_x - axis_;
-      if (length_scale != scale_num){
+      if (length_scale != scale_num) {
         OP_LOGE("[ERROR] length_scale and scale_num must be equal");
         return GRAPH_FAILED;
       }
@@ -728,34 +733,31 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
           return GRAPH_FAILED;
         }
       }
-    }
-    else if (num_axes == 0) {
-      if (scale_dim_num != 0){
+    } else if (num_axes == 0) {
+      if (scale_dim_num != 0) {
         OP_LOGE("[ERROR] scale must be a scalar ");
-        string realvalue =  Strcat(scale_dim_num);
+        string realvalue = ConcatString(scale_dim_num);
         OpsAttrValueErrReport(op.GetName().c_str(), "scale_dim_num", "0", realvalue);
         return GRAPH_FAILED;
       }
-    }
-    else if (num_axes > 0) {
-        int64_t num_axis = axis_ + num_axes;
-        if (num_axis > length_x) {
-          OP_LOGE("[ERROR] scale shape extends x shape when applied");
+    } else if (num_axes > 0) {
+      int64_t num_axis = axis_ + num_axes;
+      if (num_axis > length_x) {
+        OP_LOGE("[ERROR] scale shape extends x shape when applied");
+        return GRAPH_FAILED;
+      }
+      if (length_scale != num_axes) {
+        OP_LOGE("[ERROR] length_scale and num_axes must be equal");
+        return GRAPH_FAILED;
+      }
+      for (int64_t i = 0; i < num_axes; i++) {
+        if (dims_x[axis_ + i] != dims_scale[i]) {
+          OP_LOGE("[ERROR] dimensions shape_x and shape_scale must be equal");
           return GRAPH_FAILED;
-        }
-        if (length_scale != num_axes){
-          OP_LOGE("[ERROR] length_scale and num_axes must be equal");
-          return GRAPH_FAILED;
-        }
-        for (int64_t i = 0; i < num_axes; i++) {
-          if (dims_x[axis_ + i] != dims_scale[i]) {
-            OP_LOGE("[ERROR] dimensions shape_x and shape_scale must be equal");
-            return GRAPH_FAILED;
-          }
         }
       }
-  }
-  else {
+    }
+  } else {
     int64_t scale_dim_num_new = scale_shape_new.size();
     int64_t length_scale_new = scale_dim_num_new;
     if (scale_dim_num_new != 0) {
@@ -782,16 +784,13 @@ VERIFY_FUNC_REG(Scale, ScaleVerify);
 
 // ----------------LRNGrad   ------------------
 IMPLEMT_VERIFIER(LRNGrad, LRNGradVerify) {
-  if (!CheckInputsShapeDtypeSame(op,
-                                 {"grads", "x",
-                                  "y"})) {
+  if (!CheckInputsShapeDtypeSame(op, {"grads", "x", "y"})) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(LRNGrad,
-    ELMTWISE_INFER_SHAPEANDTYPE("grads", "z"));
+COMMON_INFER_FUNC_REG(LRNGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "z"));
 
 VERIFY_FUNC_REG(LRNGrad, LRNGradVerify);
 
@@ -803,52 +802,53 @@ COMMON_INFER_FUNC_REG(LRN, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 
 // ------------------------GroupNorm--------------------------
 IMPLEMT_VERIFIER(GroupNorm, GroupNormVerify) {
-    if (!CheckTwoInputDtypeSame(op, "scale", "offset")) {
-        return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  if (!CheckTwoInputDtypeSame(op, "scale", "offset")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
-    std::string data_format;
-    if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
-        if (data_format != "NHWC" && data_format != "NCHW") {
-            OP_LOGE(op.GetName().c_str(), "data_format only "
-            "support 'NHWC' and 'NCHW'.");
-            return GRAPH_FAILED;
-        }
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
+    if (data_format != "NHWC" && data_format != "NCHW") {
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NHWC' and 'NCHW'.");
+      return GRAPH_FAILED;
     }
-    auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-    DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  }
+  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDesc("x").GetDataType();
 
-    TensorDesc y_desc = op.GetOutputDesc("y");
-    y_desc.SetShape(ge::Shape(x_shape));
-    y_desc.SetDataType(x_dtype);
-    (void)op.UpdateOutputDesc("y", y_desc);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(ge::Shape(x_shape));
+  y_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", y_desc);
 
-    auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
-    DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
+  auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
+  DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
 
-    TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
-    batch_mean_desc.SetShape(ge::Shape(scale_shape));
-    batch_mean_desc.SetDataType(scale_dtype);
-    (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
+  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  batch_mean_desc.SetShape(ge::Shape(scale_shape));
+  batch_mean_desc.SetDataType(scale_dtype);
+  (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-    TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
-    batch_variance_desc.SetShape(ge::Shape(scale_shape));
-    batch_variance_desc.SetDataType(scale_dtype);
-    (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
+  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  batch_variance_desc.SetShape(ge::Shape(scale_shape));
+  batch_variance_desc.SetDataType(scale_dtype);
+  (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
 
-    TensorDesc reserve_space_1_desc = op.GetOutputDesc("reserve_space_1");
-    reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
-    reserve_space_1_desc.SetDataType(scale_dtype);
-    (void)op.UpdateOutputDesc("reserve_space_1", reserve_space_1_desc);
+  TensorDesc reserve_space_1_desc = op.GetOutputDesc("reserve_space_1");
+  reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
+  reserve_space_1_desc.SetDataType(scale_dtype);
+  (void)op.UpdateOutputDesc("reserve_space_1", reserve_space_1_desc);
 
-    TensorDesc reserve_space_2_desc = op.GetOutputDesc("reserve_space_2");
-    reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
-    reserve_space_2_desc.SetDataType(scale_dtype);
-    (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
-    return GRAPH_SUCCESS;
+  TensorDesc reserve_space_2_desc = op.GetOutputDesc("reserve_space_2");
+  reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
+  reserve_space_2_desc.SetDataType(scale_dtype);
+  (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(GroupNorm, GroupNormInferShape);
@@ -857,43 +857,43 @@ VERIFY_FUNC_REG(GroupNorm, GroupNormVerify);
 
 // ------------------------InstanceNormV2--------------------------
 IMPLEMT_VERIFIER(InstanceNormV2, InstanceNormV2Verify) {
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(InstanceNormV2InferShape) {
-    auto inputTensorDesc = op.GetInputDesc("x");
-    auto shape = inputTensorDesc.GetShape();
-    DataType x_dtype = inputTensorDesc.GetDataType();
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
+  DataType x_dtype = inputTensorDesc.GetDataType();
 
-    std::vector<int64_t> dimVector;
-    int64_t dimNum = shape.GetDimNum();
+  std::vector<int64_t> dimVector;
+  int64_t dimNum = shape.GetDimNum();
 
-    std::vector<int64_t> dims_input;
-    dims_input = shape.GetDims();
+  std::vector<int64_t> dims_input;
+  dims_input = shape.GetDims();
 
-    for (int64_t item = 0; item < dimNum; ++item) {
-        if (item == 2 || item == 3) {
-            dimVector.push_back(1);
-        } else {
-            dimVector.push_back(dims_input[item]);
-        }
+  for (int64_t item = 0; item < dimNum; ++item) {
+    if (item == 2 || item == 3) {
+      dimVector.push_back(1);
+    } else {
+      dimVector.push_back(dims_input[item]);
     }
+  }
 
-    TensorDesc y_desc = op.GetOutputDesc("y");
-    y_desc.SetShape(ge::Shape(dims_input));
-    y_desc.SetDataType(x_dtype);
-    (void)op.UpdateOutputDesc("y", y_desc);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(ge::Shape(dims_input));
+  y_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", y_desc);
 
-    TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
-    batch_mean_desc.SetShape(ge::Shape(dimVector));
-    batch_mean_desc.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
+  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  batch_mean_desc.SetShape(ge::Shape(dimVector));
+  batch_mean_desc.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-    TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
-    batch_variance_desc.SetShape(ge::Shape(dimVector));
-    batch_variance_desc.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
-    return GRAPH_SUCCESS;
+  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  batch_variance_desc.SetShape(ge::Shape(dimVector));
+  batch_variance_desc.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(InstanceNormV2, InstanceNormV2InferShape);
@@ -902,47 +902,46 @@ VERIFY_FUNC_REG(InstanceNormV2, InstanceNormV2Verify);
 
 // ------------------------INInferV2D START--------------------------
 IMPLEMT_VERIFIER(INInferV2D, INInferV2DVerify) {
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(INInferV2DInferShape) {
-    auto inputTensorDescX = op.GetInputDesc("x");
-    auto shape = inputTensorDescX.GetShape();
-    DataType x_dtype = inputTensorDescX.GetDataType();
+  auto inputTensorDescX = op.GetInputDesc("x");
+  auto shape = inputTensorDescX.GetShape();
+  DataType x_dtype = inputTensorDescX.GetDataType();
 
-    std::vector<int64_t> dimVector;
-    int64_t dimNum = shape.GetDimNum();
-    std::vector<int64_t> dims_input;
-    dims_input = shape.GetDims();
+  std::vector<int64_t> dimVector;
+  int64_t dimNum = shape.GetDimNum();
+  std::vector<int64_t> dims_input;
+  dims_input = shape.GetDims();
 
-    for (int64_t item = 0; item < dimNum; ++item) {
-        if (item == 2 || item == 3) {
-            dimVector.push_back(1);
-        } else {
-            dimVector.push_back(dims_input[item]);
-        }
+  for (int64_t item = 0; item < dimNum; ++item) {
+    if (item == 2 || item == 3) {
+      dimVector.push_back(1);
+    } else {
+      dimVector.push_back(dims_input[item]);
     }
+  }
 
-    TensorDesc y_desc = op.GetOutputDesc("y");
-    y_desc.SetShape(ge::Shape(dims_input));
-    y_desc.SetDataType(x_dtype);
-    (void)op.UpdateOutputDesc("y", y_desc);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(ge::Shape(dims_input));
+  y_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", y_desc);
 
-    TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
-    batch_mean_desc.SetShape(ge::Shape(dimVector));
-    batch_mean_desc.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
+  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  batch_mean_desc.SetShape(ge::Shape(dimVector));
+  batch_mean_desc.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-    TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
-    batch_variance_desc.SetShape(ge::Shape(dimVector));
-    batch_variance_desc.SetDataType(DT_FLOAT);
-    (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
+  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  batch_variance_desc.SetShape(ge::Shape(dimVector));
+  batch_variance_desc.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
 
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(INInferV2D, INInferV2DInferShape);
 VERIFY_FUNC_REG(INInferV2D, INInferV2DVerify);
 // ------------------------INInferV2D END--------------------------
-}
-
+}  // namespace ge

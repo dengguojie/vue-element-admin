@@ -1,24 +1,26 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 yolo
 """
 # pylint: disable=too-many-lines
 # pylint: disable=too-many-arguments
+
+import te.platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils import op_utils
+from te.utils import para_check
 
 RESV_UB = 512
 FP16_MINI = -65504
@@ -40,7 +42,7 @@ def ceil_x(total_len, align_value):
     return align_len
 
 
-def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
+def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     """
     check yolo param error
     Parameters
@@ -61,55 +63,41 @@ def check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     dtype = check_dic_dic.get("in_dic").get("dtype")
 
     if param_dic['boxes'] <= 0:
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'yolo'
-        error_info['param_name'] = 'boxes'
-        error_info['min_value'] = '1'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str(param_dic['boxes'])
+        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'boxes', 'min_value': '1',
+                      'max_value': 'inf', 'real_value': str(param_dic['boxes'])}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
     if param_dic['coords'] != 4:
-        error_info = {}
-        error_info['errCode'] = 'E80017'
-        error_info['opname'] = 'yolo'
-        error_info['param_name'] = 'coords'
-        error_info['expect_value'] = '4'
-        error_info['real_value'] = str(param_dic['coords'])
+        error_info = {'errCode': 'E80017', 'opname': 'yolo', 'param_name': 'coords', 'expect_value': '4',
+                      'real_value': str(param_dic['coords'])}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'],
                               error_info['expect_value'], error_info['real_value']))
         
     if param_dic['classes'] <= 0:
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'yolo'
-        error_info['param_name'] = 'classes'
-        error_info['min_value'] = '1'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str(param_dic['classes'])
+        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'classes', 'min_value': '1',
+                      'max_value': 'inf', 'real_value': str(param_dic['classes'])}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
     
-    op_utils.check_shape(in_shape, param_name="input")
-    op_utils.check_shape(out1_shape, param_name="output1")
-    op_utils.check_shape(out2_shape, param_name="output2")
-    op_utils.check_shape(out3_shape, param_name="output3")
+    para_check.check_shape(in_shape, param_name="input")
+    para_check.check_shape(out1_shape, param_name="output1")
+    para_check.check_shape(out2_shape, param_name="output2")
+    para_check.check_shape(out3_shape, param_name="output3")
 
-    project_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    project_name = tbe_platform.get_soc_spec("SOC_VERSION")
     if project_name in ("Ascend310",):
-        op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
+        para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend910",):
-        op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
+        para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        op_utils.check_dtype(dtype.lower(), ["float16"], param_name="output1")
+        para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend610", "Ascend710"):
-        op_utils.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
+        para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
     else:
-        op_utils.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
+        para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
 
 
 class ShapeInfo:
@@ -214,7 +202,7 @@ class ComputerCommon(ShapeInfo):
         """
         repeats = (dlen + 255) // 256
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ("Ascend310",):
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend310",):
             tik_inst.vdiv(mask, dividend, dividend, divisor,
                           repeats, 1, 1, 1, 8, 8, 8)
         else:
@@ -871,7 +859,7 @@ class InitTikAndTensor:
         -------
         NONE
         """
-        self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.product_name = tbe_platform.get_soc_spec("SOC_VERSION")
 
 
     def set_ub_buf(self):
@@ -884,7 +872,7 @@ class InitTikAndTensor:
         tNONE
         """
 
-        self.total_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.total_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
 class YoloOp(InitTikAndTensor):
@@ -927,11 +915,8 @@ class YoloOp(InitTikAndTensor):
         elif yolo_ver.lower() == "v3":
             yolo_mode = 'YOLO_MODE_1'
         else:
-            error_info = {}
-            error_info['errCode'] = 'E81010'
-            error_info['opname'] = 'yolo'
-            error_info['real_verison'] = yolo_ver.lower()
-            raise RuntimeError(error_info, 
+            error_info = {'errCode': 'E81010', 'opname': 'yolo', 'real_verison': yolo_ver.lower()}
+            raise RuntimeError(error_info,
                 "In op[yolo], only v2 ro v3 is supported, but actually is [%s]." % error_info['real_verison'])
 
         return yolo_mode
@@ -1101,7 +1086,7 @@ def yolo_computer(yolo_op, shape_info, yolo_version):
     NONE
     """
 
-    block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if shape_info['batch'] > block_num:
         core_div_num = block_num
         core_div_loops = shape_info['batch'] // block_num
@@ -1148,7 +1133,7 @@ def yolo(input_dic, coord_out_dic, obj_out_dic, class_out_dic,
     tik instance
     """
 
-    check_yolo_param({'in_dic': input_dic, 'out1_dic': coord_out_dic,
+    _check_yolo_param({'in_dic': input_dic, 'out1_dic': coord_out_dic,
                       'out2_dic': obj_out_dic, 'out3_dic': class_out_dic},
                      {'boxes': boxes, 'coords': coords, 'classes': classes},
                      kernel_name)

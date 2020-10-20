@@ -1,37 +1,33 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 inv_grad
 """
-from __future__ import absolute_import
-
 from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1
 
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("inv_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("inv_grad")
 def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """
     compute inv_grad
@@ -52,7 +48,7 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     res: TVM tensor
         the result of compute
     """
-    shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 
     inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype=dtype)
@@ -61,25 +57,26 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
         if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
                                                    "float32"):
             inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype="float32")
-            input_y = te.lang.cce.cast_to(input_y, "float32")
-            input_dy = te.lang.cce.cast_to(input_dy, "float32")
+            input_y = tbe.cast_to(input_y, "float32")
+            input_dy = tbe.cast_to(input_dy, "float32")
             has_improve_precision = True
-        const_res = te.lang.cce.vmuls(input_y, inv_const)
+        const_res = tbe.vmuls(input_y, inv_const)
     elif dtype in ("int32",):
-        inv_const = te.lang.cce.broadcast(inv_const, shape_y, "int32")
-        const_res = te.lang.cce.vmul(inv_const, input_y)
+        inv_const = tbe.broadcast(inv_const, shape_y, "int32")
+        const_res = tbe.vmul(inv_const, input_y)
     else:
-        const_res = te.lang.cce.vmuls(input_y, inv_const)
-    vmul_res = te.lang.cce.vmul(const_res, input_y)
-    res = te.lang.cce.vmul(vmul_res, input_dy)
+        const_res = tbe.vmuls(input_y, inv_const)
+    vmul_res = tbe.vmul(const_res, input_y)
+    res = tbe.vmul(vmul_res, input_dy)
 
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, dtype, f1628IntegerFlag=True)
+        res = tbe.cast_to(res, dtype, f1628IntegerFlag=True)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """
     algorithm: inv_grad
@@ -106,11 +103,11 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     dtype_input_y = input_y.get("dtype")
     dtype_input_dy = input_dy.get("dtype")
 
-    check_shape(shape_input_y, param_name="input_y")
-    check_shape(shape_input_dy, param_name="input_dy")
+    para_check.check_shape(shape_input_y, param_name="input_y")
+    para_check.check_shape(shape_input_dy, param_name="input_dy")
 
-    shape_input_y = util.shape_refine(shape_input_y)
-    shape_input_dy = util.shape_refine(shape_input_dy)
+    shape_input_y = shape_util.shape_refine(shape_input_y)
+    shape_input_dy = shape_util.shape_refine(shape_input_dy)
 
     if list(shape_input_y) != list(shape_input_dy):
         raise RuntimeError("the shape of input must be equal!")
@@ -122,18 +119,18 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
         raise RuntimeError("the dtype of input must be equal!")
 
     check_list = ("float16", "float32", "int32", "int8")
-    check_dtype(dtype_input_y, check_list, param_name="input_y")
+    para_check.check_dtype(dtype_input_y, check_list, param_name="input_y")
 
-    shape_input_dy, shape_input_y = refine_shapes_for_broadcast(shape_input_dy,
-                                                                shape_input_y)
+    shape_input_dy, shape_input_y = shape_util.refine_shapes_for_broadcast(shape_input_dy,
+                                                                           shape_input_y)
     data_dy = tvm.placeholder(shape_input_dy, name="data_dy",
                               dtype=dtype_input_dy)
     data_y = tvm.placeholder(shape_input_y, name="data_y", dtype=dtype_input_y)
 
     res = inv_grad_compute(data_y, data_dy, output_z, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_y, data_dy, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

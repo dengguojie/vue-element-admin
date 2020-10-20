@@ -1,16 +1,18 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 mmad_compute
 """
 # pylint: disable=too-many-lines
@@ -42,7 +44,8 @@ def elecnt_of_shape(shape):
 SHAPE_SIZE_LIMIT = 2**31 - 1
 FORMAT_DYNAMIC_THRESHOLD = 1 * 1
 
-def shape_check(tensor_a, tensor_b, # pylint: disable=C0301, R0912, R0913, R0914, R0915
+
+def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 tensor_bias, trans_a, trans_b, format_a, format_b, dst_dtype,
                 nz_a):
     """
@@ -101,7 +104,7 @@ def shape_check(tensor_a, tensor_b, # pylint: disable=C0301, R0912, R0913, R0914
     else:
         if not (in_a_dtype == "float16" and in_b_dtype == "float16") and \
                 not (in_a_dtype in ("uint8", "int8") and (
-                        in_b_dtype == "int8")):
+                    in_b_dtype == "int8")):
             raise RuntimeError(
                 "only support float16 & float16 and uint8/int8 & int8 intput "
                 "data type.")
@@ -329,26 +332,26 @@ def shape_check(tensor_a, tensor_b, # pylint: disable=C0301, R0912, R0913, R0914
         if is_gemv:
             if len(shape_bias) == 1:
                 raise RuntimeError(
-                    "bias shape for gemv must be [m,1] or [1,m,1] or ", \
+                    "bias shape for gemv must be [m,1] or [1,m,1] or ",
                     "[b,m,1], curr is ", shape_bias)
             if len(shape_bias) == 2:
                 if shape_bias != [real_shape_m, 1]:
                     raise RuntimeError(
-                        "bias shape for gemv must be [m,1] or [1,m,1] or ", \
+                        "bias shape for gemv must be [m,1] or [1,m,1] or ",
                         "[b,m,1] for gemv, curr is ", shape_bias)
             elif len(shape_bias) == 3:
                 if batch is None:
                     raise RuntimeError(
                         "tensor A and tensor B lack of batch "
                         "while bias has batch")
-                if shape_bias not in ([1, real_shape_m, 1], \
-                        [batch, real_shape_m, 1]):
+                if shape_bias not in ([1, real_shape_m, 1],
+                                      [batch, real_shape_m, 1]):
                     raise RuntimeError(
-                        "bias shape for gemv must be [m,1] or [1,m,1] or ", \
+                        "bias shape for gemv must be [m,1] or [1,m,1] or ",
                         "[b,m,1] for gemv, curr is ", shape_bias)
             else:
                 raise RuntimeError(
-                    "bias shape must be [m,1] or [1,m,1] or ", \
+                    "bias shape must be [m,1] or [1,m,1] or ",
                     "[b,m,1] for gemv, curr is ", shape_bias)
         else:
             if len(shape_bias) == 1:
@@ -357,25 +360,25 @@ def shape_check(tensor_a, tensor_b, # pylint: disable=C0301, R0912, R0913, R0914
                         "broadcast bias shape must be equal to shape n")
             elif len(shape_bias) == 2:
                 if shape_bias not in ([1, n_shape*b_block_out], ):
-                    raise RuntimeError("bias shape must be [1,n], curr is ", \
+                    raise RuntimeError("bias shape must be [1,n], curr is ",
                                        shape_bias)
             elif len(shape_bias) == 3:
                 if batch is None:
                     raise RuntimeError(
                         "tensor A and tensor B lack of batch "
                         "while bias has batch")
-                if shape_bias not in ([1, 1, n_shape*b_block_out], \
-                        [batch, 1, n_shape*b_block_out]):
+                if shape_bias not in ([1, 1, n_shape*b_block_out],
+                                      [batch, 1, n_shape*b_block_out]):
                     raise RuntimeError(
-                        "bias shape must be [n,] or [1,n] or [1,1,n] or " \
+                        "bias shape must be [n,] or [1,n] or [1,1,n] or "
                         "[b,1,n] for gevm and gemm, current is ", shape_bias)
             else:
                 raise RuntimeError(
-                    "bias shape must be [n,] or [1,n] or [1,1,n] or " \
+                    "bias shape must be [n,] or [1,n] or [1,1,n] or "
                     "[b,1,n] for gevm and gemm, current is ", shape_bias)
 
 
-def check_quantize_params(quantize_params=None): # pylint: disable=R0912
+def check_quantize_params(quantize_params=None):  # pylint: disable=R0912
     """
     Parameters:
     quantize_params: quantization parameters,
@@ -539,55 +542,31 @@ def get_compress_tensor_compute(tensor_src, comp_index, op_name):
     """
     _, _, _, compress_mode = conf.get_soc_spec("UNZIP")
     comp_size = 8 if compress_mode == 1 else 2
-    block_unit = 512
 
     tile_k_value = tvm.var("tile_L1_k", dtype="int32")
     tile_n_value = tvm.var("tile_L1_n", dtype="int32")
-    tile_mode = tvm.var("tile_mode", dtype="int32")
-    block_size = tvm.var("block_size", dtype="int32")
 
     shape_src = tensor_src.shape
     block_n_num = (shape_src[-3] + tile_n_value - 1) // tile_n_value
     block_k_num = (shape_src[-4] + tile_k_value - 1) // tile_k_value
 
-    # get k block size in tail n
-    tails_k_value = 0
-    if shape_src[-3] % tile_n_value != 0:
-        # tvm.max is made sure not 0 in lamda 
-        tails_k_value = block_size // block_unit // tvm.max((shape_src[-3] % tile_n_value), 1)
-    tails_k_value = tvm.max(tails_k_value, 1)
-
     # tile_mode is 1 when tile_n < dim_n, or tile_mode is 0
     if len(shape_src) == 4:
         tensor = tvm.compute(shape_src, lambda i, j, k, l: tvm.unzip(
-            comp_index((tile_mode * (j // tile_n_value * block_k_num  + \
-                i // tvm.select(
-                    ((j + tile_n_value) // tile_n_value) * tile_n_value < shape_src[-3],
-                    tile_k_value, tails_k_value)) + \
-                (1 - tile_mode) * (i // tile_k_value)) * comp_size),
+            comp_index((j // tile_n_value * block_k_num + i // tile_k_value)
+                       * comp_size),
             tensor_src(i, j, k, l)),
-                             name=op_name, attrs={'tile_L1_k': tile_k_value,
-                                                  'tile_L1_n': tile_n_value,
-                                                  'tile_mode': tile_mode,
-                                                  'block_size': block_size})
+            name=op_name, attrs={'tile_L1_k': tile_k_value,
+                                 'tile_L1_n': tile_n_value})
     elif len(shape_src) == 5:
         # get multi n block number
-        batch_block_num = shape_src[-3] // tile_n_value * block_k_num
-        # get tail n block number
-        if shape_src[-3] % tile_n_value != 0:
-            batch_block_num = batch_block_num + (shape_src[-4] + tails_k_value - 1) // tails_k_value
+        batch_block_num = block_n_num * block_k_num
         tensor = tvm.compute(shape_src, lambda batch, i, j, k, l: tvm.unzip(
-            comp_index(((tile_mode * (j // tile_n_value * block_k_num + \
-                i // tvm.select(
-                    ((j + tile_n_value) // tile_n_value) * tile_n_value < shape_src[-3],
-                    tile_k_value, tails_k_value)) + \
-                (1 - tile_mode) * (i // tile_k_value)) + \
-                batch * batch_block_num) * comp_size),
+            comp_index(((j // tile_n_value * block_k_num + i // tile_k_value)
+                        + batch * batch_block_num) * comp_size),
             tensor_src(batch, i, j, k, l)),
-                             name=op_name, attrs={'tile_L1_k': tile_k_value,
-                                                  'tile_L1_n': tile_n_value,
-                                                  'tile_mode': tile_mode,
-                                                  'block_size': block_size})
+            name=op_name, attrs={'tile_L1_k': tile_k_value,
+                                 'tile_L1_n': tile_n_value})
     return tensor
 
 
@@ -660,11 +639,13 @@ def _update_gevm_out_block_value(block):
 
 @util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                        str, float, float, str, (type(None), tvm.tensor.Tensor),
-                       (type(None), dict), (type(None), str))
-def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+                       (type(None), dict), (type(None), str),
+                       (type(None), tvm.tensor.Tensor), (type(None), dict))
+def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=0.0, dst_dtype="float16", tensor_bias=None,
-           quantize_params=None, format_out=None, compress_index=None):
+           quantize_params=None, format_out=None, compress_index=None,
+           attrs={}):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -723,6 +704,9 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         scale_drq: scale placeholder for requantization or dequantization
         offset_drq: scale placeholder for requantization or dequantization
     out_format: output format
+    attrs:
+        offset_x: the offset for fmap
+        offset_w: the offset for w
 
     compress_index: index for compressed wights, None means not compress wights
     Returns None
@@ -890,13 +874,13 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 vn_shape = 1
 
     def gevm_block_in_value(
-        is_fractal, m_shape, vm_shape, km_shape, n_shape_ori, block_in_ori):
+            is_fractal, m_shape, vm_shape, km_shape, n_shape_ori, block_in_ori):
         """
         calculate k!= block_in*block_reduce gevm block_in
         """
         block_in = block_in_ori
         m_16_shapes = [(25088, 4096), (18432, 4096), (4096, 4096),
-                      (9216, 4096), (4096, 1008)]
+                       (9216, 4096), (4096, 1008)]
 
         if m_shape == 1 and vm_shape == 1 and km_shape % block_in == 0:
             block_in = cce.BLOCK_VECTOR
@@ -959,6 +943,24 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     if is_fractal_b:
         _check_fractal_b_value()
 
+    def get_offset_info(attrs_dict, dtype_a, dtype_b):
+        """
+        get offset info, like offset_x and offset_w
+        """
+        offset_x = 0
+        offset_w = 0
+
+        if conf.is_v200_version_new():
+            if dtype_a in ("uint8", "int8"):
+                if attrs_dict.get("offset_x") is not None:
+                    offset_x = attrs_dict.get("offset_x")
+            if dtype_b == "int8":
+                if attrs_dict.get("offset_w") is not None:
+                    offset_w = attrs_dict.get("offset_w")
+
+        return offset_x, offset_w
+
+    offset_x, _ = get_offset_info(attrs, in_a_dtype, in_b_dtype)
     # define reduce axis
     # kBurstAxis
     reduce_kb = tvm.reduce_axis((0, km_shape), name='kb')
@@ -981,7 +983,7 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         optmt_c = 1
 
     # not gemv
-    if block_out != cce.BLOCK_VECTOR: # pylint: disable=too-many-nested-blocks
+    if block_out != cce.BLOCK_VECTOR:  # pylint: disable=too-many-nested-blocks
         if tensor_a_length in (2, 4):
             out_shape = (
                 int(n_shape), int(m_shape), int(block_in), int(block_out))
@@ -1197,7 +1199,7 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 # define mad compute
                 tensor_c = tvm.compute(
                     out_shape, lambda nb, mb, mp, np: tvm.sum(
-                        (tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] *
+                        ((tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] - offset_x) *
                          tensor_b_l0b[reduce_kb, nb, np, reduce_kp]).astype(
                              out_dtype), axis=[reduce_kb, reduce_kp]),
                     name='tensor_c', attrs={'input_order': 'positive'})
@@ -1306,7 +1308,7 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 tensor_c = tvm.compute(
                     (n_shape, m_shape, block_out, block_out),
                     lambda nb, mb, mp, np: tvm.sum(
-                        (tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] *
+                        ((tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] - offset_x) *
                          tensor_b_l0b[reduce_kb, nb, np, reduce_kp]).astype(
                              out_dtype), axis=[reduce_kb, reduce_kp]),
                     name='tensor_c', attrs={'input_order': 'positive'})
@@ -1523,10 +1525,10 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
                         if block_in != cce.BLOCK_VECTOR:
-                            lambda_func = lambda batch, i, j, k, l: tensor_a_l1[
+                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, i, j, l, k]
                         else:
-                            lambda_func = lambda batch, i, j, k, l: tensor_a_l1[
+                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, i, j, k, l]
                         tensor_a_l0a = tvm.compute(
                             tensor_a_l0a_shape, lambda_func, name='tensor_a_l0a')
@@ -1541,10 +1543,10 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
                         if block_in != cce.BLOCK_VECTOR:
-                            lambda_func = lambda batch, i, j, k, l: tensor_a_l1[
+                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, j, i, l, k]
                         else:
-                            lambda_func = lambda batch, i, j, k, l: tensor_a_l1[
+                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, j, i, k, l]
                         tensor_a_l0a = tvm.compute(
                             tensor_a_l0a_shape, lambda_func, name='tensor_a_l0a')
@@ -1728,8 +1730,8 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                     if tensor_b_length in (2, 4):
                         tensor_c = tvm.compute(
                             out_shape, lambda batch, nb, mb, mp, np: tvm.sum((
-                                tensor_a_l0a[
-                                    batch, mb, reduce_kb, mp, reduce_kp] *
+                                (tensor_a_l0a[
+                                    batch, mb, reduce_kb, mp, reduce_kp] - offset_x) *
                                 tensor_b_l0b[
                                     reduce_kb, nb, np, reduce_kp]).astype(
                                         out_dtype), axis=[reduce_kb, reduce_kp]),
@@ -1737,8 +1739,8 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                     else:
                         tensor_c = tvm.compute(
                             out_shape, lambda batch, nb, mb, mp, np: tvm.sum((
-                                tensor_a_l0a[
-                                    batch, mb, reduce_kb, mp, reduce_kp] *
+                                (tensor_a_l0a[
+                                    batch, mb, reduce_kb, mp, reduce_kp] - offset_x) *
                                 tensor_b_l0b[
                                     batch, reduce_kb, nb, np, reduce_kp]).astype(
                                         out_dtype), axis=[reduce_kb, reduce_kp]),
@@ -1858,7 +1860,8 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_c = tvm.compute(
                             (batch_shape, n_shape, m_shape, block_out, block_out),
                             lambda batch, nb, mb, mp, np:
-                            tvm.sum((tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp] *
+                            tvm.sum(((tensor_a_l0a[batch, mb, reduce_kb, mp,
+                                                   reduce_kp] - offset_x) *
                                      tensor_b_l0b[reduce_kb, nb, np, reduce_kp])
                                     .astype(out_dtype),
                                     axis=[reduce_kb, reduce_kp]),
@@ -1867,7 +1870,8 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_c = tvm.compute(
                             (batch_shape, n_shape, m_shape, block_out, block_out),
                             lambda batch, nb, mb, mp, np:
-                            tvm.sum((tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp] *
+                            tvm.sum(((tensor_a_l0a[batch, mb, reduce_kb, mp,
+                                                   reduce_kp] - offset_x) *
                                      tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp])
                                     .astype(out_dtype),
                                     axis=[reduce_kb, reduce_kp]),
@@ -2105,7 +2109,6 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             tensor_b_l1_shape, lambda i, j, k, l:
                             tensor_b_ub[i*block_out + k, j*block_reduce + l],
                             name='tensor_b_l1')
-                        # (n_shape, kn_shape, block_reduce, block_out)
                         tensor_b_l0b = tvm.compute(
                             tensor_b_l1_shape,
                             lambda i, j, k, l: tensor_b_l1[i, j, k, l],
@@ -2173,10 +2176,10 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             tensor_c = tvm.compute(
                 (m_shape, n_shape, block_in, block_in),
                 lambda nb, mb, mp, np: tvm.sum(
-                    (tensor_b_l0b[mb, reduce_kb, mp, reduce_kp]*tensor_a_l0a[
-                        reduce_kb, nb, np, reduce_kp]).astype(out_dtype),
-                    axis=[reduce_kb, reduce_kp]), name='tensor_c',
-                attrs={'input_order': 'negative'})
+                    (tensor_b_l0b[mb, reduce_kb, mp, reduce_kp] *
+                     (tensor_a_l0a[reduce_kb, nb, np, reduce_kp] - offset_x)
+                    ).astype(out_dtype), axis=[reduce_kb, reduce_kp]),
+                name='tensor_c', attrs={'input_order': 'negative'})
 
             if tensor_bias is not None:
                 tensor_bias_ub = tvm.compute(
@@ -2202,7 +2205,7 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 if scale_drq_tensor is not None:
                     tensor_c_ub = tvm.compute(
                         orig_shape,
-                        lambda *indices: tensor_c_add_bias[indices]*
+                        lambda *indices: tensor_c_add_bias[indices] *
                         scale_drq_tensor[0], name='tensor_c_ub',
                         attrs={'scale_drq': scale_drq, 'sqrt_out': sqrt_out, 'nz_b': nz_b})
                 elif dst_dtype == 'float16' and l0c_support_fp32 == 1:
@@ -2540,16 +2543,18 @@ def matmul(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         (batch_shape, m_shape, n_shape, block_in, block_in),
                         lambda batch, nb, mb, mp, np: tvm.sum(
                             (tensor_b_l0b[mb, reduce_kb, mp, reduce_kp] *
-                             tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp]).astype
-                            (out_dtype), axis=[reduce_kb, reduce_kp]),
+                             (tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp] - \
+                             offset_x)).astype(out_dtype),
+                            axis=[reduce_kb, reduce_kp]),
                         name='tensor_c', attrs={'input_order': 'negative'})
                 else:
                     tensor_c = tvm.compute(
                         (batch_shape, m_shape, n_shape, block_in, block_in),
                         lambda batch, nb, mb, mp, np: tvm.sum(
                             (tensor_b_l0b[batch, mb, reduce_kb, mp, reduce_kp] *
-                             tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp]).astype
-                            (out_dtype), axis=[reduce_kb, reduce_kp]),
+                             (tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp] - \
+                             offset_x)).astype(out_dtype),
+                            axis=[reduce_kb, reduce_kp]),
                         name='tensor_c', attrs={'input_order': 'negative'})
                 return tensor_c
 
@@ -3059,11 +3064,11 @@ def get_core_factor(m_var, n_var):
     block_in = cce.BLOCK_IN
     block_out = cce.BLOCK_OUT
     if m_shape != 1:
-        core_inner_m = (((m_shape + block_in - 1) // block_in + \
-            (m_factors - 1)) // m_factors) * block_in
+        core_inner_m = (((m_shape + block_in - 1) // block_in +
+                         (m_factors - 1)) // m_factors) * block_in
 
-    core_inner_n = (((n_shape + block_out - 1) // block_out + \
-        (n_factors - 1)) // n_factors) * block_out
+    core_inner_n = (((n_shape + block_out - 1) // block_out +
+                     (n_factors - 1)) // n_factors) * block_out
 
     return core_inner_m, core_inner_n
 
@@ -3142,7 +3147,7 @@ def get_special_l0_factor_tiling(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     return m_l0_shape, k_l0_shape, n_l0_shape
 
 
-def get_core_num_tiling(m_shape, # pylint: disable=too-many-locals
+def get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
                         n_shape, k_shape):
     """
     get block tiling parameter
@@ -3198,7 +3203,7 @@ def get_core_num_tiling(m_shape, # pylint: disable=too-many-locals
             continue
 
         cur_copy_size = cur_n_factor * tensor_a_size + cur_m_factor * \
-                        tensor_b_size
+            tensor_b_size
         temp_m_shape = m_shape
         temp_n_shape = n_shape
         if m_axis_outer % m_factor != 0:
@@ -3222,7 +3227,7 @@ def get_core_num_tiling(m_shape, # pylint: disable=too-many-locals
 @util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                        str, float, float, str, (type(None), tvm.tensor.Tensor),
                        (type(None), dict), (type(None), str))
-def get_matmul_performance_format(tensor_a, # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                   tensor_b, trans_a=False, trans_b=False,
                                   format_a="ND", format_b="ND", alpha_num=1.0,
                                   beta_num=0.0, dst_dtype="float16",

@@ -1,35 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+confusion_matrix
+"""
 # pylint: disable=locally-disabled,too-many-lines,ungrouped-imports,unused-variable,
 # pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-import
-"""
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-confusion_matrix cce operators
-
-"""
 import math
 
-from te import platform as cce
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from topi.cce import util
-
-from te.platform.cce_intrin_md import reset_mask_insn
-from te.platform.cce_build import build_config
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 
 CCE_GLOBAL_AXIS = tvm.thread_axis("cce_global")
 CCE_MASK_AXIS = tvm.thread_axis("cce_mask")
@@ -112,7 +104,7 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
         if init_times != 0:
             with ibuilder.for_range(0, init_times) as rch:
                 with ibuilder.new_scope():
-                    reset_mask_insn(
+                    tbe_platform.cce_intrin_md.reset_mask_insn(
                         ibuilder, dst_buf.dtype, bits=vconv_compute_num)
                     ibuilder.emit(tvm.call_extern(dst_buf.dtype, vconv_instr, \
                                                   dst_buf.access_ptr('w', offset=rch * UINT8_MAX
@@ -122,7 +114,7 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
                                                   255, 1, 1, dst_strides, src_strides))
         if init_remain != 0:
             with ibuilder.new_scope():
-                reset_mask_insn(ibuilder, dst_buf.dtype, bits=vconv_compute_num)
+                tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, dst_buf.dtype, bits=vconv_compute_num)
                 ibuilder.emit(tvm.call_extern(dst_buf.dtype, vconv_instr, \
                                               dst_buf.access_ptr('w', offset=init_times * UINT8_MAX
                                                                  * vconv_compute_num), \
@@ -133,7 +125,7 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
     with ibuilder.if_scope(remain != 0):
         with ibuilder.new_scope():
             mask_len = remain
-            reset_mask_insn(ibuilder, dst_buf.dtype, bits=mask_len)
+            tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, dst_buf.dtype, bits=mask_len)
             ibuilder.emit(tvm.call_extern(dst_buf.dtype, vconv_instr, \
                                           dst_buf.access_ptr('w', offset=repeats
                                                              * vconv_compute_num), \
@@ -161,8 +153,8 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
         if init_times != 0:
             with ibuilder.for_range(0, init_times) as rch:
                 with ibuilder.new_scope():
-                    reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
-                    ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 2)
+                    tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
+                    ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                     ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
                                                   buf.access_ptr('w', offset=rch * UINT8_MAX
                                                                  * vec_compute_nums), \
@@ -170,8 +162,8 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
                                                   255, 1, 1, 8, 8))
         if init_remain != 0:
             with ibuilder.new_scope():
-                reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
-                ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 2)
+                tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
+                ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                 ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
                                               buf.access_ptr('w', offset=init_times * UINT8_MAX
                                                              * vec_compute_nums), \
@@ -181,8 +173,8 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
     with ibuilder.if_scope(remain_len != 0):
         with ibuilder.new_scope():
             mask_len = remain_len * (vec_compute_nums // VEC_BLOCK_NUMS)
-            reset_mask_insn(ibuilder, buf.dtype, bits=mask_len)
-            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 2)
+            tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=mask_len)
+            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
             ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
                                           buf.access_ptr('w', offset=repeat_times
                                                          * vec_compute_nums), \
@@ -192,7 +184,7 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
 def apply_for_new_alloc(ibuilder,
                         dtype,
                         shape,
-                        scope=cce.scope_ubuf,
+                        scope=tbe_platform.scope_ubuf,
                         name='tmp_buf'):
     """
     buffer allocation
@@ -212,12 +204,12 @@ def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
 
     """
 
-    check_shape(shape_labels, min_rank=1, max_rank=1, param_name="labels")
-    check_shape(shape_predictions, min_rank=1, max_rank=1, param_name="predictions")
+    para_check.check_shape(shape_labels, min_rank=1, max_rank=1, param_name="labels")
+    para_check.check_shape(shape_predictions, min_rank=1, max_rank=1, param_name="predictions")
     if list(shape_labels) != list(shape_predictions):
         raise RuntimeError("The shape of labels and predictions shoud be same")
     if shape_weights is not None:
-        check_shape(shape_weights, min_rank=1, max_rank=1, param_name="weights")
+        para_check.check_shape(shape_weights, min_rank=1, max_rank=1, param_name="weights")
         if list(shape_labels) != list(shape_weights):
             raise RuntimeError("The shape of labels and weights shoud be same")
 
@@ -257,8 +249,8 @@ def compute_ub_length(number, dtype_a, dtype_b):
     compute predictions ub length
     """
     ub_size = 15 * 1024  # define ub size
-    type_size_a = cce.cce_intrin.get_bit_len(dtype_a) // BITS_NUMS
-    type_size_b = cce.cce_intrin.get_bit_len(dtype_b) // BITS_NUMS
+    type_size_a = tbe_platform.cce_intrin.get_bit_len(dtype_a) // BITS_NUMS
+    type_size_b = tbe_platform.cce_intrin.get_bit_len(dtype_b) // BITS_NUMS
 
     if number * (type_size_a + type_size_b) > ub_size:  # label numbers
         length = ub_size // (type_size_a + type_size_b)
@@ -274,7 +266,7 @@ def compute_perblock_nums(dtype):
     """
     Calculate the numbers of this data type every block have
     """
-    type_size = cce.cce_intrin.get_bit_len(dtype) // BITS_NUMS
+    type_size = tbe_platform.cce_intrin.get_bit_len(dtype) // BITS_NUMS
     perblock_nums = BYTES_PER_BLOCK // type_size
 
     return perblock_nums
@@ -289,9 +281,9 @@ def compute_outub_size(height, width, dtype, core_nums):
     out_blocks = math.ceil(height * width / out_ele_perblock)
     block_per_core = math.ceil(out_blocks / core_nums)
     use_cores = math.ceil(out_blocks / block_per_core)
-    out_ele_size = cce.cce_intrin.get_bit_len(dtype) // BITS_NUMS
-    out_f16_size = cce.cce_intrin.get_bit_len("float16") // BITS_NUMS
-    out_int8_size = cce.cce_intrin.get_bit_len("int8") // BITS_NUMS
+    out_ele_size = tbe_platform.cce_intrin.get_bit_len(dtype) // BITS_NUMS
+    out_f16_size = tbe_platform.cce_intrin.get_bit_len("float16") // BITS_NUMS
+    out_int8_size = tbe_platform.cce_intrin.get_bit_len("int8") // BITS_NUMS
     if dtype in ["int8", "uint8"]:
         need_size = block_per_core * out_ele_perblock * (out_f16_size + out_int8_size)
         if need_size > ubuf_size:
@@ -326,7 +318,7 @@ def applyub_by_length(ibuilder, length, dtype, buf_name):
     apply_buf = apply_for_new_alloc(
         ibuilder,
         dtype, (int(length // num_per_block) + 1, num_per_block),
-        scope=cce.scope_ubuf,
+        scope=tbe_platform.scope_ubuf,
         name=buf_name)
 
     return apply_buf
@@ -398,10 +390,10 @@ def confusion_matrix_ir(labels, prediction, weight, output):
     if output_dtype in ["int8", "uint8"]:
         if weight_dtype in ["int8", "uint8", "float32"]:
             confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS), \
-                                                scope=cce.scope_ubuf, name="confusion_buf")
+                                                scope=tbe_platform.scope_ubuf, name="confusion_buf")
             confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                     (block_num_int8, output_perblock_nums), \
-                                                    scope=cce.scope_ubuf, name="confusion_buf_out")
+                                                    scope=tbe_platform.scope_ubuf, name="confusion_buf_out")
             weight_buf_in = applyub_by_length(ibuilder, length, weight_dtype,
                                               "weight_buf_in")
             weight_buf = applyub_by_length(ibuilder, length, "float16",
@@ -411,21 +403,21 @@ def confusion_matrix_ir(labels, prediction, weight, output):
             if weight_dtype == "float16":
                 confusion_buf = apply_for_new_alloc(ibuilder, weight_dtype,
                                                     (block_num_fp16, weight_perblock_nums), \
-                                                    scope=cce.scope_ubuf, name="confusion_buf")
+                                                    scope=tbe_platform.scope_ubuf, name="confusion_buf")
                 weight_buf = applyub_by_length(ibuilder, length, weight_dtype,
                                                "weight_buf")
                 weight_castto_dtype = weight_dtype
                 confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                         (block_num_int8, output_perblock_nums), \
-                                                        scope=cce.scope_ubuf,
+                                                        scope=tbe_platform.scope_ubuf,
                                                         name="confusion_buf_out")
             else:
                 # weight_dtype == "int32" only support cloud
                 confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS),
-                                                    scope=cce.scope_ubuf, name="confusion_buf")
+                                                    scope=tbe_platform.scope_ubuf, name="confusion_buf")
                 confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                         (block_num_int8, output_perblock_nums),
-                                                        scope=cce.scope_ubuf,
+                                                        scope=tbe_platform.scope_ubuf,
                                                         name="confusion_buf_out")
                 weight_buf_in = applyub_by_length(ibuilder, length,
                                                   weight_dtype, "weight_buf_in")
@@ -437,7 +429,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
     else:
         confusion_buf = apply_for_new_alloc(ibuilder, output_dtype,
                                             (block_num, output_perblock_nums), \
-                                            scope=cce.scope_ubuf, name="confusion_buf")
+                                            scope=tbe_platform.scope_ubuf, name="confusion_buf")
         weight_castto_dtype = output_dtype
         if output_dtype == "float16":
             if weight_dtype == "float16":
@@ -490,39 +482,39 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                 weight_buf = applyub_by_length(ibuilder, length, "int32",
                                                "weight_buf")
 
-    reg_buf = ibuilder.allocate("int32", (2,), scope=cce.scope_reg, name="reg_buf")
-    reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=cce.scope_reg, name="reg_tmp")
+    reg_buf = ibuilder.allocate("int32", (2,), scope=tbe_platform.scope_reg, name="reg_buf")
+    reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=tbe_platform.scope_reg, name="reg_tmp")
     # apply for weights add ub_buf
     value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
-                                    scope=cce.scope_ubuf, name="value_buf")
+                                    scope=tbe_platform.scope_ubuf, name="value_buf")
     value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
-                                     scope=cce.scope_ubuf, name="value_buf1")
+                                     scope=tbe_platform.scope_ubuf, name="value_buf1")
 
     # apply for label_buf, predict_buf
     label_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
                                           (int(length // BITS_NUMS) + 1, BITS_NUMS), \
-                                          scope=cce.scope_ubuf, name="label_buf_int32")
+                                          scope=tbe_platform.scope_ubuf, name="label_buf_int32")
     predict_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
                                             (int(length // BITS_NUMS) + 1, BITS_NUMS), \
-                                            scope=cce.scope_ubuf, name="predict_buf_int32")
+                                            scope=tbe_platform.scope_ubuf, name="predict_buf_int32")
     if labels_dtype != "int32":
         label_buf = apply_for_new_alloc(ibuilder, labels_dtype,
                                         (int(length // labels_perblock_nums) + 1,
                                          labels_perblock_nums), \
-                                        scope=cce.scope_ubuf, name="label_buf")
+                                        scope=tbe_platform.scope_ubuf, name="label_buf")
     if labels_dtype in ("int8", "uint8"):
         cast_fp16_buf_a = apply_for_new_alloc(ibuilder, "float16",
                                               (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
-                                              scope=cce.scope_ubuf, name="cast_fp16_buf_a")
+                                              scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_a")
     if prediction_dtype != "int32":
         predict_buf = apply_for_new_alloc(ibuilder, prediction_dtype,
                                           (int(length // prediction_perblock_nums) + 1,
                                            prediction_perblock_nums), \
-                                          scope=cce.scope_ubuf, name="predict_buf")
+                                          scope=tbe_platform.scope_ubuf, name="predict_buf")
     if prediction_dtype in ("int8", "uint8"):
         cast_fp16_buf_b = apply_for_new_alloc(ibuilder, "float16",
                                               (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
-                                              scope=cce.scope_ubuf, name="cast_fp16_buf_b")
+                                              scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_b")
 
     with ibuilder.for_range(0, out_factor) as out:
         # initilation for confusion_buf
@@ -626,13 +618,13 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                 with ibuilder.if_scope((b_out * length + i) < number):
                     # label <==> reg_buf[0]
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                         ibuilder.emit(tvm.call_extern("int32", "reg_mov", \
                                                       tvm.call_extern("int32", "reg", reg_buf[0]), \
                                                       label_buf_int32.access_ptr("r", offset=i), 0))
                     # prediction <==> reg_buf[1]
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                         ibuilder.emit(tvm.call_extern("int32", "reg_mov", \
                                                       tvm.call_extern("int32", "reg", reg_buf[1]), \
                                                       predict_buf_int32.access_ptr("r", \
@@ -645,7 +637,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
 
                         # weight <==> reg_tmp[0]
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), \
@@ -653,7 +645,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
 
                         # ==========Values in the same position need to be superimposed==========
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[1]), \
@@ -663,14 +655,14 @@ def confusion_matrix_ir(labels, prediction, weight, output):
 
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           value_buf.access_ptr("w", offset=0), \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), ))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           value_buf1.access_ptr("w", offset=0), \
                                                           tvm.call_extern(weight_castto_dtype,
@@ -679,9 +671,9 @@ def confusion_matrix_ir(labels, prediction, weight, output):
 
                         with ibuilder.new_scope():
                             mask_len = 8
-                            reset_mask_insn(
+                            tbe_platform.cce_intrin_md.reset_mask_insn(
                                 ibuilder, value_buf.dtype, bits=mask_len)
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 2)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                             ibuilder.emit(tvm.call_extern(value_buf.dtype, "vadd", \
                                                           value_buf.access_ptr('w', offset=0), \
                                                           value_buf.access_ptr('r', offset=0), \
@@ -689,14 +681,14 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                           1, 0, 0, 0, 0, 0, 0))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), \
                                                           value_buf.access_ptr("r", offset=0), 0))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           confusion_buf.access_ptr("w", \
                                                           offset=reg_buf[0] * width + reg_buf[1] - out * \
@@ -711,7 +703,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                     with ibuilder.if_scope(tvm.all(out == (out_factor - 1))):
                         last_block_num = last_remian
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -719,7 +711,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                           0, 1, last_block_num, 0, 0))
                     with ibuilder.else_scope():
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -727,7 +719,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                           0, 1, block_num, 0, 0))
                 else:
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                         ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                       output.access_ptr('w', offset=out * total_len + \
                                                       block_per_core*output_perblock_nums*core_num), \
@@ -740,7 +732,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                     with ibuilder.if_scope(tvm.all(out == (out_factor - 1))):
                         last_block_num = last_remian
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -748,7 +740,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                           0, 1, last_block_num, 0, 0))
                     with ibuilder.else_scope():
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -756,7 +748,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                           0, 1, block_num, 0, 0))
                 else:
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                         ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                       output.access_ptr('w', offset=out * total_len + \
                                                       block_per_core*output_perblock_nums*core_num), \
@@ -817,10 +809,10 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
     if output_dtype in ["int8", "uint8"]:
         confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS), \
-                                            scope=cce.scope_ubuf, name="confusion_buf")
+                                            scope=tbe_platform.scope_ubuf, name="confusion_buf")
         confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                 (block_num_int8, output_perblock_nums), \
-                                                scope=cce.scope_ubuf, name="confusion_buf_out")
+                                                scope=tbe_platform.scope_ubuf, name="confusion_buf_out")
         weight_buf = applyub_by_length(ibuilder, length, "float16",
                                        "weight_buf")
         weight_castto_dtype = "float16"
@@ -828,44 +820,44 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
     else:
         confusion_buf = apply_for_new_alloc(ibuilder, output_dtype,
                                             (block_num, output_perblock_nums), \
-                                            scope=cce.scope_ubuf, name="confusion_buf")
+                                            scope=tbe_platform.scope_ubuf, name="confusion_buf")
         weight_buf = applyub_by_length(ibuilder, length, output_dtype,
                                        "weight_buf")
         weight_castto_dtype = output_dtype
 
-    reg_buf = ibuilder.allocate("int32", (2,), scope=cce.scope_reg, name="reg_buf")
-    reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=cce.scope_reg, name="reg_tmp")
+    reg_buf = ibuilder.allocate("int32", (2,), scope=tbe_platform.scope_reg, name="reg_buf")
+    reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=tbe_platform.scope_reg, name="reg_tmp")
     # apply for weights add ub_buf
     value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
-                                    scope=cce.scope_ubuf, name="value_buf")
+                                    scope=tbe_platform.scope_ubuf, name="value_buf")
     value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
-                                     scope=cce.scope_ubuf, name="value_buf1")
+                                     scope=tbe_platform.scope_ubuf, name="value_buf1")
 
     # apply for label_buf, predict_buf
     label_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
                                           (int(length // BITS_NUMS) + 1, BITS_NUMS), \
-                                          scope=cce.scope_ubuf, name="label_buf_int32")
+                                          scope=tbe_platform.scope_ubuf, name="label_buf_int32")
     predict_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
                                             (int(length // BITS_NUMS) + 1, BITS_NUMS), \
-                                            scope=cce.scope_ubuf, name="predict_buf_int32")
+                                            scope=tbe_platform.scope_ubuf, name="predict_buf_int32")
     if labels_dtype != "int32":
         label_buf = apply_for_new_alloc(ibuilder, labels_dtype,
                                         (int(length // labels_perblock_nums) + 1,
                                          labels_perblock_nums), \
-                                        scope=cce.scope_ubuf, name="label_buf")
+                                        scope=tbe_platform.scope_ubuf, name="label_buf")
     if labels_dtype in ("int8", "uint8"):
         cast_fp16_buf_a = apply_for_new_alloc(ibuilder, "float16",
                                               (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
-                                              scope=cce.scope_ubuf, name="cast_fp16_buf_a")
+                                              scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_a")
     if prediction_dtype != "int32":
         predict_buf = apply_for_new_alloc(ibuilder, prediction_dtype,
                                           (int(length // prediction_perblock_nums) + 1,
                                            prediction_perblock_nums), \
-                                          scope=cce.scope_ubuf, name="predict_buf")
+                                          scope=tbe_platform.scope_ubuf, name="predict_buf")
     if prediction_dtype in ("int8", "uint8"):
         cast_fp16_buf_b = apply_for_new_alloc(ibuilder, "float16",
                                               (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
-                                              scope=cce.scope_ubuf, name="cast_fp16_buf_b")
+                                              scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_b")
 
     weight_blocks = int(length // compute_perblock_nums(weight_castto_dtype)) + 1
     with ibuilder.for_range(0, out_factor) as out:
@@ -909,13 +901,13 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                 with ibuilder.if_scope((b_out * length + i) < number):
                     # label <==> reg_buf[0]
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                         ibuilder.emit(tvm.call_extern("int32", "reg_mov", \
                                                       tvm.call_extern("int32", "reg", reg_buf[0]), \
                                                       label_buf_int32.access_ptr("r", offset=i), 0))
                     # prediction <==> reg_buf[1]
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                         ibuilder.emit(tvm.call_extern("int32", "reg_mov", \
                                                       tvm.call_extern("int32", "reg", reg_buf[1]), \
                                                       predict_buf_int32.access_ptr("r", \
@@ -928,7 +920,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
                         # weight <==> reg_tmp[0]
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), \
@@ -936,7 +928,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
                         # ==========Values in the same position need to be superimposed==========
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[1]), \
@@ -946,14 +938,14 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           value_buf.access_ptr("w", offset=0), \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), ))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           value_buf1.access_ptr("w", offset=0), \
                                                           tvm.call_extern(weight_castto_dtype,
@@ -962,9 +954,9 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
                         with ibuilder.new_scope():
                             mask_len = 8
-                            reset_mask_insn(
+                            tbe_platform.cce_intrin_md.reset_mask_insn(
                                 ibuilder, value_buf.dtype, bits=mask_len)
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 2)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                             ibuilder.emit(tvm.call_extern(value_buf.dtype, "vadd", \
                                                           value_buf.access_ptr('w', offset=0), \
                                                           value_buf.access_ptr('r', offset=0), \
@@ -972,14 +964,14 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                                           1, 0, 0, 0, 0, 0, 0))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           tvm.call_extern(weight_castto_dtype,
                                                                           "reg", reg_tmp[0]), \
                                                           value_buf.access_ptr("r", offset=0), 0))
 
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 1)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                             ibuilder.emit(tvm.call_extern(weight_castto_dtype, "reg_mov", \
                                                           confusion_buf.access_ptr("w", \
                                                           offset=reg_buf[0] * width + reg_buf[1] - out * \
@@ -994,7 +986,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                     with ibuilder.if_scope(tvm.all(out == (out_factor - 1))):
                         last_block_num = last_remian
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -1002,7 +994,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                                           0, 1, last_block_num, 0, 0))
                     with ibuilder.else_scope():
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -1010,7 +1002,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                                           0, 1, block_num, 0, 0))
                 else:
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                         ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                       output.access_ptr('w', offset=out * total_len + \
                                                       block_per_core*output_perblock_nums*core_num), \
@@ -1023,7 +1015,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                     with ibuilder.if_scope(tvm.all(out == (out_factor - 1))):
                         last_block_num = last_remian
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -1031,7 +1023,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                                           0, 1, last_block_num, 0, 0))
                     with ibuilder.else_scope():
                         with ibuilder.new_scope():
-                            ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                            ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                             ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                           output.access_ptr('w', offset=out * total_len + \
                                                           block_per_core*output_perblock_nums*core_num), \
@@ -1039,7 +1031,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                                           0, 1, block_num, 0, 0))
                 else:
                     with ibuilder.new_scope():
-                        ibuilder.scope_attr(cce.CCE_AXIS, "coproc_scope", 6)
+                        ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 6)
                         ibuilder.emit(tvm.call_extern(output_dtype, "copy_ubuf_to_gm", \
                                                       output.access_ptr('w', offset=out * total_len + \
                                                       block_per_core*output_perblock_nums*core_num), \
@@ -1051,9 +1043,9 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
 # @util.check_input_type((list, tuple), int, str, str, bool, bool)
 # pylint: disable=locally-disabled,invalid-name,unused-argument
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_INT, REQUIRED_ATTR_STR, KERNEL_NAME, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_BOOL)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_STR,
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL)
 def confusion_matrix(labels,
                      predictions,
                      weights,
@@ -1085,12 +1077,12 @@ def confusion_matrix(labels,
     """
 
     shape = labels.get("shape")
-    check_shape(shape, param_name="labels")
+    para_check.check_shape(shape, param_name="labels")
     shape_predictions = predictions.get("shape")
-    check_shape(shape_predictions, param_name="predictions")
+    para_check.check_shape(shape_predictions, param_name="predictions")
     if weights is not None:
         shape_weights = weights.get("shape")
-        check_shape(shape_weights, param_name="weights")
+        para_check.check_shape(shape_weights, param_name="weights")
         weights_dtype = weights.get("dtype").lower()
     else:
         shape_weights = None
@@ -1107,19 +1099,18 @@ def confusion_matrix(labels,
     out_shape = (num_classes, num_classes)
     if weights is not None:
         weight = tvm.placeholder(shape, dtype=weights_dtype, name="weight")
-        res = tvm.extern([out_shape], [labels, prediction, weight], \
-                         lambda ins, outs: confusion_matrix_ir(ins[0], ins[1], ins[2],
-                                                               output=outs[0]),
+        res = tvm.extern([out_shape], [labels, prediction, weight],
+                         lambda ins, outs: confusion_matrix_ir(ins[0], ins[1], ins[2], output=outs[0]),
                          dtype=dtype, name=kernel_name)
         sch = tvm.create_schedule([res.op])
         if need_build:
-            with build_config:
+            with tbe_platform.cce_build.build_config:
                 mod = tvm.build(
                     sch, [labels, prediction, weight, res],
                     "cce",
                     name=kernel_name)
         if need_print:
-            with build_config:
+            with tbe_platform.cce_build.build_config:
                 print(
                     tvm.lower(
                         sch, [labels, prediction, weight, res],
@@ -1131,10 +1122,10 @@ def confusion_matrix(labels,
                          dtype=dtype, name=kernel_name)
         sch = tvm.create_schedule([res.op])
         if need_build:
-            with build_config:
+            with tbe_platform.cce_build.build_config:
                 mod = tvm.build(
                     sch, [labels, prediction, res], "cce", name=kernel_name)
         if need_print:
-            with build_config:
+            with tbe_platform.cce_build.build_config:
                 print(
                     tvm.lower(sch, [labels, prediction, res], simple_mode=True))

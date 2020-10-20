@@ -1,29 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 topk
 """
-
 # pylint: disable=C0302
 # pylint: disable=E0401
 # pylint: disable=W0603
 # pylint: disable=R0914
 # pylint: disable=W0612
 import math
+
 from te import tik
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 
 VMS4_ELEMENT_NUM = 4         # we're doing 4-way merge sorting
 VBS_SORT_NUM = 16
@@ -33,6 +33,7 @@ MAX_INPUT_LIST_LENGTH = 4096
 UB_SIZE = 128 * 1024          # UB size in byte
 REGION_SIZE_INBYTE = 16      # fp16 region size in byte
 HALF_UB_REGION_CAPACITY = UB_SIZE // 2 // REGION_SIZE_INBYTE
+MAX_REGION_LOOP_NUM = 16
 
 
 def check_topk_param(input_args, output_args):
@@ -100,7 +101,6 @@ def set_ub_size_by_product_type(data_type):
     NA
     """
     global UB_SIZE
-    #UB_SIZE = tik.Dprofile().get_unified_buffer_size()
     UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
     
     global REGION_SIZE_INBYTE
@@ -174,7 +174,11 @@ def tik_topk(tik_inst, topk_in, topk_out):
         task_id = "0"
         split_param = (topk_in["proposal_num"], n_required,
                        src_pos, dest_pos, task_id)
-        tik_topk_split_proposal_group(tik_inst, proposal_store, split_param)
+        per_regions = HALF_UB_REGION_CAPACITY * (VMS4_ELEMENT_NUM - 1)
+        if topk_in["proposal_num"] // per_regions < MAX_REGION_LOOP_NUM:
+            tik_topk_split_proposal_group(tik_inst, proposal_store, split_param)
+        else:
+            _tik_topk_split_proposal_group(tik_inst, proposal_store, split_param)
 
     with tik_inst.new_stmt_scope():
         tik_topk_filter_by_score_threshold(
@@ -310,6 +314,160 @@ def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
         tik_topk_min(tik_inst, k, count_scalar, top_output["proposal_actual_num"])
 
 
+def _tik_topk_split_proposal_group(tik_inst, proposal_store, split_param):
+    """
+    divide proposal num for sorting in ub
+
+    Parameters
+    ----------
+    tik_inst: tik instance
+    proposal_store: is a list, the keys as follow:
+        batch_id: batch id
+        mem_ub: ub tensor
+        regions_sorted: sorted tensor
+        regions_orig: original tersor
+        mem_interm: intermediate tensor
+    split_param: is a list, the keys as follow:
+        n_regions: split tensor num
+        n_required: required tensor num
+        src_pos: src pos
+        dest_pos: dest pos
+        task_id: task id
+
+    Returns
+    -------
+    level_from_leaf: split depth
+    """
+    batch_id = proposal_store[0]
+    mem_ub = proposal_store[1]
+    regions_sorted = proposal_store[2]
+    regions_orig = proposal_store[3]
+    mem_interm = proposal_store[4]
+
+    n_regions = split_param[0]
+    n_required = split_param[1]
+    src_pos = split_param[2]
+    dest_pos = src_pos
+
+    if n_regions <= HALF_UB_REGION_CAPACITY:
+        tik_topk_merge_sort_internal(
+            tik_inst,
+            (batch_id, mem_ub, regions_sorted, regions_orig),
+            ([n_regions], n_required, [src_pos], dest_pos))
+        return
+
+    per_regions = math.ceil(HALF_UB_REGION_CAPACITY / VBS_SORT_NUM) * VBS_SORT_NUM
+    per_required = min(n_required, per_regions)
+    mem_in = mem_interm
+    mem_out = regions_orig
+    n_remains = n_regions
+
+    if n_regions > per_regions * VMS4_ELEMENT_NUM:
+        # sort first block
+        mem_tmp = [mem_interm, regions_orig]
+        tik_topk_merge_sort_internal(
+                tik_inst,
+                (batch_id, mem_ub, mem_in, regions_orig),
+                ([per_regions], per_required, [src_pos], dest_pos))
+
+        src_pos += per_regions
+        dest_pos += per_required
+        n_remains -= per_regions
+        loop_num = int((n_remains / per_regions) // (VMS4_ELEMENT_NUM - 1))
+        n_remains -= per_regions * (VMS4_ELEMENT_NUM - 1) * loop_num
+
+        if loop_num > 0:
+            subtsk_dest_pos_list = [0, per_required, per_required * 2, per_required * 3]
+            subtsk_n_required_list = [per_required, per_required, per_required, per_required]
+            region_idx_offset = per_regions * (VMS4_ELEMENT_NUM - 1)
+            with tik_inst.for_range(0, loop_num) as region_idx:
+                for vms_idx in range(0, VMS4_ELEMENT_NUM - 1):
+                    with tik_inst.if_scope(region_idx % 2 == 0):
+                        tik_topk_merge_sort_internal(
+                            tik_inst,
+                            (batch_id, mem_ub, mem_tmp[0], regions_orig),
+                            ([per_regions], per_required,
+                                [src_pos + region_idx_offset * region_idx + per_regions * vms_idx],
+                                subtsk_dest_pos_list[vms_idx + 1]))
+                    with tik_inst.else_scope():
+                        tik_topk_merge_sort_internal(
+                            tik_inst,
+                            (batch_id, mem_ub, mem_tmp[1], regions_orig),
+                            ([per_regions], per_required,
+                                [src_pos + region_idx_offset * region_idx + per_regions * vms_idx],
+                                subtsk_dest_pos_list[vms_idx + 1]))
+
+                if n_remains == 0:
+                    with tik_inst.if_scope(region_idx == loop_num - 1):
+                        with tik_inst.if_scope(region_idx % 2 == 0):
+                            tik_topk_merge_sort_external(
+                                tik_inst, (mem_ub, regions_sorted, mem_tmp[0], batch_id, n_required),
+                                (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+                        with tik_inst.else_scope():
+                            tik_topk_merge_sort_external(
+                                tik_inst, (mem_ub, regions_sorted, mem_tmp[1], batch_id, n_required),
+                                (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+                    with tik_inst.else_scope():
+                        with tik_inst.if_scope(region_idx % 2 == 0):
+                            tik_topk_merge_sort_external(
+                                tik_inst, (mem_ub, mem_tmp[1], mem_tmp[0], batch_id, n_required),
+                                (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+                        with tik_inst.else_scope():
+                            tik_topk_merge_sort_external(
+                                tik_inst, (mem_ub, mem_tmp[0], mem_tmp[1], batch_id, n_required),
+                                (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+                else:
+                    with tik_inst.if_scope(region_idx % 2 == 0):
+                        tik_topk_merge_sort_external(
+                            tik_inst, (mem_ub, mem_tmp[1], mem_tmp[0], batch_id, n_required),
+                            (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+                    with tik_inst.else_scope():
+                        tik_topk_merge_sort_external(
+                            tik_inst, (mem_ub, mem_tmp[0], mem_tmp[1], batch_id, n_required),
+                            (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+        if n_remains > 0:
+            mem_in = mem_tmp[loop_num % 2]
+            mem_out = mem_tmp[(loop_num + 1) % 2]
+            subtsk_dest_pos_list = [0]
+            subtsk_n_required_list = [n_required]
+            src_pos += loop_num * (VMS4_ELEMENT_NUM - 1) * per_regions
+            dest_pos = n_required
+    else:
+        subtsk_dest_pos_list = []
+        subtsk_n_required_list = []
+
+    if n_remains > 0:
+        mem_out = regions_sorted
+        if n_remains <= per_regions:
+            tmp_required = min(n_remains, n_required)
+            tik_topk_merge_sort_internal(
+                tik_inst,
+                (batch_id, mem_ub, mem_in, regions_orig),
+                ([n_remains], tmp_required, [src_pos], dest_pos))
+            subtsk_dest_pos_list.append(n_required)
+            subtsk_n_required_list.append(tmp_required)
+        else:
+            split_num = VMS4_ELEMENT_NUM - len(subtsk_dest_pos_list)
+            tmp_regions = math.ceil(n_remains / split_num)
+            tmp_regions = math.ceil(tmp_regions / VBS_SORT_NUM) * VBS_SORT_NUM
+            for i in range(0, split_num):
+                tmp_regions = min(n_remains, tmp_regions)
+                tmp_required = min(n_remains, tmp_regions)
+                tik_topk_merge_sort_internal(
+                    tik_inst,
+                    (batch_id, mem_ub, mem_in, regions_orig),
+                    ([tmp_regions], tmp_required, [src_pos], dest_pos))
+                subtsk_dest_pos_list.append(dest_pos)
+                subtsk_n_required_list.append(tmp_required)
+                src_pos += tmp_regions
+                dest_pos += tmp_required
+                n_remains -= tmp_regions
+
+        tik_topk_merge_sort_external(
+            tik_inst, (mem_ub, mem_out, mem_in, batch_id, n_required),
+            (subtsk_dest_pos_list, subtsk_n_required_list, 0))
+
+
 def tik_topk_split_proposal_group(tik_inst, proposal_store, split_param):
     """
     divide proposal num for sorting in ub
@@ -366,6 +524,8 @@ def tik_topk_split_proposal_group(tik_inst, proposal_store, split_param):
             for i in range(split_num):
                 subtsk_n_regions = min(n_regions_subtsk, n_remains)
                 subtsk_n_required = min(n_required_subtsk, subtsk_n_regions)
+                if subtsk_n_required == 0:
+                    continue
                 tik_topk_merge_sort_internal(
                     tik_inst,
                     (batch_id, mem_ub, mem_in, regions_orig),
@@ -388,7 +548,7 @@ def tik_topk_split_proposal_group(tik_inst, proposal_store, split_param):
             src_pos += tmp_regions
             dest_pos += tmp_required
             n_remains -= tmp_regions
-        if len(subtsk_dest_pos_list) == VMS4_ELEMENT_NUM:
+        if len(subtsk_dest_pos_list) == VMS4_ELEMENT_NUM or n_remains == 0:
             if merge_count % 2 == 0:
                 mem_out = regions_sorted if n_remains == 0 else regions_orig
             else:
@@ -1043,6 +1203,7 @@ def tik_topk_merge_sort_external(tik_inst, data_store, sub_list):
 
     n_src_list = len(src_pos_list)
     slot_capacity = UB_SIZE//(n_src_list*2)//REGION_SIZE_INBYTE
+    slot_capacity = (slot_capacity // 32) * 32
 
     n_total_selected_ = tik_inst.Scalar("int64", "n_total_selected_", 0)
     n_total_rem_ = tik_inst.Scalar("int64", "n_total_rem_", n_required)

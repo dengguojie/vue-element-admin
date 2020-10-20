@@ -28,17 +28,15 @@ from te import tik
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.error_manager import error_manager_vector as error_manager
 
-MAX_SIZE = 2**31 - 1
+MAX_SIZE = 2 ** 31 - 1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-branches
 # pylint: disable=too-many-locals,too-many-statements,unused-variable
 # pylint: disable=too-many-boolean-expressions
-def op_select_format(input_values,
-                     output_data,
-                     axis,
-                     kernel_name="concat_v2_d"):
+def op_select_format(input_values, output_data, axis, kernel_name="concat_v2_d"):
     """
     select format dynamically
     """
@@ -49,16 +47,8 @@ def op_select_format(input_values,
     format_4d = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
 
     # ND
-    input0 = gen_param(
-        classify="input0",
-        name="input_values",
-        datatype=datatype_4d,
-        format=format_4d)
-    output0 = gen_param(
-        classify="output0",
-        name="output_data",
-        datatype=datatype_4d,
-        format=format_4d)
+    input0 = gen_param(classify="input0", name="input_values", datatype=datatype_4d, format=format_4d)
+    output0 = gen_param(classify="output0", name="output_data", datatype=datatype_4d, format=format_4d)
 
     param_list = [input0, output0]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
@@ -118,7 +108,6 @@ class ConcatV2:
             self._out_dim = None
             self._inner_dim = None
 
-
         def init(self):
             inst = self.tik_instance
             dtype = self.dtype
@@ -154,21 +143,21 @@ class ConcatV2:
         def need_ub_size(self):
             return self._need_ub_size
 
-    def __init__(self, input_values, kernel_name):
+    def __init__(self, input_values, axis, kernel_name):
         self.tik_instance = tik.Tik()
         self.tik_profiling = tik.Dprofile()
         self.tiling_param = self.TilingParam(input_values, self.tik_instance)
         self.aicore_num = self.tik_profiling.get_aicore_num()
         self.kernel_name = kernel_name
+        self.axis = axis
 
         self.dtype = input_values[0].get("dtype").lower()
         self.output_shape = (MAX_SIZE,)
         self.input_shape = (MAX_SIZE,)
 
-        self.input_tensors, self.output_tensor = \
-            self._init_gm_tensor(self.input_shape, self.output_shape,
-                                 len(input_values),
-                                 self.dtype)
+        self.input_tensors, self.output_tensor = self._init_gm_tensor(self.input_shape, self.output_shape,
+                                                                      len(input_values),
+                                                                      self.dtype)
 
         dtype_bytes_size = common_util.get_data_size(self.dtype)
         self.ele_each_block = constant.BLOCK_SIZE // dtype_bytes_size
@@ -184,7 +173,6 @@ class ConcatV2:
         self.ub_buffer_length *= constant.BLOCK_SIZE
 
         self.ub_buffer_length //= dtype_bytes_size
-
 
     def _init_gm_tensor(self, input_shape, output_shape, input_count, dtype):
         """
@@ -209,19 +197,16 @@ class ConcatV2:
         input_tensors = []
         for _, index in enumerate(range(input_count)):
             tensor_name = "gm_input_" + str(index)
-            gm_tensor = self.tik_instance.Tensor(dtype, input_shape,
-                                                 name=tensor_name,
-                                                 scope=tik.scope_gm)
+            gm_tensor = self.tik_instance.Tensor(dtype, input_shape, name=tensor_name, scope=tik.scope_gm)
             input_tensors.append(gm_tensor)
 
-        output_tensor = self.tik_instance.Tensor(
-            dtype, output_shape, name="gm_output", scope=tik.scope_gm)
+        output_tensor = self.tik_instance.Tensor(dtype, output_shape, name="gm_output", scope=tik.scope_gm)
 
         return input_tensors, output_tensor
 
     def _data_move(self, dest: tik.Tensor, src: tik.Tensor, count: tik.Scalar):
         dtype_size = common_util.get_data_size(src.dtype)
-        burst = self._get_ceil_int(count * dtype_size, constant.BLOCK_SIZE)
+        burst = self._ceil_div(count * dtype_size, constant.BLOCK_SIZE)
         self.tik_instance.data_move(dest, src, 0, 1, burst, 0, 0)
 
     def concat_compute(self):
@@ -234,8 +219,7 @@ class ConcatV2:
         """
         inst = self.tik_instance
         aicore_num = self.aicore_num
-        with inst.for_range(0, aicore_num, name="core_idx",
-                            block_num=aicore_num) as i:
+        with inst.for_range(0, aicore_num, name="core_idx", block_num=aicore_num) as i:
             self.tiling_param.init()
             min_inner_dim = self.tiling_param.min_inner_dim
             with inst.if_scope(min_inner_dim < self.ele_each_block):
@@ -243,60 +227,48 @@ class ConcatV2:
             with inst.else_scope():
                 self._concat_large_inner(i)
 
-        inst.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=self.input_tensors,
-            outputs=(self.output_tensor,),
-            flowtable=[self.tiling_param.tiling_gm],
-            enable_l2=False)
+        opt_config = {"out_of_bound_sync_check": True}
+        inst.BuildCCE(kernel_name=self.kernel_name, inputs=self.input_tensors, outputs=(self.output_tensor,),
+                      flowtable=[self.tiling_param.tiling_gm],
+                      config=opt_config,
+                      enable_l2=False)
 
-        te.op.add_compile_info("vars",
-                               {"input_size": len(self.input_tensors),
-                                "block_dim": self.aicore_num
-                                })
+        te.op.add_compile_info("vars", {"input_size": len(self.input_tensors),
+                                        "concat_dim": self.axis,
+                                        "block_dim": self.aicore_num
+                                        })
         return inst
 
-    def _get_ceil_int(self, int1: tik.Scalar, int2):
-        """get cel for input1 and input2
+    def _ceil_div(self, int1: tik.Scalar, int2):
         """
-        result = self.tik_instance.Scalar("int32")
+        ceil for (int1 / int2)
+        """
+        result = self.tik_instance.Scalar("int64")
         with self.tik_instance.if_scope(int1 == 0):
             result.set_as(1)
         with self.tik_instance.else_scope():
             result.set_as(int1 // int2)
         with self.tik_instance.if_scope(int1 % int2 != 0):
-            result.set_as(result+1)
+            result.set_as(result + 1)
 
         return result
 
     def _get_ceil_32bytes_count(self, count: tik.Scalar):
-        ceil_num = self._get_ceil_int(count, self.ele_each_block)
+        ceil_num = self._ceil_div(count, self.ele_each_block)
         return ceil_num * self.ele_each_block
 
     def _concat_inner_dim_each_split(self, out_dim_idx, inner_dim_split_idx):
         for index, _ in enumerate(self.input_tensors):
-            self._concat_compute_tensor_inner_dim(out_dim_idx,
-                                                  inner_dim_split_idx,
-                                                  index)
+            self._concat_compute_tensor_inner_dim(out_dim_idx, inner_dim_split_idx, index)
 
-    def _concat_compute_tensor_inner_dim(self,
-                                         out_dim_idx,
-                                         inner_dim_split_idx,
-                                         tensor_index):
+    def _concat_compute_tensor_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
         with self.tik_instance.if_scope(inner_dims % self.ele_each_block == 0):
-            self._concat_tensor_align_inner_dim(out_dim_idx,
-                                                inner_dim_split_idx,
-                                                tensor_index)
+            self._concat_tensor_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
         with self.tik_instance.else_scope():
-            self._concat_tensor_not_align_inner_dim(out_dim_idx,
-                                                    inner_dim_split_idx,
-                                                    tensor_index)
+            self._concat_tensor_not_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
 
-    def _concat_tensor_align_inner_dim(self,
-                                       out_dim_idx,
-                                       inner_dim_split_idx,
-                                       tensor_index):
+    def _concat_tensor_align_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inst = self.tik_instance
         factor = self.ub_buffer_length
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
@@ -304,15 +276,12 @@ class ConcatV2:
         output_gm = self.output_tensor
         with inst.new_stmt_scope():
             ub_length = self.ub_buffer_length
-            ub = inst.Tensor(input_gm.dtype, (ub_length,),
-                             scope=tik.scope_ubuf, name="out_ub")
-            in_start_index = (inner_dim_split_idx * factor +
-                              inner_dims * out_dim_idx)
+            ub = inst.Tensor(input_gm.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
+            in_start_index = inner_dim_split_idx * factor + inner_dims * out_dim_idx
 
             output_dim = self.tiling_param.output_inner_length
-            out_start_index = (output_idx + inner_dim_split_idx * factor +
-                               output_dim * out_dim_idx)
-            with inst.if_scope(in_start_index < inner_dims * (1+out_dim_idx)):
+            out_start_index = output_idx + inner_dim_split_idx * factor + output_dim * out_dim_idx
+            with inst.if_scope(in_start_index < inner_dims * (1 + out_dim_idx)):
                 count = inst.Scalar("int64", name="count")
                 count.set_as(inner_dims * (1 + out_dim_idx) - in_start_index)
                 with inst.if_scope(count > ub_length):
@@ -321,9 +290,7 @@ class ConcatV2:
                 self._data_move(ub, input_gm[in_start_index:], count)
                 self._data_move(output_gm[out_start_index:], ub, count)
 
-    def _concat_tensor_not_align_inner_dim(self, out_dim_idx,
-                                           inner_dim_split_idx,
-                                           tensor_index):
+    def _concat_tensor_not_align_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inst = self.tik_instance
         factor = self.ub_buffer_length
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
@@ -332,16 +299,13 @@ class ConcatV2:
 
         with inst.new_stmt_scope():
             ub_length = self.ub_buffer_length
-            ub = inst.Tensor(input_gm.dtype, (ub_length,),
-                             scope=tik.scope_ubuf, name="out_ub")
-            in_start_index = (inner_dim_split_idx * factor +
-                              inner_dims * out_dim_idx)
+            ub = inst.Tensor(input_gm.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
+            in_start_index = inner_dim_split_idx * factor + inner_dims * out_dim_idx
 
             output_dim = self.tiling_param.output_inner_length
-            out_start_index = (output_idx + inner_dim_split_idx * factor +
-                               output_dim * out_dim_idx)
-            with inst.if_scope(in_start_index < inner_dims * (1+out_dim_idx)):
-                count = inner_dims * (1+out_dim_idx) - in_start_index
+            out_start_index = output_idx + inner_dim_split_idx * factor + output_dim * out_dim_idx
+            with inst.if_scope(in_start_index < inner_dims * (1 + out_dim_idx)):
+                count = inner_dims * (1 + out_dim_idx) - in_start_index
                 with inst.if_scope(count > ub_length):
                     self._data_move(ub, input_gm[in_start_index:], ub_length)
                     self._data_move(output_gm[out_start_index:], ub, ub_length)
@@ -354,15 +318,12 @@ class ConcatV2:
                         self._data_move(ub, input_gm[new_in_start_index:], align_count)
                         self._data_move(output_gm[new_out_start_index:], ub, align_count)
                     with inst.else_scope():
-                        self._data_move(ub, input_gm[in_start_index:],
-                                        self.ele_each_block)
-                        self._data_move(output_gm[out_start_index:], ub,
-                                        self.ele_each_block)
+                        self._data_move(ub, input_gm[in_start_index:], self.ele_each_block)
+                        self._data_move(output_gm[out_start_index:], ub, self.ele_each_block)
 
                         in_start_index += self.ele_each_block
                         out_start_index += self.ele_each_block
-                        align_count = self._get_ceil_32bytes_count(count -
-                                                                   self.ele_each_block)
+                        align_count = self._get_ceil_32bytes_count(count - self.ele_each_block)
                         redundant_count = align_count - count + self.ele_each_block
                         new_in_start_index = in_start_index - redundant_count
                         new_out_start_index = out_start_index - redundant_count
@@ -377,18 +338,16 @@ class ConcatV2:
         aicore_num = self.aicore_num
         out_dims = self.tiling_param.out_dim
         max_inner_dim = self.tiling_param.max_inner_dim
-        inner_dims_loops = self._get_ceil_int(max_inner_dim,
-                                              self.ub_buffer_length)
+        inner_dims_loops = self._ceil_div(max_inner_dim, self.ub_buffer_length)
         max_loops = out_dims * inner_dims_loops
 
-        out_loops = self._get_ceil_int(max_loops, aicore_num)
+        out_loops = self._ceil_div(max_loops, aicore_num)
         with inst.for_range(0, out_loops, name="out_loops_idx") as i:
             loop_idx = i + out_loops * core_idx
             with inst.if_scope(loop_idx < max_loops):
                 out_dim_idx = loop_idx / inner_dims_loops
                 inner_dim_split_idx = loop_idx % inner_dims_loops
-                self._concat_inner_dim_each_split(out_dim_idx,
-                                                  inner_dim_split_idx)
+                self._concat_inner_dim_each_split(out_dim_idx, inner_dim_split_idx)
 
     def _concat_small_inner(self, core_idx):
         """
@@ -397,49 +356,37 @@ class ConcatV2:
         inst = self.tik_instance
         aicore_num = self.aicore_num
         out_dims = self.tiling_param.out_dim
-        count_each_core = self._get_ceil_int(out_dims, aicore_num)
+        count_each_core = self._ceil_div(out_dims, aicore_num)
         self._concat_small_inner_each_core(core_idx, out_dims, count_each_core)
 
-    def _concat_small_inner_each_core(self,
-                                      core_idx,
-                                      out_dims,
-                                      count_each_core):
+    def _concat_small_inner_each_core(self, core_idx, out_dims, count_each_core):
         inst = self.tik_instance
         with inst.for_range(0, count_each_core, name="inner_loop") as j:
             row_idx = j + count_each_core * core_idx
             with inst.if_scope(row_idx < out_dims):
-                with inst.if_scope(j != count_each_core-1):
+                with inst.if_scope(j != count_each_core - 1):
                     self._concat_small_inner_each_core_not_last_row(row_idx)
                 with inst.else_scope():
                     self._concat_small_inner_each_core_last_row(row_idx)
 
     def _concat_small_inner_each_core_not_last_row(self, row_idx):
-        self._concat_small_inner_each_core_without_treat_overlap(
-            row_idx,
-            self.input_tensors)
+        self._concat_small_inner_each_core_without_treat_overlap(row_idx, self.input_tensors)
 
     def _concat_small_inner_each_core_last_row(self, row_idx):
-        self._concat_small_inner_each_core_without_treat_overlap(
-            row_idx,
-            self.input_tensors[0:len(self.input_tensors) - 1])
+        self._concat_small_inner_each_core_without_treat_overlap(row_idx,
+                                                                 self.input_tensors[0:len(self.input_tensors) - 1])
         self._concat_small_inner_each_core_last_row_last_tensor(row_idx)
 
-
-
-    def _concat_small_inner_each_core_without_treat_overlap(self,
-                                                            row_idx,
-                                                            tensors):
+    def _concat_small_inner_each_core_without_treat_overlap(self, row_idx, tensors):
         inst = self.tik_instance
         output_tensor = self.output_tensor
         output_inner_len = self.tiling_param.output_inner_length
         ub_length = self.ub_buffer_length
         with inst.new_stmt_scope():
-            out_ub = inst.Tensor(self.dtype, (ub_length,),
-                                 scope=tik.scope_ubuf, name="out_ub")
+            out_ub = inst.Tensor(self.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
             ub_data_count = inst.Scalar("int32", name="ub_data_count")
             ub_data_count.set_as(0)
-            tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,),
-                                 scope=tik.scope_ubuf, name="tmp_ub")
+            tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,), scope=tik.scope_ubuf, name="tmp_ub")
 
             out_row_start_idx = output_inner_len * row_idx
             out_start_idx = inst.Scalar("int64", name="ub_data_count")
@@ -448,50 +395,38 @@ class ConcatV2:
                 inner_dim, output_idx = self.tiling_param.get_dims(index)
                 in_start_idx = inner_dim * row_idx
                 with inst.if_scope(ub_data_count >= self.ele_each_block):
-                    self._data_move(output_tensor[out_start_idx:], out_ub,
-                                    ub_data_count)
+                    self._data_move(output_tensor[out_start_idx:], out_ub, ub_data_count)
                     ub_data_count.set_as(0)
 
                 with inst.if_scope(ub_data_count == 0):
                     out_start_idx.set_as(out_row_start_idx + output_idx)
 
                 with inst.if_scope(inner_dim < self.ele_each_block):
-                    self._data_move(tmp_ub, input_tensor[in_start_idx:],
-                                    inner_dim)
+                    self._data_move(tmp_ub, input_tensor[in_start_idx:], inner_dim)
                     with inst.for_range(0, inner_dim) as scalar_idx:
                         out_ub[ub_data_count] = tmp_ub[scalar_idx]
-                        ub_data_count.set_as(ub_data_count+1)
+                        ub_data_count.set_as(ub_data_count + 1)
 
                 with inst.else_scope():
                     with inst.if_scope(ub_data_count > 0):
-                        self._data_move(output_tensor[out_start_idx:], out_ub,
-                                        ub_data_count)
+                        self._data_move(output_tensor[out_start_idx:], out_ub, ub_data_count)
                         ub_data_count.set_as(0)
                         out_start_idx.set_as(out_row_start_idx + output_idx)
 
-                    loops = self._get_ceil_int(inner_dim, ub_length)
+                    loops = self._ceil_div(inner_dim, ub_length)
                     with inst.for_range(0, loops, name="inner_loop") as idx:
-                        in_start_idx = (ub_length * idx +
-                                        inner_dim * row_idx)
-                        out_start_idx.set_as(
-                            ub_length * idx +
-                            out_row_start_idx +
-                            output_idx)
+                        in_start_idx = ub_length * idx + inner_dim * row_idx
+                        out_start_idx.set_as(ub_length * idx + out_row_start_idx + output_idx)
                         count = inst.Scalar("int64", name="count")
                         count.set_as(inner_dim * (1 + row_idx) - in_start_idx)
                         with inst.if_scope(count > ub_length):
                             count.set_as(ub_length)
 
-                        self._data_move(out_ub,
-                                        input_tensor[in_start_idx:],
-                                        count)
-                        self._data_move(output_tensor[out_start_idx:],
-                                        out_ub,
-                                        count)
+                        self._data_move(out_ub, input_tensor[in_start_idx:], count)
+                        self._data_move(output_tensor[out_start_idx:], out_ub, count)
 
             with inst.if_scope(ub_data_count > 0):
-                self._data_move(output_tensor[out_start_idx:], out_ub,
-                                ub_data_count)
+                self._data_move(output_tensor[out_start_idx:], out_ub, ub_data_count)
 
     def _concat_small_inner_each_core_last_row_last_tensor(self, row_idx):
         inst = self.tik_instance
@@ -500,94 +435,63 @@ class ConcatV2:
         output_inner_len = self.tiling_param.output_inner_length
         out_dims = self.tiling_param.out_dim
         with inst.new_stmt_scope():
-            out_ub = inst.Tensor(self.dtype, (ub_length,),
-                                 scope=tik.scope_ubuf, name="out_ub")
+            out_ub = inst.Tensor(self.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
             output_tensor = self.output_tensor
             last_idx = len(self.input_tensors) - 1
             input_tensor = self.input_tensors[last_idx]
             inner_dim, output_idx = self.tiling_param.get_dims(last_idx)
             out_start_idx = inst.Scalar("int64", name="ub_data_count")
             ub_data_count = inst.Scalar("int32", name="ub_data_count")
-            tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,),
-                                 scope=tik.scope_ubuf, name="tmp_ub")
+            tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,), scope=tik.scope_ubuf, name="tmp_ub")
             out_start_idx.set_as(row_idx * output_inner_len + output_idx)
             with inst.if_scope(inner_dim < self.ele_each_block):
-                self._data_move(out_ub, input_tensor[inner_dim*row_idx],
-                                inner_dim)
+                self._data_move(out_ub, input_tensor[inner_dim * row_idx], inner_dim)
                 ub_data_count.set_as(inner_dim)
                 pad_count = inst.Scalar("int32", name="pad_count")
                 pad_count.set_as(self.ele_each_block - inner_dim)
-                loops = self._get_ceil_int(pad_count, output_inner_len)
+                loops = self._ceil_div(pad_count, output_inner_len)
                 with inst.for_range(0, loops) as loop:
                     new_out_dim_idx = row_idx + loop
                     with inst.if_scope(new_out_dim_idx < out_dims):
                         for idx, tmp_tensor in enumerate(self.input_tensors):
                             temp_inner_dims, _ = self.tiling_param.get_dims(idx)
                             with inst.if_scope(ub_data_count < self.ele_each_block):
-                                self._data_move(
-                                    tmp_ub,
-                                    tmp_tensor[(row_idx + loop + 1) * temp_inner_dims],
-                                    self.ele_each_block)
+                                self._data_move(tmp_ub, tmp_tensor[(row_idx + loop + 1) * temp_inner_dims],
+                                                self.ele_each_block)
                                 with inst.for_range(0, temp_inner_dims) as scalar_idx:
                                     with inst.if_scope(ub_data_count < self.ele_each_block):
                                         out_ub[ub_data_count] = tmp_ub[scalar_idx]
-                                        ub_data_count.set_as(ub_data_count+1)
+                                        ub_data_count.set_as(ub_data_count + 1)
 
-                self._data_move(output_tensor[out_start_idx:],
-                                out_ub,
-                                inner_dim)
+                self._data_move(output_tensor[out_start_idx:], out_ub, inner_dim)
             with inst.else_scope():
-                loops = self._get_ceil_int(inner_dim, ub_length)
+                loops = self._ceil_div(inner_dim, ub_length)
                 with inst.for_range(0, loops, name="inner_loop") as idx:
-                    in_start_idx = (ub_length * idx +
-                                    inner_dim * row_idx)
-                    out_start_idx.set_as(
-                        ub_length * idx +
-                        output_inner_len * row_idx +
-                        output_idx)
+                    in_start_idx = (ub_length * idx + inner_dim * row_idx)
+                    out_start_idx.set_as(ub_length * idx + output_inner_len * row_idx + output_idx)
                     count = inner_dim * (row_idx + 1) - in_start_idx
                     with inst.if_scope(count > ub_length):
-                        self._data_move(out_ub,
-                                        input_tensor[in_start_idx:],
-                                        ub_length)
-                        self._data_move(output_tensor[out_start_idx:],
-                                        out_ub,
-                                        ub_length)
+                        self._data_move(out_ub, input_tensor[in_start_idx:], ub_length)
+                        self._data_move(output_tensor[out_start_idx:], out_ub, ub_length)
                     with inst.else_scope():
                         with inst.if_scope(idx > 0):
-                            align_count = self._get_ceil_32bytes_count(
-                                count)
+                            align_count = self._get_ceil_32bytes_count(count)
                             redundant_cnt = (align_count - count)
                             new_in_start_index = in_start_idx - redundant_cnt
                             new_out_start_index = out_start_idx - redundant_cnt
-                            self._data_move(out_ub,
-                                            input_tensor[new_in_start_index:],
-                                            count)
-                            self._data_move(output_tensor[new_out_start_index:],
-                                            out_ub,
-                                            count)
+                            self._data_move(out_ub, input_tensor[new_in_start_index:], count)
+                            self._data_move(output_tensor[new_out_start_index:], out_ub, count)
                         with inst.else_scope():
-                            self._data_move(out_ub,
-                                            input_tensor[in_start_idx:],
-                                            self.ele_each_block)
-                            self._data_move(output_tensor[out_start_idx:],
-                                            out_ub,
-                                            self.ele_each_block)
+                            self._data_move(out_ub, input_tensor[in_start_idx:], self.ele_each_block)
+                            self._data_move(output_tensor[out_start_idx:], out_ub, self.ele_each_block)
                             in_start_idx += self.ele_each_block
                             out_start_idx += self.ele_each_block
-                            align_count = self._get_ceil_32bytes_count(
-                                count -
-                                self.ele_each_block)
-                            redundant_cnt = (align_count - count +
-                                             self.ele_each_block)
+                            align_count = self._get_ceil_32bytes_count(count - self.ele_each_block)
+                            redundant_cnt = align_count - count + self.ele_each_block
                             new_in_start_index = in_start_idx - redundant_cnt
                             new_out_start_index = out_start_idx - redundant_cnt
-                            self._data_move(out_ub,
-                                            input_tensor[new_in_start_index:],
-                                            align_count)
-                            self._data_move(output_tensor[new_out_start_index:],
-                                            out_ub,
-                                            align_count)
+                            self._data_move(out_ub, input_tensor[new_in_start_index:], align_count)
+                            self._data_move(output_tensor[new_out_start_index:], out_ub, align_count)
 
 
 def _check_shape(input_values, shape_name):
@@ -596,17 +500,9 @@ def _check_shape(input_values, shape_name):
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get(shape_name)
         if len(shape_input) != dim_num:
-            error_info = {
-                "errCode": OP_ERROR_CODE_009,
-                "op_name": "concat",
-                "rule_desc": "The length of each shape must be equal",
-                "param_name": "input_values",
-                "param_value": [i.get("shape_name") for i in input_values]
-            }
-            raise RuntimeError(error_info,
-                               "Op[{op_name}] has rule: {rule_desc}, "
-                               "but [{param_name}] is [{param_value}]."
-                               .format(**error_info))
+            error_manager.raise_err_check_params_rules("concat", "The length of each shape must be equal",
+                                                       "input_values",
+                                                       [i.get(shape_name) for i in input_values])
 
 
 def __check_params(input_values, axis):
@@ -614,21 +510,13 @@ def __check_params(input_values, axis):
     _check_shape(input_values, "ori_shape")
 
     dim_num = len(input_values[0].get("ori_shape"))
-    axis_new = axis % dim_num
-    if axis >= dim_num or axis < 1 - dim_num:
-        error_info = {
-            "errCode": OP_ERROR_CODE_000,
-            "op_name": "concat",
-            "param_name": "concat_dim",
-            "excepted_value": "between " + str(min(-dim_num, dim_num-1))
-                              + " and " + str(max(-dim_num, dim_num-1)),
-            "param_value": axis,
-        }
-        raise RuntimeError(error_info,
-                           "In op[{op_name}], the parameter[{param_name}] "
-                           "should be [{excepted_value}], "
-                           "but actually is [{param_value}]."
-                           .format(**error_info))
+
+    if axis >= dim_num or axis < -dim_num:
+        error_manager.raise_err_input_value_invalid("concat",
+                                                    "concat_dim",
+                                                    "between " + str(min(-dim_num, dim_num - 1)) + " and " +
+                                                    str(max(-dim_num, dim_num - 1)),
+                                                    axis)
 
     shape_value = []
     for _, tensor_dict in enumerate(input_values):
@@ -636,20 +524,23 @@ def __check_params(input_values, axis):
     first_input_shape = input_values[0].get("ori_shape")
 
     # dims must equal except merge axis
-    for _, element_shape in enumerate(shape_value):
-        for j, _ in enumerate(first_input_shape):
-            if element_shape[j] != first_input_shape[j] and j != axis_new:
-                error_info = {
-                    "errCode": OP_ERROR_CODE_009,
-                    "op_name": "concat",
-                    "rule_desc": "Dims must be equal except merge concat axis[%s]" % axis,
-                    "param_name": "input_values",
-                    "param_value": shape_value
-                }
-                raise RuntimeError(error_info,
-                                   "Op[{op_name}] has rule: {rule_desc}, "
-                                   "but [{param_name}] is [{param_value}]."
-                                   .format(**error_info))
+    axis_new = axis % dim_num
+    for j, _ in enumerate(first_input_shape):
+        if j == axis_new:
+            continue
+
+        dim_values = set()
+        for _, element_shape in enumerate(shape_value):
+            dim_values.add(element_shape[j])
+
+        if -1 in dim_values:
+            dim_values.remove(-1)
+
+        if len(dim_values) > 1:
+            error_manager.raise_err_check_params_rules("concat",
+                                                       "Dims must be equal except merge concat axis[%s]" % axis,
+                                                       "input_values",
+                                                       shape_value)
 
     dtype_lists = []
     for input_value in input_values:
@@ -657,37 +548,19 @@ def __check_params(input_values, axis):
         dtype_lists.append(input_value.get("dtype"))
         supported_formats = {"ND", "NHWC", "NCHW"}
         if input_format not in supported_formats:
-            error_info = {
-                'errCode': OP_ERROR_CODE_015,
-                'op_name': 'concat',
-                'param_name': 'input_values',
-                'excepted_format_list': ','.join(supported_formats),
-                'format': input_format
-            }
-
-            raise RuntimeError(
-                error_info,
-                "In op[{op_name}], the format of input[{param_name}] should be "
-                "one of [{excepted_format_list}], but actually is [{format}]"
-                    .format(**error_info))
+            error_manager.raise_err_input_format_invalid('concat',
+                                                         'input_values',
+                                                         ','.join(supported_formats),
+                                                         input_format)
 
     dtype = dtype_lists[0]
     for index, dtype_ in enumerate(dtype_lists):
         if dtype != dtype_:
-            error_info = {
-                "errCode": OP_ERROR_CODE_018,
-                "op_name": "concat",
-                "param_name1": "input_values[0]",
-                "param_name2": "input_values[%s]" % index,
-                "param1_dtype": dtype,
-                "param2_dtype": dtype_,
-            }
-            raise RuntimeError(
-                error_info,
-                "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
-                "are not equal in dtype with dtype"
-                "[{param1_dtype}][{param2_dtype}]."
-                    .format(**error_info))
+            error_manager.raise_err_inputs_dtype_not_equal("concat",
+                                                           "input_values[0]",
+                                                           "input_values[%s]" % index,
+                                                           dtype,
+                                                           dtype_)
 
 
 @te.op.register_operator("ConcatV2D")
@@ -711,5 +584,5 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     tik instance
     """
     __check_params(input_values, axis)
-    concat_instance = ConcatV2(input_values, kernel_name)
+    concat_instance = ConcatV2(input_values, axis, kernel_name)
     return concat_instance.concat_compute()

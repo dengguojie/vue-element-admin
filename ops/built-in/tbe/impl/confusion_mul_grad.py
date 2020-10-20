@@ -1,25 +1,25 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 confusion_mul_grad
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -41,17 +41,18 @@ def shape_broadcast(data_1, data_2):
     -------
     res : output of the data's divide
     """
-    shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
+    shape_x = shape_util.shape_to_list(data_1.shape)
+    shape_y = shape_util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1="input0", param_name_input2="input1")
-        data_1 = te.lang.cce.broadcast(data_1, shape_max)
-        data_2 = te.lang.cce.broadcast(data_2, shape_max)
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input0",
+                                                                  param_name_input2="input1")
+        data_1 = tbe.broadcast(data_1, shape_max)
+        data_2 = tbe.broadcast(data_2, shape_max)
 
     return data_1, data_2
 
 
-@fusion_manager.register("confusion_mul_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("confusion_mul_grad")
 def confusion_mul_grad_compute(data_input0, data_input1, data_input2,
                                output0, output1,
                                axis, keep_dims,
@@ -86,34 +87,36 @@ def confusion_mul_grad_compute(data_input0, data_input1, data_input2,
     # mul
     mul_data_input0, mul_data_input1 = \
         shape_broadcast(data_input0, data_input1)
-    result0 = te.lang.cce.vmul(mul_data_input0, mul_data_input1)
+    result0 = tbe.vmul(mul_data_input0, mul_data_input1)
 
     # mul_1
     data_input1, data_input2 = shape_broadcast(data_input1, data_input2)
-    mul_1_result = te.lang.cce.vmul(data_input1, data_input2)
+    mul_1_result = tbe.vmul(data_input1, data_input2)
 
     # temp compute for tvm
-    shape_x = te.lang.cce.util.shape_to_list(mul_1_result.shape)
-    shape_y = te.lang.cce.util.shape_to_list(result0.shape)
+    shape_x = shape_util.shape_to_list(mul_1_result.shape)
+    shape_y = shape_util.shape_to_list(result0.shape)
     if shape_x == shape_y:
-        zero_tmp = te.lang.cce.vmuls(result0, 0)
-        mul_1_result = te.lang.cce.vadd(mul_1_result, zero_tmp)
+        zero_tmp = tbe.vmuls(result0, 0)
+        mul_1_result = tbe.vadd(mul_1_result, zero_tmp)
 
     # sum
     dtype = mul_1_result.dtype
     if dtype == "float16":
-        mul_1_result = te.lang.cce.cast_to(mul_1_result, "float32")
-    result1 = te.lang.cce.sum(mul_1_result, axis=axis, keepdims=keep_dims)
+        mul_1_result = tbe.cast_to(mul_1_result, "float32")
+    result1 = tbe.sum(mul_1_result, axis=axis, keepdims=keep_dims)
     if dtype == "float16":
-        result1 = te.lang.cce.cast_to(result1, "float16")
+        result1 = tbe.cast_to(result1, "float16")
 
     res = [result0, result1]
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def confusion_mul_grad(input0, input1, input2,
                        output0, output1,
                        axis, keep_dims,
@@ -145,9 +148,9 @@ def confusion_mul_grad(input0, input1, input2,
     -------
     None
     """
-    shape_input0 = util.scalar2tensor_one(input0.get("shape"))
-    shape_input1 = util.scalar2tensor_one(input1.get("shape"))
-    shape_input2 = util.scalar2tensor_one(input2.get("shape"))
+    shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
+    shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
+    shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
 
     dtype_input0 = input0.get("dtype").lower()
     dtype_input1 = input1.get("dtype").lower()
@@ -156,9 +159,9 @@ def confusion_mul_grad(input0, input1, input2,
 
 
     shape_input0, shape_input1, shape_max_mul = \
-        broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0", param_name_input2="input1")
+        shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0", param_name_input2="input1")
     shape_input1, shape_input2, shape_max_mul1 = \
-        broadcast_shapes(shape_input1, shape_input2, param_name_input1="input1", param_name_input2="input2")
+        shape_util.broadcast_shapes(shape_input1, shape_input2, param_name_input1="input1", param_name_input2="input2")
 
     data_input0 = tvm.placeholder(shape_input0,
                                   name="data_input0",
@@ -177,9 +180,9 @@ def confusion_mul_grad(input0, input1, input2,
     inputlist = [data_input0, data_input1, data_input2]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": list(inputlist) + list(res)}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

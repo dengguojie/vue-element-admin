@@ -136,6 +136,7 @@ set(_tf_plugins
   data_format_dim_map_plugin.cc
   decode_bbox_plugin.cc
   decode_bbox_v2_plugin.cc
+  deformable_conv2d_plugin.cc
   depth_to_space_plugin.cc
   depthwise_conv2d_backprop_filter_plugin.cc
   depthwise_conv2d_backprop_input_plugin.cc
@@ -149,6 +150,7 @@ set(_tf_plugins
   drop_out_do_mask_plugin.cc
   dynamic_lstm_plugin.cc
   dynamic_plugin.cc
+  dynamic_rnn_plugin.cc
   elu_grad_plugin.cc
   elu_plugin.cc
   equal_plugin.cc
@@ -166,6 +168,8 @@ set(_tf_plugins
   fake_quant_with_min_max_vars_per_channel_gradient_plugin.cc
   fake_quant_with_min_max_vars_per_channel_plugin.cc
   fake_quant_with_min_max_vars_plugin.cc
+  fast_gelu_grad_plugin.cc
+  fast_gelu_plugin.cc
   fastrcnn_predictions_plugin.cc
   fifo_queue_plugin.cc
   fill_plugin.cc
@@ -187,6 +191,8 @@ set(_tf_plugins
   hcom_broadcast_plugin.cc
   hcom_receive_plugin.cc
   hcom_reduce_scatter_plugin.cc
+  hcom_remote_read_plugin.cc
+  hcom_remote_write_plugin.cc
   hcom_send_plugin.cc
   histogram_fixed_width_plugin.cc
   hvd_all_gather_plugin.cc
@@ -243,6 +249,7 @@ set(_tf_plugins
   mod_plugin.cc
   mul_no_nan_plugin.cc
   mul_plugin.cc
+  multinomial_plugin.cc
   neg_plugin.cc
   non_max_suppression_plugin.cc
   non_max_suppressionv2_plugin.cc
@@ -395,16 +402,18 @@ set(_tf_plugins
 set(_tf_scope_fusion_passes
   ../tf_scope_fusion_passes/register_scope_fusion_passes.cc
   ../tf_scope_fusion_passes/scope_basic_lstm_cell_pass.cc
-  ../tf_scope_fusion_passes/scope_batchmulticlass2_nms_pass.cc
   ../tf_scope_fusion_passes/scope_batchmulticlass_nms_pass.cc
   ../tf_scope_fusion_passes/scope_clip_boxes_pass.cc
   ../tf_scope_fusion_passes/scope_decode_bbox_pass.cc
   ../tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
   ../tf_scope_fusion_passes/scope_dynamic_lstm_pass.cc
+  ../tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
   ../tf_scope_fusion_passes/scope_fastrcnn_predictions_pass.cc
   ../tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
   ../tf_scope_fusion_passes/scope_layernorm_pass.cc
+  ../tf_scope_fusion_passes/scope_newbatchmulticlass_nms_pass.cc
   ../tf_scope_fusion_passes/scope_normalize_bbox_pass.cc
+  ../tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.cc
   ../tf_scope_fusion_passes/scope_roi_align_pass.cc
   ../tf_scope_fusion_passes/scope_rpn_proposals_pass.cc
   ../tf_scope_fusion_passes/scope_to_absolute_bbox_pass.cc
@@ -420,10 +429,11 @@ target_include_directories(ops_all_plugin PRIVATE
   ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/inc/external/graph
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef
   ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${_proto_include}
   ${Protobuf_INCLUDE}
 )

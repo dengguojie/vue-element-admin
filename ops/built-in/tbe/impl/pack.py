@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pack
 """
-
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
@@ -23,12 +24,12 @@ from topi import generic
 from topi.cce import util
 from impl.concat_v2_d import concat_v2_d
 from te.utils.op_utils import *
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable = locally-disabled,invalid-name,too-many-arguments
 # pylint: disable = unused-argument,no-member
 
-@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, KERNEL_NAME)
 def check_supported(x, y, axis, kernel_name="pack"):
     """
     support aicpu route
@@ -38,6 +39,7 @@ def check_supported(x, y, axis, kernel_name="pack"):
     return True
 
 
+@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, KERNEL_NAME)
 def pack(x, y, axis, kernel_name="pack"):
     """
     algorithm: pack
@@ -63,11 +65,14 @@ def pack(x, y, axis, kernel_name="pack"):
         data.append(tvm.placeholder(shape_input, name="data_%d" % i,
                                     dtype=input_dtype))
 
-    if axis < -len((x[0].get("shape")))-1 or axis > len((x[0].get("shape"))):
-        raise RuntimeError(
-            "pack axis must be in [-%d , %d), "
-            "actual is %d" % (len(x[0].get("shape"))+1,
-                              len(x[0].get("shape"))+1, axis))
+    left_value = -len((x[0].get("shape")))-1
+    right_value = len((x[0].get("shape")))
+    if axis < left_value or axis > right_value:
+            expected_value = "All axes must be equal except merge axis,check your shape!"
+            real_value = "All axes must be equal except merge axis."
+            error_manager_vector.raise_err_input_value_invalid("pack",
+                                                               "value of shape",
+                                                               expected_value, real_value)
 
     if axis < -1:
         axis = axis + 1

@@ -1,27 +1,26 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 binary_cross_entropy
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+from impl.util import util_select_op_base
 
 
 # eps value
@@ -95,26 +94,26 @@ def op_select_format(x, y, weight, output,
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = gen_param(
+    input0 = util_select_op_base.gen_param(
         classify="input0", name="x", datatype=dtype_str,
         format=format_str)
-    input1 = gen_param(
+    input1 = util_select_op_base.gen_param(
         classify="input1", name="y", datatype=dtype_str,
         format=format_str)
-    input2 = gen_param(
+    input2 = util_select_op_base.gen_param(
         classify="input2", name="weight", datatype=dtype_str,
         format=format_str)
-    output0 = gen_param(
+    output0 = util_select_op_base.gen_param(
         classify="output0", name="output", datatype=dtype_str,
         format=format_str)
     param_list = [input0, input1, input2, output0]
 
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-@fusion_manager.register("binary_cross_entropy")
+@tbe_platform.fusion_manager.fusion_manager.register("binary_cross_entropy")
 def binary_cross_entropy_compute(x, y, weight, output,
                                  reduction, kernel_name):
     """
@@ -143,36 +142,36 @@ def binary_cross_entropy_compute(x, y, weight, output,
     """
     ori_dtype = x.dtype
     trans_dtype = ori_dtype
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
     if ori_dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.vmul", "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
-        y = te.lang.cce.cast_to(y, "float32")
+        x = tbe.cast_to(x, "float32")
+        y = tbe.cast_to(y, "float32")
         if weight is not None:
-            weight = te.lang.cce.cast_to(weight, "float32")
+            weight = tbe.cast_to(weight, "float32")
         trans_dtype = "float32"
 
     const_one = tvm.const(1, trans_dtype)
     const_neg_one = tvm.const(-1, trans_dtype)
     # calcu value : y * log(x)
-    x = te.lang.cce.vmaxs(x, tvm.const(SCALAR_EPS, trans_dtype))
-    x_log_tmp = te.lang.cce.vlog(x, priority_flag=1)
-    data_mul1 = te.lang.cce.vmul(x_log_tmp, y)
+    x = tbe.vmaxs(x, tvm.const(SCALAR_EPS, trans_dtype))
+    x_log_tmp = tbe.vlog(x, priority_flag=1)
+    data_mul1 = tbe.vmul(x_log_tmp, y)
     # calcu value : (1-y) * log(1-x)
-    x_neg_tmp = te.lang.cce.vmuls(x, const_neg_one)
-    x1_tmp = te.lang.cce.vadds(x_neg_tmp, const_one)
-    y_neg_tmp = te.lang.cce.vmuls(y, const_neg_one)
-    y1_tmp = te.lang.cce.vadds(y_neg_tmp, const_one)
-    x1_tmp = te.lang.cce.vmaxs(x1_tmp, tvm.const(SCALAR_EPS, trans_dtype))
-    x1_log_tmp = te.lang.cce.vlog(x1_tmp, priority_flag=1)
-    data_mul2 = te.lang.cce.vmul(x1_log_tmp, y1_tmp)
+    x_neg_tmp = tbe.vmuls(x, const_neg_one)
+    x1_tmp = tbe.vadds(x_neg_tmp, const_one)
+    y_neg_tmp = tbe.vmuls(y, const_neg_one)
+    y1_tmp = tbe.vadds(y_neg_tmp, const_one)
+    x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(SCALAR_EPS, trans_dtype))
+    x1_log_tmp = tbe.vlog(x1_tmp, priority_flag=1)
+    data_mul2 = tbe.vmul(x1_log_tmp, y1_tmp)
     # calcu value : y * log(x) + (1-y) * log(1-x)
-    data_sum = te.lang.cce.vadd(data_mul1, data_mul2)
+    data_sum = tbe.vadd(data_mul1, data_mul2)
     # calcu value : -(y * log(x) + (1-y) * log(1-x))
-    result = te.lang.cce.vmuls(data_sum, const_neg_one)
+    result = tbe.vmuls(data_sum, const_neg_one)
 
     if weight is not None:
-        result = te.lang.cce.vmul(result, weight)
+        result = tbe.vmul(result, weight)
 
     # get total number of tensor
     reduce_elts = 1.0
@@ -184,24 +183,24 @@ def binary_cross_entropy_compute(x, y, weight, output,
     axis_d = []
     for i, _ in enumerate(shape):
         axis_d.append(i)
-    axis_d = util.axis_check(len(shape), axis_d)
+    axis_d = shape_util.axis_check(len(shape), axis_d)
 
     if reduction == "mean":
-        result = te.lang.cce.vmuls(result, cof)
-        result = te.lang.cce.sum(result, axis=axis_d, keepdims=False)
+        result = tbe.vmuls(result, cof)
+        result = tbe.sum(result, axis=axis_d, keepdims=False)
     elif reduction == "sum":
-        result = te.lang.cce.sum(result, axis=axis_d, keepdims=False)
+        result = tbe.sum(result, axis=axis_d, keepdims=False)
     elif reduction == "none":
         pass
 
     if ori_dtype == "float16":
-        result = te.lang.cce.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def binary_cross_entropy(x, y, weight, output,
                          reduction="mean",
                          kernel_name="binary_cross_entropy"):
@@ -251,14 +250,14 @@ def binary_cross_entropy(x, y, weight, output,
 
     # check dtype
     dtype_list = ("float16", "float32")
-    check_dtype(predict_dtype, dtype_list, param_name="x")
-    check_dtype(target_dtype, dtype_list, param_name="y")
-    util.compare_tensor_dict_key(x, y, "dtype")
+    para_check.check_dtype(predict_dtype, dtype_list, param_name="x")
+    para_check.check_dtype(target_dtype, dtype_list, param_name="y")
+    shape_util.compare_tensor_dict_key(x, y, "dtype")
 
     # check shape
-    check_shape(predict_shape, param_name="x")
-    check_shape(target_shape, param_name="y")
-    util.compare_tensor_dict_key(x, y, "shape")
+    para_check.check_shape(predict_shape, param_name="x")
+    para_check.check_shape(target_shape, param_name="y")
+    shape_util.compare_tensor_dict_key(x, y, "shape")
 
 
     data_weight = None
@@ -266,17 +265,17 @@ def binary_cross_entropy(x, y, weight, output,
         weight_shape = weight.get("shape")
         weight_dtype = weight.get("dtype")
         weight_dtype_lower = weight_dtype.lower()
-        check_dtype(weight_dtype, dtype_list, param_name="weight")
-        util.compare_tensor_dict_key(x, weight, "dtype")
-        check_shape(weight_shape, param_name="weight")
-        shape_size = util.check_tensor_shape_size(weight_shape)
-        util.compare_tensor_dict_key(x, weight, "shape")
+        para_check.check_dtype(weight_dtype, dtype_list, param_name="weight")
+        shape_util.compare_tensor_dict_key(x, weight, "dtype")
+        para_check.check_shape(weight_shape, param_name="weight")
+        shape_size = para_check.check_tensor_shape_size(weight_shape)
+        shape_util.compare_tensor_dict_key(x, weight, "shape")
         data_weight = tvm.placeholder([shape_size], name="data_weight",
                                       dtype=weight_dtype_lower)
-    shape_size = util.check_tensor_shape_size(predict_shape)
+    shape_size = para_check.check_tensor_shape_size(predict_shape)
     data_predict = tvm.placeholder([shape_size], name="data_predict",
                                    dtype=predict_dtype_lower)
-    shape_size = util.check_tensor_shape_size(target_shape)
+    shape_size = para_check.check_tensor_shape_size(target_shape)
     data_target = tvm.placeholder([shape_size], name="data_target",
                                   dtype=target_dtype_lower)
 
@@ -288,7 +287,7 @@ def binary_cross_entropy(x, y, weight, output,
                                        reduction, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     if weight is None:
         config = {"name": kernel_name,
@@ -299,5 +298,5 @@ def binary_cross_entropy(x, y, weight, output,
                   "tensor_list": [data_predict, data_target,
                                   data_weight, res]}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)
 

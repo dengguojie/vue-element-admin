@@ -1,30 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-relu_grad
+relu_grad_v2
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("relu_grad_v2")
+@tbe_platform.fusion_manager.fusion_manager.register("relu_grad_v2")
 def relu_grad_v2_compute(gradients, mask, backprops,
                          kernel_name="relu_grad_v2"):
     """
@@ -52,19 +50,20 @@ def relu_grad_v2_compute(gradients, mask, backprops,
 
     # need cast int8 or uint8 to float16
     if dtype in ("int8", "uint8"):
-        gradients = te.lang.cce.cast_to(gradients, "float16")
+        gradients = tbe.cast_to(gradients, "float16")
         trans_type = "float16"
 
-    result = te.lang.cce.vsel(mask, gradients, tvm.const(0, trans_type))
+    result = tbe.vsel(mask, gradients, tvm.const(0, trans_type))
 
     # cast int8 or uint8 back
     if dtype in ("int8", "uint8"):
-        result = te.lang.cce.cast_to(result, dtype, f1628IntegerFlag=True)
+        result = tbe.cast_to(result, dtype, f1628IntegerFlag=True)
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     """
     calculate the backpropagation of relu operation
@@ -89,15 +88,15 @@ def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     shape_input_gradients = gradients.get("shape")
     shape_input_features = mask.get("shape")
 
-    check_shape(shape_input_gradients, param_name="gradients")
-    check_shape(shape_input_features, param_name="mask")
+    para_check.check_shape(shape_input_gradients, param_name="gradients")
+    para_check.check_shape(shape_input_features, param_name="mask")
 
     dtype_input_gradients = gradients.get("dtype").lower()
     dtype_input_features = mask.get("dtype").lower()
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(dtype_input_gradients, check_list, param_name="gradients")
-    check_dtype(dtype_input_features, ("uint8"), param_name="mask")
+    para_check.check_dtype(dtype_input_gradients, check_list, param_name="gradients")
+    para_check.check_dtype(dtype_input_features, ("uint8"), param_name="mask")
 
     shape_in = list(shape_input_gradients)
 
@@ -115,8 +114,8 @@ def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     res = relu_grad_v2_compute(data_input_gradients, data_input_features,
                                backprops, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input_gradients, data_input_features, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

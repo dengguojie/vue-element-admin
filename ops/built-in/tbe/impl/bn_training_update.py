@@ -1,29 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bn_training_update
 """
-from __future__ import division
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
 # pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
@@ -53,52 +50,38 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
     -------
     None
     """
-    check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_sum, param_name="sum")
+    para_check.check_shape(shape_square_sum, param_name="square_sum")
+    para_check.check_shape(shape_scale, param_name="scale")
+    para_check.check_shape(shape_offset, param_name="offset")
+    para_check.check_shape(shape_mean, param_name="mean")
+    para_check.check_shape(shape_variance, param_name="variance")
 
-    check_shape(shape_sum, param_name="sum")
-
-    check_shape(shape_square_sum, param_name="square_sum")
-
-    check_shape(shape_scale, param_name="scale")
-
-    check_shape(shape_offset, param_name="offset")
-
-    check_shape(shape_mean, param_name="mean")
-
-    check_shape(shape_variance, param_name="variance")
-
-    if len(shape_x) != 5 or len(shape_sum) != 5 \
-            or len(shape_square_sum) != 5 or len(shape_scale) != 5:
-        raise RuntimeError(
-            "This operator can only support 5HD, "
-            "but some input's shape length is not 5")
-    if len(shape_offset) != 5 or len(shape_mean) != 5 \
-            or len(shape_variance) != 5:
-        raise RuntimeError(
-            "This operator can only support 5HD, "
-            "but some input's shape length is not 5")
+    if len(shape_x) != 5 or len(shape_sum) != 5 or len(shape_square_sum) != 5 or len(shape_scale) != 5:
+        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+        error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
+    if len(shape_offset) != 5 or len(shape_mean) != 5 or len(shape_variance) != 5:
+        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+        error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
 
     dim_c1 = shape_x[1]
     dim_c0 = shape_x[4]
 
     if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and sum must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
     if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and square_sum must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update",
+                                                      "Dimension C of x and square_sum must be equal")
     if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and scale must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
     if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and offset must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and offset must be equal")
     if shape_mean[1] != dim_c1 or shape_mean[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and mean must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
     if shape_variance[1] != dim_c1 or shape_variance[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C of x and variance must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update",
+                                                      "Dimension C of x and variance must be equal")
 
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
@@ -127,16 +110,16 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
     -------
     None
     """
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
-    check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
-    check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
-    check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
-    check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
-    check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
-    check_dtype(dtype_variance.lower(), ("float32",), param_name="variance")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
+    para_check.check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
+    para_check.check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
+    para_check.check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
+    para_check.check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
+    para_check.check_dtype(dtype_variance.lower(), ("float32",), param_name="variance")
 
 
-@fusion_manager.register("bn_training_update")
+@tbe_platform.fusion_manager.fusion_manager.register("bn_training_update")
 def bn_training_update_compute(x, sum, square_sum,
                                scale, offset, mean,
                                variance, y, mean_out,
@@ -188,62 +171,63 @@ def bn_training_update_compute(x, sum, square_sum,
     res: TVM tensor list
         the result of bn_training_update compute
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    num = shape_x[0]*shape_x[2]*shape_x[3]
-    num_rec = 1.0/num
+    shape_x = shape_util.shape_to_list(x.shape)
+    num = shape_x[0] * shape_x[2] * shape_x[3]
+    num_rec = 1.0 / num
 
     # compute the saved mean of x
-    save_mean_reduce = te.lang.cce.vmuls(sum, num_rec)
+    save_mean_reduce = tbe.vmuls(sum, num_rec)
 
     # compute the saved variance of x
-    variance_div = te.lang.cce.vmuls(square_sum, num_rec)
-    variance_square = te.lang.cce.vmul(save_mean_reduce, save_mean_reduce)
-    save_variance_reduce = te.lang.cce.vsub(variance_div, variance_square)
+    variance_div = tbe.vmuls(square_sum, num_rec)
+    variance_square = tbe.vmul(save_mean_reduce, save_mean_reduce)
+    save_variance_reduce = tbe.vsub(variance_div, variance_square)
 
     # compute the oefficient of y
-    multiplier_add = te.lang.cce.vadds(save_variance_reduce, epsilon)
-    multiplier_sqrt = te.lang.cce.vsqrt(multiplier_add)
-    multiplier_div = te.lang.cce.vdiv(scale, multiplier_sqrt)
-    multiplier = te.lang.cce.broadcast(multiplier_div, shape_x)
+    multiplier_add = tbe.vadds(save_variance_reduce, epsilon)
+    multiplier_sqrt = tbe.vsqrt(multiplier_add)
+    multiplier_div = tbe.vdiv(scale, multiplier_sqrt)
+    multiplier = tbe.broadcast(multiplier_div, shape_x)
 
-    addend_mul = te.lang.cce.vmul(multiplier_div, save_mean_reduce)
-    addend_sub = te.lang.cce.vsub(offset, addend_mul)
-    addend = te.lang.cce.broadcast(addend_sub, shape_x)
+    addend_mul = tbe.vmul(multiplier_div, save_mean_reduce)
+    addend_sub = tbe.vsub(offset, addend_mul)
+    addend = tbe.broadcast(addend_sub, shape_x)
 
     # compute the batch normalization of x
     is_cast = False
     if x.dtype == "float16":
         is_cast = True
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
 
-    res_y = te.lang.cce.vadd(te.lang.cce.vmul(multiplier, x), addend)
+    res_y = tbe.vadd(tbe.vmul(multiplier, x), addend)
     if is_cast:
-        res_y = te.lang.cce.cast_to(res_y, "float16")
+        res_y = tbe.cast_to(res_y, "float16")
 
     if num == 1:
         batch_var_scaler = 0.0
     else:
-        batch_var_scaler = float(num)/(num - 1)
-    batch_variance = te.lang.cce.vmuls(save_variance_reduce, batch_var_scaler)
+        batch_var_scaler = float(num) / (num - 1)
+    batch_variance = tbe.vmuls(save_variance_reduce, batch_var_scaler)
 
     factor_reverse = 1.0 - factor
-    mean_mul = te.lang.cce.vmuls(save_mean_reduce, factor)
-    mean_mul_rev = te.lang.cce.vmuls(mean, factor_reverse)
-    mean = te.lang.cce.vadd(mean_mul, mean_mul_rev)
+    mean_mul = tbe.vmuls(save_mean_reduce, factor)
+    mean_mul_rev = tbe.vmuls(mean, factor_reverse)
+    mean = tbe.vadd(mean_mul, mean_mul_rev)
 
-    var_mul = te.lang.cce.vmuls(batch_variance, factor)
-    var_mul_rev = te.lang.cce.vmuls(variance, factor_reverse)
-    variance = te.lang.cce.vadd(var_mul, var_mul_rev)
+    var_mul = tbe.vmuls(batch_variance, factor)
+    var_mul_rev = tbe.vmuls(variance, factor_reverse)
+    variance = tbe.vadd(var_mul, var_mul_rev)
 
     res = [res_y, mean, variance, save_mean_reduce, save_variance_reduce]
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update(x, sum, square_sum,
                        scale, offset, mean,
                        variance, y, mean_out,
@@ -340,11 +324,11 @@ def bn_training_update(x, sum, square_sum,
                                      batch_variance, factor,
                                      epsilon, kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     tensor_list = [x_input, sum_input, square_sum_input, scale_input,
                    offset_input, mean_input, variance_input] + list(res)
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

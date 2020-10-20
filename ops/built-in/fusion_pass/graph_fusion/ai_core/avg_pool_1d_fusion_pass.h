@@ -1,33 +1,42 @@
-#ifndef FE_AVG_POOL_1D_FUSION_H
-#define FE_AVG_POOL_1D_FUSION_H
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file avg_pool_1d_fusion_pass.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_1D_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_1D_FUSION_PASS_H_
 
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
-namespace fe
-{
-  class AvgPool1DFusionPass: public PatternFusionBasePass
-  {
-  protected:
-    vector<FusionPattern*> DefinePatterns() override;
-    Status Fusion(ge::ComputeGraph &graph,
-                  Mapping &mapping,
-                  vector<ge::NodePtr> &fusionNodes) override;
+namespace fe {
+class AvgPool1DFusionPass : public PatternFusionBasePass {
+ protected:
+  vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
-  private:
-      Status AvgValueTableGen(vector<int64_t> dimInfo, int64_t kernelSize,
-              int64_t strideSize, vector<int64_t> padding,
-              bool ceilMode, bool countIncludePad,
-              ge::Format dataFormat, ge::DataType inputType,
-              vector<int64_t> &assitDimInfo, uint16_t *output);
-      Status AvgValueTableGenFp32(vector<int64_t> dimInfo, int64_t kernelSize,
-              int64_t strideSize, vector<int64_t> padding,
-              bool ceilMode, bool countIncludePad,
-              ge::Format dataFormat, ge::DataType inputType,
-              vector<int64_t> &assitDimInfo, float *output);
-
-      const string FUSED_OP_TYPE = "AvgPool1DD";
-  };
+ private:
+  template <typename T>
+  Status AvgValueTableGen(const vector<int64_t>& dim_info, int64_t kernel_size, int64_t stride_size,
+                          const vector<int64_t>& padding, bool ceil_mode, bool count_include_pad,
+                          ge::Format data_format, ge::DataType input_type, vector<int64_t>& assit_dimInfo, T* output);
+  const string FUSED_OP_TYPE = "AvgPool1DD";
+};
 
 }  // namespace fe
 
-#endif  // FE_AVG_POOL_1D_FUSION_H
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_1D_FUSION_PASS_H_

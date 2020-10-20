@@ -1,47 +1,34 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-conv2dcompress
+conv2d_compress
 """
-
 from __future__ import absolute_import
-import te.lang.cce
-from te.lang.cce import ConvParam
-from te.platform.cce_conf import CceProductParams
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
 from te import tvm
-from te.platform import cce_conf
-from te.platform import CUBE_MKN
-from topi import generic
-from .conv2d import calc_para_from_tensor
-from .conv2d import calc_para_from_dict
-from .conv2d import trans_stride
-from .conv2d import conv_layer_cce_para_check
-from .conv2d import conv_layer_cce_shape_calc
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te.utils.error_manager import error_manager_conv2d as err_man
+from impl.util import util_conv2d
 
 
-PAD_SHAPE_DIM = 2
-NONETYPE = type(None)
 MAX_FITLER_HW = 1024
 
-@fusion_manager.register("conv2dcompress")
+@tbe_platform.fusion_manager.fusion_manager.register("conv2dcompress")
 def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads,
-                   dilations, groups=1, data_format='NHWC', offset_x=0,
-                   kernel_name="conv2dcompress"):
+                           dilations, groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
     """
     conv2dcompress compute
 
@@ -82,24 +69,24 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
     """
     compress_index_shape = compress_index.shape[0]
 
-    para_dict, optim_dict = calc_para_from_tensor(inputs, weight_compress, bias, offset_w, strides, pads, dilations, offset_x, kernel_name, data_format)
+    para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
+        inputs, weight_compress, bias, offset_w, strides, pads, dilations, offset_x, kernel_name, data_format)
 
-    if cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
     para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:
-        err_man.raise_err_specific("conv2d", \
-            "Min tiling still exceed ub buffer, " \
-            + "when open weight unzip")
+        err_man.raise_err_specific("conv2d Min tiling still exceed ub buffer, when open weight unzip")
 
-    res = te.lang.cce.conv_compress(inputs, weight_compress, compress_index, compress_index_shape, para_dict, optim_dict)
+    res = tbe.conv_compress(inputs, weight_compress, compress_index, \
+                        compress_index_shape, para_dict, optim_dict)
 
     return res
 
 
-@util.check_input_type(dict, dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                       (tuple, list), (tuple, list), (tuple, list), int,
-                       str, int, str)
+@para_check.check_input_type(dict, dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
+                  (tuple, list), (tuple, list), (tuple, list), int,
+                  str, int, str)
 def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations,
-           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
+                   groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
     """
     algorithm: conv2dcompress
 
@@ -147,7 +134,7 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
     index_dtype = compress_index.get("dtype")
 
     shape_fm, shape_filter, padh, padw, strideh, stridew, \
-    dlt_h, dlt_w, optim_dict, fusion_para = calc_para_from_dict(inputs, \
+    dlt_h, dlt_w, optim_dict, fusion_para = util_conv2d.calc_para_from_dict(inputs, \
         weight_compress, strides, pads, dilations, outputs, data_format)
 
     use_bias = True
@@ -157,7 +144,7 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
     if offset_w is None:
         use_offset_w = False
 
-    conv_layer_compress_cce(shape_fm, shape_filter, shape_index, in_dtype, \
+    _conv_layer_compress_cce(shape_fm, shape_filter, shape_index, in_dtype,
         w_dtype, index_dtype, res_dtype,
         padh, padw, strideh, stridew, dlt_h, dlt_w,
         offset_x, offset_w=use_offset_w,
@@ -167,18 +154,18 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
         need_print=False)
 
 
-@util.check_input_type((list, tuple), (list, tuple), (list, tuple), str, str, str, str,
-                        (list, int), (list, int), int, int, (int, NONETYPE), (int, NONETYPE),
-                       int, str, bool, bool, dict, (dict, NONETYPE),
-                        str, bool, bool)
-def conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype, w_dtype, index_dtype, res_dtype,
-                            padh, padw, strideh, stridew, dilateh=1, dilatew=1,
-                            offset_x=0, offset_w_dtype='int32', offset_w=False,
-                            bias=False, optim_dict=None, fusion_para=None,
-                            kernel_name="cce_conv", need_build=False,
-                            need_print=False):
+@para_check.check_input_type((list, tuple), (list, tuple), (list, tuple), str, str,
+                  str, str, (list, int), (list, int), int, int,
+                  (int, para_check.NONE_TYPE), (int, para_check.NONE_TYPE), int, str, bool, bool,
+                  dict, (dict, para_check.NONE_TYPE), str, bool, bool)
+def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
+                             w_dtype, index_dtype, res_dtype, padh, padw,
+                             strideh, stridew, dilateh=1, dilatew=1,
+                             offset_x=0, offset_w_dtype='int32',
+                             offset_w=False, bias=False, optim_dict=None,
+                             fusion_para=None, kernel_name="cce_conv",
+                             need_build=False, need_print=False):
     """
-
     Parameters
     ----------
     shape_in: shape of feature map
@@ -252,29 +239,23 @@ def conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype, w_dtype, i
     shape_in = list(shape_in)
     shape_w = list(shape_w)
 
-    shape_in, shape_w = \
-            conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
-                                      strideh, stridew, in_dtype, w_dtype,
-                                      res_dtype, offset_w_dtype, bias,
-                                      kernel_name, dilateh, dilatew,
-                                      optim_dict, fusion_para)
-    out_channel, in_channel_weight, filter_h, filter_w = shape_w
+    shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(
+        shape_in, shape_w, padh, padw, strideh, stridew, in_dtype, w_dtype, res_dtype,
+        offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, fusion_para)
 
-    fmap_shape_nc1hwc0, filter_shape_frac_z = conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, w_dtype, optim_dict)
+    out_channel, _, filter_h, filter_w = shape_w
 
-    if cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
-    filter_h * filter_w > MAX_FITLER_HW:
-        err_man.raise_err_specific("conv2d", \
-            "Min tiling still exceed ub buffer, " \
-            + "when open weight unzip")
+    fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
+        shape_in, shape_w, in_dtype, w_dtype, optim_dict)
+
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and filter_h * filter_w > MAX_FITLER_HW:
+        err_man.raise_err_specific("conv2d Min tiling still exceed ub buffer, when open weight unzip")
 
     tensor_list = []
     with tvm.target.cce():
-        data = tvm.placeholder(
-            fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
+        data = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
         tensor_list.append(data)
-        weight = tvm.placeholder(
-            filter_shape_frac_z, name='Filter', dtype=w_dtype)
+        weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
         tensor_list.append(weight)
 
         compress_index_shape = tvm.var("compress_index_shape", dtype="int32")
@@ -282,33 +263,22 @@ def conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype, w_dtype, i
         bias_tensor = None
         offset_w_tensor = None
         if bias:
-            bias_tensor = tvm.placeholder((out_channel,), name='bias_tensor',
-                                          dtype=res_dtype)
+            bias_tensor = tvm.placeholder((out_channel,), name='bias_tensor', dtype=res_dtype)
             tensor_list.append(bias_tensor)
 
-        conv_res = te.lang.cce.conv_compress(
+        conv_res = tbe.conv_compress(
             data, weight, compress_index, compress_index_shape,
-            {"bias_tensor": bias_tensor,
-             "offset_w_tensor": offset_w_tensor,
-             "pad_h": padh, "pad_w": padw,
-             "stride_h": strideh, "stride_w": stridew,
-             "dilate_h": dilateh, "dilate_w": dilatew,
-             "filter_h": filter_h, "filter_w": filter_w,
-             "offset_x": offset_x,
-             "res_dtype": res_dtype, "mad_dtype": mad_dtype,
-             "fusion_para": fusion_para,
-             "kernel_name": kernel_name},
-            optim_dict=optim_dict,
-            dsl_flag=False)
-        sch = generic.auto_schedule(conv_res)
+            {"bias_tensor": bias_tensor, "offset_w_tensor": offset_w_tensor, "pad_h": padh, "pad_w": padw,
+             "stride_h": strideh, "stride_w": stridew, "dilate_h": dilateh, "dilate_w": dilatew, "filter_h": filter_h,
+             "filter_w": filter_w, "offset_x": offset_x, "res_dtype": res_dtype, "mad_dtype": mad_dtype,
+             "fusion_para": fusion_para, "kernel_name": kernel_name},
+            optim_dict=optim_dict, dsl_flag=False)
+        sch = tbe.auto_schedule(conv_res)
         tensor_list.append(compress_index)
         tensor_list.append(conv_res)
 
     config = {
-        "print_ir": need_print,
-        "need_build": need_build,
-        "name": kernel_name,
-        "tensor_list": tensor_list
+        "print_ir": need_print, "need_build": need_build, "name": kernel_name, "tensor_list": tensor_list
     }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

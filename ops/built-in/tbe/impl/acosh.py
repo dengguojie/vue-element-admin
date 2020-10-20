@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 acosh
 
   Op_description :
@@ -30,23 +30,17 @@ acosh
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+from te.utils import para_check
+from te.utils import shape_util
 
 CONST_NEG_ONE = -1.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("acosh")
+@tbe_platform.fusion_manager.fusion_manager.register("acosh")
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
     do element-wise acosh compute
@@ -66,23 +60,22 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
     data = input_data
 
     input_dtype = data.dtype.lower()
-    if input_dtype == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        data = te.lang.cce.cast_to(data, "float32")
+    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        data = tbe.cast_to(data, "float32")
 
-    res = te.lang.cce.vmul(data, data)
-    res = te.lang.cce.vadds(res, tvm.const(CONST_NEG_ONE, data.dtype))
-    res = te.lang.cce.vsqrt(res, 1)
-    res = te.lang.cce.vadd(res, data)
-    res = te.lang.cce.vlog(res, 1)
+    res = tbe.vmul(data, data)
+    res = tbe.vadds(res, tvm.const(CONST_NEG_ONE, data.dtype))
+    res = tbe.vsqrt(res, 1)
+    res = tbe.vadd(res, data)
+    res = tbe.vlog(res, 1)
 
     if input_dtype == "float16":
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def acosh(input_data, output_res, kernel_name="acosh"):
     """
     calculating data's acosh,y= log(x+sqrt(x^(2)-1))
@@ -103,11 +96,11 @@ def acosh(input_data, output_res, kernel_name="acosh"):
 
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype")
-    check_shape(shape_input, param_name="input_data")
+    para_check.check_shape(shape_input, param_name="input_data")
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="input_data")
-    shape_input, _ = refine_shape_axes(shape_input, [])
+    para_check.check_dtype(dtype_input, check_list, param_name="input_data")
+    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     input_dtype = dtype_input.lower()
     data = tvm.placeholder(shape_input, dtype=input_dtype, name="data_input")
@@ -115,11 +108,11 @@ def acosh(input_data, output_res, kernel_name="acosh"):
     res = acosh_compute(data, output_res, kernel_name)
 
     with tvm.target.cce():
-        sch = topi.generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": (data, res),
               "bool_storage_as_1bit": False}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

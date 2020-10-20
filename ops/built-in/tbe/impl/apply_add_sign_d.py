@@ -1,33 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 this file achieved the apply_add_sign_d which is a optimizer operator
 to update weight, this file contains compute and schedule.
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from impl.util.util_build import set_bool_storage_config
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
+from impl.util import util_build
 
 CONST_ZERO = 0
 CONST_ONE = 1
@@ -36,7 +30,7 @@ CONST_ONE_NEG = -1
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@fusion_manager.register("apply_add_sign_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_add_sign_d")
 def apply_add_sign_d_compute(var,
                              m,
                              lr,
@@ -70,10 +64,10 @@ def apply_add_sign_d_compute(var,
     the output
     """
     m_out, var_out, output_data, m_output_data = _compute_process(
-        var, m, te.lang.cce.broadcast(lr, var.shape),
-        te.lang.cce.broadcast(alpha, var.shape),
-        te.lang.cce.broadcast(sign_decay, var.shape),
-        te.lang.cce.broadcast(beta, var.shape), grad)
+        var, m, tbe.broadcast(lr, var.shape),
+        tbe.broadcast(alpha, var.shape),
+        tbe.broadcast(sign_decay, var.shape),
+        tbe.broadcast(beta, var.shape), grad)
 
     out_var, out_m, out_data, m_out_data = _muti_output(var_out, m_out, output_data,
                                                         m_output_data, var.shape)
@@ -105,12 +99,12 @@ def _compute_process(var, m, lr_broad, alpha_broad, sign_decay_broad,
     the output
     """
     m_out = _update_m(m, beta_broad, grad)
-    sign_gm = te.lang.cce.vmul(_sign_compute(grad), _sign_compute(m_out))
-    decay_gm = te.lang.cce.vmul(sign_gm, sign_decay_broad)
+    sign_gm = tbe.vmul(_sign_compute(grad), _sign_compute(m_out))
+    decay_gm = tbe.vmul(sign_gm, sign_decay_broad)
     var_out = _update_var(decay_gm, alpha_broad, lr_broad, grad, var)
 
-    output_data = te.lang.cce.vadds(var_out, tvm.const(CONST_ZERO, "float32"))
-    m_output_data = te.lang.cce.vadds(m_out, tvm.const(CONST_ZERO, "float32"))
+    output_data = tbe.vadds(var_out, tvm.const(CONST_ZERO, "float32"))
+    m_output_data = tbe.vadds(m_out, tvm.const(CONST_ZERO, "float32"))
 
     return m_out, var_out, output_data, m_output_data
 
@@ -129,12 +123,12 @@ def _update_m(m_old, beta_broad, grad):
     -------
     the new value of m
     """
-    m_beta = te.lang.cce.vmul(m_old, beta_broad)
-    beta_neg = te.lang.cce.vmuls(beta_broad, tvm.const(CONST_ONE_NEG,
+    m_beta = tbe.vmul(m_old, beta_broad)
+    beta_neg = tbe.vmuls(beta_broad, tvm.const(CONST_ONE_NEG,
                                                        "float32"))
-    beta_1 = te.lang.cce.vadds(beta_neg, tvm.const(CONST_ONE, "float32"))
-    grad_beta_gs = te.lang.cce.vmul(grad, beta_1)
-    m_out = te.lang.cce.vadd(m_beta, grad_beta_gs)
+    beta_1 = tbe.vadds(beta_neg, tvm.const(CONST_ONE, "float32"))
+    grad_beta_gs = tbe.vmul(grad, beta_1)
+    m_out = tbe.vadd(m_beta, grad_beta_gs)
 
     return m_out
 
@@ -155,32 +149,25 @@ def _update_var(decay_gm, alpha_broad, lr_broad, grad, var):
     -------
     the new value of var
     """
-    decay_gm_alpha = te.lang.cce.vadd(decay_gm, alpha_broad)
-    res = te.lang.cce.vmul(decay_gm_alpha, lr_broad)
-    res = te.lang.cce.vmul(res, grad)
-    res_neg = te.lang.cce.vmuls(res, tvm.const(CONST_ONE_NEG, "float32"))
-    var_out = te.lang.cce.vadd(var, res_neg)
+    decay_gm_alpha = tbe.vadd(decay_gm, alpha_broad)
+    res = tbe.vmul(decay_gm_alpha, lr_broad)
+    res = tbe.vmul(res, grad)
+    res_neg = tbe.vmuls(res, tvm.const(CONST_ONE_NEG, "float32"))
+    var_out = tbe.vadd(var, res_neg)
 
     return var_out
 
 
 def _sign_compute(input_data):
     input_dtype = input_data.dtype
-    input_x = te.lang.cce.broadcast(tvm.const(CONST_ONE, input_dtype),
-                                    input_data.shape)
-    input_y = te.lang.cce.broadcast(tvm.const(CONST_ZERO, input_dtype),
-                                    input_data.shape)
-    input_z = te.lang.cce.broadcast(tvm.const(CONST_ONE_NEG, input_dtype),
-                                    input_data.shape)
-    new_data = te.lang.cce.vcmp(input_data,
-                                tvm.const(CONST_ZERO, input_dtype),
-                                operation="gt", mode="bool")
-    res1 = te.lang.cce.vsel(new_data, input_x, input_y)
-    new_data_one = te.lang.cce.vcmp(input_data,
-                                    tvm.const(CONST_ZERO, input_dtype),
-                                    operation="lt", mode="bool")
-    res2 = te.lang.cce.vsel(new_data_one, input_z, input_y)
-    res = te.lang.cce.vadd(res1, res2)
+    input_x = tbe.broadcast(tvm.const(CONST_ONE, input_dtype), input_data.shape)
+    input_y = tbe.broadcast(tvm.const(CONST_ZERO, input_dtype), input_data.shape)
+    input_z = tbe.broadcast(tvm.const(CONST_ONE_NEG, input_dtype), input_data.shape)
+    new_data = tbe.vcmp(input_data, tvm.const(CONST_ZERO, input_dtype), operation="gt", mode="bool")
+    res1 = tbe.vsel(new_data, input_x, input_y)
+    new_data_one = tbe.vcmp(input_data, tvm.const(CONST_ZERO, input_dtype), operation="lt", mode="bool")
+    res2 = tbe.vsel(new_data_one, input_z, input_y)
+    res = tbe.vadd(res1, res2)
 
     return res
 
@@ -211,9 +198,10 @@ def _muti_output(var_out, m_out, output_data, m_output_data, shape):
     return out_var, out_m, out_data, m_out_data
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def apply_add_sign_d(var,
                      m,
                      lr,
@@ -252,12 +240,11 @@ def apply_add_sign_d(var,
 
     input_dict = (var, m, lr, alpha, sign_decay, beta, grad)
     out = [var_out, m_out]
-    args = ApplyOpConfig.TensorArgs(input_dict, apply_add_sign_d_compute, out,
-                                    10)
-    name = ApplyOpConfig.TensorName(all=('var', 'm', 'lr', 'alpha',
-                                         'sign_decay', 'beta', 'grad'),
-                                    scalar=('lr', 'alpha', 'sign_decay',
-                                            'beta'),
-                                    reuse=('var', 'm'))
-    options = ApplyOpConfig.TensorOptions(build=set_bool_storage_config())
-    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict, apply_add_sign_d_compute, out, 10)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'm', 'lr', 'alpha',
+                                                                'sign_decay', 'beta', 'grad'),
+                                                           scalar=('lr', 'alpha', 'sign_decay', 'beta'),
+                                                           reuse=('var', 'm'))
+    options = util_apply_op_schedule.ApplyOpConfig.TensorOptions(build=util_build.set_bool_storage_config())
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name, options),
+                                                   kernel_name)

@@ -1,31 +1,28 @@
-#!/usr/bin/python3
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-Reduction
+reduction
 """
-from __future__ import absolute_import
-from functools import reduce
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util import util_select_op_base
 
 
 # pylint: disable=redefined-outer-name, too-many-arguments, E1101
@@ -64,7 +61,8 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     if len(input_ori_shape) < 4:
         is_support_5hd = False
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300ES,
+                                                               tbe_platform.HI3796CV300CS):
         dtype_base = ["float16"]
     else:
         dtype_base = ["float16", "float32"]
@@ -77,17 +75,17 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     dtype_base = ','.join(dtype_base)
     format_base = ','.join(format_base)
 
-    input0 = gen_param(
+    input0 = util_select_op_base.gen_param(
         classify="input0", name="x", datatype=dtype_base, format=format_base)
-    output0 = gen_param(
+    output0 = util_select_op_base.gen_param(
         classify="output0", name="y", datatype=dtype_base, format=format_base)
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-@fusion_manager.register("reduction")
+@tbe_platform.fusion_manager.fusion_manager.register("reduction")
 def reduction_compute(data_info, product_verion, operation, axis, coeff):
     """
     Reduce a tensor on a certain axis, and scale output with coeff
@@ -102,49 +100,46 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
     -------
     output of the data's reduction
     """
-
     input_data = data_info.get("tensor")
-    input_data_shape = data_info.get("shape")
     input_data_dtype = data_info.get("dtype")
+    mean_size = input_data.op.attrs["mean_size"].value
 
-    if product_verion not in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if product_verion not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
         if input_data_dtype == "float16":
-            input_data = te.lang.cce.cast_to(input_data, "float32")
+            input_data = tbe.cast_to(input_data, "float32")
 
     # computational process
     if operation == 2:
-        data_tmp_input = te.lang.cce.vabs(input_data)
-        tmp = te.lang.cce.vmuls(data_tmp_input, coeff)
+        data_tmp_input = tbe.vabs(input_data)
+        tmp = tbe.vmuls(data_tmp_input, coeff)
 
     elif operation == 3:
-        data_tmp_input = te.lang.cce.vmul(input_data, input_data)
-        tmp = te.lang.cce.vmuls(data_tmp_input, coeff)
+        data_tmp_input = tbe.vmul(input_data, input_data)
+        tmp = tbe.vmuls(data_tmp_input, coeff)
 
     elif operation == 4:
-        size = input_data_shape[-1]
-        cof = float(coeff * (size ** (-0.5)))
-        tmp = te.lang.cce.vmuls(input_data, cof)
+        cof = float(coeff * (mean_size ** (-0.5)))
+        tmp = tbe.vmuls(input_data, cof)
 
     elif operation == 1:
-        tmp = te.lang.cce.vmuls(input_data, coeff)
+        tmp = tbe.vmuls(input_data, coeff)
 
-    res = te.lang.cce.sum(tmp, axis=axis)
+    res = tbe.sum(tmp, axis=axis)
 
     if operation == 4:
-        size = input_data_shape[-1]
-        size_reci = float(size ** (-0.5))
-        res = te.lang.cce.vmuls(res, size_reci)
+        size_reci = float(mean_size ** (-0.5))
+        res = tbe.vmuls(res, size_reci)
 
-    if product_verion not in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if product_verion not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
         if input_data_dtype == "float16":
-            res = te.lang.cce.cast_to(res, "float16")
+            res = tbe.cast_to(res, "float16")
 
     return res
 
 
 # pylint: disable=redefined-outer-name, too-many-arguments, E1101
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
-                 OPTION_ATTR_INT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):
     """
     Reduce a tensor on a certain axis, and scale output with coeff
@@ -162,33 +157,31 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     -------
     None
     """
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
     # input_x's shape check
     ori_shape = list(input_x.get("ori_shape"))
-    check_shape(ori_shape, param_name="input_x")
+    para_check.check_shape(ori_shape, param_name="input_x")
 
     # input_x' dtype check
     inp_dtype = input_x.get("dtype").lower()
-    check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS") and inp_dtype == "float32":
-        error_info = {}
-        error_info['errCode'] = 'E81006'
-        error_info['param_name'] = 'dtype'
-        error_info['op_name'] = 'reduction'
-        error_info['real_value'] = inp_dtype
+    para_check.check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
+    if cce_product in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS) and inp_dtype == "float32":
+        error_info = {'errCode': 'E81006',
+                      'param_name': 'dtype',
+                      'op_name': 'reduction',
+                      'real_value': inp_dtype}
         raise RuntimeError("In op[%s], ES is not supported while the [%s] of input is [%s]."
                            % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
 
     # axis parameter check
     if axis >= len(ori_shape) or axis < -len(ori_shape):
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['param_name'] = 'axis'
-        error_info['op_name'] = 'reduction'
-        error_info['min_value'] = -len(ori_shape)
-        error_info['max_value'] = len(ori_shape)-1
-        error_info['real_value'] = axis
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                      'param_name': 'axis',
+                      'op_name': 'reduction',
+                      'min_value': -len(ori_shape),
+                      'max_value': len(ori_shape) - 1,
+                      'real_value': axis}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be " 
                                        "in the range of (%s,%s), but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
@@ -196,12 +189,11 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
 
     # operation parameter check
     if operation not in (1, 2, 3, 4):
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['param_name'] = 'operation'
-        error_info['op_name'] = 'reduction'
-        error_info['expect_value_list'] = (1, 2, 3, 4)
-        error_info['real_value'] = operation
+        error_info = {'errCode': 'E80002',
+                      'param_name': 'operation',
+                      'op_name': 'reduction',
+                      'expect_value_list': (1, 2, 3, 4),
+                      'real_value': operation}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should "
                                        "only be one of [%s], but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
@@ -212,28 +204,33 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
         axis = len(ori_shape) + axis
 
     shape = list(input_x.get("shape"))
-
+    mean_size = 0
     if input_x.get("format") == "NC1HWC0":
-        axis = util.axis_transfrom_5d(axis, input_x.get("ori_format"))
+        axis = shape_util.axis_transform_5d(axis, input_x.get("ori_format"))
         if axis > 1:
-            shape = shape[:axis] + [reduce(lambda x, y: x * y, shape[axis:-1])] + [shape[-1]]
+            shape = shape[:axis] + [functools.reduce(lambda x, y: x * y, shape[axis:-1])] + [shape[-1]]
+            mean_size = shape[-2]
         if axis == 1:
             raise RuntimeError("The C axis does not support reduction when the data format is NC1HWC0.")
         if axis == 0:
-            shape = [reduce(lambda x, y: x * y, shape)]
+            shape = [functools.reduce(lambda x, y: x * y, shape)]
+            ori_shape = [functools.reduce(lambda x, y: x * y, ori_shape)]
+            mean_size = ori_shape[-1]
     else:
-        shape = shape[:axis] + [reduce(lambda x, y: x * y, shape[axis:])]
+        shape = shape[:axis] + [functools.reduce(lambda x, y: x * y, shape[axis:])]
+        mean_size = shape[-1]
+    attr = {"mean_size": mean_size}
 
     # define input
-    data = tvm.placeholder(shape, name="data_input", dtype=inp_dtype)
+    data = tvm.placeholder(shape, name="data_input", dtype=inp_dtype, attrs=attr)
     data_info = {"tensor": data, "shape": shape, "dtype": inp_dtype}
 
     res = reduction_compute(data_info, cce_product, operation, axis, coeff)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

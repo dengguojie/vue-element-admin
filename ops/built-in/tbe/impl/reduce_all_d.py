@@ -1,34 +1,32 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-reduce_all
+reduce_all_d
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("reduce_all_d")
+@tbe_platform.fusion_manager.fusion_manager.register("reduce_all_d")
 def reduce_all_d_compute(input_data, output_data, axes,
                          keepdims, kernel_name="reduce_all_d"):
     """ TVM calculation process, used for fusion operation
@@ -53,7 +51,7 @@ def reduce_all_d_compute(input_data, output_data, axes,
     -------
     result: TVM tensor.
     """
-    shape = te.lang.cce.util.shape_to_list(input_data.shape)
+    shape = shape_util.shape_to_list(input_data.shape)
     shape_len = len(shape)
     if not axes:
         axes = range(shape_len)
@@ -61,15 +59,17 @@ def reduce_all_d_compute(input_data, output_data, axes,
         axes = list(axes)
 
     dtype = input_data.dtype
-    data_fp16 = te.lang.cce.cast_to(input_data, "float16")
-    data_abs = te.lang.cce.vabs(data_fp16)
-    result_tmp = te.lang.cce.reduce_min(data_abs, axes, keepdims=False)
-    result = te.lang.cce.cast_to(result_tmp, dtype, True)
+    data_fp16 = tbe.cast_to(input_data, "float16")
+    data_abs = tbe.vabs(data_fp16)
+    result_tmp = tbe.reduce_min(data_abs, axes, keepdims=False)
+    result = tbe.cast_to(result_tmp, dtype, True)
 
     return result
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_all_d(input_data, output_data, axes,
                  keepdims=None, kernel_name="reduce_all_d"):
     """
@@ -99,8 +99,8 @@ def reduce_all_d(input_data, output_data, axes,
     input_dtype = input_data.get("dtype").lower()
     if input_dtype == "bool":
         input_dtype = "int8"
-    check_shape(input_shape, param_name="input_data")
-    check_dtype(input_dtype, ("int8"), param_name="input_data")
+    para_check.check_shape(input_shape, param_name="input_data")
+    para_check.check_dtype(input_dtype, ("int8"), param_name="input_data")
 
     shape_len = len(input_shape)
     if not axes:
@@ -108,7 +108,7 @@ def reduce_all_d(input_data, output_data, axes,
 
     if hasattr(axes, 'index'):
         axes = list(axes)
-    axes = util.axis_check(shape_len, axes)
+    axes = shape_util.axis_check(shape_len, axes)
 
     if not isinstance(axes, int):
         for i in axes:
@@ -119,10 +119,10 @@ def reduce_all_d(input_data, output_data, axes,
             raise RuntimeError("axes should be less than dimension")
 
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_data, axes)
+    is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_data, axes)
     if not is_5hdc:
-        input_shape, axes = util.shape_refine(list(input_shape), axes)
-        input_shape, axes = util.simplify_axis_shape(input_shape, axes)
+        input_shape, axes = shape_util.shape_refine(list(input_shape), axes)
+        input_shape, axes = shape_util.simplify_axis_shape(input_shape, axes)
 
     data_input = tvm.placeholder(input_shape, name="data_input_" + kernel_name,
                                  dtype=input_dtype)
@@ -133,9 +133,9 @@ def reduce_all_d(input_data, output_data, axes,
         result.ori_format = input_data["ori_format"]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data_input, result]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

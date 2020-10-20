@@ -1,11 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief fusedbatchnormgrad_bert fusion pass
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @author z00445087
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file fusedbatchnorm_bert_fusion_pass.cpp
+ * \brief fusedbatchnormgrad_bert fusion pass
+ */
 #include "fusedbatchnorm_bert_fusion_pass.h"
 #include <iostream>
 #include <vector>
@@ -27,38 +39,41 @@ namespace fe {
 static const string PATTERN_FUSEDBATCHNORM = "BatchNorm";
 static const string PASS_OP_TYPE_BATCHNORM = "BatchNorm";
 
-vector<FusionPattern *> FusedBatchNormBertFusionPass::DefinePatterns()
-{
-  vector<FusionPattern *> patterns;
-  FusionPattern *pattern = new(std::nothrow) FusionPattern("FusedBatchNormBertFusionPass");
-  pattern->AddOpDesc(PATTERN_FUSEDBATCHNORM, {PASS_OP_TYPE_BATCHNORM})
-          .SetOutput(PATTERN_FUSEDBATCHNORM);
+vector<FusionPattern*> FusedBatchNormBertFusionPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("FusedBatchNormBertFusionPass");
+  pattern->AddOpDesc(PATTERN_FUSEDBATCHNORM, {PASS_OP_TYPE_BATCHNORM}).SetOutput(PATTERN_FUSEDBATCHNORM);
   patterns.push_back(pattern);
   return patterns;
 }
 
-Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph &graph,
-                                            Mapping &mapping,
-                                            vector<ge::NodePtr> &fusionNodes)
-{
+Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                            vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr batchNormNode = GetNodeFromMapping(PATTERN_FUSEDBATCHNORM, mapping);
-  FUSION_PASS_CHECK(batchNormNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNormNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(batchNormNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNormNode is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::OpDescPtr batchNormDesc = batchNormNode->GetOpDesc();
   std::string batchNormName = batchNormDesc->GetName();
   // validation
-  FUSION_PASS_CHECK(batchNormDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNormNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(batchNormDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNormNode's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   if (batchNormDesc->GetInputsSize() != 3) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] should have 3 input desc, but actually is %d", batchNormName.c_str(), batchNormDesc->GetInputsSize());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] should have 3 input desc, but actually is %d", batchNormName.c_str(),
+            batchNormDesc->GetInputsSize());
     return NOT_CHANGED;
   }
   if (batchNormDesc->GetOutputsSize() != 5) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] should have 6 output desc, but actually is %d", batchNormName.c_str(), batchNormDesc->GetOutputsSize());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] should have 6 output desc, but actually is %d", batchNormName.c_str(),
+            batchNormDesc->GetOutputsSize());
     return NOT_CHANGED;
   }
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] has %u output anchor.", batchNormDesc->GetName().c_str(), batchNormNode->GetAllOutDataAnchors().size());
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] has %u output anchor.", batchNormDesc->GetName().c_str(),
+          batchNormNode->GetAllOutDataAnchors().size());
   if (!(batchNormNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().empty()) ||
       !(batchNormNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().empty())) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s 1st and 2nd output anchor shouldn't link to any other input anchors.", batchNormName.c_str());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s 1st and 2nd output anchor shouldn't link to any other input anchors.",
+            batchNormName.c_str());
     return NOT_CHANGED;
   }
   if (batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().empty() ||
@@ -71,19 +86,24 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph &graph,
 
   // reduce desc
   ge::OpDescPtr batchNormReduceDesc = AttrUtils::CloneOpDesc(batchNormDesc);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s input size is %d, all size is %d.", batchNormName.c_str(),
+          batchNormReduceDesc->GetInputsSize(), batchNormReduceDesc->GetAllInputsSize());
   FUSION_PASS_CHECK(batchNormReduceDesc == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", batchNormName.c_str()),
-           return PARAM_INVALID);
-  batchNormReduceDesc->SetName(batchNormDesc->GetName()+"/BNTrainingReduce");
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", batchNormName.c_str()),
+                    return PARAM_INVALID);
+  batchNormReduceDesc->SetName(batchNormDesc->GetName() + "/BNTrainingReduce");
   batchNormReduceDesc->SetType("BNTrainingReduce");
   if (batchNormReduceDesc->GetInputsSize() < 3) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc", batchNormReduceDesc->GetInputsSize());
     return FAILED;
   }
   if (batchNormReduceDesc->GetOutputsSize() < 5) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc", batchNormReduceDesc->GetOutputsSize());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+            batchNormReduceDesc->GetOutputsSize());
     return FAILED;
   }
+  OpDescUtils::ClearInputDesc(batchNormReduceDesc, 4);
+  OpDescUtils::ClearInputDesc(batchNormReduceDesc, 3);
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, 2);
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, 1);
   for (int index = 4; index >= 0; index--) {
@@ -94,16 +114,19 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph &graph,
   // end reduce desc
   // update desc
   ge::OpDescPtr batchNormUpdateV2Desc = AttrUtils::CloneOpDesc(batchNormDesc);
-  FUSION_PASS_CHECK(batchNormUpdateV2Desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", batchNormName.c_str()),
-           return PARAM_INVALID);
-  batchNormUpdateV2Desc->SetName(batchNormDesc->GetName()+"/BNTrainingUpdateV2");
+  FUSION_PASS_CHECK(batchNormUpdateV2Desc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", batchNormName.c_str()),
+                    return PARAM_INVALID);
+  batchNormUpdateV2Desc->SetName(batchNormDesc->GetName() + "/BNTrainingUpdateV2");
   batchNormUpdateV2Desc->SetType("BNTrainingUpdateV2");
   if (batchNormUpdateV2Desc->GetOutputsSize() < 5) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc", batchNormUpdateV2Desc->GetOutputsSize());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+            batchNormUpdateV2Desc->GetOutputsSize());
     return FAILED;
   }
   if (batchNormUpdateV2Desc->GetInputsSize() < 3) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc", batchNormUpdateV2Desc->GetInputsSize());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
+            batchNormUpdateV2Desc->GetInputsSize());
     return FAILED;
   }
   batchNormUpdateV2Desc->AddInputDesc(3, batchNormDesc->GetInputDesc(1));
@@ -115,98 +138,147 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph &graph,
   // add reduce and update node to graph
   ge::NodePtr batchNormReduceNode = graph.AddNode(batchNormReduceDesc);
   ge::NodePtr batchNormUpdateV2Node = graph.AddNode(batchNormUpdateV2Desc);
-  FUSION_PASS_CHECK(batchNormReduceNode == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormReduceNode->GetName().c_str()),
-           return PARAM_INVALID);
-  FUSION_PASS_CHECK(batchNormUpdateV2Node == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormUpdateV2Node->GetName().c_str()),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      batchNormReduceNode == nullptr,
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormReduceNode->GetName().c_str()),
+      return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      batchNormUpdateV2Node == nullptr,
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormUpdateV2Node->GetName().c_str()),
+      return PARAM_INVALID);
 
+  // update input and output name map
+  FUSION_PASS_CHECK(PatternFusionUtil::UpdateInputAndOutputName(batchNormReduceDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update fusionNode:%s input and output name failed.",
+                            batchNormReduceDesc->GetName().c_str()), return FAILED);
+  FUSION_PASS_CHECK(PatternFusionUtil::UpdateInputAndOutputName(batchNormUpdateV2Desc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update fusionNode:%s input and output name failed.",
+                            batchNormUpdateV2Desc->GetName().c_str()), return FAILED);
   // connect edge for reduce node
   // input date anchor
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                              batchNormReduceNode->GetInDataAnchor(0)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index failed.", batchNormName.c_str(), batchNormReduceNode->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.", batchNormName.c_str(), batchNormReduceNode->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                   batchNormReduceNode->GetInDataAnchor(0)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index failed.",
+              batchNormName.c_str(), batchNormReduceNode->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
+          batchNormName.c_str(), batchNormReduceNode->GetName().c_str());
   // output data anchor
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormReduceNode->GetOutDataAnchor(0),
-                                                        batchNormUpdateV2Node->GetInDataAnchor(1)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index failed.", batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index.", batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str());
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormReduceNode->GetOutDataAnchor(1),
-                                                        batchNormUpdateV2Node->GetInDataAnchor(2)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 2nd index to fusion node:%s's 3rd index failed.", batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 2nd index to fusion node:%s's 3rd index.", batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS !=
+          ge::GraphUtils::AddEdge(batchNormReduceNode->GetOutDataAnchor(0), batchNormUpdateV2Node->GetInDataAnchor(1)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index failed.",
+              batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index.",
+          batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS !=
+          ge::GraphUtils::AddEdge(batchNormReduceNode->GetOutDataAnchor(1), batchNormUpdateV2Node->GetInDataAnchor(2)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 2nd index to fusion node:%s's 3rd index failed.",
+              batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 2nd index to fusion node:%s's 3rd index.",
+          batchNormReduceNode->GetName().c_str(), batchNormUpdateV2Node->GetName().c_str());
   // input control anchor
   for (unsigned int i = 0; i < batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
-    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
-                                                batchNormReduceNode->GetInControlAnchor()),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.", batchNormName.c_str(), i, batchNormReduceNode->GetName().c_str()),
-             return FAILED);
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.", batchNormName.c_str(), i, batchNormReduceNode->GetName().c_str());
+    FUSION_PASS_CHECK(
+        ge::GRAPH_SUCCESS !=
+            ge::GraphUtils::AddEdge(batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
+                                    batchNormReduceNode->GetInControlAnchor()),
+        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
+                batchNormName.c_str(), i, batchNormReduceNode->GetName().c_str()),
+        return FAILED);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
+            batchNormName.c_str(), i, batchNormReduceNode->GetName().c_str());
   }
 
   // connect edge for update node
   // input data anchor
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                              batchNormUpdateV2Node->GetInDataAnchor(0)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                                                        batchNormUpdateV2Node->GetInDataAnchor(3)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
-                                                        batchNormUpdateV2Node->GetInDataAnchor(4)),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-           return FAILED);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                   batchNormUpdateV2Node->GetInDataAnchor(0)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index failed.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
+          batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                   batchNormUpdateV2Node->GetInDataAnchor(3)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index failed.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index.",
+          batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
+                                                   batchNormUpdateV2Node->GetInDataAnchor(4)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index failed.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index.",
+          batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
 
   // output data anchor
   if (batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].", batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].",
+            batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(0), inAnchorPtr),
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-               return FAILED);
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+      FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(0), inAnchorPtr),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
+                  batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+          return FAILED);
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
     }
   }
 
   if (batchNormNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size() > 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].", batchNormNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].",
+            batchNormNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : batchNormNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(1), inAnchorPtr),
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 2nd index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-               return FAILED);
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+      FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(1), inAnchorPtr),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 2nd index failed.",
+                  batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+          return FAILED);
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 2nd index.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
     }
   }
   if (batchNormNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size() > 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].", batchNormNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].",
+            batchNormNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : batchNormNode->GetOutDataAnchor(4)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(2), inAnchorPtr),
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 3rd index failed.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
-               return FAILED);
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 3rd index.", batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
+      FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(2), inAnchorPtr),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 3rd index failed.",
+                  batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
+          return FAILED);
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 3rd index.",
+              batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
     }
   }
 
   // input control anchor
   for (unsigned int i = 0; i < batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
-    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
-                                                          batchNormUpdateV2Node->GetInControlAnchor()),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.", batchNormName.c_str(), i, batchNormUpdateV2Node->GetName().c_str()),
-             return FAILED);
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.", batchNormName.c_str(), i, batchNormUpdateV2Node->GetName().c_str());
+    FUSION_PASS_CHECK(
+        ge::GRAPH_SUCCESS !=
+            ge::GraphUtils::AddEdge(batchNormNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
+                                    batchNormUpdateV2Node->GetInControlAnchor()),
+        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
+                batchNormName.c_str(), i, batchNormUpdateV2Node->GetName().c_str()),
+        return FAILED);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
+            batchNormName.c_str(), i, batchNormUpdateV2Node->GetName().c_str());
   }
 
   // remove edge for batchnorm node
@@ -220,11 +292,11 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph &graph,
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(batchNormNode),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "remove batchNormNode node[%s] failed", batchNormName.c_str()),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove batchNormNode node[%s] failed", batchNormName.c_str()),
+                    return FAILED);
   fusionNodes.push_back(batchNormReduceNode);
   fusionNodes.push_back(batchNormUpdateV2Node);
   return SUCCESS;
 }
 REGISTER_PASS("FusedBatchNormBertFusionPass", BUILT_IN_GRAPH_PASS, FusedBatchNormBertFusionPass);
-}
+}  // namespace fe

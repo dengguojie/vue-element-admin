@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-Convert ini files to json files.
-"""
 import json
 import os
 import stat
@@ -46,7 +43,7 @@ def parse_ini_to_obj(ini_file, tbe_ops_info):
                 if not key1_0 in op:
                     op[key1_0] = {}
                 if key1_1 in op[key1_0]:
-                    raise RuntimeError("Op:" + op_name + " " + key1_0 + " " + key1_1 + " is repeated!")
+                  raise RuntimeError("Op:" + op_name + " " + key1_0 + " " + key1_1 + " is repeated!")
                 op[key1_0][key1_1] = key2
 
 def check_op_info(tbe_ops):

@@ -1,26 +1,22 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 ndc1hwc0_2_ndhwc
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from topi.cce import util
-from impl.five_2_four import five_2_four
+from te.utils import para_check
+from impl import five_2_four
 
 
 def _check_parameters(src, dst, src_format, dst_format, kernel_name):
@@ -40,16 +36,16 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "ndhwc":
         raise RuntimeError("dst_format must be NDHWC!")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16",)
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 6, 6)
-    util.check_shape_rule(dst_shape, 5, 5)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 6, 6)
+    para_check.check_shape_rule(dst_shape, 5, 5)
+    para_check.check_tensor_shape_size(src_shape)
+    para_check.check_tensor_shape_size(dst_shape)
 
     if src_shape[5] != 16:
         raise RuntimeError(
@@ -71,7 +67,7 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
 
 
 # pylint: disable=locally-disabled, too-many-locals
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def ndc1hwc0_2_ndhwc(src, dst, src_format, dst_format,
                      kernel_name='ndc1hwc0_2_ndhwc'):
     """
@@ -109,4 +105,4 @@ def ndc1hwc0_2_ndhwc(src, dst, src_format, dst_format,
     src_new["shape"] = src_shape
     dst_new["shape"] = dst_shape
 
-    five_2_four(src_new, dst_new, "NC1HWC0", "NHWC", kernel_name)
+    five_2_four.five_2_four(src_new, dst_new, "NC1HWC0", "NHWC", kernel_name)

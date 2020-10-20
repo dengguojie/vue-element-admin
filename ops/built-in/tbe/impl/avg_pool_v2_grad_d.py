@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright 2020 Huawei Technologies Co., Ltd
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
 avg_pool_v2_grad
 """
 import te.lang.cce
@@ -23,8 +23,18 @@ from te import platform as tbe_platform
 from te import tvm
 from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
-from te.utils import op_utils
 from topi import generic
+from te.utils.error_manager import error_manager_vector
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import check_shape
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import OPTION_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
+from te.utils.op_utils import OPTION_ATTR_STR
+from te.utils.op_utils import OPTION_ATTR_BOOL
+from te.utils.op_utils import KERNEL_NAME
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
@@ -59,10 +69,10 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     """
     function of parameter check
     """
-    op_utils.check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
-    op_utils.check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
-    op_utils.check_shape(shape_out, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
-    op_utils.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM)
+    check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
+    check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
+    check_shape(shape_out, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
+    check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM)
     # stride's shape is (stride_h, stride_w)
     # shape_in and shape_out is "NCHW"
     # shape_k is "HWC1"
@@ -72,24 +82,35 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     DIM_W_C1, DIM_W_H, DIM_W_W, _, DIM_W_Co, DIM_W_C0 = 0, 1, 2, 3, 4, 5
 
     if shape_in[DIM_N] != shape_out[DIM_N]:
-        raise RuntimeError("input N-dim must be equal to out N-dim.")
-    if shape_in[DIM_C1] != shape_k[DIM_W_C1]:
-        raise RuntimeError("input C-dim must be equal to kernel C-dim..")
+        error_detail = "the DIM_N of shape_in and shape_out must be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "shape_in", "shape_out", error_detail)
+
     if shape_k[DIM_W_H] > 255 or shape_k[DIM_W_W] > 255:
-        raise RuntimeError(
-            "chip ISA limit kernel_h or kernel_w must less than 255")
+        expected_value = "smaller than or equal to 255"
+        real_value = "greater than 255"
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize",
+                                                           expected_value, real_value)
+
     if shape_in[DIM_C1] != shape_out[DIM_C1]:
-        raise RuntimeError("input C-dim must be equal to out C-dim.")
+        error_detail = "the DIM_C1 of shape_in and shape_out must be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "shape_in", "shape_out", error_detail)
 
     inp_dtype = dtype.lower()
-    op_utils.check_dtype(inp_dtype, ('float16',))
-
-    if strides[DIM_S_H] != strides[DIM_S_W]:
-        raise RuntimeError("only supports equal length strides in W and H dim.")
+    check_dtype(inp_dtype, ('float16',))
 
     if padding_mode.lower() not in ("same", "valid", "calculated"):
-        raise RuntimeError("only supported padding mode of "
-            "\"same\" and \"valid\".")
+        expected_value = "SAME VALID or CALCULATED"
+        real_value = padding_mode
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding_mode",
+                                                           expected_value, real_value)
+
+    if padding_mode == "CALCULATED":
+        if pads[0] >= shape_k[DIM_W_H] or pads[2] >= shape_k[DIM_W_W] or \
+                pads[1] >= shape_k[DIM_W_H] or pads[3] >= shape_k[DIM_W_W]:
+            expected_value = "smaller than ksize"
+            real_value = "greater than or equal to ksize"
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "pads",
+                                                               expected_value, real_value)
 
     _, _, hi, wi, _ = shape_in
     _, hk, wk, _, _, _ = shape_k
@@ -104,7 +125,7 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE *
                     data_size) // (data_size * dilated_w * BLOCK_SIZE)
     if max_dh_in_l1 < BLOCK_SIZE:
-        raise RuntimeError("L1's memory space is not enough to support "
+        raise RuntimeError("In op[avg_pool_v2_grad], L1's memory space is not enough to support "
                            "dilated_h tiling with 16!")
     # limiting eque get_tiling, but tile_m get max(1024)
     # 3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w
@@ -116,8 +137,8 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
                     +(strides[DIM_S_H] - 1) * dilated_w) // \
                    (3 * wo + strides[DIM_S_H] * dilated_w)
     if strides[DIM_S_H] > 1 and max_dh_in_ub < 1:
-        raise RuntimeError("UB's memory space is not enough to support "
-                           "dilated_h tiling with 1!")
+        raise RuntimeError("In op[avg_pool_v2_grad], UB's memory space is not"
+                           " enough to support dilated_h tiling with 1!")
 
     if padding_mode != "CALCULATED":
         out_h, _, _ = common.tf_get_windowed_output_size_verbose(
@@ -134,9 +155,22 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
         out_w = ((wi - wk + pads[1] + pads[2]) // stride_w) + 1
 
     if out_h != ho:
-        raise RuntimeError("ho and hi relation is wrong by formula!")
+        error_detail = "the shape of out_h and out_h by formula must be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "out_h",
+                                                               "out_h by formula", error_detail)
+
     if out_w != wo:
-        raise RuntimeError("wo and wi relation is wrong by formula!!")
+        error_detail = "the shape of out_w and out_w by formula must be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "out_w",
+                                                               "out_w by formula", error_detail)
+
+    pad_bottom_actual = (ho - 1) * stride_h + hk - hi - pads[0]
+    pad_left_actual = (wo - 1) * stride_w + wk - wi - pads[2]
+    if pad_bottom_actual >= hk or pad_left_actual >= wk:
+        expected_value = "smaller than ksize"
+        real_value = "greater than or equal to ksize"
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "actual pads",
+                                                           expected_value, real_value)
 
     return
 
@@ -156,9 +190,9 @@ def calculation_dilation(input_shape, weight_sizes, strides, padding_mode,
     strides: a list or tuple of two ints,[H, W]
 
     padding_mode: a 'string' from `"same", "valid", "CALCULATED"'.
-    
+
     pads: 4-D list, the pads of pooling.
-    
+
     ceil_mode: Whether to use the ceil function to calculate output height and
                width. Default False.
 
@@ -188,7 +222,7 @@ def calculation_dilation(input_shape, weight_sizes, strides, padding_mode,
         out_h = ((input_h - weight_height + pads[0] + pads[1]) // stride_h) + 1
         out_w = ((input_w - weight_width + pads[1] + pads[2]) // stride_w) + 1
         pad_top = pads[0]
-        pad_left = pads[2]    
+        pad_left = pads[2]
     # get the dialted shape, padding and strides of out_backprop
     dilated_padded_h = input_h + weight_height - 1
     dilated_padded_w = input_w + weight_width - 1
@@ -229,9 +263,9 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes,
     strides: a list or tuple of two ints,[H, W]
 
     padding_mode: a 'string' from `"same", "valid", "CALCULATED"'.
-    
+
     pads: 4-D list, the pads of pooling.
-    
+
     ceil_mode: Whether to use the ceil function to calculate output height and
                width. Default False.
 
@@ -574,13 +608,13 @@ def avg_pool_grad_schedule(res):
     return s
 
 
-@op_utils.check_op_params(
-    op_utils.REQUIRED_INPUT, op_utils.OPTION_INPUT, op_utils.OPTION_INPUT,
-    op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_LIST_INT,
-    op_utils.REQUIRED_ATTR_LIST_INT, op_utils.REQUIRED_ATTR_LIST_INT,
-    op_utils.OPTION_ATTR_STR, op_utils.REQUIRED_ATTR_LIST_INT,
-    op_utils.OPTION_ATTR_STR, op_utils.OPTION_ATTR_BOOL, op_utils.OPTION_ATTR_BOOL,
-    op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@check_op_params(
+    REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
+    REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
+    REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
+    OPTION_ATTR_STR, REQUIRED_ATTR_LIST_INT,
+    OPTION_ATTR_STR, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
+    OPTION_ATTR_BOOL, KERNEL_NAME)
 def avg_pool_v2_grad_d(input_grad,
                        mean_matrix,
                        kernel_matrix,
@@ -616,17 +650,17 @@ def avg_pool_v2_grad_d(input_grad,
     strides: strides over h and w axis, 4-D list.
 
     padding_mode: a 'string' from `"same", "valid", "CALCULATED"'.
-    
+
     pads: 4-D list, the pads of pooling.
 
     data_format: support 'NHWC' or 'NCHW'.
 
     global_pooling: Whether to use the global pooling. If global_pooling=true,
                     ksize and pads will be ignored. Default False.
-    
+
     ceil_mode: Whether to use the ceil function to calculate output height and
                width. Default False.
-    
+
     exclusive: Whether to exclude padding points. default is true.
 
     kernel_name : cce kernel name, default value is "avg_pool_v2_grad".
@@ -658,29 +692,33 @@ def avg_pool_v2_grad_d(input_grad,
     out_grad_shape = out_grad.get("shape")
     dtype = input_grad.get("dtype").lower()
 
-    op_utils.check_shape(input_grad_shape,
+    check_shape(input_grad_shape,
                          min_rank = INPUT_DIM,
                          max_rank = INPUT_DIM)
-    op_utils.check_shape(orig_input_shape,
+    check_shape(orig_input_shape,
                          min_rank = INPUT_DIM,
                          max_rank = INPUT_DIM)
-    op_utils.check_shape(strides, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
-    op_utils.check_shape(ksize, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
+    check_shape(strides, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
+    check_shape(ksize, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
 
     if out_grad_shape != orig_input_shape:
-        raise RuntimeError("out_grad_shape must equal orig_input_shape")
-    if stride_h < 1 or stride_w < 1:
-        raise RuntimeError("stride should >= 1")
+        error_detail = "the shape of out_grad_shape and orig_input_shape must be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "out_grad_shape",
+                                                               "orig_input_shape", error_detail)
 
+    if stride_h < 1 or stride_w < 1:
+        expected_value = "greater than or equal to 1"
+        real_value = "smaller than 1"
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "stride", expected_value, real_value)
     data_dtype = dtype.lower()
-    op_utils.check_dtype(data_dtype, ('float16',))
+    check_dtype(data_dtype, ('float16',))
 
     _, _, HH, WW, _ = orig_input_shape
 
-    if global_pooling or (kernel_h >= HH and kernel_w >= WW):
+    if global_pooling or (kernel_h >= HH + pads[0] + pads[1] and kernel_w >= WW + pads[2] + pads[3]):
         if input_grad_shape[2] != 1 or input_grad_shape[3] != 1:
-            raise RuntimeError("when global mode, the h-axis and w-axis of "
-                               "input_grad must be 1.")
+            error_detail = "when global mode, the h-axis and w-axis of input_grad must be 1."
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_grad_shape", error_detail)
 
         pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
         input_grad = tvm.placeholder(input_grad_shape,
@@ -710,15 +748,14 @@ def avg_pool_v2_grad_d(input_grad,
         shape_out_c0 = shape_out
         # strides dim is two
         strides = stride_h, stride_w
+        parameter_check(shape_in, shape_k, shape_out, dtype, strides,
+                        padding_mode, pads, global_pooling, ceil_mode,
+                        exclusive, kernel_name)
         if kernel_h > HH:
             kernel_h = HH
 
         if kernel_w > WW:
             kernel_w = WW
-
-        parameter_check(shape_in, shape_k, shape_out, dtype, strides,
-                        padding_mode, pads, global_pooling, ceil_mode,
-                        exclusive, kernel_name)
 
         shape_in = shape_in_n, shape_in_c1, 1, \
                    shape_in_h, shape_in_w, shape_in_c0

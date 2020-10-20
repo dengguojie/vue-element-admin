@@ -1,38 +1,35 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# pylint: disable=too-many-lines
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 one_hot_d
 """
 # pylint: disable=too-many-lines
-from __future__ import print_function
-from __future__ import absolute_import
-from functools import reduce as functools_reduce
+import functools
 
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te import platform as cce
-from te.platform.cce_build import build_config
-from topi.cce import util
-from impl.transpose_d import _tranpose_notchange_last
-from impl.transpose_d import _write_code
-from te.utils.op_utils import *
+from impl import transpose_d
+from te.utils.error_manager import error_manager_vector
 
 # 8k UB buffer is a reserved space
 UB_SPACE_8K = 8 * 1024
 # 2 block UB buffer is for on_value and off_value
 ON_OFF_VAL_SPACE = 32 * 2
+MAX_DEPTH = 131072
 
 
 def _add_workspace(indices_reshape, depth, dtype, kernel_name):
@@ -59,11 +56,11 @@ def _add_workspace(indices_reshape, depth, dtype, kernel_name):
             1,
             "size": [
                 indices_reshape[0] * depth *
-                cce.cce_intrin.get_bit_len(dtype) // 8
+                tbe_platform.get_bit_len(dtype) // 8
             ]
         }
     }
-    _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+    transpose_d._write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
 
 
 def _get_perm(shape, depth, axis):
@@ -88,9 +85,7 @@ def _get_perm(shape, depth, axis):
     perm = list(range(len(shape)))
     perm.insert(axis, len(shape))
     output_shape = shape[:axis] + (depth, ) + shape[axis:] + (1, )
-    return output_shape, perm + [
-        len(shape) + 1,
-    ]
+    return output_shape, perm + [len(shape) + 1, ]
 
 
 # pylint: disable=too-many-arguments
@@ -112,6 +107,10 @@ def _transpose(shape, dtype, depth, axis, data, indices_input, on_value_input,
         Output tensor after one hot.
     indices_input: TVM tensor.
         Input indices tensor.
+    on_value_input: TVM tensor.
+        Input input_on_val tensor.
+    off_value_input: TVM tensor.
+        Input input_off_val tensor.
 
     Returns
     -------
@@ -121,10 +120,8 @@ def _transpose(shape, dtype, depth, axis, data, indices_input, on_value_input,
         The tensor list to be built.
     """
     output_shape, perm = _get_perm(shape, depth, axis)
-    sch, output = _tranpose_notchange_last(data, output_shape, perm, dtype)
-    tensor_list = [
-        indices_input, on_value_input, off_value_input, output[1], data
-    ]
+    sch, output = transpose_d._tranpose_notchange_last(data, output_shape, perm, dtype)
+    tensor_list = [indices_input, on_value_input, off_value_input, output[1], data]
     return sch, tensor_list
 
 
@@ -181,7 +178,7 @@ def _get_dup_repeat_num(output_shape, output_dtype):
     else:
         each_repeat_num = 128
 
-    output_size = functools_reduce(lambda i, j: i * j, output_shape)
+    output_size = functools.reduce(lambda i, j: i * j, output_shape)
     dup_repeat_num = ((output_size - 1) // each_repeat_num) + 1
 
     return int(dup_repeat_num), each_repeat_num
@@ -191,11 +188,11 @@ def _check_need_tiling(indices_shape, indice_dtype, output_shape, output_dtype,
                        dtype_dict):
     """Check whether tiling operation is needed.
     """
-    ub_info = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) - 32 - \
+    ub_info = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 32 - \
               UB_SPACE_8K - ON_OFF_VAL_SPACE
     total_indices_size = int(
-        functools_reduce(lambda i, j: i * j, indices_shape))
-    total_output_size = int(functools_reduce(lambda i, j: i * j, output_shape))
+        functools.reduce(lambda i, j: i * j, indices_shape))
+    total_output_size = int(functools.reduce(lambda i, j: i * j, output_shape))
 
     # if output_dtype is int8 or uint8, need use float16 and then cast to real
     # dtype
@@ -208,7 +205,7 @@ def _check_need_tiling(indices_shape, indice_dtype, output_shape, output_dtype,
     # check if the tiling is needed
     # calculate the total input size and cast size
     ub_space_input = total_indices_size * dtype_dict.get(indice_dtype)
-    ub_space_cast = is_cast * total_output_size * dtype_dict.get('int8')
+    ub_space_cast = is_cast * total_output_size * dtype_dict.get("int8")
     # check if the input space and cast space is 32 bytes aligned
     if (ub_space_input % 32) != 0:
         ub_space_input = ((ub_space_input // 32) + 1) * 32
@@ -281,7 +278,7 @@ def _is_need_tiling(indices_shape, indice_dtype, output_shape, output_dtype):
     dtype_dict['int8'] = 1
     dtype_dict['uint8'] = 1
 
-    ub_info = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) - 32 - \
+    ub_info = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 32 - \
               UB_SPACE_8K - ON_OFF_VAL_SPACE
     need_tiling, is_cast = _check_need_tiling(indices_shape, indice_dtype,
                                               output_shape, output_dtype,
@@ -370,23 +367,15 @@ def _set_off_value(tvm_ib, output, args_dict, repeats, offset=0):
         else:
             inst = "vconv_f162u8"
         tvm_ib.emit(
-            tvm.call_extern(
-                "float16", "vector_dup",
-                args_dict.get('output_ub').access_ptr("w", offset=offset),
-                (args_dict.get('reg')[1].astype("int8")).astype("float16"),
-                repeats, 1, 1, 8, 8))
+            tvm.call_extern("float16", "vector_dup", args_dict.get('output_ub').access_ptr("w", offset=offset),
+                            (args_dict.get('reg')[1].astype("int8")).astype("float16"), repeats, 1, 1, 8, 8))
         tvm_ib.emit(
-            tvm.call_extern(
-                output.dtype, inst,
-                args_dict.get('cast_ub').access_ptr("w", offset=offset),
-                args_dict.get('output_ub').access_ptr("r", offset=offset),
-                repeats, 1, 1, 4, 8))
+            tvm.call_extern(output.dtype, inst, args_dict.get('cast_ub').access_ptr("w", offset=offset),
+                            args_dict.get('output_ub').access_ptr("r", offset=offset), repeats, 1, 1, 4, 8))
     else:
         tvm_ib.emit(
-            tvm.call_extern(
-                output.dtype, "vector_dup",
-                args_dict.get('output_ub').access_ptr("w", offset=offset),
-                args_dict.get('reg')[1], repeats, 1, 1, 8, 8))
+            tvm.call_extern(output.dtype, "vector_dup", args_dict.get('output_ub').access_ptr("w", offset=offset),
+                            args_dict.get('reg')[1], repeats, 1, 1, 8, 8))
 
 
 def _set_mask(length):
@@ -700,7 +689,7 @@ def _do_operation(tvm_ib,
         for j in range(operate_num):
             index = args_dict.get('reg_for_idx')[j]
             with tvm_ib.new_scope():
-                tvm_ib.scope_attr(cce.cce_params.CCE_AXIS, "coproc_scope", 1)
+                tvm_ib.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 1)
                 with tvm_ib.if_scope(
                         tvm.all(index >= 0, index < args_dict.get('depth'))):
                     tvm_ib.emit(
@@ -787,8 +776,8 @@ def _get_copy_block_num(input_shape, input_dtype, output_shape, output_dtype):
     output_block_num: int.
         The block num will be copied from UB to gm.
     """
-    input_size = int(functools_reduce(lambda i, j: i * j, input_shape))
-    output_size = int(functools_reduce(lambda i, j: i * j, output_shape))
+    input_size = int(functools.reduce(lambda i, j: i * j, input_shape))
+    output_size = int(functools.reduce(lambda i, j: i * j, output_shape))
 
     if input_dtype == "int32":
         each_block_num = 8
@@ -831,7 +820,7 @@ def _is_32_byte_align(depth, output_dtype):
     ret = True
     if output_dtype == "float16":
         byte_each_num = 2
-    elif output_dtype == "int8" or "uint8":
+    elif output_dtype in ("int8", "uint8"):
         byte_each_num = 1
     else:
         byte_each_num = 4
@@ -863,20 +852,17 @@ def _is_greater_than_32b(row_num_each_core, depth, indices_dtype,
     ret: bool.
         If ret is true, that means the last DAM is greater than 32 bytes.
     """
-    byte_one_num = cce.cce_intrin.get_bit_len(output_dtype) // 8
+    byte_one_num = tbe_platform.get_bit_len(output_dtype) // 8
     if depth * byte_one_num >= 32:
         return True
 
-    is_tiling_dict = _is_need_tiling((row_num_each_core, ), indices_dtype,
-                                     (row_num_each_core, depth), output_dtype)
-    if (is_tiling_dict.get('is_tiling') is
-            False) and (row_num_each_core * depth * byte_one_num >= 32):
+    is_tiling_dict = _is_need_tiling((row_num_each_core, ), indices_dtype, (row_num_each_core, depth), output_dtype)
+    if (is_tiling_dict.get('is_tiling') is False) and (row_num_each_core * depth * byte_one_num >= 32):
         return True
 
     # tiling is needed, and check the data num of the last DMA
-    if (is_tiling_dict.get('is_tiling') is True) and (
-            is_tiling_dict.get('last_loop_row_num') * depth * byte_one_num >=
-            32):
+    if (is_tiling_dict.get('is_tiling') is True) and \
+       (is_tiling_dict.get('last_loop_row_num') * depth * byte_one_num >= 32):
         return True
 
     return False
@@ -912,7 +898,7 @@ def _get_core_num_depth_large(indices_input, depth, output_dtype):
 
     row_num_each_core = input_shape_0 // target_core_num
     _, _, num_last_fragment = _split_large_depth_func(depth, output_dtype)
-    byte_size_output_dtype = cce.cce_intrin.get_bit_len(output_dtype) // 8
+    byte_size_output_dtype = tbe_platform.get_bit_len(output_dtype) // 8
     # if the last DMA is less than 32 byte, then multi-cores can not be used
     if num_last_fragment * byte_size_output_dtype < 32:
         target_core_num = 1
@@ -932,6 +918,8 @@ def _get_target_core_num(indices_input, depth, output_dtype, axis):
         A scalar defining the depth of the one hot dimension.
     output_dtype: str.
         The data type of output tensor.
+    axis: int.
+        The axis to fill.
 
     Returns
     -------
@@ -970,10 +958,6 @@ def _get_target_core_num_mini(indices_input):
     ----------
     indices_input: TVM Tensor.
         The input indices tensor.
-    depth: int.
-        A scalar defining the depth of the one hot dimension.
-    output_dtype: str.
-        The data type of output tensor.
 
     Returns
     -------
@@ -1059,7 +1043,7 @@ def _one_core_depth_large(tvm_ib, indices_input, output, args_dict):
     input_ub = _new_alloc(tvm_ib,
                           indices_input.dtype, (1, ),
                           "input_ub",
-                          scope=cce.scope_ubuf)
+                          scope=tbe_platform.scope_ubuf)
 
     op_args = {}
     op_args['input_block_num'], output_block_num =\
@@ -1072,22 +1056,22 @@ def _one_core_depth_large(tvm_ib, indices_input, output, args_dict):
         op_args['output_ub'] = _new_alloc(tvm_ib,
                                           "float16", (num_each_fragment, ),
                                           "output_ub",
-                                          scope=cce.scope_ubuf)
+                                          scope=tbe_platform.scope_ubuf)
         op_args['cast_ub'] = _new_alloc(tvm_ib,
                                         output.dtype, (num_each_fragment, ),
                                         "cast_ub",
-                                        scope=cce.scope_ubuf)
+                                        scope=tbe_platform.scope_ubuf)
     else:
         op_args['output_ub'] = _new_alloc(tvm_ib,
                                           output.dtype, (num_each_fragment, ),
                                           "output_ub",
-                                          scope=cce.scope_ubuf)
+                                          scope=tbe_platform.scope_ubuf)
 
-    op_args['num_in_32B'] = 32 * 8 // cce.cce_intrin.get_bit_len(output.dtype)
+    op_args['num_in_32B'] = 32 * 8 // tbe_platform.get_bit_len(output.dtype)
     op_args['ub_for_32B'] = _new_alloc(tvm_ib,
                                        output.dtype, (op_args['num_in_32B'], ),
                                        "ub_for_32B",
-                                       scope=cce.scope_ubuf)
+                                       scope=tbe_platform.scope_ubuf)
 
     op_args['num_each_fragment'] = num_each_fragment
     op_args['depth'] = args_dict.get('depth')
@@ -1096,11 +1080,9 @@ def _one_core_depth_large(tvm_ib, indices_input, output, args_dict):
     op_args['input_ub'] = input_ub
 
     with tvm_ib.for_range(0, args_dict.get('row_num_current_core')) as id_row:
-        with tvm_ib.if_scope(id_row == (args_dict.get('row_num_current_core') -
-                                        1)):
+        with tvm_ib.if_scope(id_row == (args_dict.get('row_num_current_core') - 1)):
             # copy input in the first fragment of one depth
-            indices_offset = args_dict.get('block_index') *\
-                             args_dict.get('row_num_pre_core') + id_row
+            indices_offset = args_dict.get('block_index') * args_dict.get('row_num_pre_core') + id_row
             tvm_ib.emit(
                 tvm.call_extern(
                     input_ub.dtype, "copy_gm_to_ubuf",
@@ -1111,40 +1093,35 @@ def _one_core_depth_large(tvm_ib, indices_input, output, args_dict):
             with tvm_ib.for_range(0, fragment_loop_num) as id_fragment:
                 _set_common_op_args_extend(
                     op_args, id_fragment * num_each_fragment, id_fragment,
-                    indices_offset * args_dict.get('depth') +
-                    id_fragment * num_each_fragment)
+                    indices_offset * args_dict.get('depth') + id_fragment * num_each_fragment)
 
                 with tvm_ib.if_scope(id_fragment == (fragment_loop_num - 1)):
                     _set_common_op_args(op_args, op_args['depth'] - 1,
-                                        output_block_num_last,
-                                        num_last_fragment, True)
+                                        output_block_num_last, num_last_fragment, True)
                     _do_operation_large_depth(tvm_ib, output, op_args)
                 with tvm_ib.else_scope():
                     _set_common_op_args(
                         op_args, (id_fragment + 1) * num_each_fragment - 1,
                         output_block_num, num_each_fragment, False)
                     _do_operation_large_depth(tvm_ib, output, op_args)
+
         with tvm_ib.else_scope():
             # copy input in the first fragment of one depth
-            indices_offset = args_dict.get('block_index') *\
-                             args_dict.get('row_num_pre_core') + id_row
+            indices_offset = args_dict.get('block_index') * args_dict.get('row_num_pre_core') + id_row
             tvm_ib.emit(
                 tvm.call_extern(
-                    input_ub.dtype, "copy_gm_to_ubuf",
-                    input_ub.access_ptr("w"),
+                    input_ub.dtype, "copy_gm_to_ubuf", input_ub.access_ptr("w"),
                     indices_input.access_ptr("r", offset=indices_offset), 0, 1,
                     op_args.get('input_block_num'), 0, 0))
 
             with tvm_ib.for_range(0, fragment_loop_num) as id_fragment:
                 _set_common_op_args_extend(
                     op_args, id_fragment * num_each_fragment, id_fragment,
-                    indices_offset * args_dict.get('depth') +
-                    id_fragment * num_each_fragment)
+                    indices_offset * args_dict.get('depth') + id_fragment * num_each_fragment)
 
                 with tvm_ib.if_scope(id_fragment == (fragment_loop_num - 1)):
                     _set_common_op_args(op_args, op_args['depth'] - 1,
-                                        output_block_num_last,
-                                        num_last_fragment, False)
+                                        output_block_num_last, num_last_fragment, False)
                     _do_operation_large_depth(tvm_ib, output, op_args)
                 with tvm_ib.else_scope():
                     _set_common_op_args(
@@ -1198,12 +1175,12 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
     op_args['depth'] = args_dict.get('depth')
     op_args['reg'] = args_dict.get('reg')
     op_args['reg_for_idx'] = args_dict.get('reg_for_idx')
-    op_args['num_in_32B'] = 32 * 8 // cce.cce_intrin.get_bit_len(output.dtype)
+    op_args['num_in_32B'] = 32 * 8 // tbe_platform.get_bit_len(output.dtype)
 
     op_args['ub_for_32B'] = _new_alloc(tvm_ib,
                                        output.dtype, (op_args['num_in_32B'], ),
                                        "ub_for_32B",
-                                       scope=cce.scope_ubuf)
+                                       scope=tbe_platform.scope_ubuf)
 
     # check if tiling is needed for each core
     if is_tiling_dict.get('is_tiling') is False:
@@ -1213,7 +1190,7 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
                               indices_input.dtype,
                               input_ub_shape,
                               "input_ub",
-                              scope=cce.scope_ubuf)
+                              scope=tbe_platform.scope_ubuf)
         input_block_num, output_block_num = _get_copy_block_num(
             input_ub_shape, indices_input.dtype, output_shape_each_core,
             output.dtype)
@@ -1233,18 +1210,18 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
                                               "float16",
                                               output_shape_each_core,
                                               "output_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
             op_args['cast_ub'] = _new_alloc(tvm_ib,
                                             output.dtype,
                                             output_shape_each_core,
                                             "cast_ub",
-                                            scope=cce.scope_ubuf)
+                                            scope=tbe_platform.scope_ubuf)
         else:
             op_args['output_ub'] = _new_alloc(tvm_ib,
                                               output.dtype,
                                               output_shape_each_core,
                                               "output_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
         op_args['output_block_num'] = output_block_num
         op_args['ub_row_num_once'] = args_dict.get('row_num_current_core')
         op_args['output_offset'] = args_dict.get(
@@ -1263,7 +1240,7 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
                               indices_input.dtype,
                               (is_tiling_dict.get('ub_row_num_once'), ),
                               "input_ub",
-                              scope=cce.scope_ubuf)
+                              scope=tbe_platform.scope_ubuf)
         output_ub_shape = (is_tiling_dict.get('ub_row_num_once'),
                            args_dict.get('depth'))
         if output.dtype == "uint8" or output.dtype == "int8":
@@ -1271,18 +1248,18 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
                                               "float16",
                                               output_ub_shape,
                                               "output_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
             op_args['cast_ub'] = _new_alloc(tvm_ib,
                                             output.dtype,
                                             output_ub_shape,
                                             "cast_ub",
-                                            scope=cce.scope_ubuf)
+                                            scope=tbe_platform.scope_ubuf)
         else:
             op_args['output_ub'] = _new_alloc(tvm_ib,
                                               output.dtype,
                                               output_ub_shape,
                                               "output_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
 
         input_block_num, output_block_num = _get_copy_block_num(
             (is_tiling_dict.get('ub_row_num_once'), ), indices_input.dtype,
@@ -1337,17 +1314,17 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
 def _one_core_ir_not_neg_one(tvm_ib, indices_input, output, args_dict):
-    output_size_each_core = int(functools_reduce(lambda i, j: i * j, output.shape))
+    output_size_each_core = int(functools.reduce(lambda i, j: i * j, output.shape))
     input_ub_shape = indices_input.shape
 
-    ub_info = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) - 32 - \
+    ub_info = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 32 - \
               UB_SPACE_8K - ON_OFF_VAL_SPACE
 
     ub_indices_space = 128 * 4
     ub_on_off_space = 32 * 2
     ub_remaining = ub_info - ub_indices_space - ub_on_off_space
-    copy_ele_num_once = ub_remaining // 4
-    copy_ele_num_once = (copy_ele_num_once // 8) * 8
+    ub_remaining_num = ub_remaining // 4
+    copy_ele_num_once = (ub_remaining_num // 8) * 8
 
     loop_times = output_size_each_core // copy_ele_num_once
     if output_size_each_core % copy_ele_num_once != 0:
@@ -1356,13 +1333,13 @@ def _one_core_ir_not_neg_one(tvm_ib, indices_input, output, args_dict):
 
     # allocate ub
     input_ub = _new_alloc(tvm_ib, indices_input.dtype, input_ub_shape,
-                          "input_ub", scope=cce.scope_ubuf)
+                          "input_ub", scope=tbe_platform.scope_ubuf)
 
     offset_ub = _new_alloc(tvm_ib, indices_input.dtype, input_ub_shape,
-                           "offset_ub", scope=cce.scope_ubuf)
+                           "offset_ub", scope=tbe_platform.scope_ubuf)
 
     args_dict["output_ub"] = _new_alloc(tvm_ib, output.dtype, (copy_ele_num_once,),
-                                        "output_ub", scope=cce.scope_ubuf)
+                                        "output_ub", scope=tbe_platform.scope_ubuf)
 
     # copy indices to input_ub
     tvm_ib.emit(
@@ -1491,10 +1468,8 @@ def _one_core_ir_not_neg_one(tvm_ib, indices_input, output, args_dict):
             # copy ret to gm
             tvm_ib.emit(
                 tvm.call_extern(
-                    output.dtype, "copy_ubuf_to_gm",
-                    output.access_ptr("w", offset=loop_idx*copy_ele_num_once),
-                    args_dict["output_ub"].access_ptr("r"),
-                    0, 1, copy_ele_num_once//8, 0, 0))
+                    output.dtype, "copy_ubuf_to_gm", output.access_ptr("w", offset=loop_idx*copy_ele_num_once),
+                    args_dict["output_ub"].access_ptr("r"), 0, 1, copy_ele_num_once // 8, 0, 0))
 
 
 def _split_large_depth_func(depth, output_dtype):
@@ -1518,10 +1493,10 @@ def _split_large_depth_func(depth, output_dtype):
     """
     one_index_space = 32
     multi_core_space = 32
-    ub_remaining = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) -\
+    ub_remaining = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -\
                    one_index_space - multi_core_space - UB_SPACE_8K -\
                    ON_OFF_VAL_SPACE
-    byte_num_dtype = cce.cce_intrin.get_bit_len(output_dtype) // 8
+    byte_num_dtype = tbe_platform.get_bit_len(output_dtype) // 8
     if output_dtype in ("uint8", "int8"):
         byte_num_dtype = 3
 
@@ -1562,11 +1537,11 @@ def _check_is_depth_large(depth, output_dtype):
     """
     one_index_space = 32
     multi_core_space = 32
-    ub_remaining = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) -\
+    ub_remaining = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -\
                    one_index_space - multi_core_space - UB_SPACE_8K -\
                    ON_OFF_VAL_SPACE
 
-    byte_num_dtype = cce.cce_intrin.get_bit_len(output_dtype) // 8
+    byte_num_dtype = tbe_platform.get_bit_len(output_dtype) // 8
     # when output_dtype is int8 or uint8, ub_output(fp16 2B) and ub_cast(1B) is
     # needed, hence one element of depth needs 3B
     if byte_num_dtype == 1:
@@ -1627,7 +1602,7 @@ def _multi_core_ir_prime_case(tvm_ib, indices_input, output, args_dict):
     """
     case for prime multiple core
     """
-    target_core_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+    target_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     num_indices = int(indices_input.shape[0])
     row_num_front_31_core = num_indices // target_core_num
     row_num_last_core = \
@@ -1752,7 +1727,7 @@ def _check_is_prime_case(indices_input, output_dtype, depth):
         if indices_num % i == 0:
             return False
 
-    byte_size_output_dtype = cce.cce_intrin.get_bit_len(output_dtype) // 8
+    byte_size_output_dtype = tbe_platform.get_bit_len(output_dtype) // 8
     if depth * byte_size_output_dtype < 32:
         return False
 
@@ -1785,25 +1760,25 @@ def one_hot_ir(ins, output, depth, axis):
     off_value_input = ins[2]
 
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     cloud_core_num = 32
     # reg[0]:on_value   reg[1]:off_value
     reg = tvm_ib.allocate(output.dtype, (2, ),
                           name="reg_buf",
-                          scope=cce.scope_reg)
+                          scope=tbe_platform.scope_reg)
     reg_for_idx = tvm_ib.allocate(indices_input.dtype, (8, ),
                                   name="reg_buf_for_idx",
-                                  scope=cce.scope_reg)
+                                  scope=tbe_platform.scope_reg)
 
     # allocate ub buffer for on_value and off_value
     on_value_ub = _new_alloc(tvm_ib,
                              output.dtype, (1, ),
                              "on_value_ub",
-                             scope=cce.scope_ubuf)
+                             scope=tbe_platform.scope_ubuf)
     off_value_ub = _new_alloc(tvm_ib,
                               output.dtype, (1, ),
                               "off_value_ub",
-                              scope=cce.scope_ubuf)
+                              scope=tbe_platform.scope_ubuf)
 
     # copy on/off value from gm to ub
     tvm_ib.emit(
@@ -1853,20 +1828,20 @@ def _one_hot_ir_not_neg_one(ins, output, depth):
     # reg[0]:on_value   reg[1]:off_value
     reg = tvm_ib.allocate(output.dtype, (2, ),
                           name="reg_buf",
-                          scope=cce.scope_reg)
+                          scope=tbe_platform.scope_reg)
     reg_for_idx = tvm_ib.allocate(indices_input.dtype, (8, ),
                                   name="reg_buf_for_idx",
-                                  scope=cce.scope_reg)
+                                  scope=tbe_platform.scope_reg)
 
     # allocate ub buffer for on_value and off_value
     on_value_ub = _new_alloc(tvm_ib,
                              output.dtype, (1, ),
                              "on_value_ub",
-                             scope=cce.scope_ubuf)
+                             scope=tbe_platform.scope_ubuf)
     off_value_ub = _new_alloc(tvm_ib,
                               output.dtype, (1, ),
                               "off_value_ub",
-                              scope=cce.scope_ubuf)
+                              scope=tbe_platform.scope_ubuf)
 
     # copy on/off value from gm to ub
     tvm_ib.emit(
@@ -1922,10 +1897,10 @@ def one_hot_compute(indices_input,
         The data type of output tensor, and only support float16, float32, int32.
     depth: int.
         A scalar defining the depth of the one hot dimension.
-    on_value: int or float.
+    on_value_input: int or float.
         A scalar defining the value to fill in output when indices[j] = i
         (default: 1).
-    off_value: int or float.
+    off_value_input: int or float.
         A scalar defining the value to fill in output when indices[j] != i
         (default: 0).
     axis: int.
@@ -1939,13 +1914,11 @@ def one_hot_compute(indices_input,
         The tensor created, and it's shape is [shape[0], depth].
     """
     output_dtype = dtype.lower()
-    if axis == 0 and depth == 131072 and output_dtype == "float32" and shape[0] == 128:
+    if axis == 0 and depth == MAX_DEPTH and output_dtype == "float32" and shape[0] == 128:
         output_shape = (depth, shape[0])
-        res = tvm.extern((output_shape, ),
-                         (indices_input, on_value_input, off_value_input),
+        res = tvm.extern((output_shape, ), (indices_input, on_value_input, off_value_input),
                          lambda ins, outs: _one_hot_ir_not_neg_one(ins, outs[0], depth),
-                         dtype=(output_dtype, ),
-                         name="res_one_hot")
+                         dtype=(output_dtype, ), name="res_one_hot")
 
         return res
 
@@ -1954,16 +1927,17 @@ def one_hot_compute(indices_input,
     else:
         output_shape = raw_shape + (depth, 1)
 
-    res = tvm.extern((output_shape, ),
-                     (indices_input, on_value_input, off_value_input),
+    res = tvm.extern((output_shape, ), (indices_input, on_value_input, off_value_input),
                      lambda ins, outs: one_hot_ir(ins, outs[0], depth, axis),
-                     dtype=(output_dtype, ),
-                     name="res_one_hot")
+                     dtype=(output_dtype, ), name="res_one_hot")
 
     return res
 
+
 # pylint: disable=too-many-locals,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def one_hot_d(input_x,
               input_on_val,
               input_off_val,
@@ -1977,28 +1951,20 @@ def one_hot_d(input_x,
 
     Parameters
     ----------
-    shape: list or tuple.
-        Shape of indices array.
-    dtype: str.
-        The data type of output tensor, and only support float16, float32, int32.
+    input_x: dict.
+        Shape and dtype of input.
+    input_on_val: dict.
+        A scalar defining the value to fill in output when indices[j] = i.
+    input_off_val: dict.
+        A scalar defining the value to fill in output when indices[j] != i.
+    output_y: dict.
+        Shape and dtype of output data.
     depth: int.
         A scalar defining the depth of the one hot dimension.
-    on_value: int or float.
-        A scalar defining the value to fill in output when indices[j] = i
-        (default: 1).
-    off_value: int or float.
-        A scalar defining the value to fill in output when indices[j] != i
-        (default: 0).
     axis: int.
         The axis to fill, support any axis.
-    dtype: str.
-        The data type of indices tensor
     kernel_name: str.
-        Cce kernel name, default value is "cce_one_hot".
-    need_build: bool.
-        If need to build CCEC kernel, default value is False.
-    need_print: bool.
-        If need to print the ir, default value is False.
+        Cce kernel name, default value is "one_hot_d".
 
     Returns
     -------
@@ -2006,62 +1972,51 @@ def one_hot_d(input_x,
     """
     input_x_shape = input_x.get("shape")
     input_on_val_shape = input_on_val.get("shape")
-    check_shape(input_x_shape, param_name="input_x")
-    check_shape(input_on_val_shape, param_name="input_on_val")
+    para_check.check_shape(input_x_shape, param_name="input_x")
+    para_check.check_shape(input_on_val_shape, param_name="input_on_val")
     input_off_val_shape = input_off_val.get("shape")
-    check_shape(input_off_val_shape, param_name="input_off_val")
+    para_check.check_shape(input_off_val_shape, param_name="input_off_val")
 
     indices_dtype = input_x.get("dtype").lower()
     dtype = input_on_val.get("dtype").lower()
     dtype_off = input_off_val.get("dtype").lower()
-    check_dtype(dtype,
-                ("float16", "float32", "int32", "int8", "uint8"), param_name="input_on_val")
-    check_dtype(dtype_off,
-                ("float16", "float32", "int32", "int8", "uint8"), param_name="input_off_val")
-    check_dtype(indices_dtype, ("int32", "uint8"), param_name="input_x")
+    para_check.check_dtype(dtype, ("float16", "float32", "int32", "int8", "uint8"), param_name="input_on_val")
+    para_check.check_dtype(dtype_off, ("float16", "float32", "int32", "int8", "uint8"), param_name="input_off_val")
+    para_check.check_dtype(indices_dtype, ("int32", "uint8"), param_name="input_x")
 
     shape = tuple(input_x.get("shape"))
 
     if axis == len(shape):
         axis = -1
     if axis != -1:
-        axis = util.axis_check(len(shape), axis)
+        axis = shape_util.axis_check(len(shape), axis)
 
     if (not isinstance(shape[0], int)) or (shape[0] <= 0):
-        raise RuntimeError(
-            "The type of index must be positive int and value more than 0")
+        error_detail = "The type of index must be positive int and value more than 0"
+        error_manager_vector.raise_err_input_shape_invalid("one_hot_d", "input_x", error_detail)
 
     if depth < 1:
-        raise RuntimeError(
-            "The depth must be greater or equal to 1, actual input depth is %d"
-            % depth)
+        depth_rule = "The depth must be greater or equal to 1"
+        error_manager_vector.raise_err_check_params_rules("one_hot_d", depth_rule, "depth", depth)
 
     # Reshape the indices_shape to 1D in order to simplify the calculation
-    indices_reshape = (int(functools_reduce(lambda i, j: i * j, shape)), )
+    indices_reshape = (int(functools.reduce(lambda i, j: i * j, shape)), )
 
-    indices_input = tvm.placeholder(indices_reshape,
-                                    name="indices_input",
-                                    dtype=indices_dtype.lower())
+    indices_input = tvm.placeholder(indices_reshape, name="indices_input", dtype=indices_dtype.lower())
 
     on_value_input = tvm.placeholder((1, ), name="on_value_input", dtype=dtype)
-    off_value_input = tvm.placeholder((1, ),
-                                      name="off_value_input",
-                                      dtype=dtype)
+    off_value_input = tvm.placeholder((1, ), name="off_value_input", dtype=dtype)
 
     res = one_hot_compute(indices_input, indices_reshape, shape, dtype, depth,
-                          on_value_input, off_value_input, axis,
-                          indices_dtype.lower())
+                          on_value_input, off_value_input, axis, indices_dtype.lower())
 
-    if axis == -1 or (axis == 0 and depth == 131072 and
-                      dtype == "float32" and indices_reshape[0] == 128):
+    if axis == -1 or (axis == 0 and depth == MAX_DEPTH and dtype == "float32" and indices_reshape[0] == 128):
         sch = tvm.create_schedule([res.op])
         tensor_list = [indices_input, on_value_input, off_value_input, res]
     else:
-        sch, tensor_list = _transpose(shape, dtype, depth, axis, res,
-                                      indices_input, on_value_input,
-                                      off_value_input)
+        sch, tensor_list = _transpose(shape, dtype, depth, axis, res, indices_input, on_value_input, off_value_input)
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
     if 0 <= axis < len(shape):

@@ -1,30 +1,35 @@
 /**
  * Copyright 2020 Huawei Technologies Co., Ltd
-
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
-
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
-
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
+/*!
+ * \file scope_basic_lstm_cell_pass.cc
+ * \brief
+ */
 #include "scope_basic_lstm_cell_pass.h"
+
 #include "op_log.h"
 #include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
-static const char *const kScopeType = "BasicLSTMCell";
-static const char *const kLstmCellTanhType = "general_basic_lstm_cell_tanh";
-static const char *const kLstmCellReluType = "general_basic_lstm_cell_relu";
-static const char *const kLstmCellRelu6Type = "general_basic_lstm_cell_relu6";
-static const char *const kLstmCellSigmoidType = "general_basic_lstm_cell_sigmoid";
-static const char *const kOpType = "BasicLSTMCell";
+static const char* const kScopeType = "BasicLSTMCell";
+static const char* const kLstmCellTanhType = "general_basic_lstm_cell_tanh";
+static const char* const kLstmCellReluType = "general_basic_lstm_cell_relu";
+static const char* const kLstmCellRelu6Type = "general_basic_lstm_cell_relu6";
+static const char* const kLstmCellSigmoidType = "general_basic_lstm_cell_sigmoid";
+static const char* const kOpType = "BasicLSTMCell";
 
 std::vector<ScopeFusionPatterns> ScopeBasicLSTMCellPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns_list;
@@ -34,25 +39,27 @@ std::vector<ScopeFusionPatterns> ScopeBasicLSTMCellPass::DefinePatterns() {
   return patterns_list;
 }
 
-std::string ScopeBasicLSTMCellPass::PassName() { return std::string("ScopeBasicLSTMCellPass"); }
+std::string ScopeBasicLSTMCellPass::PassName() {
+  return std::string("ScopeBasicLSTMCellPass");
+}
 
-Status ScopeBasicLSTMCellPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph> &scope_graph,
-                                                     std::vector<ScopesResult> &results) {
+Status ScopeBasicLSTMCellPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph,
+                                                     std::vector<ScopesResult>& results) {
   if (scope_graph == nullptr) {
     OP_LOGE(kOpType, "Input params is nullptr.");
     return domi::PARAM_INVALID;
   }
-  const ScopeTree *scope_tree = scope_graph->GetScopeTree();
+  const ScopeTree* scope_tree = scope_graph->GetScopeTree();
   // Class ScopeGraph guarantees scope_tree is not empty.
-  std::vector<Scope *> scopes = scope_tree->GetAllScopes();
-  for (auto &scope : scopes) {
+  const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
+  for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if ((scope->SubType() == kLstmCellTanhType) || (scope->SubType() == kLstmCellReluType) ||
         (scope->SubType() == kLstmCellRelu6Type) || (scope->SubType() == kLstmCellSigmoidType)) {
       std::string scope_name = scope->Name();
       if (scope_name.find("while") == std::string::npos) {
         ScopesResult result;
-        std::vector<Scope *> result_scopes;
+        std::vector<Scope*> result_scopes;
         result_scopes.push_back(scope);
         result.SetScopes(result_scopes);
         results.push_back(result);
@@ -63,10 +70,10 @@ Status ScopeBasicLSTMCellPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
+void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   // distinguish basic_lstm_cell
-  std::vector<ScopePattern *> batch;
-  ScopePattern *basic_lstm_cell_tanh = new (std::nothrow) ScopePattern();
+  std::vector<ScopePattern*> batch;
+  ScopePattern* basic_lstm_cell_tanh = new (std::nothrow) ScopePattern();
   if (basic_lstm_cell_tanh == nullptr) {
     ScopeUtil::FreeScopePatterns(patterns);
     OP_LOGE(kOpType, "Alloc an object failed.");
@@ -86,7 +93,7 @@ void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   basic_lstm_cell_tanh->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value1));
   batch.push_back(basic_lstm_cell_tanh);
 
-  ScopePattern *basic_lstm_cell_relu = new (std::nothrow) ScopePattern();
+  ScopePattern* basic_lstm_cell_relu = new (std::nothrow) ScopePattern();
   if (basic_lstm_cell_relu == nullptr) {
     ScopeUtil::FreeScopePatterns(patterns);
     ScopeUtil::FreeOneBatchPattern(batch);
@@ -107,7 +114,7 @@ void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   basic_lstm_cell_relu->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value2));
   batch.push_back(basic_lstm_cell_relu);
 
-  ScopePattern *basic_lstm_cell_relu6 = new (std::nothrow) ScopePattern();
+  ScopePattern* basic_lstm_cell_relu6 = new (std::nothrow) ScopePattern();
   if (basic_lstm_cell_relu6 == nullptr) {
     ScopeUtil::FreeScopePatterns(patterns);
     ScopeUtil::FreeOneBatchPattern(batch);
@@ -127,7 +134,7 @@ void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   basic_lstm_cell_relu6->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value3));
   batch.push_back(basic_lstm_cell_relu6);
 
-  ScopePattern *basic_lstm_cell_sigmoid = new (std::nothrow) ScopePattern();
+  ScopePattern* basic_lstm_cell_sigmoid = new (std::nothrow) ScopePattern();
   if (basic_lstm_cell_sigmoid == nullptr) {
     ScopeUtil::FreeScopePatterns(patterns);
     ScopeUtil::FreeOneBatchPattern(batch);
@@ -152,7 +159,7 @@ void ScopeBasicLSTMCellPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   patterns.push_back(batch);
 }
 
-void ScopeBasicLSTMCellPass::GenerateFusionResult(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeBasicLSTMCellPass::GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   if (fusion_rlt == nullptr) {
     OP_LOGE(kOpType, "Input fusion_rlt is nullptr.");
     return;
@@ -167,7 +174,7 @@ void ScopeBasicLSTMCellPass::GenerateFusionResult(const std::vector<Scope *> &sc
   fusion_rlt->SetType(kScopeType);
   fusion_rlt->SetDescription("");
 
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     // The upper call guarantees that the scope is not empty.
     if (scope->SubType() == kLstmCellTanhType || scope->SubType() == kLstmCellReluType ||
         scope->SubType() == kLstmCellRelu6Type || scope->SubType() == kLstmCellSigmoidType) {

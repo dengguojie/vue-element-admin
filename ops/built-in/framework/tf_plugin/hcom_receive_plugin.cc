@@ -1,41 +1,46 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use
- * this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file hcom_receive_plugin.cpp
+ * \brief
+ */
 #include "register/register.h"
+
 #include "op_log.h"
 
-using namespace ge;
-namespace domi
-{
-Status AutoMappingFnHcomReceive(const google::protobuf::Message* op_src, ge::Operator& op)
-{
-    if (op_src == nullptr) {
-        OP_LOGE("HcomReceive", "op[HcomReceive] tensorflow plugin parser[AutoMapping] failed. op_src is nullptr.");
-        return FAILED;
-    }
-    Status ret = AutoMappingFn(op_src, op);
-    if (ret != SUCCESS) {
-        OP_LOGE("HcomReceive", "tensorflow plugin parser failed. auto mapping failed.");
-        return FAILED;
-    }
-    ge::DataType dataType;
-    if (op.GetAttr("T", dataType) != GRAPH_SUCCESS) {
-        OP_LOGI("HcomReceive", "GetAttr T failed");
-        return FAILED;
-    }
-    op.SetAttr("dtype", dataType);
-    OP_LOGI("HcomReceive", "op[HcomReceive] tensorflow plugin parser[AutoMapping] success.");
-    return SUCCESS;
+namespace domi {
+Status AutoMappingFnHcomReceive(const google::protobuf::Message* op_src, ge::Operator& op) {
+  if (op_src == nullptr) {
+    OP_LOGE("HcomReceive", "op[HcomReceive] tensorflow plugin parser[AutoMapping] failed. op_src is nullptr.");
+    return FAILED;
+  }
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("HcomReceive", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
+  ge::DataType dataType;
+  if (op.GetAttr("T", dataType) != ge::GRAPH_SUCCESS) {
+    OP_LOGI("HcomReceive", "GetAttr T failed");
+    return FAILED;
+  }
+  op.SetAttr("dtype", dataType);
+  OP_LOGI("HcomReceive", "op[HcomReceive] tensorflow plugin parser[AutoMapping] success.");
+  return SUCCESS;
 }
 
 // register HcomReceive op to GE

@@ -1,43 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 zn_2_nchw
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
-from functools import reduce as functools_reduce
+import functools
 
-from te import platform as cce
+from te import platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.cce_build import build_config
-import te.platform.cce_params as cce_params
-from topi.cce import util
-from impl.five_2_four import _get_ir_branch
-from impl.five_2_four import _get_ir_branch_fp16
-from impl.five_2_four import _more_dim_ir
-from impl.five_2_four import _one_dim_ir
-from impl.five_2_four import _split_dim_ir
-from impl.five_2_four import _more_dim_ir_fp16
-from impl.five_2_four import _split_dim_ir_fp16
+from impl import five_2_four
 
 # available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
 def _ceil_div(value, block):
@@ -145,7 +133,7 @@ def _tilling_axis_not_last(shape, dtype):
     """
     ub_size_bytes = UB_SIZE_B - 1*1024
     # 8 bit = 1byte, '8' below for this reason
-    dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes),
     # divide by 32 to get the numbers of data that can be stored in one block.
     flag = 32 // dtype_bytes_size
@@ -159,7 +147,7 @@ def _tilling_axis_not_last(shape, dtype):
     split_factor = 1
 
     for i, item in enumerate(shape):
-        ele_cnt = functools_reduce(lambda x, y: x*y, shape_new[i:])
+        ele_cnt = functools.reduce(lambda x, y: x*y, shape_new[i:])
         if ele_cnt <= total_ele:
             split_axis = i - 1
             split_factor = total_ele // ele_cnt
@@ -211,13 +199,13 @@ def _tilling_axis_multi_core_fuse(shape, dtype):
         the factor used when tiling the target axis
     """
     ub_size_bytes = UB_SIZE_B
-    dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
     total_ele = ub_size_bytes // dtype_bytes_size
     split_axis = 0
     split_factor = 1
 
     for i, _ in enumerate(shape):
-        ele_cnt = functools_reduce(lambda x, y: x*y, shape[i:])
+        ele_cnt = functools.reduce(lambda x, y: x*y, shape[i:])
         if ele_cnt <= total_ele:
             split_axis = i - 1
             split_factor = total_ele // ele_cnt
@@ -277,7 +265,7 @@ def _do_storage_align(sch, data_ub, shape_res, dtype):
             if count == 1:
                 do_align = False
         if do_align:
-            dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
+            dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
             # 32 means one block size(32 Bytes), divide by 32 to
             # get the numbers of data that
             # can be stored in one block.
@@ -348,7 +336,7 @@ def _schedule_for_not_change_last(args):
 
     """
     sch, data, res, data_ub, shape_res, dtype = args
-    sch[data_ub].set_scope(cce.scope_ubuf)
+    sch[data_ub].set_scope(tbe_platform.scope_ubuf)
 
     split_axis, split_factor = _tilling_axis_not_last(shape_res, dtype)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
@@ -421,40 +409,40 @@ def _tranpose_notchange_last(data, shape_5hd, dst_shape, perm, dtype,
 
     # nc1hwc0 to nchw
     if dtype == "float32":
-        branch = _get_ir_branch(shape_5hd, dtype, shape_all)
+        branch = five_2_four._get_ir_branch(shape_5hd, dtype, shape_all)
         if branch == "more_dim":
             res = tvm.extern(dst_shape, [res_5hd],
-                             lambda ins, outs: _more_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._more_dim_ir(outs[0],
                                                             ins[0],
                                                             max_dim,
                                                             shape_all),
                              name="res", dtype=dtype)
         elif branch == "one_dim":
             res = tvm.extern(dst_shape, [res_5hd],
-                             lambda ins, outs: _one_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._one_dim_ir(outs[0],
                                                            ins[0],
                                                            max_dim,
                                                            shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape, [res_5hd],
-                             lambda ins, outs: _split_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._split_dim_ir(outs[0],
                                                              ins[0],
                                                              max_dim,
                                                              shape_all),
                              name="res", dtype=dtype)
     else:
-        branch_fp16 = _get_ir_branch_fp16(dst_shape, dtype, shape_all)
+        branch_fp16 = five_2_four._get_ir_branch_fp16(dst_shape, dtype, shape_all)
         if branch_fp16 == "more_dim_fp16":
             res = tvm.extern(dst_shape, [res_5hd],
-                             lambda ins, outs: _more_dim_ir_fp16(outs[0],
+                             lambda ins, outs: five_2_four._more_dim_ir_fp16(outs[0],
                                                                  ins[0],
                                                                  max_dim,
                                                                  shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape, [res_5hd],
-                             lambda ins, outs: _split_dim_ir_fp16(
+                             lambda ins, outs: five_2_four._split_dim_ir_fp16(
                                  outs[0], ins[0], max_dim, shape_all),
                              name="res", dtype=dtype)
 
@@ -468,8 +456,8 @@ def _tranpose_notchange_last(data, shape_5hd, dst_shape, perm, dtype,
 
 def _temp_ir(dst, data):
     tvm_ib = tvm.ir_builder.create()
-    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
-    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    float_size = tbe_platform.get_bit_len(data.dtype) // 8
+    cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // float_size
 
     n_i, c_i, h_i, w_i = dst.shape
 
@@ -478,7 +466,7 @@ def _temp_ir(dst, data):
     shape_ele = n_i*c_i*h_i*w_i
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
-                         "data_ub", scope=cce.scope_ubuf)
+                         "data_ub", scope=tbe_platform.scope_ubuf)
 
     with tvm_ib.if_scope(shape_ele <= ub_ele):
         burst_len = _ceil_div(shape_ele, cp_align_len)
@@ -562,40 +550,40 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
 
     # nc1hwc0 to nchw
     if dtype == "float32":
-        branch = _get_ir_branch(shape_5hd, dtype, shape_all)
+        branch = five_2_four._get_ir_branch(shape_5hd, dtype, shape_all)
         if branch == "more_dim":
             res = tvm.extern(dst_shape_full, [res_5hd],
-                             lambda ins, outs: _more_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._more_dim_ir(outs[0],
                                                             ins[0],
                                                             max_dim,
                                                             shape_all),
                              name="res", dtype=dtype)
         elif branch == "one_dim":
             res = tvm.extern(dst_shape_full, [res_5hd],
-                             lambda ins, outs: _one_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._one_dim_ir(outs[0],
                                                            ins[0],
                                                            max_dim,
                                                            shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],
-                             lambda ins, outs: _split_dim_ir(outs[0],
+                             lambda ins, outs: five_2_four._split_dim_ir(outs[0],
                                                              ins[0],
                                                              max_dim,
                                                              shape_all),
                              name="res", dtype=dtype)
     else:
-        branch_fp16 = _get_ir_branch_fp16(dst_shape_full, dtype, shape_all)
+        branch_fp16 = five_2_four._get_ir_branch_fp16(dst_shape_full, dtype, shape_all)
         if branch_fp16 == "more_dim_fp16":
             res = tvm.extern(dst_shape_full, [res_5hd],
-                             lambda ins, outs: _more_dim_ir_fp16(outs[0],
+                             lambda ins, outs: five_2_four._more_dim_ir_fp16(outs[0],
                                                                  ins[0],
                                                                  max_dim,
                                                                  shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],
-                             lambda ins, outs: _split_dim_ir_fp16(
+                             lambda ins, outs: five_2_four._split_dim_ir_fp16(
                                  outs[0], ins[0], max_dim, shape_all),
                              name="res", dtype=dtype)
 
@@ -613,8 +601,8 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
 
 def _special_ir(dst, data):
     tvm_ib = tvm.ir_builder.create()
-    float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
-    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    float_size = tbe_platform.get_bit_len(data.dtype) // 8
+    cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // float_size
 
     n_i, c_i, _, _ = dst.shape
     c_0 = 16
@@ -622,7 +610,7 @@ def _special_ir(dst, data):
     ub_max = 3968*16
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_max,
-                         "data_ub", scope=cce.scope_ubuf)
+                         "data_ub", scope=tbe_platform.scope_ubuf)
 
     loop = c_i // c_0
 
@@ -661,16 +649,16 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "nchw":
         raise RuntimeError("dst_format must be NCHW !")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 4, 4)
-    util.check_shape_rule(dst_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 4, 4)
+    para_check.check_shape_rule(dst_shape, 4, 4)
+    para_check.check_shape_size(src_shape)
+    para_check.check_shape_size(dst_shape)
 
     if src_shape[2] != 16 or src_shape[3] != 16:
         raise RuntimeError(
@@ -704,16 +692,16 @@ def _check_parameters_special(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "nchw":
         raise RuntimeError("dst_format must be NCHW !")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 4, 4)
-    util.check_shape_rule(dst_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 4, 4)
+    para_check.check_shape_rule(dst_shape, 4, 4)
+    para_check.check_shape_size(src_shape)
+    para_check.check_shape_size(dst_shape)
 
     if src_shape[2] != 16 or src_shape[3] != 16:
         raise RuntimeError(
@@ -731,7 +719,7 @@ def _check_parameters_special(src, dst, src_format, dst_format, kernel_name):
 
 
 # pylint: disable=locally-disabled,too-many-statements
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
     """
     algorithm: zn_2_nchw
@@ -771,17 +759,17 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
         data = tvm.placeholder(shape_zn, dtype=dtype, name="data")
 
         max_dim = max(dst_shape)
-        shape_all = functools_reduce(lambda x, y: x * y, shape_5hd[:])
+        shape_all = functools.reduce(lambda x, y: x * y, shape_5hd[:])
         perm = [3, 0, 1, 2, 4]
         sch, tensor_list = _tranpose_notchange_last(data, shape_5hd,
                                                     dst_shape,
                                                     perm, dtype,
                                                     max_dim, shape_all)
 
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-        float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+        float_size = tbe_platform.get_bit_len(dtype) // 8
         size = 1
         for item in shape_5hd:
             size *= item
@@ -803,7 +791,7 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
         data = tvm.placeholder(shape_zn, dtype=dtype, name="data")
 
         max_dim = max(dst_shape)
-        shape_all = functools_reduce(lambda x, y: x * y, shape_5hd[:])
+        shape_all = functools.reduce(lambda x, y: x * y, shape_5hd[:])
         perm = [3, 0, 1, 2, 4]
         dst_shape_full = [n_true, c_i, h_i, w_i]
         sch, tensor_list = _tranpose_notchange_last_two(data, shape_5hd,
@@ -812,10 +800,10 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
                                                         perm, dtype,
                                                         max_dim, shape_all)
 
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-        float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+        float_size = tbe_platform.get_bit_len(dtype) // 8
         size = 2
         for item in shape_5hd:
             size *= item

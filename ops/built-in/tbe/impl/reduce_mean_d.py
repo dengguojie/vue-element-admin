@@ -1,30 +1,27 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-tf reduce mean
+reduce_mean_d
 """
+import collections
 
-from collections import Iterable
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 SHAPE_SIZE_LIMIT = 100000000  # shape limit for tf_reduce_mean
 
@@ -34,7 +31,7 @@ ori_format = ["NCHW", "NCHW"]
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("reduce_mean_d")
+@tbe_platform.fusion_manager.fusion_manager.register("reduce_mean_d")
 def reduce_mean_d_compute(x,
                           y,
                           axes,
@@ -62,17 +59,17 @@ def reduce_mean_d_compute(x,
     res: TVM tensor
         output tensor, has the same shape and type as input tensor.
     """
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
 
     shape_len = len(shape)
     if not axes:
         axes = range(shape_len)
     if hasattr(axes, 'index'):
         axes = list(axes)
-    axes = util.axis_check(shape_len, axes)
+    axes = shape_util.axis_check(shape_len, axes)
 
     reduce_elts = 1.0
-    if isinstance(axes, Iterable):
+    if isinstance(axes, collections.Iterable):
         for i in axes:
             reduce_elts *= shape[i]
     else:
@@ -84,11 +81,7 @@ def reduce_mean_d_compute(x,
         cof = ori_shape[0][-1] ** (-1)
 
     dtype = x.dtype
-    if dtype in ("int8", "uint8"):
-        data_input_tmp = te.lang.cce.vmuls(x, 1.0)
-        data_input_tmp = te.lang.cce.cast_to(data_input_tmp, "float16")
-    else:
-        data_input_tmp = x
+    data_input_tmp = x
 
     has_improve_precision = False
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
@@ -96,29 +89,27 @@ def reduce_mean_d_compute(x,
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support(
                 "te.lang.cce.sum", "float32") and not is_5hdc:
-        data_input_tmp = te.lang.cce.cast_to(data_input_tmp, "float32")
+        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
     elif cce_product in ("Ascend310",) and dtype == "float16" \
             and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
                                                         "float32") \
             and not is_5hdc and impl_mode != "high_performance":
-        data_input_tmp = te.lang.cce.cast_to(data_input_tmp, "float32")
+        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
 
-    data_input_tmp = te.lang.cce.vmuls(data_input_tmp, cof)
-    res = te.lang.cce.sum(data_input_tmp, axis=axes, keepdims=keepdims)
+    data_input_tmp = tbe.vmuls(data_input_tmp, cof)
+    res = tbe.sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
-    if dtype in ("int8", "uint8"):
-        res = te.lang.cce.cast_to(res, dtype, False)
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, dtype)
+        res = tbe.cast_to(res, dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
                   keepdims=None, kernel_name="reduce_mean_d",
                   impl_mode="high_performance"):
@@ -147,8 +138,8 @@ def reduce_mean_d(input_x, output_y, axes,
     global ori_shape
     global ori_format
     shape = input_x.get("shape")
-    check_shape(shape, param_name="input_x")
-    check_list = ["float16", "float32", "int8", "uint8"]
+    para_check.check_shape(shape, param_name="input_x")
+    check_list = ["float16", "float32"]
     shape_len = len(shape)
 
     if not axes:
@@ -158,16 +149,16 @@ def reduce_mean_d(input_x, output_y, axes,
         axes = list(axes)
 
     inp_dtype = input_x.get("dtype").lower()
-    check_dtype(inp_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(inp_dtype, check_list, param_name="input_x")
 
-    axes = util.axis_check(shape_len, axes)
+    axes = shape_util.axis_check(shape_len, axes)
 
     # Shape should not be modified in 5HD mode
     # 5HD Special param for 5hd schedule
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_x, axes)
+    is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_x, axes)
     if not is_5hdc:
-        shape, axes = util.shape_refine(list(shape), axes)
-        shape, axes = util.simplify_axis_shape(shape, axes)
+        shape, axes = shape_util.shape_refine(list(shape), axes)
+        shape, axes = shape_util.simplify_axis_shape(shape, axes)
 
     ori_shape = [input_x["ori_shape"], input_x["shape"]]
     ori_format = [input_x["ori_format"], input_x["format"]]
@@ -179,8 +170,8 @@ def reduce_mean_d(input_x, output_y, axes,
         res.ori_format = input_x["ori_format"]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

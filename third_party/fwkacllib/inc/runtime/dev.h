@@ -1,18 +1,18 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
- *
+ * Copyright 2020 Huawei Technologies Co., Ltd
+
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
+*/
 
 #ifndef __CCE_RUNTIME_DEVICE_H__
 #define __CCE_RUNTIME_DEVICE_H__
@@ -72,7 +72,7 @@ typedef enum tagMemcpyInfo {
  * @brief get total device number.
  * @param [in|out] count the device number
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetDeviceCount(int32_t *count);
 /**
@@ -114,7 +114,7 @@ RTS_API rtError_t rtGetDeviceIDs(uint32_t *devices, uint32_t len);
                } DEV_INFO_TYPE;
  * @param [out] value   the device info
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_DRV_ERR for error
  */
 RTS_API rtError_t rtGetDeviceInfo(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *value);
 
@@ -123,7 +123,7 @@ RTS_API rtError_t rtGetDeviceInfo(uint32_t deviceId, int32_t moduleType, int32_t
  * @brief set target device for current thread
  * @param [int] device   the device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_DEVICE for can not match ID and device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtSetDevice(int32_t device);
 
@@ -132,7 +132,7 @@ RTS_API rtError_t rtSetDevice(int32_t device);
  * @brief set target device for current thread
  * @param [int] device   the device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_DEVICE for can not match ID and device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtSetDeviceEx(int32_t device);
 
@@ -142,7 +142,7 @@ RTS_API rtError_t rtSetDeviceEx(int32_t device);
  * @param [in] phyId   the physical device id
  * @param [out] devIndex   the logic device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetDeviceIndexByPhyId(uint32_t phyId, uint32_t *devIndex);
 
@@ -152,7 +152,7 @@ RTS_API rtError_t rtGetDeviceIndexByPhyId(uint32_t phyId, uint32_t *devIndex);
  * @param [in] devIndex   the logic device id
  * @param [out] phyId   the physical device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetDevicePhyIdByIndex(uint32_t devIndex, uint32_t *phyId);
 
@@ -162,9 +162,9 @@ RTS_API rtError_t rtGetDevicePhyIdByIndex(uint32_t devIndex, uint32_t *phyId);
  * @param [in] devIdDes   the logical device id
  * @param [in] phyIdSrc   the physical device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
-RTS_API rtError_t rtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc);
+RTS_API rtError_t rtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t flag);
 
 /**
  * @ingroup dvrt_dev
@@ -172,9 +172,20 @@ RTS_API rtError_t rtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc);
  * @param [in] devIdDes   the logical device id
  * @param [in] phyIdSrc   the physical device id
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtDisableP2P(uint32_t devIdDes, uint32_t phyIdSrc);
+
+/**
+ * @ingroup dvrt_dev
+ * @brief get cability of P2P omemry copy betwen device and peeredevic.
+ * @param [in] device   the logical device id
+ * @param [in] peerDevice   the physical device id
+ * @param [outv] *canAccessPeer   1:enable 0:disable
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtDeviceCanAccessPeer(int32_t* canAccessPeer, uint32_t device, uint32_t peerDevice);
 
 /**
  * @ingroup dvrt_dev
@@ -183,7 +194,7 @@ RTS_API rtError_t rtDisableP2P(uint32_t devIdDes, uint32_t phyIdSrc);
  * @param [in] phyIdSrc   the physical device id
  * @param [in|out] status   status value
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetP2PStatus(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t *status);
 
@@ -208,7 +219,7 @@ RTS_API rtError_t rtGetDevice(int32_t *device);
  * @ingroup dvrt_dev
  * @brief reset all opened device
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_DEVICE if no device set
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtDeviceReset(int32_t device);
 
@@ -216,7 +227,7 @@ RTS_API rtError_t rtDeviceReset(int32_t device);
  * @ingroup dvrt_dev
  * @brief reset opened device
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_DEVICE if no device set
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtDeviceResetEx(int32_t device);
 
@@ -228,7 +239,7 @@ RTS_API rtError_t rtDeviceResetEx(int32_t device);
  * @param [in] value    limit value
  * @param [out] info   the device info
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_NO_DEVICE for can not find any device
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtDeviceSetLimit(int32_t device, rtLimitType_t type, uint32_t value);
 
@@ -236,7 +247,7 @@ RTS_API rtError_t rtDeviceSetLimit(int32_t device, rtLimitType_t type, uint32_t 
  * @ingroup dvrt_dev
  * @brief Wait for compute device to finish
  * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_DEVICE if no device set
+ * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtDeviceSynchronize(void);
 

@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bessel_i0e
 
   Op_description :
@@ -30,17 +30,11 @@ bessel_i0e
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+from te.utils import para_check
+from te.utils import shape_util
 
 # const value
 ITR_BEFORE = (1.0, 3.5156229, 3.0899424, 1.2067492, 0.2659732, 0.0360768, 0.0045813)
@@ -52,7 +46,7 @@ CONST_LIMIT = 15.0 / 4
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
-@fusion_manager.register("bessel_i0e")
+@tbe_platform.fusion_manager.fusion_manager.register("bessel_i0e")
 def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     """
     Algrithm:
@@ -84,49 +78,47 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     dtype_input = x.dtype
 
     # chose the type of data in begin
-    if dtype_input == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
-    abs_data = te.lang.cce.vabs(x)
+    if dtype_input == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        x = tbe.cast_to(x, "float32")
+    abs_data = tbe.vabs(x)
 
     # compute bessel_i0e for data in (-3.75, 3.75)
-    broad_const_limit = te.lang.cce.broadcast(tvm.const(CONST_LIMIT, x.dtype),
-                                              shape_input)
-    before_abs_data = te.lang.cce.vmin(abs_data, broad_const_limit)
-    data = te.lang.cce.vdiv(before_abs_data, broad_const_limit)
-    square_data = te.lang.cce.vmul(data, data)
+    broad_const_limit = tbe.broadcast(tvm.const(CONST_LIMIT, x.dtype), shape_input)
+    before_abs_data = tbe.vmin(abs_data, broad_const_limit)
+    data = tbe.vdiv(before_abs_data, broad_const_limit)
+    square_data = tbe.vmul(data, data)
 
-    before_res = te.lang.cce.vmuls(square_data, tvm.const(ITR_BEFORE[LEN_BEFORE - 1]))
-    before_res = te.lang.cce.vadds(before_res, ITR_BEFORE[LEN_BEFORE - 2])
+    before_res = tbe.vmuls(square_data, tvm.const(ITR_BEFORE[LEN_BEFORE - 1]))
+    before_res = tbe.vadds(before_res, ITR_BEFORE[LEN_BEFORE - 2])
     for index in reversed(range(LEN_BEFORE - 2)):
-        before_res = te.lang.cce.vmul(before_res, square_data)
-        before_res = te.lang.cce.vadds(before_res, ITR_BEFORE[index])
+        before_res = tbe.vmul(before_res, square_data)
+        before_res = tbe.vadds(before_res, ITR_BEFORE[index])
 
-    exp_data = te.lang.cce.vexp(before_abs_data)
-    before_res = te.lang.cce.vdiv(before_res, exp_data)
+    exp_data = tbe.vexp(before_abs_data)
+    before_res = tbe.vdiv(before_res, exp_data)
 
     # compute bessel_i0e for data in other domain
-    data = te.lang.cce.vdiv(broad_const_limit, abs_data)
+    data = tbe.vdiv(broad_const_limit, abs_data)
 
-    after_res = te.lang.cce.vmuls(data, tvm.const(ITR_AFTER[LEN_AFTER - 1]))
-    after_res = te.lang.cce.vadds(after_res, ITR_AFTER[LEN_AFTER - 2])
+    after_res = tbe.vmuls(data, tvm.const(ITR_AFTER[LEN_AFTER - 1]))
+    after_res = tbe.vadds(after_res, ITR_AFTER[LEN_AFTER - 2])
     for index in reversed(range(LEN_AFTER - 2)):
-        after_res = te.lang.cce.vmul(after_res, data)
-        after_res = te.lang.cce.vadds(after_res, ITR_AFTER[index])
+        after_res = tbe.vmul(after_res, data)
+        after_res = tbe.vadds(after_res, ITR_AFTER[index])
 
-    sqrt_data = te.lang.cce.vsqrt(abs_data, 1)
+    sqrt_data = tbe.vsqrt(abs_data, 1)
 
-    after_res = te.lang.cce.vdiv(after_res, sqrt_data)
-    after_res = te.lang.cce.vmin(before_res, after_res)
+    after_res = tbe.vdiv(after_res, sqrt_data)
+    after_res = tbe.vmin(before_res, after_res)
 
     # chose the type of data in end
     if dtype_input == "float16":
-        after_res = te.lang.cce.cast_to(after_res, "float16")
+        after_res = tbe.cast_to(after_res, "float16")
 
     return after_res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     """
     Computes the Bessel i0e function of x element-wise.
@@ -147,11 +139,11 @@ def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
 
-    check_shape(shape_input, param_name="x")
-    shape_input, _ = refine_shape_axes(shape_input, [])
+    para_check.check_shape(shape_input, param_name="x")
+    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="x")
+    para_check.check_dtype(dtype_input, check_list, param_name="x")
 
     input_dtype = dtype_input.lower()
     data = tvm.placeholder(shape_input, dtype=input_dtype, name="data_input")
@@ -159,9 +151,9 @@ def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     res = bessel_i0e_compute(data, y, kernel_name)
 
     with tvm.target.cce():
-        sch = topi.generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": (data, res)}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

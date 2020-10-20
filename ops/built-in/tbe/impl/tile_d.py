@@ -1,34 +1,94 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-tile
+tile_d
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
 
-# shape limit, maximum value of int32
-SHAPE_SIZE_LIMIT = 2147483648
-# dim size limit
-MAX_SHAPE_NUM = 10000000
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("tile_d")
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# pylint: disable=locally-disabled,too-many-branches
+def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
+    """TileD: to do boradcast with multiples
+
+    Parameters
+    ----------
+    input_x : dict
+        shape and dtype of input
+    output_x: dict
+        dict of output.
+    multiples : list or tuple.
+        Number of the axis replicates.
+    kernel_name : str
+        kernel name, default value is "tile_d".
+
+    Returns
+    -------
+    param_dynamic_in_json
+    """
+    input_shape = list(input_x.get("shape"))
+    input_format = input_x.get("format")
+    inputdtype = input_x.get("dtype")
+    # ND dtype
+    dtype_base = ["float16", "float", "int32"]
+    dtype_list = ["float16", "float", "int32", "bool"]
+    # default support ND for dtype_base
+    dtype_base_out = dtype_base.copy()
+    format_base_out = ["ND"] * len(dtype_base)
+    format_base_in = ["ND"] * len(dtype_base)
+
+    # check whether support 4D to 5HD
+    is_support_5hd = True
+    if inputdtype == "bool":
+        is_support_5hd = False
+        dtype_base_out = dtype_list.copy()
+        format_base_out = ["ND"] * len(dtype_list)
+        format_base_in = ["ND"] * len(dtype_list)
+    elif input_format not in ("NCHW", "NHWC") or len(input_shape) != 4 or len(multiples) != 4:
+        is_support_5hd = False
+    elif input_shape[1] != 1 or input_shape[2] != 1 or input_shape[3] != 1:
+        is_support_5hd = False
+    elif input_format in ("NCHW",) and multiples[1] % 16 != 0:
+        is_support_5hd = False
+    elif input_format in ("NHWC",) and multiples[3] % 16 != 0:
+        is_support_5hd = False
+    if is_support_5hd:
+        dtype_base_out = dtype_base_out + dtype_base + dtype_base
+        format_base_in = format_base_in + ["NCHW"] * len(dtype_base) + ["NHWC"] * len(dtype_base)
+        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_base) + ["NC1HWC0"] * len(dtype_base)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_input_str = ','.join(format_base_in)
+    format_output_str = ','.join(format_base_out)
+
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str, format=format_input_str)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_str, format=format_output_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
+@tbe_platform.fusion_manager.fusion_manager.register("tile_d")
 def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     """TVM calculation process, used for fusion operation.
 
@@ -45,20 +105,26 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
 
     Returns
     -------
-    None
+    res
     """
-    shape = te.lang.cce.util.shape_to_list(data.shape)
+    src_dtype = data.dtype.lower()
+    shape = shape_util.shape_to_list(data.shape)
     out_shape = []
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i*multiples_i
         out_shape.append(out_shape_i)
-    res = te.lang.cce.broadcast(data, out_shape)
+    if src_dtype == "int8":
+        data = tbe.cast_to(data, "float16")
+    res = tbe.broadcast(data, out_shape)
+    if src_dtype == "int8":
+        res = tbe.cast_to(res, "int8")
 
     return res
 
 
 # pylint: disable=too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
 def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     """algorithm: tile.
     The tile in tensorflow can multiple the shape of the given tensor.
@@ -69,12 +135,11 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     For example, if shape = [51, 1] and multiples = [1, 77], after computation,
     the output shape will be [51, 77].
     Abnormal condition:
-    1. The length of shape and multiples is not the same.
-    2. The axis to be multipled in shape is not 1.
-    3. The type of kernel_name is not string.
-    4. The shape is neither list nor tuple.
-    5. The dtype is not float32, float16, or int32.
-    6. All of the axises of the multiples is 1.
+    1. The length of shape must be equal to or less than the shape of multiples.
+    2. The type of kernel_name is not string.
+    3. The shape is neither list nor tuple.
+    4. The dtype is not float32, float16, or int32.
+    5. All of the axises of the multiples is 1.
 
     Parameters
     ----------
@@ -93,11 +158,23 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     """
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
-    check_shape(shape, param_name="input_x")
-    check_shape(multiples, param_name="multiples")
-    check_dtype(dtype.lower(), ("float16", "float32", "int32"), param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
+    para_check.check_shape(multiples, param_name="multiples")
+    para_check.check_dtype(dtype.lower(), ("float16", "float32", "int32", "int8"), param_name="input_x")
     shape = list(shape)
     multiples = list(multiples)
+    input_format = input_x.get("format")
+    output_format = output_x.get("format")
+    if input_format in ("NCHW", "NHWC") and output_format in ("NC1HWC0",):
+        # branch: 4D tile to 5HD ((N, 1, 1, 1) to (N, C1, H, W, C0)) and output C is 16 align
+        # change input shape from (N, 1, 1, 1) to (N, 1, 1, 1, 1)
+        shape = shape + [1]
+        if input_format == "NCHW":
+            # change multiples from (1, C, H, W) to (1, C1, H, W, C0)
+            multiples = [multiples[0], multiples[1] // 16, multiples[2], multiples[3], 16]
+        else:
+            # change multiples from (1, H, W, C) to (1, C1, H, W, C0)
+            multiples = [multiples[0], multiples[3] // 16, multiples[1], multiples[2], 16]
 
     if len(shape) > len(multiples):
         raise RuntimeError(
@@ -111,7 +188,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i*multiples_i
         out_shape.append(out_shape_i)
-    check_shape(out_shape, param_name="output_x")
+    para_check.check_shape(out_shape, param_name="output_x")
 
     shape_adapt = []
     multiples_adapt = []
@@ -146,10 +223,10 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     res = tile_d_compute(data, output_x, multiples, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

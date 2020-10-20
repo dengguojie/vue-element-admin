@@ -1,32 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_ftrl_v2_d
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from impl.util.util_build import set_bool_storage_config
-from impl.util.util_compute import sign
-from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
+from impl.util import util_build
+from impl.util import util_compute
 
 # scalar in apply_ftrl_v2
 NUM_ONE = 1.0
@@ -53,16 +48,16 @@ def _pow(data_x, data_y):
     power result of data_x^data_y
     """
 
-    log_value = te.lang.cce.vlog(data_x, priority_flag=1.0)
-    mul_value = te.lang.cce.vmul(data_y, log_value)
-    res = te.lang.cce.vexp(mul_value)
+    log_value = tbe.vlog(data_x, priority_flag=1.0)
+    mul_value = tbe.vmul(data_y, log_value)
+    res = tbe.vexp(mul_value)
 
     return res
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals, too-many-statements
-@fusion_manager.register("apply_ftrl_v2_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_ftrl_v2_d")
 def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
                             lr_power, var_out, accum_out, linear_out,
                             kernel_name='apply_ftrl_v2_d'):
@@ -113,81 +108,78 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
     dtype = var.dtype
     # cast to float32 for higher accuracy
     has_improve_precision = False
-    if dtype == "float16" and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                "float32"):
-        var_tmp = te.lang.cce.cast_to(var, "float32")
-        accum_tmp = te.lang.cce.cast_to(accum, "float32")
-        linear_tmp = te.lang.cce.cast_to(linear, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        l1 = te.lang.cce.cast_to(l1, "float32")
-        l2 = te.lang.cce.cast_to(l2, "float32")
-        l2_shrinkage = te.lang.cce.cast_to(l2_shrinkage, "float32")
-        lr_power = te.lang.cce.cast_to(lr_power, "float32")
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        var_tmp = tbe.cast_to(var, "float32")
+        accum_tmp = tbe.cast_to(accum, "float32")
+        linear_tmp = tbe.cast_to(linear, "float32")
+        grad = tbe.cast_to(grad, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        l1 = tbe.cast_to(l1, "float32")
+        l2 = tbe.cast_to(l2, "float32")
+        l2_shrinkage = tbe.cast_to(l2_shrinkage, "float32")
+        lr_power = tbe.cast_to(lr_power, "float32")
         has_improve_precision = True
     else:
-        var_tmp = te.lang.cce.vadds(var, tvm.const(NUM_ZERO, "float32"))
-        accum_tmp = te.lang.cce.vadds(accum, tvm.const(NUM_ZERO, "float32"))
-        linear_tmp = te.lang.cce.vadds(linear, tvm.const(NUM_ZERO, "float32"))
+        var_tmp = tbe.vadds(var, tvm.const(NUM_ZERO, "float32"))
+        accum_tmp = tbe.vadds(accum, tvm.const(NUM_ZERO, "float32"))
+        linear_tmp = tbe.vadds(linear, tvm.const(NUM_ZERO, "float32"))
 
     # 1.grad_with_shrinkage = grad + 2 * l2_shrinkage * var
-    mul_value = te.lang.cce.vmuls(l2_shrinkage, tvm.const(NUM_TWO, "float32"))
-    mul_value = te.lang.cce.broadcast(mul_value, var_tmp.shape)
-    mul_value2 = te.lang.cce.vmul(mul_value, var_tmp)
-    grad_with_shrinkage = te.lang.cce.vadd(grad, mul_value2)
+    mul_value = tbe.vmuls(l2_shrinkage, tvm.const(NUM_TWO, "float32"))
+    mul_value = tbe.broadcast(mul_value, var_tmp.shape)
+    mul_value2 = tbe.vmul(mul_value, var_tmp)
+    grad_with_shrinkage = tbe.vadd(grad, mul_value2)
 
     # 2.accum_new = accum + grad^2
-    gs = te.lang.cce.vmul(grad, grad)
-    accum_new = te.lang.cce.vadd(accum_tmp, gs)
+    gs = tbe.vmul(grad, grad)
+    accum_new = tbe.vadd(accum_tmp, gs)
 
     # 3.accum_pow_sub = accum_new^(-lr_power)-accum^(-lr_power)
-    lr_power = te.lang.cce.vmuls(lr_power, tvm.const(NUM_M_ONE, "float32"))
-    lr_power = te.lang.cce.broadcast(lr_power, var_tmp.shape)
+    lr_power = tbe.vmuls(lr_power, tvm.const(NUM_M_ONE, "float32"))
+    lr_power = tbe.broadcast(lr_power, var_tmp.shape)
     accum_new_pow = _pow(accum_new, lr_power)
     accum_pow = _pow(accum_tmp, lr_power)
-    accum_pow_sub = te.lang.cce.vsub(accum_new_pow, accum_pow)
+    accum_pow_sub = tbe.vsub(accum_new_pow, accum_pow)
 
     # 4.linear += grad_with_shrinkage - accum_pow_sub / lr * var
-    lr = te.lang.cce.broadcast(lr, var_tmp.shape)
-    accum_pow_div = te.lang.cce.vdiv(accum_pow_sub, lr)
-    accum_pow_mul = te.lang.cce.vmul(accum_pow_div, var_tmp)
-    accum_pow = te.lang.cce.vsub(grad_with_shrinkage, accum_pow_mul)
-    linear_new = te.lang.cce.vadd(linear_tmp, accum_pow)
+    lr = tbe.broadcast(lr, var_tmp.shape)
+    accum_pow_div = tbe.vdiv(accum_pow_sub, lr)
+    accum_pow_mul = tbe.vmul(accum_pow_div, var_tmp)
+    accum_pow = tbe.vsub(grad_with_shrinkage, accum_pow_mul)
+    linear_new = tbe.vadd(linear_tmp, accum_pow)
 
     # 5.x_res = l1*linear.sign()-linear
-    l1 = te.lang.cce.broadcast(l1, var_tmp.shape)
-    x_res = sign(linear_new)
-    x_res = te.lang.cce.vmul(x_res, l1)
-    x_res = te.lang.cce.vsub(x_res, linear_new)
+    l1 = tbe.broadcast(l1, var_tmp.shape)
+    x_res = util_compute.sign(linear_new)
+    x_res = tbe.vmul(x_res, l1)
+    x_res = tbe.vsub(x_res, linear_new)
 
     # 6.y_res = accum_new^(-lr_power)/lr + 2*l2
-    l2 = te.lang.cce.vmuls(l2, tvm.const(NUM_TWO, "float32"))
-    l2 = te.lang.cce.broadcast(l2, var_tmp.shape)
-    y_res = te.lang.cce.vdiv(accum_new_pow, lr)
-    y_res = te.lang.cce.vadd(y_res, l2)
+    l2 = tbe.vmuls(l2, tvm.const(NUM_TWO, "float32"))
+    l2 = tbe.broadcast(l2, var_tmp.shape)
+    y_res = tbe.vdiv(accum_new_pow, lr)
+    y_res = tbe.vadd(y_res, l2)
 
     # 7.var = x_res / y_res if linear.abs > l1, else var = 0
-    x_res = te.lang.cce.vdiv(x_res, y_res)
-    linear_abs = te.lang.cce.vabs(linear_new)
-    zero_tensor = te.lang.cce.broadcast(tvm.const(NUM_ZERO, "float32"),
-                                        var_tmp.shape)
-    var_sel = te.lang.cce.vcmp(linear_abs, l1, 'gt')
-    var_new = te.lang.cce.vsel(var_sel, x_res, zero_tensor)
+    x_res = tbe.vdiv(x_res, y_res)
+    linear_abs = tbe.vabs(linear_new)
+    zero_tensor = tbe.broadcast(tvm.const(NUM_ZERO, "float32"), var_tmp.shape)
+    var_sel = tbe.vcmp(linear_abs, l1, 'gt')
+    var_new = tbe.vsel(var_sel, x_res, zero_tensor)
 
     # dtype after vsel is float16 at mini
-    var_new = te.lang.cce.cast_to(var_new, "float32")
+    var_new = tbe.cast_to(var_new, "float32")
 
     if has_improve_precision:
-        var_new = te.lang.cce.cast_to(var_new, "float16")
-        accum_new = te.lang.cce.cast_to(accum_new, "float16")
-        linear_new = te.lang.cce.cast_to(linear_new, "float16")
+        var_new = tbe.cast_to(var_new, "float16")
+        accum_new = tbe.cast_to(accum_new, "float16")
+        linear_new = tbe.cast_to(linear_new, "float16")
 
     # 8.output_var = var_new
-    output_data = te.lang.cce.vadds(var_new, tvm.const(NUM_ZERO, var_new.dtype))
-    accum_out_data = te.lang.cce.vadds(
+    output_data = tbe.vadds(var_new, tvm.const(NUM_ZERO, var_new.dtype))
+    accum_out_data = tbe.vadds(
         accum_new, tvm.const(NUM_ZERO, accum_new.dtype))
-    linear_out_data = te.lang.cce.vadds(
+    linear_out_data = tbe.vadds(
         linear_new, tvm.const(NUM_ZERO, linear_new.dtype))
 
     def _compute(*index):
@@ -198,10 +190,11 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_ftrl_v2_d(var, accum, linear, grad, lr, l1, l2, l2_shrinkage, lr_power,
                     var_out, accum_out, linear_out, use_locking=False,
                     kernel_name="apply_ftrl_v2_d"):
@@ -257,14 +250,14 @@ def apply_ftrl_v2_d(var, accum, linear, grad, lr, l1, l2, l2_shrinkage, lr_power
     """
     input_dict = (var, accum, linear, grad, lr, l1, l2, l2_shrinkage, lr_power)
 
-    args = ApplyOpConfig.TensorArgs(input_dict, apply_ftrl_v2_d_compute,
-                                    [var_out, accum_out, linear_out], 15)
-    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'linear', 'grad',
-                                         'lr', 'l1', 'l2',
-                                         'l2_shrinkage', 'lr_power'),
-                                    scalar=('lr', 'l1', 'l2',
-                                            'l2_shrinkage', 'lr_power'),
-                                    reuse=('var', 'accum', 'linear'))
-    options = ApplyOpConfig.TensorOptions(
-        build=set_bool_storage_config())
-    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict, apply_ftrl_v2_d_compute,
+                                                           [var_out, accum_out, linear_out], 15)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'accum', 'linear', 'grad',
+                                                                'lr', 'l1', 'l2',
+                                                                'l2_shrinkage', 'lr_power'),
+                                                           scalar=('lr', 'l1', 'l2',
+                                                                   'l2_shrinkage', 'lr_power'),
+                                                           reuse=('var', 'accum', 'linear'))
+    options = util_apply_op_schedule.ApplyOpConfig.TensorOptions(build=util_build.set_bool_storage_config())
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name, options),
+                                                   kernel_name)

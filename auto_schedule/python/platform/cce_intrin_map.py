@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Runtime function related hooks
 """
 
@@ -60,10 +58,10 @@ OP_INTRIN_INFO_LIST = [
     OpIntrinInfo(14, "elewise_binary_max", "vector_max"),
     OpIntrinInfo(15, "elewise_binary_or", "vector_or"),
     OpIntrinInfo(16, "elewise_binary_and", "vector_and"),
-    OpIntrinInfo(17, "elewise_binary_scalar_axpy", "vector_axpy"),
-    OpIntrinInfo(18, "elewise_multiple_mla", "vector_mla"),
-    OpIntrinInfo(19, "elewise_multiple_madd", "vector_madd"),
-    OpIntrinInfo(20, "elewise_multiple_maddrelu", "vector_maddrelu"),
+    OpIntrinInfo(17, "elewise_binary_scalar_axpy", "vector_multiple"),
+    OpIntrinInfo(18, "elewise_multiple_mla", "vector_multiple"),
+    OpIntrinInfo(19, "elewise_multiple_madd", "vector_multiple"),
+    OpIntrinInfo(20, "elewise_multiple_maddrelu", "vector_multiple"),
     OpIntrinInfo(21, "reduce_sum_last", "vector_reduce_sum", "reduce_sum"),
     OpIntrinInfo(22, "reduce_sum_nist", "vector_reduce_sum", "reduce_sum"),
     OpIntrinInfo(23, "reduce_min_last", "vector_reduce_min", "reduce_min"),
@@ -74,10 +72,10 @@ OP_INTRIN_INFO_LIST = [
     OpIntrinInfo(28, "reduce_prod_nist", "vector_mul", "reduce_prod"),
     OpIntrinInfo(29, "broadcast_for_tensor", "unified_broadcast"),
     OpIntrinInfo(30, "elewise_single_cast", "vector_conv"),
-    OpIntrinInfo(31, "elewise_single_round"),
+    OpIntrinInfo(31, "elewise_single_round", "vector_conv_rint"),
     OpIntrinInfo(32, "elewise_single_ceil"),
-    OpIntrinInfo(33, "elewise_single_floor"),
-    OpIntrinInfo(34, "elewise_single_trunc"),
+    OpIntrinInfo(33, "elewise_single_floor", "vector_conv_floor"),
+    OpIntrinInfo(34, "elewise_single_trunc", "vector_conv_trunc"),
     OpIntrinInfo(35, "segment_sum"),
     OpIntrinInfo(36, "load2d", "dma_copy"),
     OpIntrinInfo(37, "transpose_true", "dma_copy"),
@@ -120,6 +118,15 @@ OP_INTRIN_INFO_LIST = [
     OpIntrinInfo(74, "strided_slice_d", "dma_copy"),
     OpIntrinInfo(75, "split_com", "dma_copy"),
     OpIntrinInfo(76, "write_select", "dma_copy"),
+    OpIntrinInfo(77, "elewise_single_round_d", "vector_conv_round"),
+    OpIntrinInfo(78, "elewise_single_lrelu", "vector_lrelu"),
+    OpIntrinInfo(79, "elewise_binary_addrelu", "vector_addrelu"),
+    OpIntrinInfo(80, "elewise_binary_subrelu", "vector_subrelu"),
+    OpIntrinInfo(81, "elewise_binary_phony", "elewise_binary_phony"),
+    OpIntrinInfo(82, "elewise_binary_cmpsel_eq", "vector_select_eq"),
+    OpIntrinInfo(83, "elewise_binary_cmpsel_ne", "vector_select_ne"),
+    OpIntrinInfo(84, "out_to_ub", "dma_copy"),
+    OpIntrinInfo(85, "ub_to_out", "dma_copy"),
 ]
 
 

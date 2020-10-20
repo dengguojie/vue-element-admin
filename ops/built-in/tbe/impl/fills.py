@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 fill
 
   Op_description :
@@ -28,21 +28,15 @@ fill
   Supportive_dtype_format :
     ['int32', 'float32', 'float16']
     all format
-
-  Constraint :
-    [1] All : shape size limit is 2147483648.
 """
-
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from functools import reduce as reduceIns
-from te.utils.op_utils import *
+from te.utils import shape_util
+from te.utils import para_check
 
-
-@fusion_manager.register("fills")
+@tbe_platform.fusion_manager.fusion_manager.register("fills")
 def fills_compute(x, value, dtype, kernel_name="fills"):
     """
     calculating data
@@ -62,16 +56,18 @@ def fills_compute(x, value, dtype, kernel_name="fills"):
     res: TVM tensor
         the calculation results
     """
-    res = te.lang.cce.broadcast(tvm.const(value, dtype=dtype), x.shape)
+    res = tbe.broadcast(tvm.const(value, dtype=dtype), x.shape)
     with tvm.tag_scope("elewise_binary_phony"):
-        res = te.tvm.compute(res.shape,
-                             lambda *indices: res[indices] + x[indices],
-                             name="elewise_binary_phony_output")
+        res = tvm.compute(res.shape,
+                          lambda *indices: res[indices] + x[indices],
+                          name="elewise_binary_phony_output")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+para_check.KERNEL_NAME)
 def fills(x, y, value, kernel_name="fills"):
     """
     do  fill operation
@@ -93,10 +89,10 @@ def fills(x, y, value, kernel_name="fills"):
 
     # check whether dtypes are right
     check_list = ("int32", "float16", "float32")
-    check_dtype(dtype, check_list)
+    para_check.check_dtype(dtype, check_list)
 
     # fuse shapes
-    shape = util.shape_refine(shape)
+    shape = shape_util.shape_refine(shape)
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x * y, shape)
     data_x = tvm.placeholder(fuseshape, name="data_x", dtype=dtype)
@@ -104,11 +100,11 @@ def fills(x, y, value, kernel_name="fills"):
     res = fills_compute(data_x, value, dtype)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name": kernel_name,
         "tensor_list": (data_x, res),
         "print_ir": False
     }
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

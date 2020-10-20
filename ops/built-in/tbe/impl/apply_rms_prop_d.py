@@ -1,37 +1,33 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 this file achieved the apply_rms_prop which is a optimizer operator to update
 weight, this file contains compute and schedule.
 """
-
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.lang.cce
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
 # pylint: disable=unused-argument
-@fusion_manager.register('apply_rms_prop_d')
+@tbe_platform.fusion_manager.fusion_manager.register('apply_rms_prop_d')
 def apply_rms_prop_d_compute(var,
                              ms,
                              mom,
@@ -59,23 +55,22 @@ def apply_rms_prop_d_compute(var,
     :param epsilon: const, float32
     :return: out_var, out_ms, out_mom
     """
-    grad_square = te.lang.cce.vmul(grad, grad)
-    grad_square_ms = te.lang.cce.vsub(grad_square, ms)
-    rho_gs = te.lang.cce.vmuls(grad_square_ms,
-                               tvm.const(1.0 - rho, grad.dtype))
-    ms_t = te.lang.cce.vadd(ms, rho_gs)
+    grad_square = tbe.vmul(grad, grad)
+    grad_square_ms = tbe.vsub(grad_square, ms)
+    rho_gs = tbe.vmuls(grad_square_ms, tvm.const(1.0 - rho, grad.dtype))
+    ms_t = tbe.vadd(ms, rho_gs)
 
-    m_mom = te.lang.cce.vmuls(mom, tvm.const(momentum, mom.dtype))
+    m_mom = tbe.vmuls(mom, tvm.const(momentum, mom.dtype))
 
-    lr_brc = te.lang.cce.broadcast(lr, grad.shape)
-    lr_grad = te.lang.cce.vmul(grad, lr_brc)
+    lr_brc = tbe.broadcast(lr, grad.shape)
+    lr_grad = tbe.vmul(grad, lr_brc)
 
-    e_ms = te.lang.cce.vadds(ms_t, tvm.const(epsilon, ms.dtype))
-    sqrt_ms = te.lang.cce.vsqrt(e_ms)
-    tmp_grad = te.lang.cce.vdiv(lr_grad, sqrt_ms)
-    mom_t = te.lang.cce.vadd(m_mom, tmp_grad)
+    e_ms = tbe.vadds(ms_t, tvm.const(epsilon, ms.dtype))
+    sqrt_ms = tbe.vsqrt(e_ms)
+    tmp_grad = tbe.vdiv(lr_grad, sqrt_ms)
+    mom_t = tbe.vadd(m_mom, tmp_grad)
 
-    var_t = te.lang.cce.vsub(var, mom_t)
+    var_t = tbe.vsub(var, mom_t)
 
     return var_t, ms_t, mom_t
 
@@ -89,27 +84,22 @@ def _get_placeholder(dict_list, name_list):
         if name == 'var':
             var_shape = list(shape)
         if name != 'lr' and var_shape != list(shape):
-            raise RuntimeError(
-                "The shape of var, ms, mom, grad must be equal.")
+            raise RuntimeError("The shape of var, ms, mom, grad must be equal.")
         if name == 'lr' and shape[0] != 1:
             raise RuntimeError("The shape of lr must be scalar.")
 
-        op_utils.check_dtype(dtype, ('float32', ), param_name="var")
-        op_utils.check_shape(shape)
-        shape_refine = (functools_reduce(operator.mul, shape), )
-        list_placeholder.append(
-            tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
+        para_check.check_dtype(dtype, ('float32', ), param_name="var")
+        para_check.check_shape(shape)
+        shape_refine = (functools.reduce(operator.mul, shape), )
+        list_placeholder.append(tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
 
 # pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_ATTR_FLOAT,
-                          op_utils.REQUIRED_ATTR_FLOAT,
-                          op_utils.REQUIRED_ATTR_FLOAT, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def apply_rms_prop_d(var,
                      ms,
                      mom,
@@ -168,18 +158,16 @@ def apply_rms_prop_d(var,
     """
 
     input_name_list = ['var', 'ms', 'mom', 'lr', 'grad']
-    var, ms, mom, lr, grad = _get_placeholder([var, ms, mom, lr, grad],
-                                              input_name_list)
+    var, ms, mom, lr, grad = _get_placeholder([var, ms, mom, lr, grad], input_name_list)
 
     # compute
-    out_var, out_ms, out_mom = apply_rms_prop_d_compute(
-        var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, momentum,
-        epsilon)
+    out_var, out_ms, out_mom = apply_rms_prop_d_compute(var, ms, mom, lr, grad, out_var, out_ms, out_mom, rho, momentum,
+                                                        epsilon)
 
     outs = [out_var, out_ms, out_mom]
     build_list = [var, ms, mom, lr, grad, out_var, out_ms, out_mom]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(outs)
+        sch = tbe.auto_schedule(outs)
     config = {"name": kernel_name, "tensor_list": build_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

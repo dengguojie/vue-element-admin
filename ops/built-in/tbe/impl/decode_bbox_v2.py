@@ -1,25 +1,26 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-decodeb_boxv2
+decode_bbox_v2
 """
-
 import math
-from functools import reduce as functools_reduce
+import functools
 
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 SHAPE_SIZE_ONE = 1
 SHAPE_SIZE_FOUR = 4
@@ -102,7 +103,7 @@ class DecodeBboxV2():
                                   False: SHAPE_SIZE_ONE}
         self.ele_multiple = self.ele_reversed_dict.get(self.reversed_box)
         self.compute_blks_multiple = self.ele_multiple / SHAPE_SIZE_FOUR
-        self.element_num = int(functools_reduce(lambda x, y: x * y,
+        self.element_num = int(functools.reduce(lambda x, y: x * y,
                                                 self.boxes_shape) /
                                self.ele_multiple)
         self.boxes_blocks = math.ceil(self.element_num /
@@ -174,11 +175,11 @@ class DecodeBboxV2():
                 name="boxes_ub", scope=tik.scope_ubuf)
             self.anchors_ub = self.tik_instance.Tensor(
                 self.anchors_dtype, [math.ceil(move_blocks / TRANS_MIN_BLKS) *
-                                    TRANS_MIN_BLKS * self.boxes_ele_per_block],
+                                     TRANS_MIN_BLKS * self.boxes_ele_per_block],
                 name="anchors_ub", scope=tik.scope_ubuf)
             self.anchors_trans_ub = self.tik_instance.Tensor(
                 self.anchors_dtype, [math.ceil(move_blocks / TRANS_MIN_BLKS) *
-                                    TRANS_MIN_BLKS * self.boxes_ele_per_block],
+                                     TRANS_MIN_BLKS * self.boxes_ele_per_block],
                 name="anchors_trans_ub", scope=tik.scope_ubuf)
 
     def input_unpack(self, compute_blocks):
@@ -205,13 +206,13 @@ class DecodeBboxV2():
             self.th_ub = self.anchors_ub[2 * self.boxes_ele_per_block:]
             self.tw_ub = self.anchors_ub[3 * self.boxes_ele_per_block:]
             self.anchor_ymin_ub = self.anchors_trans_ub[0 *
-                                  self.boxes_ele_per_block:]
+                                                        self.boxes_ele_per_block:]
             self.anchor_xmin_ub = self.anchors_trans_ub[1 *
-                                  self.boxes_ele_per_block:]
+                                                        self.boxes_ele_per_block:]
             self.anchor_ymax_ub = self.anchors_trans_ub[2 *
-                                  self.boxes_ele_per_block:]
+                                                        self.boxes_ele_per_block:]
             self.anchor_xmax_ub = self.anchors_trans_ub[3 *
-                                  self.boxes_ele_per_block:]
+                                                        self.boxes_ele_per_block:]
 
     def transpose_n4_to_4n(self, trans_blocks, src_ub, dst_ub):
         repeat_time = math.ceil(trans_blocks / TRANS_MIN_BLKS)
@@ -308,55 +309,42 @@ class DecodeBboxV2():
 
         self.input_unpack(compute_blocks)
 
-        # anchor_h = anchor_ymax - anchor_ymin
         self.vector_compute(self.anchor_ymax_ub, self.anchor_ymax_ub,
                             "vsub", compute_blocks, src_ub1=self.anchor_ymin_ub)
         self.anchor_h = self.anchor_ymax_ub
-        # anchor_w = anchor_xmax - anchor_xmin
         self.vector_compute(self.anchor_xmax_ub, self.anchor_xmax_ub,
                             "vsub", compute_blocks, src_ub1=self.anchor_xmin_ub)
         self.anchor_w = self.anchor_xmax_ub
 
-        # scaled_ty = ty / y_scale
         if not self.isclose(self.scale_y, DEQ_SCALE):
             self.vector_compute(self.ty_ub, self.ty_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_y)
-        # scaled_tx = tx / x_scale
         if not self.isclose(self.scale_x, DEQ_SCALE):
             self.vector_compute(self.tx_ub, self.tx_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_x)
-        # scaled_th = th / h_scale
         if not self.isclose(self.scale_h, DEQ_SCALE):
             self.vector_compute(self.th_ub, self.th_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_h)
-        # scaled_tw = tw / w_scale
         if not self.isclose(self.scale_w, DEQ_SCALE):
             self.vector_compute(self.tw_ub, self.tw_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_w)
-        # scaled_ty * anchor_h
         self.vector_compute(self.ty_ub, self.ty_ub, "vmul",
                             compute_blocks, src_ub1=self.anchor_h)
-        # scaled_ty * anchor_h + anchor_ymin
         self.vector_compute(self.ty_ub, self.ty_ub, "vadd",
                             compute_blocks, src_ub1=self.anchor_ymin_ub)
-        # scaled_tx * anchor_w
         self.vector_compute(self.tx_ub, self.tx_ub, "vmul",
                             compute_blocks, src_ub1=self.anchor_w)
-        # scaled_tx * anchor_w + anchor_xmin
         self.vector_compute(self.tx_ub, self.tx_ub, "vadd",
                             compute_blocks, src_ub1=self.anchor_xmin_ub)
 
         if not self.isclose(self.decode_clip, 0):
             if tbe_platform.cce_conf.api_check_support("tik.vmins",
                                                        self.boxes_dtype):
-                # min(scaled_tw,clip_scalar)
                 self.vector_compute(self.tw_ub, self.tw_ub, "vmins",
                                     compute_blocks, scalar=self.decode_clip)
-                # min(scaled_th,clip_scalar)
                 self.vector_compute(self.th_ub, self.th_ub, "vmins",
                                     compute_blocks, scalar=self.decode_clip)
             else:
-                # decode_clip vector_dump to anchor_x
                 self.vector_compute(self.anchor_ymin_ub, self.anchor_ymin_ub,
                                     "vector_dup",
                                     compute_blocks, scalar=self.decode_clip)
@@ -365,44 +353,32 @@ class DecodeBboxV2():
                                     compute_blocks, src_ub1=self.clip_vector)
                 self.vector_compute(self.th_ub, self.th_ub, "vmin",
                                     compute_blocks, src_ub1=self.clip_vector)
-        # w = exp(min(scaled_tw,clip_scalar)) * anchor_w
         self.vector_compute(self.tw_ub, self.tw_ub, "vexp",
                             compute_blocks)
         self.vector_compute(self.tw_ub, self.tw_ub, "vmul",
                             compute_blocks, src_ub1=self.anchor_w)
-        # h = exp(min(scaled_th,cip_scalar)) * anchor_h
         self.vector_compute(self.th_ub, self.th_ub, "vexp",
                             compute_blocks)
         self.vector_compute(self.th_ub, self.th_ub, "vmul",
                             compute_blocks, src_ub1=self.anchor_h)
-        # anchor_h / 2
         self.vector_compute(self.anchor_h, self.anchor_h,
                             "vmuls", compute_blocks, scalar=SCALAR_HALF)
-        # anchor_w / 2
         self.vector_compute(self.anchor_w, self.anchor_w,
                             "vmuls", compute_blocks, scalar=SCALAR_HALF)
-        # ycenter = scaled_ty * anchor_h + anchor_ymin + anchor_h / 2
         self.vector_compute(self.ty_ub, self.ty_ub,
                             "vadd", compute_blocks, src_ub1=self.anchor_h)
-        # xcenter = scaled_tx * anchor_w + anchor_xmin + anchor_w / 2
         self.vector_compute(self.tx_ub, self.tx_ub,
                             "vadd", compute_blocks, src_ub1=self.anchor_w)
-        # h / 2
         self.vector_compute(self.th_ub, self.th_ub, "vmuls",
                             compute_blocks, scalar=SCALAR_HALF)
-        # w / 2
         self.vector_compute(self.tw_ub, self.tw_ub, "vmuls",
                             compute_blocks, scalar=SCALAR_HALF)
-        # ymin = ycenter - h / 2
         self.vector_compute(self.anchor_ymin_ub, self.ty_ub, "vsub",
                             compute_blocks, src_ub1=self.th_ub)
-        # ymax = ycenter + h / 2
         self.vector_compute(self.anchor_ymax_ub, self.ty_ub, "vadd",
                             compute_blocks, src_ub1=self.th_ub)
-        # xmin = xcenter - w / 2
         self.vector_compute(self.anchor_xmin_ub, self.tx_ub, "vsub",
                             compute_blocks, src_ub1=self.tw_ub)
-        # xmax = xcenter + w / 2
         self.vector_compute(self.anchor_xmax_ub, self.tx_ub, "vadd",
                             compute_blocks, src_ub1=self.tw_ub)
         if self.reversed_box is True:
@@ -547,9 +523,9 @@ class DecodeBboxV2():
                               self.blk_stride
 
     def check_param(self):
-        check_shape(self.boxes_shape, min_rank=2, max_rank=2,
+        para_check.check_shape(self.boxes_shape, min_rank=2, max_rank=2,
                     param_name="boxes")
-        check_shape(self.anchors_shape, min_rank=2, max_rank=2,
+        para_check.check_shape(self.anchors_shape, min_rank=2, max_rank=2,
                     param_name="anchors")
         if self.boxes_shape != self.anchors_shape:
             error_info = {}
@@ -560,9 +536,9 @@ class DecodeBboxV2():
             error_info['param1_shape'] = self.boxes_shape
             error_info['param2_shape'] = self.anchors_shape
             raise RuntimeError(error_info,
-            "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
-            "is not match with the parameter[{param1_shape}]"
-            "[{param1_shape}].".format(**error_info))
+                               "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
+                               "is not match with the parameter[{param1_shape}]"
+                               "[{param1_shape}].".format(**error_info))
         if self.reversed_box is False:
             if self.boxes_shape[-1] != SHAPE_SIZE_FOUR:
                 error_info = {}
@@ -572,9 +548,9 @@ class DecodeBboxV2():
                 error_info['excepted_value'] = SHAPE_SIZE_FOUR
                 error_info['real_value'] = self.boxes_shape[-1]
                 raise RuntimeError(error_info,
-                "In op[{op_name}], the parameter[{param_name}] "
-                "should be [{excepted_value}], "
-                "but actually is [{real_value}].".format(**error_info))
+                                   "In op[{op_name}], the parameter[{param_name}] "
+                                   "should be [{excepted_value}], "
+                                   "but actually is [{real_value}].".format(**error_info))
         if self.reversed_box is True:
             if self.boxes_shape[0] != SHAPE_SIZE_FOUR:
                 error_info = {}
@@ -584,17 +560,17 @@ class DecodeBboxV2():
                 error_info['excepted_value'] = SHAPE_SIZE_FOUR
                 error_info['real_value'] = self.boxes_shape[0]
                 raise RuntimeError(error_info,
-                "In op[{op_name}], the parameter[{param_name}] "
-                "should be [{excepted_value}], "
-                "but actually is [{real_value}].".format(**error_info))
+                                   "In op[{op_name}], the parameter[{param_name}] "
+                                   "should be [{excepted_value}], "
+                                   "but actually is [{real_value}].".format(**error_info))
         check_list_boxes = ["float16", "float32"]
         check_list_anchors = ["float16", "float32"]
-        check_dtype(self.boxes_dtype, check_list_boxes, param_name="boxes")
-        check_dtype(self.anchors_dtype, check_list_anchors,
+        para_check.check_dtype(self.boxes_dtype, check_list_boxes, param_name="boxes")
+        para_check.check_dtype(self.anchors_dtype, check_list_anchors,
                     param_name="anchors")
         if not tbe_platform.cce_conf.api_check_support(
                 "tik.vnchwconv", dtype=self.boxes_dtype):
-            check_dtype(self.boxes_dtype, ["float16"], param_name="boxes")
+            para_check.check_dtype(self.boxes_dtype, ["float16"], param_name="boxes")
         if self.boxes_dtype != self.anchors_dtype:
             error_info = {}
             error_info['errCode'] = 'E80018'
@@ -604,9 +580,9 @@ class DecodeBboxV2():
             error_info['param1_dtype'] = self.boxes_dtype
             error_info['param2_dtype'] = self.anchors_dtype
             raise RuntimeError(error_info,
-            "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
-            "are not equal in dtype with dtype[{param1_dtype}]"
-            "[{param2_dtype}].".format(**error_info))
+                               "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
+                               "are not equal in dtype with dtype[{param1_dtype}]"
+                               "[{param2_dtype}].".format(**error_info))
         if self.decode_clip < 0 or self.decode_clip > 10:
             error_info = {}
             error_info['errCode'] = 'E80002'
@@ -641,9 +617,10 @@ class DecodeBboxV2():
         return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_LIST_FLOAT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def decode_bbox_v2(boxes, anchors, y, scales=[1.0, 1.0, 1.0, 1.0],
                    decode_clip=0.0, reversed_box=False,
                    kernel_name="decode_bbox_v2"):
@@ -674,6 +651,6 @@ def decode_bbox_v2(boxes, anchors, y, scales=[1.0, 1.0, 1.0, 1.0],
     """
 
     decode_bbox = DecodeBboxV2(boxes, anchors, scales, decode_clip,
-                                 reversed_box, kernel_name)
+                               reversed_box, kernel_name)
     decode_bbox.decode_bboxv2_compute()
 

@@ -1,28 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 expm1
 """
-from functools import reduce as functools_reduce
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1.0
@@ -62,47 +61,47 @@ def _expm1_taylor_compute(input_x):
     """
     # calculate second order tayloy section : x^2 / 2!
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
-    data_power_2 = te.lang.cce.vmul(input_x, input_x)
-    data_power_2_div_2 = te.lang.cce.vmuls(data_power_2,
+    data_power_2 = tbe.vmul(input_x, input_x)
+    data_power_2_div_2 = tbe.vmuls(data_power_2,
                                            taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
     taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
-    data_power_3 = te.lang.cce.vmul(data_power_2, input_x)
-    data_power_3_div_6 = te.lang.cce.vmuls(data_power_3,
+    data_power_3 = tbe.vmul(data_power_2, input_x)
+    data_power_3_div_6 = tbe.vmuls(data_power_3,
                                            taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
     taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
-    data_power_4 = te.lang.cce.vmul(data_power_3, input_x)
-    data_power_4_div_24 = te.lang.cce.vmuls(data_power_4,
+    data_power_4 = tbe.vmul(data_power_3, input_x)
+    data_power_4_div_24 = tbe.vmuls(data_power_4,
                                             taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
     taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
-    data_power_5 = te.lang.cce.vmul(data_power_4, input_x)
-    data_power_5_div_120 = te.lang.cce.vmuls(data_power_5,
+    data_power_5 = tbe.vmul(data_power_4, input_x)
+    data_power_5_div_120 = tbe.vmuls(data_power_5,
                                              taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
     taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
-    data_power_6 = te.lang.cce.vmul(data_power_5, input_x)
-    data_power_6_div_720 = te.lang.cce.vmuls(data_power_6,
+    data_power_6 = tbe.vmul(data_power_5, input_x)
+    data_power_6_div_720 = tbe.vmuls(data_power_6,
                                              taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
     taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
-    data_power_7 = te.lang.cce.vmul(data_power_6, input_x)
-    data_power_7_div_5040 = te.lang.cce.vmuls(data_power_7,
+    data_power_7 = tbe.vmul(data_power_6, input_x)
+    data_power_7_div_5040 = tbe.vmuls(data_power_7,
                                               taylor_seventh_order_param)
 
-    res_second_taylor = te.lang.cce.vadd(input_x, data_power_2_div_2)
-    res_third_taylor = te.lang.cce.vadd(res_second_taylor, data_power_3_div_6)
-    res_fourth_taylor = te.lang.cce.vadd(res_third_taylor, data_power_4_div_24)
-    res_fifth_taylor = te.lang.cce.vadd(res_fourth_taylor, data_power_5_div_120)
-    res_sixth_taylor = te.lang.cce.vadd(res_fifth_taylor, data_power_6_div_720)
-    res = te.lang.cce.vadd(res_sixth_taylor, data_power_7_div_5040)
+    res_second_taylor = tbe.vadd(input_x, data_power_2_div_2)
+    res_third_taylor = tbe.vadd(res_second_taylor, data_power_3_div_6)
+    res_fourth_taylor = tbe.vadd(res_third_taylor, data_power_4_div_24)
+    res_fifth_taylor = tbe.vadd(res_fourth_taylor, data_power_5_div_120)
+    res_sixth_taylor = tbe.vadd(res_fifth_taylor, data_power_6_div_720)
+    res = tbe.vadd(res_sixth_taylor, data_power_7_div_5040)
 
     return res
 
@@ -129,22 +128,22 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     taylor_res = _expm1_taylor_compute(input_x)
 
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
-    tensor_input_right_border = te.lang.cce.broadcast(input_right_border, shape)
+    tensor_input_right_border = tbe.broadcast(input_right_border, shape)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
-    tensor_input_left_border = te.lang.cce.broadcast(input_left_border, shape)
+    tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
-    b_gt_left_border = te.lang.cce.vcmp(input_x, tensor_input_left_border, 'gt')
-    exp_taylor_neg = te.lang.cce.vsel(b_gt_left_border, taylor_res, mini_res)
+    b_gt_left_border = tbe.vcmp(input_x, tensor_input_left_border, 'gt')
+    exp_taylor_neg = tbe.vsel(b_gt_left_border, taylor_res, mini_res)
 
-    b_lt_right_border = te.lang.cce.vcmp(input_x, tensor_input_right_border,
+    b_lt_right_border = tbe.vcmp(input_x, tensor_input_right_border,
                                          'lt')
-    mini_res = te.lang.cce.vsel(b_lt_right_border, exp_taylor_neg, mini_res)
+    mini_res = tbe.vsel(b_lt_right_border, exp_taylor_neg, mini_res)
 
     return mini_res
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@fusion_manager.register("expm1")
+@tbe_platform.fusion_manager.fusion_manager.register("expm1")
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     algorithm: expm1
@@ -170,28 +169,27 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     dtype = input_x.dtype
     shape = input_x.shape
-    flag_cloud = tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                         "float32")
-    flag_mini = tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd",
-                                                        "float32")
+    flag_cloud = tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32")
+    flag_mini = tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32")
     if dtype.lower() == "float16" and flag_cloud:
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
 
     scalar_negative_one = tvm.const(SCALAR_NEGATIVE_ONE, "float32")
-    exp_res = te.lang.cce.vexp(input_x)
-    res = te.lang.cce.vadds(exp_res, scalar_negative_one)
+    exp_res = tbe.vexp(input_x)
+    res = tbe.vadds(exp_res, scalar_negative_one)
 
     if (not flag_cloud) and flag_mini:
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
         res = _expm1_mini_compute(res, input_x, shape)
 
     if dtype.lower() == "float16" and (flag_cloud or flag_mini):
-        res = te.lang.cce.cast_to(res, dtype)
+        res = tbe.cast_to(res, dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def expm1(input_x, output_y, kernel_name="expm1"):
     """
     algorithm: expm1
@@ -211,19 +209,19 @@ def expm1(input_x, output_y, kernel_name="expm1"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
-    shape_x = (functools_reduce(lambda x, y: x * y, shape[:]),)
+    shape_x = (functools.reduce(lambda x, y: x * y, shape[:]),)
     data_input = tvm.placeholder(shape_x, name="data_input", dtype=input_dtype)
 
     res = expm1_compute(data_input, output_y, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res],
               "bool_storage_as_1bit": False}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

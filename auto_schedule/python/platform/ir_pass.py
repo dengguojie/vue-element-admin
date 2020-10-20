@@ -1,26 +1,30 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Additional IR Pass for CCE
 """
 from __future__ import absolute_import as _abs
 
-from te import tvm
+from te.platform import cce_params
+from te.platform import cce_util
 
-from . import cce_params as param
-from . import cce_util
+from te.tvm import expr as _expr
+from te.tvm import api as tvm
+from te.tvm import ir_pass
+from te.tvm.intrin import call_pure_intrin
+from te.tvm.intrin import call_extern
 
 
 def equal_const_int(expr, value):
@@ -28,6 +32,7 @@ def equal_const_int(expr, value):
 
     Parameters
     ----------
+    value : The value of the input expression
     expr : tvm.Expr
         The input expression.
 
@@ -38,9 +43,9 @@ def equal_const_int(expr, value):
     """
     if isinstance(expr, int):
         return expr == value
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
-        expr = tvm.ir_pass.Simplify(expr)
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
+        expr = ir_pass.Simplify(expr)
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
         return False
     return expr.value == value
 
@@ -88,7 +93,7 @@ def _fold_buffer_dim(buf, scope, elem_block):
                 break
             x_size = x_size * buf.shape[k]
             next_base = i + 1
-        shape.append(tvm.ir_pass.Simplify(x_size))
+        shape.append(ir_pass.Simplify(x_size))
         strides.append(x_stride)
         assert next_base != base
         base = next_base
@@ -96,6 +101,7 @@ def _fold_buffer_dim(buf, scope, elem_block):
     strides = list(reversed(strides))
     shape = list(reversed(shape))
     return shape, strides
+
 
 def inject_dma_intrin(stmt_in, mock=False, **kwargs):
     """Pass to inject DMA copy intrinsics.
@@ -251,13 +257,13 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
                 break
         return int(tmp[::-1])
 
-
     # pylint: disable=too-few-public-methods
     def dma_dependency_scope(src, dst, i_b):
         class StaticDmaList:
             """
             StaticDmaList
             """
+
             def __init__(self):
                 pass
 
@@ -280,31 +286,34 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
         dst_key_str = _key_word_(dst.scope)
         pipe_line = StaticDmaList.dma_list[src_key_str + " " + dst_key_str]
 
-        i_b.scope_attr(param.CCE_AXIS, "coproc_scope", pipe_line)
+        i_b.scope_attr(cce_params.CCE_AXIS, "coproc_scope", pipe_line)
 
     def _inject_copy(src, dst, pad_before, pad_after, pad_value):
         # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-        pad_value = pad_value
+        pad_value_tmp = pad_value
 
         elem_width = get_type_bits(dst.dtype)
 
-        if dst.scope == param.scope_cb or dst.scope == param.scope_ca:
+        if dst.scope == cce_params.scope_cb or \
+                dst.scope == cce_params.scope_ca:
             # Load2D
             if pad_before or pad_after:
                 raise RuntimeError("Do not support copy into DRAM with pad")
 
-            if (src.scope != param.scope_cbuf) and (src.scope != 'global'):
+            if (src.scope != cce_params.scope_cbuf) and \
+                    (src.scope != 'global'):
                 raise RuntimeError("Do not support copy %s->dram" % (src.scope))
 
-            elem_bytes = param.BLOCK_IN * param.BLOCK_OUT * elem_width // 8
+            elem_bytes = \
+                cce_params.BLOCK_IN * cce_params.BLOCK_OUT * elem_width // 8
             if elem_width == 8:
                 elem_bytes = elem_bytes * 2
 
             allow_fold = True
             transpose = False
-            transpose_call = tvm.call_pure_intrin("int32",
-                                                  "tvm_cce_string_print",
-                                                  'true' if transpose else 'false')
+            transpose_call = call_pure_intrin("int32",
+                                              "tvm_cce_string_print",
+                                              'true' if transpose else 'false')
             _check_compact(dst)
             index, src_stride, repeat_time, _ = _get_2d_pattern_cce(
                 src, elem_width, elem_bytes, dst, allow_fold=allow_fold)
@@ -314,11 +323,13 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
             src_ptr, dst_ptr = get_real_src_dst(src, dst)
             sid = 0
             intrin_name = "cceLoad2D"
-            if dst.scope == param.scope_ca and src.scope == param.scope_cbuf:
+            if dst.scope == cce_params.scope_ca and \
+                    src.scope == cce_params.scope_cbuf:
                 intrin_name = "load_cbuf_to_ca"
-            elif dst.scope == param.scope_cb and src.scope == param.scope_cbuf:
+            elif dst.scope == cce_params.scope_cb and \
+                    src.scope == cce_params.scope_cbuf:
                 intrin_name = "load_cbuf_to_cb"
-            i_b.emit(tvm.call_extern(
+            i_b.emit(call_extern(
                 dst.dtype, intrin_name,
                 dst_ptr,  # dst buffer
                 src_ptr,  # src buffer
@@ -333,10 +344,12 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
         # other DMA
         if pad_before or pad_after:
             raise RuntimeError("Do not support copy into DRAM with pad")
-        if src.scope == param.scope_cc or dst.scope == param.scope_cc:
-            elem_bytes = param.BLOCK_IN * param.BLOCK_OUT * elem_width // 8
+        if src.scope == cce_params.scope_cc or \
+                dst.scope == cce_params.scope_cc:
+            elem_bytes = \
+                cce_params.BLOCK_IN * cce_params.BLOCK_OUT * elem_width // 8
         else:
-            elem_bytes = param.GLB_ELEM_BYTES
+            elem_bytes = cce_params.GLB_ELEM_BYTES
 
         allow_fold = True
 
@@ -359,17 +372,18 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
         pad_mode = []
         cr_mode = []
         intrin_name = "cceMove"
-        if dst.scope == param.scope_ubuf and src.scope == param.scope_ubuf:
+        if dst.scope == cce_params.scope_ubuf and \
+                src.scope == cce_params.scope_ubuf:
             intrin_name = "copy_ubuf_to_ubuf"
-        elif dst.scope == param.scope_cbuf and src.scope == 'global':
+        elif dst.scope == cce_params.scope_cbuf and src.scope == 'global':
             intrin_name = "copy_gm_to_cbuf"
             sid = cce_util.get_dma_sid("Sid_copy_gm_to_cbuf")
             pad_mode.append(pad_mode_dict[0])
-            pad_mode_call = tvm.call_pure_intrin("int32",
-                                                 "tvm_cce_string_print",
-                                                 *pad_mode)
+            pad_mode_call = call_pure_intrin("int32",
+                                             "tvm_cce_string_print",
+                                             *pad_mode)
             sid = cce_util.get_dma_sid("Sid_copy_gm_to_cbuf")
-            i_b.emit(tvm.call_extern(
+            i_b.emit(call_extern(
                 dst.dtype, intrin_name,
                 dst_ptr,  # dst buffer
                 src_ptr,  # src buffer
@@ -381,13 +395,13 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
                 pad_mode_call
             ))
             return i_b.get()
-        elif dst.scope == param.scope_ubuf and src.scope == param.scope_cc:
+        elif dst.scope == cce_params.scope_ubuf and \
+                src.scope == cce_params.scope_cc:
             intrin_name = "copy_matrix_cc_to_ubuf"
             cr_mode.append(cr_mode_dict[0])
-            cr_mode_call = tvm.call_pure_intrin("int32",
-                                                "tvm_cce_string_print",
-                                                *cr_mode)
-            i_b.emit(tvm.call_extern(
+            cr_mode_call = call_pure_intrin("int32", "tvm_cce_string_print",
+                                            *cr_mode)
+            i_b.emit(call_extern(
                 dst.dtype, intrin_name,
                 dst_ptr,  # dst buffer
                 src_ptr,  # src buffer
@@ -399,13 +413,13 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
                 cr_mode_call
             ))
             return i_b.get()
-        elif dst.scope == 'global' and src.scope.count(param.scope_ubuf):
+        elif dst.scope == 'global' and src.scope.count(cce_params.scope_ubuf):
             intrin_name = "copy_ubuf_to_gm"
-        elif dst.scope.count(param.scope_ubuf) and src.scope == 'global':
+        elif dst.scope.count(cce_params.scope_ubuf) and src.scope == 'global':
             intrin_name = "copy_gm_to_ubuf"
             sid = cce_util.get_dma_sid("Sid_copy_gm_to_ubuf")
 
-        i_b.emit(tvm.call_extern(
+        i_b.emit(call_extern(
             dst.dtype, intrin_name,
             dst_ptr,  # dst buffer
             src_ptr,  # src buffer
@@ -434,5 +448,5 @@ def inject_dma_intrin(stmt_in, mock=False, **kwargs):
                                 kwargs["dst_buf"],
                                 kwargs["allow_fold"])
     else:
-        return tvm.ir_pass.InjectCopyIntrin(stmt_in, param.dma_copy,
-                                            _inject_copy)
+        return ir_pass.InjectCopyIntrin(stmt_in, cce_params.dma_copy,
+                                        _inject_copy)

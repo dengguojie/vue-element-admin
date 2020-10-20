@@ -1,22 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+concat_compute
 """
 from te import tvm
-from .util import dtype_check_decorator, check_input_tensor_shape
+from .util import dtype_check_decorator
+from .util import check_input_tensor_shape
 
 
 @dtype_check_decorator
@@ -106,7 +107,7 @@ def concat_para_check(raw_tensors, axis):
     # check shape
     if axis < 0 or axis >= len(raw_tensors[0].shape):
         raise RuntimeError(
-            "concat axis must be in [-%d - %d), actual is %d" \
+            "concat axis must be in [-%d - %d), actual is %d"
             % (len(raw_tensors[0].shape), len(raw_tensors[0].shape), axis))
     check_input_tensor_shape(raw_tensors[0])
     for i in range(1, len(raw_tensors)):

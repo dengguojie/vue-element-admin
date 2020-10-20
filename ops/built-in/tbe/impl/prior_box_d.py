@@ -1,33 +1,28 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-prior_box
+prior_box_d
 """
-
 # pylint: disable=locally-disabled,ungrouped-imports,import-error,unused-import,wrong-import-order
-from te import platform as tbe_platform
-import te.lang.cce
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import *
-from topi import generic
-from topi.cce import util
-from te import tvm
-import topi
-from te.platform.cce_build import build_config
-import numpy
+
 import math
-from functools import reduce as functools_reduce
+
+import te.platform as tbe_platform
+from te.utils import para_check
+from te import tvm
+
 
 # size of 5HD format
 DIM_5HD = 5
@@ -42,16 +37,15 @@ INDEX_W = 3
 
 
 # pylint: disable=locally-disabled,too-many-arguments
-def check_parameters(min_size, max_size, img_h, img_w,
-                     step_h, step_w, variance):
+def _check_parameters(min_size, max_size, img_h, img_w,
+                      step_h, step_w, variance):
     if len(min_size) <= 0:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'prior_box_d'
-        error_info['param_name'] = 'min_size'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str(len(min_size))
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                      'op_name': 'prior_box_d',
+                      'param_name': 'min_size',
+                      'min_value': '0',
+                      'max_value': 'inf',
+                      'real_value': str(len(min_size))}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range "
                            "of [%s, %s], but actually is [%s]." %
@@ -79,13 +73,12 @@ def check_parameters(min_size, max_size, img_h, img_w,
 
     if img_h != 0 or img_w != 0:
         if img_h < 0:
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_002
-            error_info['op_name'] = 'prior_box_d'
-            error_info['param_name'] = 'img_h'
-            error_info['min_value'] = '0'
-            error_info['max_value'] = 'inf'
-            error_info['real_value'] = str(img_h)
+            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                          'op_name': 'prior_box_d',
+                          'param_name': 'img_h',
+                          'min_value': '0',
+                          'max_value': 'inf',
+                          'real_value': str(img_h)}
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s] should be in the range"
                                " of [%s, %s], but actually is [%s]." %
@@ -94,13 +87,12 @@ def check_parameters(min_size, max_size, img_h, img_w,
                                 error_info['real_value']))
 
         if img_w < 0:
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_002
-            error_info['op_name'] = 'prior_box_d'
-            error_info['param_name'] = 'img_w'
-            error_info['min_value'] = '0'
-            error_info['max_value'] = 'inf'
-            error_info['real_value'] = str(img_w)
+            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                          'op_name': 'prior_box_d',
+                          'param_name': 'img_w',
+                          'min_value': '0',
+                          'max_value': 'inf',
+                          'real_value': str(img_w)}
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s] should be in the"
                                " range of [%s, %s], but actually is [%s]." %
@@ -114,10 +106,10 @@ def check_parameters(min_size, max_size, img_h, img_w,
     if step_h != 0 or step_w != 0:
         if step_h < 0:
             raise RuntimeError("step_h should be larger than 0, \
-                while actual step_h is %f" % (step_h))
+                while actual step_h is %f" % step_h)
         if step_w < 0:
             raise RuntimeError("step_w should be larger than 0, \
-                while actual step_w is %f" % (step_w))
+                while actual step_w is %f" % step_w)
     else:
         step_h = 0
         step_w = 0
@@ -136,28 +128,28 @@ def check_parameters(min_size, max_size, img_h, img_w,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-def prior_box_check(feature, img, data_h, data_w, min_size, max_size,
-                    img_h, img_w, step_h, step_w, variance, kernel_name):
+def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
+                     img_h, img_w, step_h, step_w, variance, kernel_name):
     shape_feature = feature.get("shape")
     shape_img = img.get("shape")
     shape_h_data = data_h.get("shape")
     shape_w_data = data_w.get("shape")
-    check_shape(shape_feature, param_name="feature")
-    check_shape(shape_img, param_name="img")
-    check_shape(shape_h_data, param_name="h_data")
-    check_shape(shape_w_data, param_name="w_data")
+    para_check.check_shape(shape_feature, param_name="feature")
+    para_check.check_shape(shape_img, param_name="img")
+    para_check.check_shape(shape_h_data, param_name="h_data")
+    para_check.check_shape(shape_w_data, param_name="w_data")
 
     dtype = feature.get("dtype")
     feature_dtype = dtype.lower()
     feature_format = feature.get("format")
 
-    product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if product in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]
-    check_dtype(feature_dtype, check_list, param_name="feature")
-    check_format(feature_format, ("NCHW", "NC1HWC0"), param_name="feature")
+    para_check.check_dtype(feature_dtype, check_list, param_name="feature")
+    para_check.check_format(feature_format, ("NCHW", "NC1HWC0"), param_name="feature")
 
     if feature_format == "NC1HWC0":
         if len(shape_feature) != DIM_5HD:
@@ -173,18 +165,18 @@ def prior_box_check(feature, img, data_h, data_w, min_size, max_size,
                 % (shape_c0, shape_feature[DIM_5HD - 1]))
 
     img_h, img_w, step_h, step_w = \
-        check_parameters(min_size, max_size, img_h, img_w,
-                         step_h, step_w, variance)
+        _check_parameters(min_size, max_size, img_h, img_w,
+                          step_h, step_w, variance)
     return img_h, img_w, step_h, step_w
 
 
-def buffer_mapping(schedule, op_list):
+def _buffer_mapping(schedule, op_list):
     """
     buffer data
     Parameters
     ---------
     schedule : op schedule
-    oplist: list of op
+    op_list: list of op
     Returns
     -------
     None
@@ -195,12 +187,11 @@ def buffer_mapping(schedule, op_list):
         schedule[i_op].set_scope(tbe_platform.scope_ubuf)
 
 
-def ins_emit(schedule, op_list, axis_list, ins_list):
+def _ins_emit(schedule, op_list, axis_list, ins_list):
     """
     when int8 or uint8 spilt  axis to cal
     Parameters
     ---------
-
     schedule:schedule
     op_list:ins list
     axis_list:axis list
@@ -209,7 +200,7 @@ def ins_emit(schedule, op_list, axis_list, ins_list):
     Returns
     -------
     NOne
-"""
+    """
     length = len(op_list)
     for i in range(0, length):
         schedule[op_list[i]].emit_insn(axis_list[i], ins_list[i])
@@ -388,7 +379,6 @@ def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
     op_list += [box_height_scale_oppo]
     ins_list += ["vector_muls"]
 
-
     num_box = shape_box[0]
     h_length = shape_data_h[0]
     w_length = shape_data_w[0]
@@ -473,7 +463,6 @@ def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
                                                                       tvm.select(idx < 3, top_data_res3[a, b, c], \
                                                                                  top_data_res4[a, b, c], \
                                                                                  ))), name="top_data")
-
 
     tensor_dic["top_data"] = top_data
     op_list += [top_data]
@@ -599,11 +588,7 @@ def get_compute_axis(schedule, tensor_dic):
     return compute_at_axis
 
 
-
-
-
-def prior_compute(schedule, ops, axis):
-
+def _prior_compute(schedule, ops, axis):
     if not ops:
         raise RuntimeError("operation list is empty")
     length = len(ops)
@@ -615,8 +600,7 @@ def prior_compute(schedule, ops, axis):
         schedule[ops[i]].compute_at(integration_op, axis)
 
 
-
-def get_ins_emit_axis(ops, last_axis):
+def _get_ins_emit_axis(ops, last_axis):
     if not ops:
         raise RuntimeError("operation list is empty")
     axis_list = []
@@ -627,8 +611,7 @@ def get_ins_emit_axis(ops, last_axis):
     return axis_list
 
 
-
-def double_buf(schedule, ops):
+def _double_buf(schedule, ops):
     if not ops:
         raise RuntimeError("operation list is empty")
     length = len(ops)
@@ -639,15 +622,14 @@ def double_buf(schedule, ops):
         schedule[ops[i]].double_buffer()
 
 
-def multicore_factor_calculate(shape, element):
+def _multicore_factor_calculate(shape, element):
     """
     the compute produce, calculate multicore information
     """
     if not shape:
         raise RuntimeError("input shape is empty")
 
-    device_core_num = \
-        tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
     split_axis = -1
     split_size = 0
@@ -759,7 +741,7 @@ def multicore_factor_calculate(shape, element):
     return npart_0, npart_1, npart_2, npart_3, npart_4, split_axis, split_size, fuse_num
 
 
-def tiling_factor_calculate(shape, split_axis_0, split_size, dtype, UB_SIZE_LIMIT, fuse_num):
+def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_limit, fuse_num):
     """
     do tiling calculate
     """
@@ -775,9 +757,9 @@ def tiling_factor_calculate(shape, split_axis_0, split_size, dtype, UB_SIZE_LIMI
     shape_5 = int(shape[5])
 
     if feature_dtype == 'float32':
-        temp = UB_SIZE_LIMIT // (shape_5 * 4)
+        temp = ub_size_limit // (shape_5 * 4)
     else:
-        temp = UB_SIZE_LIMIT // (shape_5 * 2)
+        temp = ub_size_limit // (shape_5 * 2)
 
     split_flag = False
     split_axis = 0
@@ -953,7 +935,7 @@ def tiling_factor_calculate(shape, split_axis_0, split_size, dtype, UB_SIZE_LIMI
     return split_flag, split_axis, split_factor
 
 
-def align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
+def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
     """
     determine if aligning needs to be enabled
     """
@@ -974,17 +956,20 @@ def align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
                                            factor, offset)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_FLOAT,
-                 REQUIRED_ATTR_LIST_FLOAT, OPTION_ATTR_INT, OPTION_ATTR_INT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_LIST_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_FLOAT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
 def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
                 min_size, max_size, img_h=0, img_w=0, step_h=0.0, step_w=0.0,
                 flip=True, clip=False, offset=0.5, variance=[0.1],
                 kernel_name="prior_box"):
-
     """
     calculating data
 
@@ -1006,8 +991,9 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
     TODO:
     Please refer to the TE DSL Manual, And code here with TE DSL.
     """
-    img_h, img_w, step_h, step_w = prior_box_check(feature, img, data_h, \
-                                                   data_w, min_size, max_size, img_h, img_w, step_h, step_w, variance, kernel_name)
+    img_h, img_w, step_h, step_w = _prior_box_check(feature, img, data_h,
+                                                    data_w, min_size, max_size, img_h, img_w,
+                                                    step_h, step_w, variance, kernel_name)
     shape_img = img.get("shape")
     shape_feature = feature.get("shape")
     dtype = feature.get("dtype")
@@ -1024,25 +1010,24 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
         step_w = 1.0 * img_w / shape_feature[INDEX_W]
     scale = 0.5
 
-    op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, \
-                                                                      data_w, box_height, box_width, y, rec_img_h, rec_img_w, step_h, step_w, \
+    op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, data_w,
+                                                                      box_height, box_width, y,
+                                                                      rec_img_h, rec_img_w, step_h, step_w,
                                                                       clip, offset, scale, variance)
 
-    UB_SIZE_LIMIT = \
-        tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-    UB_SIZE_LIMIT = UB_SIZE_LIMIT / 21
+    ub_size_limit = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    ub_size_limit = ub_size_limit / 21
 
     schedule = tvm.create_schedule(y.op)
-    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
+    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes), divide by 32 to get the numbers of data that
     # can be stored in one block.
     element = 32 // dtype_bytes_size
-    align(schedule, op_list, tensor_dic, clip, element, 0)
-
+    _align(schedule, op_list, tensor_dic, clip, element, 0)
 
     # muti core
     npart_0, npart_1, npart_2, npart_3, npart_4, split_axis_0, split_size, fuse_num = \
-        multicore_factor_calculate(tensor_dic.get("y").shape, element)
+        _multicore_factor_calculate(tensor_dic.get("y").shape, element)
     xr1o, xr1i = schedule[y].split(y.op.axis[0], nparts=npart_0)
     xr2o, xr2i = schedule[y].split(y.op.axis[1], nparts=npart_1)
     xho, xhi = schedule[y].split(y.op.axis[2], nparts=npart_2)
@@ -1056,8 +1041,8 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
 
     # tiling strategy
     split_flag, split_axis, split_factor = \
-        tiling_factor_calculate(tensor_dic.get("y").shape, split_axis_0, \
-                                split_size, dtype, UB_SIZE_LIMIT, fuse_num)
+        _tiling_factor_calculate(tensor_dic.get("y").shape, split_axis_0, \
+                                 split_size, dtype, ub_size_limit, fuse_num)
 
     if split_flag:
         if split_axis == 0:
@@ -1071,36 +1056,35 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
         elif split_axis == 4:
             xo, xi = schedule[y].split(xni, factor=split_factor)
 
+        _prior_compute(schedule, op_list, xo)
 
-        prior_compute(schedule, op_list, xo)
+        _buffer_mapping(schedule, op_list)
 
-        buffer_mapping(schedule, op_list)
+        _double_buf(schedule, op_list)
 
-        double_buf(schedule, op_list)
-
-        axis_list = get_ins_emit_axis(op_list, xi)
-        ins_emit(schedule, op_list, axis_list, ins_list)
+        axis_list = _get_ins_emit_axis(op_list, xi)
+        _ins_emit(schedule, op_list, axis_list, ins_list)
     else:
         # schedule optimize
-        prior_compute(schedule, op_list, block_axis)
+        _prior_compute(schedule, op_list, block_axis)
 
-        buffer_mapping(schedule, op_list)
+        _buffer_mapping(schedule, op_list)
 
-        double_buf(schedule, op_list)
+        _double_buf(schedule, op_list)
 
         # instructions replace
         if split_axis_0 == 0:
-            axis_list = get_ins_emit_axis(op_list, xr1i)
+            axis_list = _get_ins_emit_axis(op_list, xr1i)
         elif split_axis_0 == 1:
-            axis_list = get_ins_emit_axis(op_list, xr2i)
+            axis_list = _get_ins_emit_axis(op_list, xr2i)
         elif split_axis_0 == 2:
-            axis_list = get_ins_emit_axis(op_list, xhi)
+            axis_list = _get_ins_emit_axis(op_list, xhi)
         elif split_axis_0 == 3:
-            axis_list = get_ins_emit_axis(op_list, xwi)
+            axis_list = _get_ins_emit_axis(op_list, xwi)
         elif split_axis_0 == 4 or split_axis_0 == 5:
-            axis_list = get_ins_emit_axis(op_list, xni)
+            axis_list = _get_ins_emit_axis(op_list, xni)
 
-        ins_emit(schedule, op_list, axis_list, ins_list)
+        _ins_emit(schedule, op_list, axis_list, ins_list)
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(schedule, tensor_list, "cce", name=kernel_name)

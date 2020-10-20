@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 add cheque to specify bank
 """
 import os
@@ -68,17 +68,16 @@ def diff_code(output_tensors, cheque_list, real_schedule_code):
         print(diff_output)
 
 
-def get_outputs(shcedule_code_str):
+def get_outputs(code_line_list):
     """
     get_outputs
-    :param shcedule_code_str:
+    :param shcedule_code_list:
     :return:
     """
     output_tensors = []
     output_names = []
     schedule_code = False
     real_schedule_code = []
-    code_line_list = shcedule_code_str.split("\n")
     for code_line in code_line_list:
         if not code_line.strip():
             continue
@@ -93,7 +92,7 @@ def get_outputs(shcedule_code_str):
             get_output_tensors(output_tensors, output_names, load_obj)
         elif "create_schedule" in code_line:
             schedule_code = True
-        elif "config = dict()" in code_line:
+        elif "config = dict()" in code_line or "return sch" in code_line:
             schedule_code = False
         else:
             if schedule_code and not code_line.startswith("    #"):
@@ -101,11 +100,34 @@ def get_outputs(shcedule_code_str):
     return output_tensors, real_schedule_code
 
 
+def get_schedule_code(sch_py_path):
+    """
+    parse schedule py
+    :param sch_py_path:
+    :return:
+    """
+    log.info("add cheque sch_py_path:%s", sch_py_path)
+    with open(sch_py_path, 'r') as file_handler:
+        file_content = file_handler.read()
+    code_lines = file_content.split("\n")
+    schedule_codes_list = []
+    for i, code_line in enumerate(code_lines):
+        if code_line.startswith("def dsl_func_"):
+            start = i
+        elif code_line == "    return sch":
+            end = i
+            schedule_codes_list.append(code_lines[start: end + 1])
+    if not schedule_codes_list:
+        schedule_codes_list = [code_lines]
+    return schedule_codes_list
+
+
 def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
     """
     add_cheque_to_bank
     :param sch_py_path:
     :param bank_type:
+    :param bank_file:
     :param kernel_name:
     :return:
     """
@@ -113,10 +135,9 @@ def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
         raise RuntimeError("%s not exists" % sch_py_path)
 
     if bank_type not in ["custom", "built-in"]:
-        raise RuntimeError("bank_type must be custom or built-in,while is %s" % bank_type)
-    log.info("add cheque sch_py_path:%s", sch_py_path)
-    with open(sch_py_path, 'r') as file_handler:
-        shcedule_code_str = file_handler.read()
+        raise RuntimeError("bank_type must be custom or built-in,while is %s" %
+                           bank_type)
+    schedule_codes_list = get_schedule_code(sch_py_path)
     # maybe start with best_
     best_tick = int(os.path.basename(sch_py_path).strip('best_').split('_')[0])
     base_tick = int(os.path.basename(sch_py_path).strip('best_').split('_')[1])
@@ -124,12 +145,20 @@ def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
         raise RuntimeError("base_tick:%s best_tick:%s, satisfy_bank check fail!" %
                            (base_tick, best_tick))
 
-    # get output_tensors
-    output_tensors, real_schedule_code = get_outputs(shcedule_code_str)
-    if not output_tensors:
-        raise RuntimeError("get output_tensors from schedule py file fail!!!")
-    # gen cheque
-    cheque_list = gen_cheque(sch_py_path, kernel_name=kernel_name)
+    output_tensors_list = []
+    cheques_list = []
+    for schedule_codes in schedule_codes_list:
+        # get output_tensors
+        output_tensors, real_schedule_code = get_outputs(schedule_codes)
+        if not output_tensors:
+            raise RuntimeError("get output_tensors from schedule py file fail!!!")
+        # gen cheque
+        cheque_list = gen_cheque(schedule_codes, kernel_name=kernel_name)
+        cheques_list.append(cheque_list)
+        output_tensors_list.append(output_tensors)
+        # show code diff if enable DIFF_CODE
+        if os.getenv("DIFF_CODE", "False").lower() == "true":
+            diff_code(output_tensors, cheque_list, real_schedule_code)
 
     if bank_type == 'custom':
         spec_valid, bank_dir = get_custom_rl_path()
@@ -141,12 +170,9 @@ def add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=""):
 
     soc_version = cceconf.get_soc_spec("SOC_VERSION")
 
-    bank_json_path = os.path.join(bank_dir, soc_version, bank_type, "%s.json" % bank_file)
-    ret = add_case(output_tensors, cheque_list, best_tick, bank_json_path)
-    # show code diff if enable DIFF_CODE
-    if os.getenv("DIFF_CODE", "False").lower() == "true":
-        diff_code(output_tensors, cheque_list, real_schedule_code)
-
+    bank_json_path = os.path.join(bank_dir, soc_version, bank_type, "%s.json" %
+                                  bank_file)
+    ret = add_case(output_tensors_list, cheques_list, best_tick, bank_json_path)
     if ret:
         return True
     return False
@@ -157,11 +183,15 @@ def try_add_cheque(sch_py_path, bank_type, bank_file, kernel_name=""):
     try_add_cheque
     :param sch_py_path:
     :param bank_type:
+    :param bank_file:
     :param kernel_name:
     :return:
     """
     try:
-        ret = add_cheque_to_bank(sch_py_path, bank_type, bank_file, kernel_name=kernel_name)
+        ret = add_cheque_to_bank(sch_py_path,
+                                 bank_type,
+                                 bank_file,
+                                 kernel_name=kernel_name)
         return ret, ""
     except Exception:  # pylint: disable=broad-except
         return False, "sch_py_path:%s add cheque to %s bank fail:%s" % (sch_py_path, bank_type,

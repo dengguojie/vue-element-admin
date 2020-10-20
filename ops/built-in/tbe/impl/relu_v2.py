@@ -1,19 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# noinspection PyInterpreter
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 relu_v2
 
   Op_description :
@@ -33,24 +32,18 @@ relu_v2
     [1] All : the last dim of `x` must be mutiply of 8.
     [2] All : shape size limit is 2147483648.
 """
-
-
+# noinspection PyInterpreter
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # const value
 CONST_ZERO = 0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("relu_v2")
+@tbe_platform.fusion_manager.fusion_manager.register("relu_v2")
 def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     """
     Algrithm : relu_v2(x) = x and 1 when x > 0 , else 0, 0
@@ -76,25 +69,26 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     shape = x.shape
     compatible_dtype = x.dtype
 
-    if inp_dtype == 'int8' and api_check_support('te.lang.cce.cast_to',
+    if inp_dtype == 'int8' and tbe_platform.api_check_support('te.lang.cce.cast_to',
                                                  's82f16'):
-        x = te.lang.cce.cast_to(x, 'float16')
+        x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if api_check_support('te.lang.cce.vrelu', compatible_dtype):
-        data_res = te.lang.cce.vrelu(x)
+    if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):
+        data_res = tbe.vrelu(x)
     else:
-        tensor_zero = te.lang.cce.broadcast(tvm.const(CONST_ZERO,
+        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO,
                                                       compatible_dtype),
                                             shape)
-        data_res = te.lang.cce.vmax(x, tensor_zero)
+        data_res = tbe.vmax(x, tensor_zero)
 
-    data_res = te.lang.cce.cast_to(data_res, inp_dtype)
-    mask = te.lang.cce.vcmp(x, CONST_ZERO, "gt", "bit")
+    data_res = tbe.cast_to(data_res, inp_dtype)
+    mask = tbe.vcmp(x, CONST_ZERO, "gt", "bit")
 
     return data_res, mask
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def relu_v2(x, y, mask, kernel_name="relu_v2"):
     """
     Algrithm: relu_v2(x) = x and 1 when x > 0 , else 0, 0
@@ -121,25 +115,25 @@ def relu_v2(x, y, mask, kernel_name="relu_v2"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
 
     if shape[-1] % 8 != 0:
         raise RuntimeError(
             "the last axis if shape must be dive by 8")
 
     check_list = ("float16", "float32", "int8", "int32", "uint8")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     dtype = dtype.lower()
     input_data = tvm.placeholder(shape, dtype, "input_data")
 
     with tvm.target.cce():
         res, res_mask = relu_v2_compute(input_data, y, mask, kernel_name)
-        sch = generic.auto_schedule([res, res_mask])
+        sch = tbe.auto_schedule([res, res_mask])
 
     config = {"name": kernel_name,
               "tensor_list": [input_data, res, res_mask],
               "print_ir": False
               }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

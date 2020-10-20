@@ -1,31 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 nd_2_nz
 """
-from functools import reduce as functools_reduce
-from te import platform as tbe_platform
-from topi.cce import util
+import functools
+
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tik
 
 # available ub size
-TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(
-    tbe_platform.cce_conf.UB_SIZE)
+TOTAL_UB_MEMORY = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 # available number of cores
-MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(
-    tbe_platform.cce_conf.CORE_NUM)
+MAX_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 # bytes of type int8
 SIZE_ONE_BYTES = 1
 # bytes of type float16
@@ -241,7 +241,7 @@ class ND2NzCompute:
 
         # the number of data that can be moved in each data_move
         self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
-        util.check_shape_rule(self.dst_shape)
+        para_check.check_shape_rule(self.dst_shape)
         # the number of data that UB can put in
         self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // self.num_byte // 2
         self.dst_gm = None
@@ -260,9 +260,9 @@ class ND2NzCompute:
         """
         set input and output tensor
         """
-        src_element_number = functools_reduce(lambda x1, x2: x1 * x2,
+        src_element_number = functools.reduce(lambda x1, x2: x1 * x2,
                                               self.src_shape_ori[:])
-        dst_element_number = functools_reduce(lambda x1, x2: x1 * x2,
+        dst_element_number = functools.reduce(lambda x1, x2: x1 * x2,
                                               self.dst_shape[:])
         self.src_gm = tik_instance.Tensor(self.dtype,
                                           (src_element_number,),
@@ -299,7 +299,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             is_four_d = 1
         else:
-            is_four_d = (functools_reduce(lambda x1, x2: x1 * x2,
+            is_four_d = (functools.reduce(lambda x1, x2: x1 * x2,
                                           self.src_shape[:-2]) == 1)
 
         if is_four_d:
@@ -1860,7 +1860,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             total_core_loop_num = 1
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4])
         core_number = _set_core_num(total_core_loop_num)
         num_data_one_loop = self.dst_shape[-4] * self.dst_shape[-3] * \
@@ -1991,7 +1991,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             total_core_loop_num = 1
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4])
         core_number = _set_core_num(total_core_loop_num)
         num_data_one_loop = self.dst_shape[-4] * self.dst_shape[-3] * \
@@ -2093,7 +2093,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             total_core_loop_num = loop_times
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4]) * \
                                   loop_times
         core_number = _set_core_num(total_core_loop_num)
@@ -2214,7 +2214,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             total_core_loop_num = loop_times
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4]) * \
                                   loop_times
         core_number = _set_core_num(total_core_loop_num)
@@ -2306,7 +2306,7 @@ class ND2NzCompute:
         if len(self.dst_shape) == 4:
             total_core_loop_num = loop_times
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4]) * \
                                   loop_times
         core_number = _set_core_num(total_core_loop_num)
@@ -3043,7 +3043,7 @@ class ND2NzCompute:
             if len(self.dst_shape) == 4:
                 total_core_loop_num = loop_times
             else:
-                total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+                total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                        self.dst_shape[:-4]) * \
                                       loop_times
             core_number = _set_core_num(total_core_loop_num)
@@ -3085,7 +3085,7 @@ class ND2NzCompute:
             if len(self.dst_shape) == 4:
                 total_core_loop_num = loop_times
             else:
-                total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+                total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                        self.dst_shape[:-4]) * \
                                       loop_times
             core_number = _set_core_num(total_core_loop_num)
@@ -3385,7 +3385,7 @@ class ND2NzComputeInt8:
         self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
         # the number of float16 data that can be moved in each data_move
         self.cast_num_data = DATA_MOVE_MIN_UNIT // self.cast_num_byte
-        util.check_shape_rule(self.dst_shape)
+        para_check.check_shape_rule(self.dst_shape)
         # the number of data that UB can put in
         self.ub_memory = min(TOTAL_UB_MEMORY, 248 * 1024) // self.cast_num_byte // 4
         self.src_gm = None
@@ -3404,9 +3404,9 @@ class ND2NzComputeInt8:
         """
         set input and output tensor
         """
-        src_element_number = functools_reduce(lambda x1, x2: x1 * x2,
+        src_element_number = functools.reduce(lambda x1, x2: x1 * x2,
                                               self.src_shape_ori[:])
-        dst_element_number = functools_reduce(lambda x1, x2: x1 * x2,
+        dst_element_number = functools.reduce(lambda x1, x2: x1 * x2,
                                               self.dst_shape[:])
         self.src_gm = tik_instance.Tensor(self.dtype,
                                           (src_element_number,),
@@ -3424,7 +3424,7 @@ class ND2NzComputeInt8:
         if len(self.dst_shape) == 4:
             is_four_d = 1
         else:
-            is_four_d = (functools_reduce(lambda x1, x2: x1 * x2,
+            is_four_d = (functools.reduce(lambda x1, x2: x1 * x2,
                                           self.src_shape[:-2]) == 1)
 
         if is_four_d:
@@ -4106,7 +4106,7 @@ class ND2NzComputeInt8:
         if len(self.dst_shape) == 4:
             total_core_loop_num = loop_times
         else:
-            total_core_loop_num = functools_reduce(lambda x1, x2: x1 * x2,
+            total_core_loop_num = functools.reduce(lambda x1, x2: x1 * x2,
                                                    self.dst_shape[:-4]) * \
                                   loop_times
         core_number = _set_core_num(total_core_loop_num)
@@ -4259,12 +4259,12 @@ class ND2NzComputeInt8:
 
         if((self.dst_shape[-3] - 1) * self.dst_shape[-1] *
            self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK):
-            with tik_instance.for_range(0, loop_len) as \
+            with tik_instance.for_range(0, loop_len, dtype='int64') as \
                     num_col_cube:
                 dst_gm_index = num_outer_axis * num_data_one_loop + \
                                num_loop_time * self.dst_shape[-1] * \
                                self.dst_shape[-2] + \
-                               (loop_time * loop_col + num_col_cube) * \
+                               (num_col_cube + loop_time * loop_col) * \
                                self.dst_shape[-1] * self.dst_shape[-2] * \
                                self.dst_shape[-3]
                 tik_instance.data_move(self.dst_gm[dst_gm_index],
@@ -4318,7 +4318,7 @@ class ND2NzComputeInt8:
         return tik_instance
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
     """
     algorithm: nd_2_nz
@@ -4342,10 +4342,10 @@ def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
     """
     src_shape = src.get("shape")
     src_dtype = src.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(src_shape)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(src_shape)
     check_list = ("float16", "float32", "int8")
-    util.check_dtype_rule(src_dtype, check_list)
+    para_check.check_dtype_rule(src_dtype, check_list)
 
     if src_format.upper() not in {"NHWC", "NCHW", "ND"}:
         raise RuntimeError("The src_format of ND2Nz"

@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-nchw_hwcn_fz
+nchw_hwcn_zn
 """
-
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
@@ -38,6 +37,8 @@ UB_NAME_SUFFIX = [0]
 UB_SIZE_B = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.UB_SIZE)
 # available number of cores
 AICORE_NUM = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.CORE_NUM)
+# MTE stride up limit
+MTE_MAX_STRIDES = 65535
 
 
 def _ceil_div(value, block):
@@ -858,24 +859,43 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                     reg_array)
                             _mov_data_p2p(args)
 
-                        ib_.emit(
-                            tvm.call_extern(
-                                output.dtype.lower(),
-                                "copy_ubuf_to_gm",
-                                output.access_ptr(
-                                    "w",
-                                    offset=(c1_index+c1_begin) * \
-                                    axis_c0*axis_h*axis_w * n0_range +
-                                    params.block.var * axis_c0 +
-                                    cube_i * axis_c0 *
-                                    vnchwconv_cube_col_size*n0_range +
-                                    core_loop*params.device_core_num*axis_c0),
-                                output_ub.access_ptr("rw", offset=0),
-                                0,
-                                vnchwconv_cube_col_size,
-                                1 * repeat_factor,
-                                0,
-                                (n0_range-1) * repeat_factor))
+                        if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                            ib_.emit(
+                                tvm.call_extern(
+                                    output.dtype.lower(),
+                                    "copy_ubuf_to_gm",
+                                    output.access_ptr(
+                                        "w",
+                                        offset=(c1_index+c1_begin) * \
+                                        axis_c0*axis_h*axis_w * n0_range +
+                                        params.block.var * axis_c0 +
+                                        cube_i * axis_c0 *
+                                        vnchwconv_cube_col_size*n0_range +
+                                        core_loop*params.device_core_num*axis_c0),
+                                    output_ub.access_ptr("rw", offset=0),
+                                    0,
+                                    vnchwconv_cube_col_size,
+                                    1 * repeat_factor,
+                                    0,
+                                    (n0_range-1) * repeat_factor))
+
+                        else:
+                            with ib_.for_range(0, vnchwconv_cube_col_size) as col_idx:
+                                ib_.emit(
+                                    tvm.call_extern(
+                                        output.dtype.lower(),
+                                        "copy_ubuf_to_gm",
+                                        output.access_ptr(
+                                            "w",
+                                            offset=(c1_index+c1_begin) * \
+                                                   axis_c0*axis_h*axis_w * n0_range +
+                                                   params.block.var * axis_c0 +
+                                                   cube_i * axis_c0 *
+                                                   vnchwconv_cube_col_size*n0_range +
+                                                   core_loop*params.device_core_num*axis_c0 +
+                                                   col_idx * n0_range * axis_c0),
+                                        output_ub.access_ptr("rw", offset=col_idx * axis_c0),
+                                        0, 1, 1 * repeat_factor, 0, 0))
 
                     with ib_.else_scope():
                         # Tail processing:
@@ -930,25 +950,43 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                     col_size, c0_loop, reg_array)
                             _mov_data_p2p(args)
 
-                        ib_.emit(
-                            tvm.call_extern(
-                                output.dtype.lower(),
-                                "copy_ubuf_to_gm",
-                                output.access_ptr(
-                                    "w",
-                                    offset=(c1_index + c1_begin) * axis_c0 * \
-                                    axis_h * axis_w * n0_range +
-                                    params.block.var * axis_c0 +
-                                    cube_i * axis_c0 *
-                                    vnchwconv_cube_col_size * n0_range +
-                                    core_loop * params.device_core_num *
-                                    axis_c0),
-                                output_ub.access_ptr("rw", offset=0),
-                                0,
-                                tail_c0_col_size,
-                                1 * repeat_factor,
-                                0,
-                                (n0_range-1) * repeat_factor))
+                        if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                            ib_.emit(
+                                tvm.call_extern(
+                                    output.dtype.lower(),
+                                    "copy_ubuf_to_gm",
+                                    output.access_ptr(
+                                        "w",
+                                        offset=(c1_index + c1_begin) * axis_c0 * \
+                                        axis_h * axis_w * n0_range +
+                                        params.block.var * axis_c0 +
+                                        cube_i * axis_c0 *
+                                        vnchwconv_cube_col_size * n0_range +
+                                        core_loop * params.device_core_num *
+                                        axis_c0),
+                                    output_ub.access_ptr("rw", offset=0),
+                                    0,
+                                    tail_c0_col_size,
+                                    1 * repeat_factor,
+                                    0,
+                                    (n0_range-1) * repeat_factor))
+                        else:
+                            with ib_.for_range(0, tail_c0_col_size) as col_idx1:
+                                ib_.emit(
+                                    tvm.call_extern(
+                                        output.dtype.lower(),
+                                        "copy_ubuf_to_gm",
+                                        output.access_ptr(
+                                            "w",
+                                            offset=(c1_index + c1_begin) * axis_c0 * \
+                                                   axis_h * axis_w * n0_range +
+                                                   params.block.var * axis_c0 +
+                                                   cube_i * axis_c0 *
+                                                   vnchwconv_cube_col_size * n0_range +
+                                                   core_loop * params.device_core_num *
+                                                   axis_c0 + col_idx1 * n0_range * axis_c0),
+                                        output_ub.access_ptr("rw", offset=col_idx1 * axis_c0),
+                                        0, 1, 1 * repeat_factor, 0, 0))
                 else:
                     # Standard processing:
                     # Copy gm to ub in 16 copies --> Update transpose
@@ -997,22 +1035,38 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                 col_size, c0_loop, reg_array)
                         _mov_data_p2p(args)
 
-                    ib_.emit(
-                        tvm.call_extern(
-                            output.dtype.lower(),
-                            "copy_ubuf_to_gm",
-                            output.access_ptr(
-                                "w",
-                                offset=(c1_index + c1_begin) * axis_c0 * \
-                                axis_h * axis_w * n0_range +
-                                params.block.var * axis_c0 +
-                                core_loop * params.device_core_num * axis_c0),
-                            output_ub.access_ptr("rw", offset=0),
-                            0,
-                            axis_h*axis_w,
-                            1 * repeat_factor,
-                            0,
-                            (n0_range-1) * repeat_factor))
+                    if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                        ib_.emit(
+                            tvm.call_extern(
+                                output.dtype.lower(),
+                                "copy_ubuf_to_gm",
+                                output.access_ptr(
+                                    "w",
+                                    offset=(c1_index + c1_begin) * axis_c0 * \
+                                    axis_h * axis_w * n0_range +
+                                    params.block.var * axis_c0 +
+                                    core_loop * params.device_core_num * axis_c0),
+                                output_ub.access_ptr("rw", offset=0),
+                                0,
+                                axis_h*axis_w,
+                                1 * repeat_factor,
+                                0,
+                                (n0_range-1) * repeat_factor))
+                    else:
+                        with ib_.for_range(0, axis_h*axis_w) as hw_idx:
+                            ib_.emit(
+                                tvm.call_extern(
+                                    output.dtype.lower(),
+                                    "copy_ubuf_to_gm",
+                                    output.access_ptr(
+                                        "w",
+                                        offset=(c1_index + c1_begin) * axis_c0 * \
+                                               axis_h * axis_w * n0_range +
+                                               params.block.var * axis_c0 +
+                                               core_loop * params.device_core_num * axis_c0 +
+                                               hw_idx * n0_range * axis_c0),
+                                    output_ub.access_ptr("rw", offset=hw_idx * axis_c0),
+                                    0, 1, 1 * repeat_factor, 0, 0))
 
     if n_per_core_count >= 0 and c1_loop > 0:
         # clean ubuf to avoid dirty data

@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Pure broadcast schedule
 """
 import math
@@ -23,10 +23,13 @@ from te.platform import log
 
 from te.tvm.tensor import Tensor
 from te.tvm.schedule import Schedule
-from te.platform.cce_util import get_align_factor, get_buffer, apply_for_new_alloc
+from te.platform.cce_util import get_align_factor
+from te.platform.cce_util import get_buffer
+from te.platform.cce_util import apply_for_new_alloc
 from te.platform.cce_params import scope_ubuf
 from te.platform.cce_conf import CceProductParams as pver
-from .pure_broadcast_intrin import last_axis_broadcast, mid_axis_broadcast
+from .pure_broadcast_intrin import last_axis_broadcast
+from .pure_broadcast_intrin import mid_axis_broadcast
 from .pure_broadcast_intrin import full_aligned_broadcast_selection
 from .pure_broadcast_intrin import VECTOR_ENHANCED_MODE
 
@@ -37,6 +40,7 @@ MULTI_BROADCAST_ENHANCEMENT_FOR_FACTOR = 32
 
 class PureBroadcastSchedule:  # pylint: disable=R0902
     """Pure Broadcast Schedule"""
+
     def __init__(self):
         # Tensor information containers
         self.schedule = None
@@ -137,8 +141,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         self.print_debug("Block Tiling factor", self.block_tiling_nparts)
         mid_broadcast_size = 1
         mid_broadcast_list = self.is_broadcast_list[:self.ub_tiling_axis]
-        for idx, v in enumerate(mid_broadcast_list):
-            if v:
+        for idx, val in enumerate(mid_broadcast_list):
+            if val:
                 mid_broadcast_size *= self.broadcast_target_shape[idx]
         if mid_broadcast_size < MULTI_BROADCAST_ENHANCEMENT_FOR_FACTOR:
             self.apply_multi_broadcast_optimization()
@@ -216,10 +220,9 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                 if orig == 1:
                     self.is_broadcast_list.append(True)
                     continue
-                else:
-                    raise RuntimeError("Invalid broadcast from " +
-                                       str(self.broadcast_original_shape) + " to " +
-                                       str(self.broadcast_target_shape))
+                raise RuntimeError("Invalid broadcast from " +
+                                   str(self.broadcast_original_shape) + " to " +
+                                   str(self.broadcast_target_shape))
             self.is_broadcast_list.append(False)
         ub_tiling_finished = False
         while not ub_tiling_finished:
@@ -239,24 +242,24 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
             out_size, \
             tail_out_size = self.get_current_calculation_unit_size()
         # Rule 1:
-        # Condition(s):
+        # Conditions:
         # 1. Current calculation unit is larger than half of device_ub_size
-        # Action(s):
+        # Actions:
         # 1. Decrease self.ub_tiling_factor
         # 2. Or, move ub_tiling_axis to lower dimension
         if current_calcunit_byte_size > self.device_ub_size // 2:
             self.ub_tiling_factor = math.ceil(self.ub_tiling_factor / 2)
             return False
         # Rule 2:
-        # Condition(s):
+        # Conditions:
         # 1. Current calculation unit output is smaller than 1 block
         # 2. There are usable free axis on ub_tiling_axis's higher dimension
         # 3. Or, self.ub_tiling_factor is smaller than its axis
-        # Action(s):
+        # Actions:
         # 1. Increase self.ub_tiling_factor by 1
         # 2. Or, move ub_tiling_axis to higher dimension and completely consume the higher dim
         # Rule 1 extended:
-        # Condition(s):
+        # Conditions:
         # 1. If the tail part: ub_tiling_axis_size % ub_tiling_factor
         #    is smaller than block_byte_size, execute Rule 1 action
         if out_size < self.block_byte_size or \
@@ -273,10 +276,10 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
             self.block_tiling_nparts = 1
             return True
         # Rule 3:
-        # Condition(s):
+        # Conditions:
         # 1. Current calculation unit is smaller than half of device_ub_size
         # 2. Usable free axis product is higher than core_num if action is taken
-        # Action(s):
+        # Actions:
         # 1. Increase self.ub_tiling_factor
         # 2. Or, move ub_tiling_axis to higher dimension
         available_free_axis, ideal_factor = self.rule_2_get_tiling_info(current_calcunit_byte_size)
@@ -305,7 +308,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
             # Current tiling axis cannot fill half of ub
             if self.ub_tiling_factor < self.broadcast_target_shape[self.ub_tiling_axis]:
                 difference = self.broadcast_target_shape[self.ub_tiling_axis] - \
-                             self.ub_tiling_factor
+                    self.ub_tiling_factor
                 self.ub_tiling_factor = min(self.ub_tiling_factor + difference,
                                             self.ub_tiling_factor * int(available_free_axis))
                 return False
@@ -447,7 +450,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         """
         broadcast_list = self.is_broadcast_list[self.ub_tiling_axis:]
         before_broadcast_shape_list = self.broadcast_original_shape[:self.ub_tiling_axis]
-        for idx, axis in enumerate(before_broadcast_shape_list):
+        for idx, _ in enumerate(before_broadcast_shape_list):
             if before_broadcast_shape_list[idx] != 1:
                 before_broadcast_shape_list[idx] = False
         dma_friendly_factor = math.ceil(self.block_size * MULTI_BROADCAST_ENHANCEMENT_FACTOR)
@@ -744,7 +747,7 @@ def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-sta
     # Organize broadcast schedule
     broadcast_schedule = []
     current_index = len(original_layout)
-    for index, var in enumerate(reversed(target_layout)):
+    for _, var in enumerate(reversed(target_layout)):
         if var != original_layout[current_index - 1]:
             original_shape.insert(current_index, loop_var_dict[var])
             if not (broadcast_schedule

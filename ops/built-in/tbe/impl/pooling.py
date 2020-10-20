@@ -1,31 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-caffe pooling
+pooling
 """
-
-from __future__ import absolute_import
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-import impl
-from te.lang.cce.te_compute.pooling2d_compute import get_caffe_out_size_and_pad
-from te.platform.cce_policy import get_L1_info
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
+
+from impl import conv2d
 
 # shape limit
 # int32's max value
@@ -38,7 +34,7 @@ NoneType = type(None)
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 # pylint: disable=too-many-arguments,too-many-locals
-def pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
+def _pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
     """
     :param input_shape: shape of input_data
     :param output_dtype: dtype of output_data
@@ -48,28 +44,14 @@ def pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
     :return: None
     """
     # check input and output
-    check_shape(input_shape, max_size=SHAPE_SIZE_LIMIT, param_name="x")
-    check_shape(input_shape, param_name="x")
-    check_dtype(output_dtype, ["float16", "int32"], param_name="y")
+    para_check.check_shape(input_shape, max_size=SHAPE_SIZE_LIMIT, param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
+    para_check.check_dtype(output_dtype, ["float16", "int32"], param_name="y")
     # check window and stride length
     if len(window) != 2:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'window'
-        error_info['op_name'] = 'pooling'
-        error_info['real_value'] = len(window)
-        raise RuntimeError(error_info, "In op[%s], the shape of [%s] must be 2 dims, "
-                        "including window h and window w, but actually is [%s]."
-                         % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_specific_reson("pooling", "the shape of window is not 2 dims")
     if len(stride) != 2:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'stride'
-        error_info['op_name'] = 'pooling'
-        error_info['real_value'] = len(stride)
-        raise RuntimeError(error_info, "In op[%s], the shape of [%s] must be 2 dims, "
-                          "including stride h and stride w, but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_specific_reson("pooling", "the shape of stride is not 2 dims")
 
 
 def get_fusion_params(input_data, output_data, is_fused_compute=True):
@@ -109,7 +91,7 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
     return fusion_params
 
 
-@fusion_manager.register("pooling")
+@tbe_platform.fusion_manager.fusion_manager.register("pooling")
 # Example: pylint: disable=unnecessary-lambda
 def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                       stride, offset_x=0, mode=0, pad=(0, 0, 0, 0),
@@ -137,20 +119,17 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
         A list of `ints` that has length 2.
         The stride of the sliding window for H, W .
     offset_x: avg quantize params.
-    pad : list or tuple, the pad of pooling, only support pooling in H or W
-
-    global_pooling : global pooling params.
-
     mode: str
         A int which stands6 for kinds of  pooling.
-
+    pad : list or tuple, the pad of pooling, only support pooling in H or W
+    global_pooling : global pooling params.
     dilation : reserved.
-
     ceil_mode : caffe round_mode params, 0:CEIL, 1:FLOOR, default value is
     DOMI_POOLING_CEIL
-
     kernel_name: str
         kernel name, default value is 'pool_fuse'
+    impl_mode : high_precision or high_performance for inference
+                default value is "high_performance".
 
     Returns:
     -------
@@ -165,9 +144,9 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
     # convert mode&pad_mode to str for pooling2d
     pad = list(pad)
     if pad[0] >= window[0] or pad[1] >= window[0]:
-        raise RuntimeError("pad_h must less than kernel_h")
+        error_manager_vector.raise_err_specific_reson("pooling", "pad_h must less than kernel_h")
     if pad[2] >= window[1] or pad[3] >= window[1]:
-        raise RuntimeError("pad_w must less than kernel_w")
+        error_manager_vector.raise_err_specific_reson("pooling", "pad_w must less than kernel_w")
 
     if mode == 0:
         conv_pooling_flag = False
@@ -180,7 +159,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
         if conv_pooling_flag:
             window_h, window_w = window[0], window[1]
             stride_h, stride_w = stride[0], stride[1]
-            res = te.lang.cce.max_pool_compute(input_data,
+            res = tbe.max_pool_compute(input_data,
                                                (window_h, window_w),
                                                (stride_h, stride_w),
                                                "SAME", pad,
@@ -208,11 +187,10 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                 select_tensor_in = \
                     tvm.compute(in_valid_shape,
                                 lambda n, c1, h, w, c0:
-                                input_data(n, c1, h + in_slice_offset[2],
-                                           w, c0),
+                                input_data(n, c1, h + in_slice_offset[2], w, c0),
                                 name="tensor_read_select",
                                 attrs=input_data.op.attrs)
-                res = te.lang.cce.pooling2d(select_tensor_in,
+                res = tbe.pooling2d(select_tensor_in,
                                             window,
                                             stride,
                                             mode_max,
@@ -231,14 +209,14 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 input_data(n, c1, h, w, c0),
                                 name="l1_width_fusion_tensor_in",
                                 attrs=input_data.op.attrs)
-                res = te.lang.cce.pooling2d(l1_width_fusion_in, window,
+                res = tbe.pooling2d(l1_width_fusion_in, window,
                                             stride,
                                             mode_max, pad=pad, data_mode=0,
                                             ceil_mode=ceil_mode,
                                             fusion_params=fusion_params,
                                             impl_mode=impl_mode)
             else:
-                res = te.lang.cce.pooling2d(input_data,
+                res = tbe.pooling2d(input_data,
                                             window,
                                             stride,
                                             mode_max,
@@ -260,7 +238,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
             strides = (1, 1, stride[0], stride[1])
             # get real pad
             _, _, pad_top, pad_bottom, pad_left, pad_right \
-                = get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
+                = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
                                              window[0], window[1],
                                              stride[0], stride[1],
                                              dilation[0], dilation[1],
@@ -268,7 +246,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                              pad[3])
             conv2d_pad = (pad_top, pad_bottom, pad_left, pad_right)
             # call conv2d_compute for avg
-            res = impl.conv2d_compute(input_data, matrix, bias, None,
+            res = conv2d.conv2d_compute(input_data, matrix, bias, None,
                                       output_data,
                                       strides, conv2d_pad,
                                       dilation, groups=1,
@@ -293,11 +271,10 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                 select_tensor_in = \
                     tvm.compute(in_valid_shape,
                                 lambda n, c1, h, w, c0:
-                                input_data(n, c1, h + in_slice_offset[2],
-                                           w, c0),
+                                input_data(n, c1, h + in_slice_offset[2], w, c0),
                                 name="tensor_read_select",
                                 attrs=input_data.op.attrs)
-                res = te.lang.cce.pooling2d(select_tensor_in,
+                res = tbe.pooling2d(select_tensor_in,
                                             window,
                                             stride,
                                             mode_avg,
@@ -316,14 +293,14 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 input_data(n, c1, h, w, c0),
                                 name="l1_width_fusion_tensor_in",
                                 attrs=input_data.op.attrs)
-                res = te.lang.cce.pooling2d(l1_width_fusion_in, window,
+                res = tbe.pooling2d(l1_width_fusion_in, window,
                                             stride,
                                             mode_avg, pad=pad, data_mode=0,
                                             ceil_mode=ceil_mode,
                                             fusion_params=fusion_params,
                                             impl_mode=impl_mode)
             else:
-                res = te.lang.cce.pooling2d(input_data,
+                res = tbe.pooling2d(input_data,
                                             window,
                                             stride,
                                             mode_avg,
@@ -333,13 +310,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                             fusion_params=fusion_params,
                                             impl_mode=impl_mode)
     else:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'mode'
-        error_info['op_name'] = 'pooling'
-        error_info['real_value'] = mode
-        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_specific_reson("pooling", "the parameter mode should 0 or 1")
 
     return res
 
@@ -373,13 +344,7 @@ def pooling_compute(x, matrix, y, window, stride,
                 global_pooling:
             mode = "GAP"
     else:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'mode'
-        error_info['op_name'] = 'pooling'
-        error_info['real_value'] = mode
-        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_specific_reson("pooling", "the parameter mode should 0 or 1")
 
     window = list(window)
 
@@ -396,7 +361,7 @@ def pooling_compute(x, matrix, y, window, stride,
                                        x(n, c1, h + in_slice_offset[2], w, c0),
                                        name="tensor_read_select",
                                        attrs=x.op.attrs)
-        res = te.lang.cce.pooling2d(select_tensor_in, window, stride, mode,
+        res = tbe.pooling2d(select_tensor_in, window, stride, mode,
                                     pad=pad, data_mode=0, ceil_mode=ceil_mode,
                                     fusion_params=fusion_params,
                                     impl_mode=impl_mode)
@@ -410,13 +375,13 @@ def pooling_compute(x, matrix, y, window, stride,
                                          x(n, c1, h, w, c0),
                                          name="l1_width_fusion_tensor_in",
                                          attrs=x.op.attrs)
-        res = te.lang.cce.pooling2d(l1_width_fusion_in, window, stride,
+        res = tbe.pooling2d(l1_width_fusion_in, window, stride,
                                     mode, pad=pad, data_mode=0,
                                     ceil_mode=ceil_mode,
                                     fusion_params=fusion_params,
                                     impl_mode=impl_mode)
     else:
-        res = te.lang.cce.pooling2d(x, window, stride, mode, pad=pad,
+        res = tbe.pooling2d(x, window, stride, mode, pad=pad,
                                     data_mode=0,
                                     ceil_mode=ceil_mode,
                                     fusion_params=fusion_params,
@@ -425,9 +390,11 @@ def pooling_compute(x, matrix, y, window, stride,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_INT,
-                 OPTION_ATTR_LIST_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_LIST_INT,
-                 OPTION_ATTR_BOOL, OPTION_ATTR_INT, OPTION_ATTR_LIST_INT, KERNEL_NAME, OPTION_ATTR_STR)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT, 
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT, 
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, 
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, 
+                            para_check.OPTION_ATTR_LIST_INT, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
             offset_x=0, mode=0, pad=(0, 0, 0, 0),
             global_pooling=False, ceil_mode=0, dilation=(1, 1, 1, 1),
@@ -435,38 +402,20 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     """
     Parameters
     ----------
-    x : dict, shape and dtype of input_data, only support float16,
-    shape is 4 dims, format is NCHW
-
-    matrix: dict, shape and dtype of right matrix, only support float16,
-    shape is 4 dims, format is NCHW
-
-    bias: dict, shape and dtype of bias, only support float16,
-    shape is 4 dims, format is NCHW, only use bias in conv2d
-
+    x : dict, shape and dtype of input_data, only support float16, shape is 4 dims, format is NCHW
+    matrix: dict, shape and dtype of right matrix, only support float16, shape is 4 dims, format is NCHW
+    bias: dict, shape and dtype of bias, only support float16, shape is 4 dims, format is NCHW, only use bias in conv2d
     y : output dict, shape and dtype of output_data, only support float16
-
-    window : list or tuple, the window of pooling, only support
-    pooling in H or W
-
-    stride : list or tuple, the stride of pooling window, only support pooling
-    in H or W
-
+    window : list or tuple, the window of pooling, only support pooling in H or W
+    stride : list or tuple, the stride of pooling window, only support pooling in H or W
     offset_x : avg quantize parmas
-
     mode : int, the mode of pooling, support 0:max pooling, 1:avg pooling.
-
     pad : list or tuple, the pad of pooling, only support pooling in H or W
-
     global_pooling : global pooling params.
-
-    ceil_mode : caffe round_mode params, 0:CEIL, 1:FLOOR, default value is
-    DOMI_POOLING_CEIL
-
+    ceil_mode : caffe round_mode params, 0:CEIL, 1:FLOOR, default value is DOMI_POOLING_CEIL
     dilation : reserved.
-
     kernel_name : cce kernel name, default value is "pooling_cce"
-
+    impl_mode : high_precision or high_performance for inference, default value is "high_performance".
     Returns
     -------
     None
@@ -480,7 +429,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     output_dtype = output_dtype.lower()
 
     # check others parameter
-    pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name)
+    _pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name)
 
     input_h = input_shape[2]
     input_w = input_shape[3]
@@ -488,40 +437,29 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     # convert mode&pad_mode to str for pooling2d
     pad = list(pad)
     if pad[0] >= window[0] or pad[1] >= window[0]:
-        raise RuntimeError("pad_h must less than kernel_h")
+        error_manager_vector.raise_err_specific_reson("pooling", "pad_h must less than kernel_h")
     if pad[2] >= window[1] or pad[3] >= window[1]:
-        raise RuntimeError("pad_w must less than kernel_w")
+        error_manager_vector.raise_err_specific_reson("pooling", "pad_w must less than kernel_w")
 
     if mode == 0:
         modes = "MAX"
-        if (input_h == window[0] and input_w == window[1] and
-            pad == [0, 0, 0, 0]) or \
-                global_pooling:
+        if (input_h == window[0] and input_w == window[1] and pad == [0, 0, 0, 0]) or global_pooling:
             modes = "GMP"
     elif mode == 1:
         modes = "AVG"
-        if (input_h == window[0] and input_w == window[1] and
-            pad == [0, 0, 0, 0]) or \
-                global_pooling:
+        if (input_h == window[0] and input_w == window[1] and pad == [0, 0, 0, 0]) or global_pooling:
             modes = "GAP"
     else:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'mode'
-        error_info['op_name'] = 'pooling'
-        error_info['real_value'] = mode
+        error_manager_vector.raise_err_specific_reson("pooling", "the parameter mode should 0 or 1")
 
-        raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be set 0 or 1, but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
-
-    isUseMatrix = False
-    isWPadZero = False
+    is_use_matrix = False
+    is_wpad_zero = False
     if pad[2] == 0 and pad[3] == 0:
-        isWPadZero = True
-    if modes == "AVG" and not (input_h != window[0] and input_w == window[1] and isWPadZero):
-        isUseMatrix = True
+        is_wpad_zero = True
+    if modes == "AVG" and not (input_h != window[0] and input_w == window[1] and is_wpad_zero):
+        is_use_matrix = True
     # avg pooling calls conv2d interface to implement
-    if modes == "AVG" and matrix and isUseMatrix:
+    if modes == "AVG" and matrix and is_use_matrix:
         # input origin shape should be set to [N*C1, C0, H, W]
         input_ori_shape = (input_shape[0] * input_shape[1], input_shape[4],
                            input_shape[2], input_shape[3])
@@ -531,14 +469,14 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         strides = (1, 1, stride[0], stride[1])
         # get real pad
         _, _, pad_top, pad_bottom, pad_left, pad_right \
-            = get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
+            = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
                                          window[0], window[1], stride[0],
                                          stride[1], dilation[0], dilation[1],
                                          pad[0], pad[1], pad[2],
                                          pad[3])
         pad = (pad_top, pad_bottom, pad_left, pad_right)
 
-        impl.conv2d(x, matrix, None, None, y, strides, pad,
+        conv2d.conv2d(x, matrix, None, None, y, strides, pad,
                     dilations=(1, 1, 1, 1), kernel_name=kernel_name)
     else:
         # set tensor attrs
@@ -564,7 +502,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
                               global_pooling, ceil_mode, kernel_name, impl_mode)
         # schedule
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
 
         # build
         config = {"print_ir": False,
@@ -573,4 +511,4 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
                   "tensor_list": [tensor_in, res],
                   "l1_fusion_option": is_l1fusion}
 
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

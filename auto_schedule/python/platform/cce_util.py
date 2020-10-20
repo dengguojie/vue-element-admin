@@ -1,32 +1,36 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Runtime function related hooks
 """
 # pylint: disable=too-many-lines
 from __future__ import absolute_import as _abs
 
 import copy
-from functools import reduce as functools_reduce
+from functools import reduce as _reduce
 
-from te import tvm
+from te.platform import cce_params
+from te.platform.cce_conf import CceProductParams
 
-from . import cce_params as cce
-from .cce_conf import CceProductParams
+from te.tvm import stmt as _stmt
+from te.tvm import expr as _expr
+from te.tvm import ir_pass
+from te.tvm.schedule import IterVar as _IterVar
+from te.tvm import api as tvm
+from te.tvm.intrin import call_pure_intrin
+from te.tvm.intrin import call_extern
 
 UINT64_T = 'uint64'
 
@@ -101,6 +105,7 @@ def dma_dependency_scope(src, dst, ib_expr):
         """
         static dma info key
         """
+
         def __init__(self):
             pass
 
@@ -117,13 +122,14 @@ def dma_dependency_scope(src, dst, ib_expr):
                     "UB OUT": 6,  # LSU3
                     "UB L1": 6,
                     "UB UB": 2  # V
-                   }
+                    }
 
     src_key_str = _key_word_(src.scope)
     dst_key_str = _key_word_(dst.scope)
     pipe_line = StaticDmaList.dma_list[src_key_str + " " + dst_key_str]
 
-    ib_expr.scope_attr(cce.CCE_AXIS, "coproc_scope", pipe_line)
+    ib_expr.scope_attr(cce_params.CCE_AXIS, "coproc_scope", pipe_line)
+
 
 # pylint: disable=too-many-locals, too-many-statements
 def get_buf_scope(name):
@@ -132,10 +138,12 @@ def get_buf_scope(name):
     """
     tmp = name.split(".")
     if len(tmp) == 1:
-        return cce.dma_copy_global
+        return cce_params.dma_copy_global
 
-    mem_dict = {"UB": cce.scope_ubuf, "L1": cce.scope_cbuf, "L0A": cce.scope_ca,
-                "L0B": cce.scope_cb, "L0C": cce.scope_cbuf}
+    mem_dict = {"UB": cce_params.scope_ubuf, "L1": cce_params.scope_cbuf,
+                "L0A": cce_params.scope_ca,
+                "L0B": cce_params.scope_cb,
+                "L0C": cce_params.scope_cbuf}
     key = tmp[-1]
     if key not in mem_dict:
         raise RuntimeError("name [%s] is error." % name)
@@ -159,35 +167,35 @@ def get_dma_buffer(stmt_in, is_storage_align=False):
         """
         get shape in stmt op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             loop_vars.append(stmt_op.loop_var)
             shape.append(stmt_op.extent)
-            if isinstance(stmt_op.body, tvm.stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 _get_shape(stmt_op.body)
-            if isinstance(stmt_op.body, tvm.stmt.Store) and \
-                    isinstance(stmt_op.body.value, tvm.expr.Select):
+            if isinstance(stmt_op.body, _stmt.Store) and \
+                    isinstance(stmt_op.body.value, _expr.Select):
                 def _get_sel_vars(stmt_op):
                     """
                     get op sel vars
                     """
                     sel_var.append(stmt_op)
-                    if isinstance(stmt_op.true_value, tvm.expr.Select):
+                    if isinstance(stmt_op.true_value, _expr.Select):
                         _get_sel_vars(stmt_op.true_value)
 
                 _get_sel_vars(stmt_op.body.value)
-            if isinstance(stmt_op.body, tvm.stmt.IfThenElse):
+            if isinstance(stmt_op.body, _stmt.IfThenElse):
                 def _get_if_vars(stmt_op):
                     """
                     get op if vars
                     """
                     if_var.append(stmt_op)
-                    if isinstance(stmt_op.then_case, tvm.stmt.IfThenElse):
+                    if isinstance(stmt_op.then_case, _stmt.IfThenElse):
                         _get_if_vars(stmt_op.then_case)
 
                 _get_if_vars(stmt_op.body)
 
     # reduction shape
-    while stmt_in is not None and isinstance(stmt_in, tvm.stmt.AttrStmt):
+    while stmt_in is not None and isinstance(stmt_in, _stmt.AttrStmt):
         stmt_in = stmt_in.body
 
     _get_shape(stmt_in)
@@ -205,36 +213,36 @@ def get_dma_buffer(stmt_in, is_storage_align=False):
         """
         post order op
         """
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
             return None
 
         return None
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
 
     def _offset(strides, itv, idx):
         """
         get strides offset
         """
-        idx = tvm.ir_pass.Simplify(idx)
-        if itv is not None and not isinstance(idx, tvm.expr.IntImm):
-            offset = tvm.ir_pass.Simplify(idx)
+        idx = ir_pass.Simplify(idx)
+        if itv is not None and not isinstance(idx, _expr.IntImm):
+            offset = ir_pass.Simplify(idx)
             for i in range(len(itv) - 1, -1, -1):
-                if tvm.ir_pass.ExprUseVar(offset, itv[i]):
-                    offset = tvm.ir_pass.Simplify(offset - itv[i]*strides[i])
+                if ir_pass.ExprUseVar(offset, itv[i]):
+                    offset = ir_pass.Simplify(offset - itv[i]*strides[i])
         else:
-            offset = tvm.ir_pass.Simplify(idx)
+            offset = ir_pass.Simplify(idx)
         return offset
 
     src_buf = []
     for i in loads:
         cur_shape = [buf_info["shape"][j].value for j in
                      range(len(buf_info["shape"]))]
-        strides = [functools_reduce(lambda n, k: n*k, cur_shape[j + 1:]) \
+        strides = [_reduce(lambda n, k: n*k, cur_shape[j + 1:])
                    for j in range(len(cur_shape) - 1)]
         strides.append(1)
         if is_storage_align:
@@ -256,7 +264,7 @@ def get_dma_buffer(stmt_in, is_storage_align=False):
     for i in store:
         cur_shape = [buf_info["shape"][j].value for j in
                      range(len(buf_info["shape"]))]
-        strides = [functools_reduce(lambda n, k: n*k, cur_shape[j + 1:]) \
+        strides = [_reduce(lambda n, k: n*k, cur_shape[j + 1:])
                    for j in range(len(cur_shape) - 1)]
         strides.append(1)
         buf = tvm.decl_buffer(buf_info["shape"], i.value.dtype,
@@ -301,11 +309,12 @@ def equal_const_int(expr, value):
     """
     if isinstance(expr, int):
         return expr == value
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
-        expr = tvm.ir_pass.Simplify(expr)
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
+        expr = ir_pass.Simplify(expr)
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
         return False
     return expr.value == value
+
 
 # pylint: disable=too-many-locals
 def _fold_buffer_dim(buf, scope, elem_block):
@@ -335,15 +344,15 @@ def _fold_buffer_dim(buf, scope, elem_block):
         next_base = base
         if not equal_const_int(x_stride % elem_block, 0):
             raise RuntimeError(
-                "scope %s need to have block=%d, shape=%s, strides=%s" % (
-                    scope, elem_block, buf.shape, buf.strides))
+                "scope %s need to have block=%d, shape=%s, strides=%s"
+                % (scope, elem_block, buf.shape, buf.strides))
         for i in range(base, ndim + 1):
             k = ndim - i
             if not equal_const_int(x_size*x_stride - buf.strides[k], 0):
                 break
             x_size = x_size*buf.shape[k]
             next_base = i + 1
-        shape.append(tvm.ir_pass.Simplify(x_size))
+        shape.append(ir_pass.Simplify(x_size))
         strides.append(x_stride)
         assert next_base != base
         base = next_base
@@ -351,6 +360,7 @@ def _fold_buffer_dim(buf, scope, elem_block):
     strides = list(reversed(strides))
     shape = list(reversed(shape))
     return shape, strides
+
 
 # pylint: disable=too-many-locals
 def get_mov_pattern(src_buf, elem_width, elem_bytes, dst_buf, allow_fold):
@@ -422,15 +432,15 @@ def dma_copy(ib_expr, src, dst):
     """
     elem_width = get_type_bits(dst.dtype)
 
-    if dst.scope == cce.scope_cb or dst.scope == cce.scope_ca:
+    if dst.scope == cce_params.scope_cb or dst.scope == cce_params.scope_ca:
         # Load2D
         raise RuntimeError("Do not support copy into cb or ca")
 
     # other DMA
-    if src.scope == cce.scope_cc or dst.scope == cce.scope_cc:
-        elem_bytes = cce.BLOCK_IN*cce.BLOCK_OUT*elem_width // 8
+    if src.scope == cce_params.scope_cc or dst.scope == cce_params.scope_cc:
+        elem_bytes = cce_params.BLOCK_IN*cce_params.BLOCK_OUT*elem_width // 8
     else:
-        elem_bytes = cce.GLB_ELEM_BYTES
+        elem_bytes = cce_params.GLB_ELEM_BYTES
 
     allow_fold = True
 
@@ -451,16 +461,16 @@ def dma_copy(ib_expr, src, dst):
     pad_mode = []
     cr_mode = []
     intrin_name = "cceMove"
-    if dst.scope == cce.scope_ubuf and src.scope == cce.scope_ubuf:
+    if dst.scope == cce_params.scope_ubuf and \
+            src.scope == cce_params.scope_ubuf:
         intrin_name = "copy_ubuf_to_ubuf"
-    elif dst.scope == cce.scope_cbuf and src.scope == 'global':
+    elif dst.scope == cce_params.scope_cbuf and src.scope == 'global':
         intrin_name = "copy_gm_to_cbuf"
         sid = get_dma_sid("Sid_copy_gm_to_cbuf")
         pad_mode.append(pad_mode_dict[0])
-        pad_mode_call = tvm.call_pure_intrin("int32",
-                                             "tvm_cce_string_print",
-                                             *pad_mode)
-        ib_expr.emit(tvm.call_extern(
+        pad_mode_call = call_pure_intrin("int32", "tvm_cce_string_print",
+                                         *pad_mode)
+        ib_expr.emit(call_extern(
             dst.dtype, intrin_name,
             dst_ptr,  # dst buffer
             src_ptr,  # src buffer
@@ -472,12 +482,13 @@ def dma_copy(ib_expr, src, dst):
             pad_mode_call
         ))
         return ib_expr.get()
-    elif dst.scope == cce.scope_ubuf and src.scope == cce.scope_cc:
+    elif dst.scope == cce_params.scope_ubuf and \
+            src.scope == cce_params.scope_cc:
         intrin_name = "copy_matrix_cc_to_ubuf"
         cr_mode.append(cr_mode_dict[0])
-        cr_mode_call = tvm.call_pure_intrin("int32", "tvm_cce_string_print",
-                                            *cr_mode)
-        ib_expr.emit(tvm.call_extern(
+        cr_mode_call = call_pure_intrin("int32", "tvm_cce_string_print",
+                                        *cr_mode)
+        ib_expr.emit(call_extern(
             dst.dtype, intrin_name,
             dst_ptr,  # dst buffer
             src_ptr,  # src buffer
@@ -489,13 +500,13 @@ def dma_copy(ib_expr, src, dst):
             cr_mode_call
         ))
         return ib_expr.get()
-    elif dst.scope == 'global' and src.scope.count(cce.scope_ubuf):
+    elif dst.scope == 'global' and src.scope.count(cce_params.scope_ubuf):
         intrin_name = "copy_ubuf_to_gm"
-    elif dst.scope.count(cce.scope_ubuf) and src.scope == 'global':
+    elif dst.scope.count(cce_params.scope_ubuf) and src.scope == 'global':
         intrin_name = "copy_gm_to_ubuf"
         sid = get_dma_sid("Sid_copy_gm_to_ubuf")
 
-    ib_expr.emit(tvm.call_extern(
+    ib_expr.emit(call_extern(
         dst.dtype, intrin_name,
         dst_ptr,  # dst buffer
         src_ptr,  # src buffer
@@ -511,7 +522,7 @@ def is_const(expr):
     """
     check expr is const or not
     """
-    if isinstance(expr, (tvm.expr.IntImm, tvm.expr.FloatImm, tvm.expr.UIntImm)):
+    if isinstance(expr, (_expr.IntImm, _expr.FloatImm, _expr.UIntImm)):
         return True
 
     return False
@@ -547,10 +558,10 @@ def get_inplace_ids(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             inplace_ids.append(stmt_op.condition.equal.__self__.b.value)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     inplace_ids = list(inplace_ids)
 
@@ -558,6 +569,7 @@ def get_inplace_ids(stmt_in):
         return None
 
     return inplace_ids
+
 
 # pylint: disable=too-many-locals
 def get_inplace_var(stmt_in):
@@ -567,16 +579,16 @@ def get_inplace_var(stmt_in):
     inplace_var = []
 
     def _post_order(stmt_op):
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             if is_const(stmt_op.true_value):
                 inplace_var.append(stmt_op.true_value.value)
-            elif isinstance(stmt_op.true_value, (tvm.expr.Add, tvm.expr.Sub)):
+            elif isinstance(stmt_op.true_value, (_expr.Add, _expr.Sub)):
                 if is_const(stmt_op.true_value.equal.__self__.a):
                     inplace_var.append(stmt_op.true_value.equal.__self__.a.value)
                 elif is_const(stmt_op.true_value.equal.__self__.b):
                     inplace_var.append(stmt_op.true_value.equal.__self__.b.value)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     inplace_var = list(inplace_var)
 
@@ -608,10 +620,10 @@ def get_inplace_buffer(stmt_in, rhs_buffer_count, intrinsic_cmd):
         """
         get shape from stmt_op
         """
-        if isinstance(stmt_in, tvm.stmt.For):
+        if isinstance(stmt_in, _stmt.For):
             buf_info["loop_var"].append(stmt_op.loop_var)
             shape.append(stmt_op.extent)
-            if isinstance(stmt_op.body, tvm.stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 _get_shape(stmt_op.body)
 
     # ?? reduction shape
@@ -628,32 +640,32 @@ def get_inplace_buffer(stmt_in, rhs_buffer_count, intrinsic_cmd):
         """
         post order for stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
             return None
         return None
 
-    ##get the all load and store
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
+    # get the all load and store
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
 
     # caculate the offset after make the below of emit_insn axis var = 0
     def _offset(itv_list, idx):
         """
         get itv offset
         """
-        idx = tvm.ir_pass.Simplify(idx)
-        if itv_list != [] and isinstance(idx, tvm.expr.IntImm) is False:
+        idx = ir_pass.Simplify(idx)
+        if itv_list != [] and isinstance(idx, _expr.IntImm) is False:
             var_dict = {}
             # make the emit_insn axis var = 0
             for itv in itv_list:
                 var_dict[itv] = 0
-            offset = tvm.ir_pass.Substitute(idx, var_dict)
-            offset = tvm.ir_pass.Simplify(offset)
+            offset = ir_pass.Substitute(idx, var_dict)
+            offset = ir_pass.Simplify(offset)
         else:
-            offset = tvm.ir_pass.Simplify(idx)
+            offset = ir_pass.Simplify(idx)
         return offset.value
 
     lhs_loads = loads[0]
@@ -673,7 +685,7 @@ def get_inplace_buffer(stmt_in, rhs_buffer_count, intrinsic_cmd):
                           data=lhs_loads.buffer_var,
                           offset_factor=1,
                           data_alignment=16,
-                          scope=cce.scope_ubuf,
+                          scope=cce_params.scope_ubuf,
                           elem_offset=_offset(buf_info["loop_var"], lhs_loads.index))
     src_buf.append(buf)
 
@@ -683,10 +695,9 @@ def get_inplace_buffer(stmt_in, rhs_buffer_count, intrinsic_cmd):
                               data=rhs_loads.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=offset_list[idx])
         src_buf.append(buf)
-
 
     dest_buf = []
     for i in store:
@@ -695,7 +706,7 @@ def get_inplace_buffer(stmt_in, rhs_buffer_count, intrinsic_cmd):
                               data=i.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=_offset(buf_info["loop_var"],
                                                   i.index))
         dest_buf.append(buf)
@@ -710,13 +721,13 @@ def get_segment_outer_axis_var(stmt_in):
     outer_axis_var = []
 
     def _post_order(stmt_op):
-        if isinstance(stmt_op, tvm.expr.Select):
-            if isinstance(stmt_op.condition, tvm.expr.Or):
+        if isinstance(stmt_op, _expr.Select):
+            if isinstance(stmt_op.condition, _expr.Or):
                 outer_axis_var.append(stmt_op.condition.a.equal.__self__.a)
             else:
                 outer_axis_var.append(stmt_op.condition.equal.__self__.a)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     outer_axis_var = list(set(outer_axis_var))
 
@@ -748,20 +759,20 @@ def get_arg_outer_axis_var(stmt_in):
         """
         post order for stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
-            if isinstance(stmt_op.condition, (tvm.expr.LE, tvm.expr.GE)):
+        if isinstance(stmt_op, _expr.Select):
+            if isinstance(stmt_op.condition, (_expr.LE, _expr.GE)):
                 select_false_expr = stmt_op.false_value
-            elif isinstance(stmt_op.condition, tvm.expr.LT):
+            elif isinstance(stmt_op.condition, _expr.LT):
                 select_false_expr = stmt_op.true_value
             else:
                 raise RuntimeError("Unexpected select condition")
-            if isinstance(select_false_expr, tvm.expr.Add) and isinstance(
+            if isinstance(select_false_expr, _expr.Add) and isinstance(
                     select_false_expr.equal.__self__.a,
-                    tvm.expr.Mul):
+                    _expr.Mul):
                 mul_stmt_expr = select_false_expr.equal.__self__.a
                 outer_axis_var.append(mul_stmt_expr.equal.__self__.a)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     outer_axis_var = list(set(outer_axis_var))
 
@@ -787,20 +798,20 @@ def get_init_val(stmt_in):
         """
         post order for stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
 
     init_val = []
     for node in store:
         if is_const(node.value):
-            init_val.append(tvm.const(tvm.ir_pass.Simplify(node.value).value,
+            init_val.append(tvm.const(ir_pass.Simplify(node.value).value,
                                       node.value.dtype))
-        elif isinstance(node.value, tvm.expr.Cast) and is_const(
+        elif isinstance(node.value, _expr.Cast) and is_const(
                 node.value.value):
             init_val.append(
-                tvm.const(tvm.ir_pass.Simplify(node.value.value).value,
+                tvm.const(ir_pass.Simplify(node.value.value).value,
                           node.value.dtype))
         else:
             return False, []
@@ -835,12 +846,12 @@ def get_buffer(stmt_in, need_unique=False, buffer_shape=None,
         """
         get shape from stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             buf_info["loop_var"].append(stmt_op.loop_var)
             shape.append(stmt_op.extent)
-            if isinstance(stmt_op.body, tvm.stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 _get_shape(stmt_op.body)
-        elif isinstance(stmt_op, tvm.stmt.AttrStmt):
+        elif isinstance(stmt_op, _stmt.AttrStmt):
             _get_shape(stmt_op.body)
 
     # ?? reduction shape
@@ -860,32 +871,32 @@ def get_buffer(stmt_in, need_unique=False, buffer_shape=None,
         """
         post order for stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
             return None
         return None
 
-    ##get the all load and store
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
+    # get the all load and store
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
 
     # caculate the offset after make the below of emit_insn axis var = 0
     def _offset(itv_list, idx):
         """
         get itv offset
         """
-        idx = tvm.ir_pass.Simplify(idx)
-        if itv_list != [] and isinstance(idx, tvm.expr.IntImm) is False:
+        idx = ir_pass.Simplify(idx)
+        if itv_list != [] and isinstance(idx, _expr.IntImm) is False:
             var_dict = {}
             # make the emit_insn axis var = 0
             for itv in itv_list:
                 var_dict[itv] = 0
-            offset = tvm.ir_pass.Substitute(idx, var_dict)
-            offset = tvm.ir_pass.Simplify(offset)
+            offset = ir_pass.Substitute(idx, var_dict)
+            offset = ir_pass.Simplify(offset)
         else:
-            offset = tvm.ir_pass.Simplify(idx)
+            offset = ir_pass.Simplify(idx)
         return offset
 
     src_buf = []
@@ -902,7 +913,7 @@ def get_buffer(stmt_in, need_unique=False, buffer_shape=None,
                               data=i.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=elem_offset)
         src_buf.append(buf)
 
@@ -920,7 +931,7 @@ def get_buffer(stmt_in, need_unique=False, buffer_shape=None,
                               data=i.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=elem_offset)
         dest_buf.append(buf)
 
@@ -953,12 +964,12 @@ def get_elewise_single_vs_extern_args(stmt_in):
         """
         # op : vmuls_t.local.UB[((i1.c*2) + i2.c)] =
         #     (vlog_t.local.UB[((i1.c*2) + i2.c)]*0.500000h)
-        if isinstance(stmt_op, tvm.stmt.Store):
-            if isinstance(stmt_op.value, tvm.expr.BinaryOpExpr) and is_const(
+        if isinstance(stmt_op, _stmt.Store):
+            if isinstance(stmt_op.value, _expr.BinaryOpExpr) and is_const(
                     stmt_op.value.b):
                 args.append(stmt_op.value.b)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
 
     if args:
         return [args[0]]
@@ -987,37 +998,41 @@ def get_binary_scalar_axpy_extern_args(stmt_in):
     def _post_order(stmt_op):
         """
         post order for stmt_op
+
+        case 1: if `scalar = 0`
+          the op is: `axpy_3.local.UB[((i0.c*256) + i1.c)] =
+              data2.local.UB[((i0.c*256) + i1.c)]`
+        case 2: if `scalar > 0`
+          the op is: `axpy_0.local.UB[((i0.c*1024) + i1.c)] =
+            ((data1.local.UB[((i0.c*1024) + i1.c)]*5.000000h) +
+              data2.local.UB[((i0.c*1024) + i1.c)])`
+          or `xpy_11.local.UB[((i0.c * 1024) + i1.c)] =
+            ((5.000000h * data1.local.UB[((i0.c * 1024) + i1.c)]) +
+              data2.local.UB[((i0.c * 1024) + i1.c)])`
+        case 3: if `scalar < 0`
+          the op is: `axpy_2.local.UB[((i0.c*128) + i1.c)] =
+            (data2.local.UB[((i0.c*128) + i1.c)] -
+              (data1.local.UB[((i0.c*128) + i1.c)]*5.000000h))`
         """
-        # scalar = 0, op :  axpy_3.local.UB[((i0.c*256) + i1.c)] =
-        # data2.local.UB[((i0.c*256) + i1.c)]
-        # scalar > 0, op :  axpy_0.local.UB[((i0.c*1024) + i1.c)] =
-        #  ((data1.local.UB[((i0.c*1024) + i1.c)]*5.000000h) +
-        #  data2.local.UB[((i0.c*1024) + i1.c)])
-        # or xpy_11.local.UB[((i0.c * 1024) + i1.c)] =
-        #  ((5.000000h * data1.local.UB[((i0.c * 1024) + i1.c)]) +
-        #  data2.local.UB[((i0.c * 1024) + i1.c)])
-        # scalar < 0, op :  axpy_2.local.UB[((i0.c*128) + i1.c)] =
-        #  (data2.local.UB[((i0.c*128) + i1.c)] -
-        #  (data1.local.UB[((i0.c*128) + i1.c)]*5.000000h))
 
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
 
-            if isinstance(stmt_op.value, tvm.expr.Load):  # case: scalar = 0
+            if isinstance(stmt_op.value, _expr.Load):  # case: scalar = 0
                 return None
 
-            if isinstance(stmt_op.value, tvm.expr.Add):  # case: scalar > 0
+            if isinstance(stmt_op.value, _expr.Add):  # case: scalar > 0
                 if stmt_op.value.a is not None:
                     if is_const(stmt_op.value.a.a):
                         args.append(stmt_op.value.a.a)
                     elif is_const(stmt_op.value.a.b):
                         args.append(stmt_op.value.a.b)
 
-            if isinstance(stmt_op.value, tvm.expr.Sub):  # case: scalar < 0
+            if isinstance(stmt_op.value, _expr.Sub):  # case: scalar < 0
                 if stmt_op.value.b is not None and is_const(stmt_op.value.b.b):
                     args.append(stmt_op.value.b.b)
             return None
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Store"])
 
     if args:
         return [args[0]]
@@ -1061,21 +1076,21 @@ def get_opshape_tilesize(stmt):
         """
         post order for stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             length[stmt_op.loop_var] = stmt_op.extent.value
             vector_tile_size.append(stmt_op.extent.value)
             buffer_var.append(stmt_op.loop_var)
             return None
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             stores.append(stmt_op)
             return None
         return None
 
-    _ = tvm.ir_pass.IRTransform(stmt, None, _post_order_for,
-                                ["For", "Load", "Store"])
+    _ = ir_pass.IRTransform(stmt, None, _post_order_for,
+                            ["For", "Load", "Store"])
 
     final_coef = []
     for var in buffer_var:
@@ -1092,29 +1107,29 @@ def get_opshape_tilesize(stmt):
                 """
                 post order stmt_op
                 """
-                if isinstance(stmt_op, tvm.expr.Var):
+                if isinstance(stmt_op, _expr.Var):
                     if stmt_op == var:
                         return 1
                     return 0
-                if isinstance(stmt_op, tvm.expr.Mul):
+                if isinstance(stmt_op, _expr.Mul):
                     is_add.append(False)
                     mul_res = _post_order_var(stmt_op.a)*_post_order_var(stmt_op.b)
                     is_add.pop()
                     return mul_res
 
-                if isinstance(stmt_op, tvm.expr.Add):
+                if isinstance(stmt_op, _expr.Add):
                     is_add.append(True)
                     add_res = _post_order_var(stmt_op.a) + _post_order_var(stmt_op.b)
                     is_add.pop()
                     return add_res
 
-                if isinstance(stmt_op, tvm.expr.Sub):
+                if isinstance(stmt_op, _expr.Sub):
                     is_add.append(True)
                     sub_res = _post_order_var(stmt_op.a) - _post_order_var(stmt_op.b)
                     is_add.pop()
                     return sub_res
 
-                if isinstance(stmt_op, tvm.expr.IntImm):
+                if isinstance(stmt_op, _expr.IntImm):
                     if not is_add or is_add[len(is_add) - 1]:
                         return 0
                     return stmt_op.value
@@ -1150,18 +1165,18 @@ def get_opshape_tilesize(stmt):
             """
             post order stmt_op
             """
-            if isinstance(stmt_op, tvm.expr.Var):
+            if isinstance(stmt_op, _expr.Var):
                 if stmt_op in length.keys():
                     size_list.append(length[stmt_op])
                 else:
                     size_list.append(1)
-            if isinstance(stmt_op, tvm.expr.Mul):
+            if isinstance(stmt_op, _expr.Mul):
                 _post_order_var(stmt_op.a)
                 _post_order_var(stmt_op.b)
-            if isinstance(stmt_op, tvm.expr.Add):
+            if isinstance(stmt_op, _expr.Add):
                 _post_order_var(stmt_op.a)
                 _post_order_var(stmt_op.b)
-            if isinstance(stmt_op, tvm.expr.Sub):
+            if isinstance(stmt_op, _expr.Sub):
                 _post_order_var(stmt_op.a)
                 _post_order_var(stmt_op.b)
 
@@ -1199,10 +1214,10 @@ def get_op_lenth(stmt):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             length[0] = length[0]*stmt_op.extent.value
 
-    stmt = tvm.ir_pass.IRTransform(stmt, None, _post_order, ["For"])
+    stmt = ir_pass.IRTransform(stmt, None, _post_order, ["For"])
     return length[0]
 
 
@@ -1223,14 +1238,14 @@ def get_align_oplength(stmt):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
-            if isinstance(stmt_op.body, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 length[0] = length[0]*stmt_op.extent.value
             else:
                 align_length = (stmt_op.extent.value + 15) // 16*16
                 length[0] = length[0]*align_length
 
-    stmt = tvm.ir_pass.IRTransform(stmt, None, _post_order, ["For"])
+    stmt = ir_pass.IRTransform(stmt, None, _post_order, ["For"])
     return length[0]
 
 
@@ -1238,23 +1253,21 @@ def get_pad_info(stmt_in):
     """
     get pad info
     """
-    pinfo = {}
-    pinfo["pad"] = None
-    pinfo["iv"] = None
+    pinfo = {"pad": None, "iv": None}
 
     def _post_order(stmt_op):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.AttrStmt) and \
+        if isinstance(stmt_op, _stmt.AttrStmt) and \
                 stmt_op.attr_key == "pragma_pad":
             pinfo["pad"] = stmt_op.value
-            if isinstance(stmt_op.node, tvm.schedule.IterVar):
+            if isinstance(stmt_op.node, _IterVar):
                 pinfo["iv"] = stmt_op.node
             return stmt_op.body
         return None
 
-    stmt = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["AttrStmt"])
+    stmt = ir_pass.IRTransform(stmt_in, None, _post_order, ["AttrStmt"])
     return pinfo["iv"], pinfo["pad"], stmt
 
 
@@ -1404,17 +1417,17 @@ def get_argnlst_outaxis(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
-            if isinstance(stmt_op.condition, (tvm.expr.GE, tvm.expr.LE)):
+        if isinstance(stmt_op, _expr.Select):
+            if isinstance(stmt_op.condition, (_expr.GE, _expr.LE)):
                 var.append(stmt_op.false_value)
-            elif isinstance(stmt_op.condition, tvm.expr.LT):
+            elif isinstance(stmt_op.condition, _expr.LT):
                 var.append(stmt_op.true_value)
             else:
                 raise RuntimeError("Unexpected select condition")
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
-    if var and (isinstance(var[0], tvm.expr.Var) or is_const(var[0])):
+    if var and (isinstance(var[0], _expr.Var) or is_const(var[0])):
         return var[0]
 
     return None
@@ -1430,18 +1443,18 @@ def get_scalar_args(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
-            if (not isinstance(stmt_op.condition.a, tvm.expr.Load) and isinstance(
-                    stmt_op.condition.b, tvm.expr.Load)):
+        if isinstance(stmt_op, _expr.Select):
+            if (not isinstance(stmt_op.condition.a, _expr.Load) and
+                    isinstance(stmt_op.condition.b, _expr.Load)):
                 var.append(stmt_op.condition.a)
-            elif (not isinstance(stmt_op.condition.b, tvm.expr.Load) and isinstance(
-                    stmt_op.condition.a, tvm.expr.Load)):
+            elif (not isinstance(stmt_op.condition.b, _expr.Load) and
+                  isinstance(stmt_op.condition.a, _expr.Load)):
                 var.append(stmt_op.condition.b)
             else:
                 raise RuntimeError(
                     "either a or b must be tvm.expr.Load, other must be const")
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     if var:
         return [var[0]]
@@ -1449,7 +1462,8 @@ def get_scalar_args(stmt_in):
     return None
 
 
-def apply_for_new_alloc(ib_expr, dtype, shape, scope=cce.scope_ubuf, name='tmp_buf'):
+def apply_for_new_alloc(ib_expr, dtype, shape, scope=cce_params.scope_ubuf,
+                        name='tmp_buf'):
     """
     alloc buffer
     """
@@ -1476,16 +1490,16 @@ def get_src_dst_type(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
             return None
         return None
 
-    ##get the all load and store
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
+    # get the all load and store
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load", "Store"])
 
     if loads:
         src_type = loads[-1].dtype
@@ -1513,12 +1527,12 @@ def get_init_op(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For) and \
-                isinstance(stmt_op.body, tvm.stmt.Store) and \
+        if isinstance(stmt_op, _stmt.For) and \
+                isinstance(stmt_op.body, _stmt.Store) and \
                 is_const(stmt_op.body.value):
             init_op.append(stmt_op)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
 
     if init_op:
         return init_op[0]
@@ -1528,11 +1542,11 @@ def get_init_op(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.Store) and is_const(stmt_op.value):
+        if isinstance(stmt_op, _stmt.Store) and is_const(stmt_op.value):
             init_op.append(stmt_op)
             return None
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_store, ["Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_store, ["Store"])
 
     if init_op:
         return init_op[0]
@@ -1557,10 +1571,10 @@ def get_reduce_op(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             reduce_op.append(stmt_op)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
 
     if reduce_op:
         return reduce_op[-1]
@@ -1569,10 +1583,10 @@ def get_reduce_op(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.Store) and not is_const(stmt_op.value):
+        if isinstance(stmt_op, _stmt.Store) and not is_const(stmt_op.value):
             reduce_op.append(stmt_op)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_store, ["Store"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_store, ["Store"])
 
     if reduce_op:
         return reduce_op[-1]
@@ -1614,17 +1628,17 @@ def get_cmp_args(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.stmt.Store) and not is_const(
-                stmt_op.value) and isinstance(stmt_op.value, tvm.expr.Call):
+        if isinstance(stmt_op, _stmt.Store) and not is_const(
+                stmt_op.value) and isinstance(stmt_op.value, _expr.Call):
             args[1] = 'bit'
             if is_const(stmt_op.value.args[1].value.a):
                 args[2] = stmt_op.value.args[1].value.a.value
             if is_const(stmt_op.value.args[1].value.b):
                 args[3] = stmt_op.value.args[1].value.b.value
-        elif isinstance(stmt_op, tvm.stmt.Store) and not is_const(stmt_op.value):
+        elif isinstance(stmt_op, _stmt.Store) and not is_const(stmt_op.value):
             if isinstance(stmt_op.value, (
-                    tvm.expr.LT, tvm.expr.GT, tvm.expr.GE, tvm.expr.LE,
-                    tvm.expr.EQ, tvm.expr.NE)):
+                    _expr.LT, _expr.GT, _expr.GE, _expr.LE,
+                    _expr.EQ, _expr.NE)):
                 if is_const(stmt_op.value.a):
                     args[2] = stmt_op.value.a.value
                 if is_const(stmt_op.value.b):
@@ -1633,22 +1647,22 @@ def get_cmp_args(stmt_in):
                 args[3] = stmt_op.value.value.b.value
             elif is_const(stmt_op.value.value.a):
                 args[2] = stmt_op.value.value.a.value
-        elif isinstance(stmt_op, tvm.expr.LT):
+        elif isinstance(stmt_op, _expr.LT):
             args[0] = 'lt'
-        elif isinstance(stmt_op, tvm.expr.GT):
+        elif isinstance(stmt_op, _expr.GT):
             args[0] = 'gt'
-        elif isinstance(stmt_op, tvm.expr.GE):
+        elif isinstance(stmt_op, _expr.GE):
             args[0] = 'ge'
-        elif isinstance(stmt_op, tvm.expr.LE):
+        elif isinstance(stmt_op, _expr.LE):
             args[0] = 'le'
-        elif isinstance(stmt_op, tvm.expr.EQ):
+        elif isinstance(stmt_op, _expr.EQ):
             args[0] = 'eq'
-        elif isinstance(stmt_op, tvm.expr.NE):
+        elif isinstance(stmt_op, _expr.NE):
             args[0] = 'ne'
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order,
-                                ["Store", "LT", "GT", "GE", "LE", "EQ", "NE",
-                                 "Div", "Mod"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order,
+                            ["Store", "LT", "GT", "GE", "LE", "EQ", "NE",
+                             "Div", "Mod"])
     return args
 
 
@@ -1661,8 +1675,8 @@ def del_ins_reuse_out(ins, out):
     """
     in_res = []
     for single_ins in ins:
-        if not (tvm.ir_pass.Equal(single_ins.data, out.data) and \
-                tvm.ir_pass.Equal(single_ins.elem_offset, out.elem_offset)):
+        if not (ir_pass.Equal(single_ins.data, out.data) and
+                ir_pass.Equal(single_ins.elem_offset, out.elem_offset)):
             in_res.append(single_ins)
 
     return in_res
@@ -1695,9 +1709,9 @@ def get_cmp_bit_buffer(stmt_in, need_unique=False):
         """
         get stmt_op shape
         """
-        if isinstance(stmt_in, tvm.stmt.For):
+        if isinstance(stmt_in, _stmt.For):
             shape_src.append(stmt_op.extent)
-            if isinstance(stmt_op.body, tvm.stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 _get_shape(stmt_op.body)
 
     _get_shape(stmt_in)
@@ -1717,36 +1731,36 @@ def get_cmp_bit_buffer(stmt_in, need_unique=False):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Load):
+        if isinstance(stmt_op, _expr.Load):
             loads.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             store.append(stmt_op)
             return None
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             buf_info["loop_var"].append(stmt_op.loop_var)
             return None
         return None
 
-    ##get the all load and store
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order,
-                                ["Load", "Store", "For"])
+    # get the all load and store
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order,
+                            ["Load", "Store", "For"])
 
     # caculate the offset after make the below of emit_insn axis var = 0
     def _offset(itv_list, idx):
         """
         get itv offset
         """
-        idx = tvm.ir_pass.Simplify(idx)
-        if itv_list != [] and isinstance(idx, tvm.expr.IntImm) is False:
+        idx = ir_pass.Simplify(idx)
+        if itv_list != [] and isinstance(idx, _expr.IntImm) is False:
             var_dict = {}
             # make the emit_insn axis var = 0
             for itv in itv_list:
                 var_dict[itv] = 0
-            offset = tvm.ir_pass.Substitute(idx, var_dict)
-            offset = tvm.ir_pass.Simplify(offset)
+            offset = ir_pass.Substitute(idx, var_dict)
+            offset = ir_pass.Simplify(offset)
         else:
-            offset = tvm.ir_pass.Simplify(idx)
+            offset = ir_pass.Simplify(idx)
         return offset
 
     src_buf = []
@@ -1756,7 +1770,7 @@ def get_cmp_bit_buffer(stmt_in, need_unique=False):
                               data=i.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=_offset(buf_info["loop_var"],
                                                   i.index))
         src_buf.append(buf)
@@ -1768,7 +1782,7 @@ def get_cmp_bit_buffer(stmt_in, need_unique=False):
                               data=i.buffer_var,
                               offset_factor=1,
                               data_alignment=16,
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               elem_offset=_offset(buf_info["loop_var"],
                                                   i.index))
         dest_buf.append(buf)
@@ -1792,9 +1806,8 @@ def get_unique_buffer(buf_list):
     for buffer1 in buf_list:
         is_buf_exit = False
         for buffer2 in buf_list_unique:
-            if tvm.ir_pass.Equal(buffer1.data,
-                                 buffer2.data) and tvm.ir_pass.Equal(
-                                     buffer1.elem_offset, buffer2.elem_offset):
+            if ir_pass.Equal(buffer1.data, buffer2.data) and\
+                    ir_pass.Equal(buffer1.elem_offset, buffer2.elem_offset):
                 is_buf_exit = True
                 break
 
@@ -1817,7 +1830,7 @@ def get_sel_type(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             if not is_const(stmt_op.true_value) and not is_const(stmt_op.false_value):
                 sel_type[0] = "tensor_to_tensor"
             elif not is_const(stmt_op.true_value) and is_const(stmt_op.false_value):
@@ -1831,8 +1844,8 @@ def get_sel_type(stmt_in):
                 scalar_value.append(stmt_op.true_value)
                 scalar_value.append(stmt_op.false_value)
 
-    ##get the all load and store
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
+    # get the all load and store
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Select"])
 
     return sel_type[0], scalar_value
 
@@ -1867,7 +1880,7 @@ def get_cond_args(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             if is_const(stmt_op.condition.b):
                 args[1] = stmt_op.condition.b.value
             elif is_const(stmt_op.condition.a):
@@ -1878,26 +1891,26 @@ def get_cond_args(stmt_in):
             elif is_const(stmt_op.true_value):
                 args[2] = stmt_op.true_value.value
             # bug fix for mutate after simplify
-            if (not isinstance(stmt_op.condition.a, tvm.expr.Load) or
-                    not isinstance(stmt_op.true_value, tvm.expr.Load) or
+            if (not isinstance(stmt_op.condition.a, _expr.Load) or
+                    not isinstance(stmt_op.true_value, _expr.Load) or
                     stmt_op.condition.a.buffer_var.name !=
                     stmt_op.true_value.buffer_var.name):
                 args[0] = reverse_vsel_condition(args[0])
-        elif isinstance(stmt_op, tvm.expr.LT):
+        elif isinstance(stmt_op, _expr.LT):
             args[0] = 'lt'
-        elif isinstance(stmt_op, tvm.expr.GT):
+        elif isinstance(stmt_op, _expr.GT):
             args[0] = 'gt'
-        elif isinstance(stmt_op, tvm.expr.GE):
+        elif isinstance(stmt_op, _expr.GE):
             args[0] = 'ge'
-        elif isinstance(stmt_op, tvm.expr.LE):
+        elif isinstance(stmt_op, _expr.LE):
             args[0] = 'le'
-        elif isinstance(stmt_op, tvm.expr.EQ):
+        elif isinstance(stmt_op, _expr.EQ):
             args[0] = 'eq'
-        elif isinstance(stmt_op, tvm.expr.NE):
+        elif isinstance(stmt_op, _expr.NE):
             args[0] = 'ne'
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order,
-                                ["Select", "LT", "GT", "GE", "LE", "EQ", "NE"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order,
+                            ["Select", "LT", "GT", "GE", "LE", "EQ", "NE"])
 
     return args
 
@@ -1912,7 +1925,7 @@ def get_cmp_sel_args(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             if is_const(stmt_op.condition.a):
                 args[1] = stmt_op.condition.a.value
 
@@ -1924,21 +1937,21 @@ def get_cmp_sel_args(stmt_in):
 
             if is_const(stmt_op.false_value):
                 args[4] = stmt_op.false_value.value
-        elif isinstance(stmt_op, tvm.expr.LT):
+        elif isinstance(stmt_op, _expr.LT):
             args[0] = 'lt'
-        elif isinstance(stmt_op, tvm.expr.GT):
+        elif isinstance(stmt_op, _expr.GT):
             args[0] = 'gt'
-        elif isinstance(stmt_op, tvm.expr.GE):
+        elif isinstance(stmt_op, _expr.GE):
             args[0] = 'ge'
-        elif isinstance(stmt_op, tvm.expr.LE):
+        elif isinstance(stmt_op, _expr.LE):
             args[0] = 'le'
-        elif isinstance(stmt_op, tvm.expr.EQ):
+        elif isinstance(stmt_op, _expr.EQ):
             args[0] = 'eq'
-        elif isinstance(stmt_op, tvm.expr.NE):
+        elif isinstance(stmt_op, _expr.NE):
             args[0] = 'ne'
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order,
-                                ["Select", "LT", "GT", "GE", "LE", "EQ", "NE"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order,
+                            ["Select", "LT", "GT", "GE", "LE", "EQ", "NE"])
     return args
 
 
@@ -1957,7 +1970,7 @@ def get_logic_args(stmt_in):
         """
         post order stmt_op
         """
-        if isinstance(stmt_op, tvm.expr.Call):
+        if isinstance(stmt_op, _expr.Call):
             if stmt_op.name == "bitwise_or":
                 args[0] = 'or'
             elif stmt_op.name == "bitwise_and":
@@ -1965,7 +1978,7 @@ def get_logic_args(stmt_in):
             elif stmt_op.name == "bitwise_not":
                 args[0] = 'not'
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Call"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Call"])
 
     return args
 
@@ -1987,10 +2000,10 @@ def get_const(expr):
     if isinstance(expr, int):
         return expr
 
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
-        expr = tvm.ir_pass.Simplify(expr)
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
+        expr = ir_pass.Simplify(expr)
 
-    if not isinstance(expr, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+    if not isinstance(expr, (_expr.IntImm, _expr.UIntImm)):
         return expr.astype(UINT64_T)
 
     return expr.value
@@ -2003,32 +2016,32 @@ def get_input_shape_from_stmt(input_shape, stmt_op):
     loop_var_dict = {}
 
     def store_ori(_var):
-        if not isinstance(_var, (tvm.expr.Var, tvm.expr.IntImm)):
+        if not isinstance(_var, (_expr.Var, _expr.IntImm)):
             store_ori(_var.a)
             store_ori(_var.b)
             return
-        if isinstance(_var, tvm.expr.Var):
+        if isinstance(_var, _expr.Var):
             if str(_var.name) in loop_var_dict:
                 original_shape.append(loop_var_dict[str(_var.name)])
             else:
                 original_shape.append(1)
             return
-        if isinstance(_var, tvm.expr.IntImm):
+        if isinstance(_var, _expr.IntImm):
             return
         raise RuntimeError("Backend Error: Received unexpected statement: "
                            + str(type(_var)))
 
     def interpret_statement(stmt):
-        if isinstance(stmt, tvm.expr.Load):
+        if isinstance(stmt, _expr.Load):
             store_ori(stmt.index)
             input_shape.append(original_shape[:])
             original_shape.clear()
             return
-        if isinstance(stmt, tvm.stmt.For):
+        if isinstance(stmt, _stmt.For):
             loop_var_dict[str(stmt.loop_var)] = int(stmt.extent)
             return
         raise RuntimeError("Backend Error: Received unexpected statement: "
                            + str(type(stmt)))
 
-    tvm.ir_pass.IRTransform(stmt_op, None, interpret_statement, ["For"])
-    tvm.ir_pass.IRTransform(stmt_op, None, interpret_statement, ["Load"])
+    ir_pass.IRTransform(stmt_op, None, interpret_statement, ["For"])
+    ir_pass.IRTransform(stmt_op, None, interpret_statement, ["Load"])

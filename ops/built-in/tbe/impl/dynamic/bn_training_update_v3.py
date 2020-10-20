@@ -120,10 +120,6 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     shape_x = list(x.shape)
 
     # runtime tiling: "NCHW" or "NC1HWC0" reduce [0, 2, 3]
-    # num = shape_x[0] * shape_x[2] * shape_x[3]
-    # num_rec = 1.0/num
-    # if num == 1: batch_var_scaler = 0.0
-    # else: batch_var_scaler = float(num)/(num - 1)
     num_rec = operation.var("num_rec", dtype="float32")
     batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
 

@@ -1,22 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-
 elewise compute
 """
-
 from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as product_params
 from te import tvm
@@ -277,6 +275,7 @@ def __vlog_calculate_by_taylor(data_x):
 
     return res
 
+
 @util.dtype_check_decorator
 def vlog(raw_tensor, priority_flag=0):
     """
@@ -414,6 +413,7 @@ def __vsqrt_calculate_by_newton(raw_tensor):
         res = vmuls(res, tvm.const(const_half, dtype))
         init_res = res
     return res
+
 
 @util.dtype_check_decorator
 def vsqrt(raw_tensor, priority_flag=0):
@@ -920,13 +920,13 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
 
     _check_multiple_elewise_op_shape(tensor_0, tensor_1, tensor_2)
     dtype_cond1 = tensor_0.dtype != tensor_1.dtype or \
-                  tensor_0.dtype != tensor_2.dtype or \
-                  tensor_2.dtype != tensor_1.dtype
+        tensor_0.dtype != tensor_2.dtype or \
+        tensor_2.dtype != tensor_1.dtype
     if dtype_cond1:
         dtype_cond2 = op_name != "elewise_multiple_mla" or \
-                      tensor_0.dtype != tensor_1.dtype or \
-                      tensor_0.dtype != "float16" or \
-                      tensor_2.dtype != "float32"
+            tensor_0.dtype != tensor_1.dtype or \
+            tensor_0.dtype != "float16" or \
+            tensor_2.dtype != "float32"
         if dtype_cond2:
             raise RuntimeError(
                 "dtype error, vmla not support mixed data type auto cast")
@@ -1042,6 +1042,7 @@ def vcmpsel_data_dtype_check(*args):
             raise RuntimeError("The input dtype \
                                must be the same to the each other!")
 
+
 # 'pylint: disable=too-many-branches, too-many-statements
 @util.dtype_check_decorator
 def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
@@ -1090,6 +1091,44 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     lhs_dtype = lhs.dtype
     util.dsl_check_support("vcmpsel", lhs_dtype)
 
+    def _get_cmpvs_lambda_func(operation, lhs, rhs):
+        if operation == 'lt':
+            lambda_func = lambda *indice: lhs(*indice) < rhs
+        elif operation == 'gt':
+            lambda_func = lambda *indice: lhs(*indice) > rhs
+        elif operation == 'le':
+            lambda_func = lambda *indice: lhs(*indice) <= rhs
+        elif operation == 'ge':
+            lambda_func = lambda *indice: lhs(*indice) >= rhs
+        elif operation == 'eq':
+            lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
+        elif operation == 'ne':
+            lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+        else:
+            raise RuntimeError("vcmp do not support the input op")
+        return lambda_func
+
+    def _get_cmpv_lambda_func(operation, lhs, rhs):
+        if operation == 'lt':
+            lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
+        elif operation == 'gt':
+            lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
+        elif operation == 'le':
+            lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
+        elif operation == 'ge':
+            lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
+        elif operation == 'eq':
+            lambda_func = lambda *indice: \
+                tvm.expr.EQ(lhs(*indice), rhs(*indice))
+        elif operation == 'ne':
+            lambda_func = lambda *indice: \
+                tvm.expr.NE(lhs(*indice), rhs(*indice))
+        else:
+            raise RuntimeError("vcmp do not support the input op")
+        return lambda_func
+
+    cmp_op = "elewise_binary_vcmpv_" + operation
+    sel_op = "elewise_multiple_sel"
     cmpsel_op = "elewise_binary_cmpsel_" + operation
 
     input_type_str = util.get_vcmpsel_input_type(rhs, slhs, srhs)
@@ -1100,31 +1139,58 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         slhs = util.get_tvm_scalar(slhs, lhs_dtype)
         srhs = util.get_tvm_scalar(srhs, lhs_dtype)
 
-        def _get_cmpsel_tsss_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs, slhs, srhs)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs, slhs, srhs)
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs, slhs, srhs)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs, slhs, srhs)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs, slhs, srhs)
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs, slhs, srhs)
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_tsss_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_tsss_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs, srhs)
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_tsss_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs, slhs, srhs)
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs, slhs, srhs)
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs, slhs, srhs)
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs, slhs, srhs)
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs, slhs, srhs)
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs, slhs, srhs)
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_tsss_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+        return _vcmpsel_tsss_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
 
     elif input_type_str == "TENSOR_SCALAR_SCALAR":
         vcmpsel_data_shape_check(lhs, rhs)
@@ -1132,31 +1198,60 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         slhs = util.get_tvm_scalar(slhs, lhs_dtype)
         srhs = util.get_tvm_scalar(srhs, lhs_dtype)
 
-        def _get_cmpsel_ttss_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs)
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs)
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs)
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_ttss_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_ttss_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs, srhs)
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_ttss_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs)
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs)
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs)
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs)
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs)
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs)
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_ttss_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+
+        return _vcmpsel_ttss_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
+
 
     elif input_type_str == "SCALAR_TENSOR_SCALAR":
         vcmpsel_data_shape_check(lhs, slhs)
@@ -1164,31 +1259,59 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         rhs = util.get_tvm_scalar(rhs, lhs.dtype)
         srhs = util.get_tvm_scalar(srhs, lhs.dtype)
 
-        def _get_cmpsel_tsts_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs)
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs)
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs)
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_tsts_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_tsts_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs(*indice), srhs)
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_tsts_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs)
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs)
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs)
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs)
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs)
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs)
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_tsts_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+        return _vcmpsel_tsts_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
+
 
     elif input_type_str == "SCALAR_SCALAR_TENSOR":
         vcmpsel_data_shape_check(lhs, srhs)
@@ -1196,188 +1319,315 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         rhs = util.get_tvm_scalar(rhs, lhs.dtype)
         slhs = util.get_tvm_scalar(slhs, lhs.dtype)
 
-        def _get_cmpsel_tsst_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs, slhs, srhs(*indice))
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs, slhs, srhs(*indice))
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs, slhs, srhs(*indice))
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs, slhs, srhs(*indice))
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs, slhs, srhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs, slhs, srhs(*indice))
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_tsst_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_tsst_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs, srhs(*indice))
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_tsst_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs, slhs, srhs(*indice))
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs, slhs, srhs(*indice))
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs, slhs, srhs(*indice))
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs, slhs, srhs(*indice))
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs, slhs, srhs(*indice))
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs, slhs, srhs(*indice))
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_tsst_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+        return _vcmpsel_tsst_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
 
     elif input_type_str == "TENSOR_TENSOR_SCALAR":
         vcmpsel_data_shape_check(lhs, rhs, slhs)
         vcmpsel_data_dtype_check(lhs, rhs, slhs)
         srhs = util.get_tvm_scalar(srhs, lhs.dtype)
 
-        def _get_cmpsel_ttts_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs(*indice),
-                               slhs(*indice), srhs)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs(*indice),
-                               slhs(*indice), srhs)
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs(*indice),
-                               slhs(*indice), srhs)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs(*indice),
-                               slhs(*indice), srhs)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs(*indice),
-                               slhs(*indice), srhs)
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs(*indice),
-                               slhs(*indice), srhs)
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_ttts_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_ttts_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs(*indice), srhs)
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_ttts_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs(*indice),
+                                slhs(*indice), srhs)
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs(*indice),
+                                slhs(*indice), srhs)
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs(*indice),
+                                slhs(*indice), srhs)
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs(*indice),
+                                slhs(*indice), srhs)
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs(*indice),
+                                slhs(*indice), srhs)
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs(*indice),
+                                slhs(*indice), srhs)
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_ttts_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+        return _vcmpsel_ttts_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
+
 
     elif input_type_str == "TENSOR_SCALAR_TENSOR":
         vcmpsel_data_shape_check(lhs, rhs, srhs)
         vcmpsel_data_dtype_check(lhs, rhs, srhs)
         slhs = util.get_tvm_scalar(slhs, lhs.dtype)
 
-        def _get_cmpsel_ttst_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs(*indice),
-                               slhs, srhs(*indice))
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs(*indice),
-                               slhs, srhs(*indice))
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs(*indice),
-                               slhs, srhs(*indice))
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs(*indice),
-                               slhs, srhs(*indice))
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs(*indice),
-                               slhs, srhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs(*indice),
-                               slhs, srhs(*indice))
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_ttst_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_ttst_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs, srhs(*indice))
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_ttst_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs(*indice),
+                                slhs, srhs(*indice))
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs(*indice),
+                                slhs, srhs(*indice))
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs(*indice),
+                                slhs, srhs(*indice))
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs(*indice),
+                                slhs, srhs(*indice))
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs(*indice),
+                                slhs, srhs(*indice))
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs(*indice),
+                                slhs, srhs(*indice))
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_ttst_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+        return _vcmpsel_ttst_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
+
 
     elif input_type_str == "SCALAR_TENSOR_TENSOR":
         vcmpsel_data_shape_check(lhs, slhs, srhs)
         vcmpsel_data_dtype_check(lhs, slhs, srhs)
         rhs = util.get_tvm_scalar(rhs, lhs.dtype)
 
-        def _get_cmpsel_tstt_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs,
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs,
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs,
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs,
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs,
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs,
-                               slhs(*indice), srhs(*indice))
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_tstt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_tstt_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs(*indice), srhs(*indice))
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
+
+                return tmp
+
+            def _get_cmpsel_tstt_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs,
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs,
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs,
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs,
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs,
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs,
+                                slhs(*indice), srhs(*indice))
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
+
+            lambda_func = _get_cmpsel_tstt_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
+            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+
+            return tmp
+        return _vcmpsel_tstt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
+
 
     else:
         vcmpsel_data_shape_check(lhs, rhs, slhs, srhs)
         vcmpsel_data_dtype_check(lhs, rhs, slhs, srhs)
 
-        def _get_cmpsel_tttt_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            else:
-                raise RuntimeError("vcmpsel do not support the input op")
-            return lambda_func
+        def _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                  lhs, rhs, operation, slhs, srhs):
+            if lhs.dtype == "float16" and not product_params().is_1951_version():
+                lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
+                name = "vcmpv_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(cmp_op):
+                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
 
-        lambda_func = _get_cmpsel_tttt_lambda_func(operation,
-                                                   lhs, rhs, slhs, srhs)
+                lambda_func_sel = lambda *indice: \
+                    tvm.select(condition(*indice), slhs(*indice), srhs(*indice))
+                name = "vsel_" + str(NAME_INDEX[0])
+                NAME_INDEX[0] += 1
+                with tvm.tag_scope(sel_op):
+                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
 
-    name = cmpsel_op.split("_")[-1] + "_" + str(NAME_INDEX[0])
-    NAME_INDEX[0] += 1
+                return tmp
 
-    cmpsel_op = cmpsel_op + "|" + operation
+            def _get_cmpsel_tttt_lambda_func(operation, lhs, rhs, slhs, srhs):
+                if operation == 'lt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) < rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'gt':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) > rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'le':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) <= rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'ge':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) >= rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'eq':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) == rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                elif operation == 'ne':
+                    lambda_func = lambda *indice: \
+                        tvm.select(lhs(*indice) != rhs(*indice),
+                                slhs(*indice), srhs(*indice))
+                else:
+                    raise RuntimeError("vcmpsel do not support the input op")
+                return lambda_func
 
-    with tvm.tag_scope(cmpsel_op):
-        tmp = tvm.compute(shape, lambda_func, name=name)
+            lambda_func = _get_cmpsel_tttt_lambda_func(operation,
+                                                    lhs, rhs, slhs, srhs)
 
-    return tmp
+            name = cmpsel_op.split("_")[-1] + "_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            cmpsel_op = cmpsel_op + "|" + operation
+            with tvm.tag_scope(cmpsel_op):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+            return tmp
+        return _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                     lhs, rhs, operation, slhs, srhs)
 
 
 def __vmod_cloud(lhs, rhs):

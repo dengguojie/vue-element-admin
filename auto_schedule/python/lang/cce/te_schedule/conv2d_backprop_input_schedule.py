@@ -1,14 +1,28 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
 CceConv2dBackpropInputOp
 """
-from te.platform import cce_params
-from te.platform import get_soc_spec
-from te.utils.error_manager import error_manager_util as err_man
 from te.lang.cce import DeconvParam
-from .conv2d_backprop_input_general_schedule import general_schedule
-from .conv2d_backprop_input_opti_schedule import opti_schedule
+from te.lang.cce.te_schedule.conv2d_backprop_input_general_schedule import \
+    general_schedule
+from te.lang.cce.te_schedule.conv2d_backprop_input_opti_schedule import \
+    opti_schedule
+from te.platform import cce_conf
+from te.platform import cce_params
+from te.utils.error_manager import error_manager_util
 
 
 class CceConv2dBackpropInputOp():  # pylint: disable=R0903
@@ -27,6 +41,7 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
     -------
     CceConv2dBackpropInputOp_instance : instance of CceConv2dBackpropInputOp
     """
+
     def __init__(self, scope, need_tensorize=True, need_pragma=True):
         self._scope = scope
         self._need_tensorize = need_tensorize
@@ -34,7 +49,7 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
         self._res_tensor = None
         self._spec_node_list = None
 
-    def schedule(self, res, spec_node_list, sch_list,
+    def schedule(self, res, spec_node_list, sch_list,  # pylint: disable=R0913
                  tiling_case=None, var_range=None):
         """
         auto_schedule for cce AI-CORE.
@@ -65,11 +80,11 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
             bl1_size = DeconvParam.bl1_size
             if res.dtype == "int8":
                 bl1_size *= 2
-                if al1_size + bl1_size > get_soc_spec("L1_SIZE"):
+                if al1_size + bl1_size > cce_conf.get_soc_spec("L1_SIZE"):
                     dict_args = dict()
                     dict_args["errCode"] = "E60026"
                     raise RuntimeError(dict_args,
-                                       err_man.get_error_message(dict_args))
+                                       error_manager_util.get_error_message(dict_args))
 
         _check_l1_buffer()
         schedule = sch_list[0]

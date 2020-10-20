@@ -1,24 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-depth_to_space
+pass_through_forward
 """
 # pylint: disable=too-many-lines,import-error
-from functools import reduce as functools_reduce
+import functools
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
 
 # byte of type int8, uint8
 SIZE_ONE_BYTE = 1
@@ -61,7 +62,7 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     calculate the loop number on each core
     """
 
-    max_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    max_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
     core_loop.set_as(total_core_loop_num//core_number)
@@ -160,7 +161,7 @@ class DepthToSpace:
                              self.output_width, self.output_depth)
 
         # the number of data that UB can put in
-        total_ub_memory = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        total_ub_memory = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.ub_memory = total_ub_memory//num_bit - self.num_data
         # minimum granularity of data_move
         self.min_size = self.block_size*self.output_depth
@@ -205,11 +206,11 @@ class DepthToSpace:
         calculate the tiling axis
         """
         for i, _ in enumerate(self.tiling_shape):
-            buf_size_needed = functools_reduce(lambda x1, x2: x1*x2,
+            buf_size_needed = functools.reduce(lambda x1, x2: x1*x2,
                                                self.tiling_shape[i:])
             is_buffer_large_enough = self.ub_memory//buf_size_needed
             if is_buffer_large_enough > 0:
-                batch_size = functools_reduce(lambda x1, x2: x1*x2,
+                batch_size = functools.reduce(lambda x1, x2: x1*x2,
                                               self.input_shape[1:])
                 if i == 0 and batch_size >= self.num_data:
                     return 1
@@ -226,18 +227,18 @@ class DepthToSpace:
         # to the product of first 4 axis of tiling_shape and number of times
         # to divide the block_size*output_depth
 
-        max_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        max_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         if tiling_index == 5:
             loop_memory = self.ub_memory - self.ub_memory % self.num_data
             loop_times = (self.num_data_one_move+loop_memory-1)//loop_memory
-            loop_number = functools_reduce(lambda x1, x2: x1*x2,
+            loop_number = functools.reduce(lambda x1, x2: x1*x2,
                                            self.tiling_shape[:4])*loop_times
         # set block_num according to the product of first tiling_index axis
         # of tiling_shape
         elif tiling_index == 0:
             return 1
         else:
-            loop_number = functools_reduce(lambda x1, x2: x1*x2,
+            loop_number = functools.reduce(lambda x1, x2: x1*x2,
                                            self.tiling_shape[:tiling_index])
 
         return loop_number if loop_number < max_core_num else max_core_num

@@ -1,28 +1,27 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-fused_mul_addn_l2loss
+fused_mul_addn_l2_loss
 """
-
-import te.lang.cce
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
-@fusion_manager.register("fused_mul_addn_l2loss")
+@tbe_platform.fusion_manager.fusion_manager.register("fused_mul_addn_l2loss")
 def fused_mul_addn_l2loss_compute(weight, const_input, weight_grad):
     """
     calculating data
@@ -44,30 +43,24 @@ def fused_mul_addn_l2loss_compute(weight, const_input, weight_grad):
     """
 
     # cal vmul and addn
-    const_input = te.lang.cce.broadcast(const_input, weight.shape)
-    data_mul = te.lang.cce.vmul(weight, const_input)
-    data_addn = te.lang.cce.vadd(data_mul, weight_grad)
+    const_input = tbe.broadcast(const_input, weight.shape)
+    data_mul = tbe.vmul(weight, const_input)
+    data_addn = tbe.vadd(data_mul, weight_grad)
 
     axis = [i for i in range(len(weight.shape))]
     # cal l2 loss
     coeff_sqrt = tvm.const(1.0 / (2**(0.5)), dtype=weight.dtype)
-    l2_loss_vmuls = te.lang.cce.vmuls(weight, coeff_sqrt)
-    l2_loss_sqr = te.lang.cce.vmul(l2_loss_vmuls, l2_loss_vmuls)
-    l2_loss = te.lang.cce.sum(l2_loss_sqr, axis)
+    l2_loss_vmuls = tbe.vmuls(weight, coeff_sqrt)
+    l2_loss_sqr = tbe.vmul(l2_loss_vmuls, l2_loss_vmuls)
+    l2_loss = tbe.sum(l2_loss_sqr, axis)
 
     return data_addn, l2_loss
 
 
 # pylint: disable=too-many-locals,too-many-arguments,unused-argument
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.KERNEL_NAME)
-def fused_mul_addn_l2loss(input_x,
-                          input_y,
-                          input_z,
-                          output_x,
-                          output_y,
-                          kernel_name="fused_mul_addn_l2loss"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_name="fused_mul_addn_l2loss"):
     """
     calculating data
 
@@ -103,55 +96,39 @@ def fused_mul_addn_l2loss(input_x,
 
     check_list = ("float16", "float32")
     # check input x attr
-    op_utils.check_shape(shape_x, param_name="input_x")
-    op_utils.check_dtype(dtype_x, check_list, param_name="input_x")
+    para_check.check_shape(shape_x, param_name="input_x")
+    para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     # check input y attr
-    op_utils.check_shape(shape_y, param_name="input_y")
-    op_utils.check_dtype(dtype_y, check_list, param_name="input_y")
+    para_check.check_shape(shape_y, param_name="input_y")
+    para_check.check_dtype(dtype_y, check_list, param_name="input_y")
     # check input z attr
-    op_utils.check_shape(shape_z, param_name="input_z")
-    op_utils.check_dtype(dtype_z, check_list, param_name="input_z")
+    para_check.check_shape(shape_z, param_name="input_z")
+    para_check.check_dtype(dtype_z, check_list, param_name="input_z")
 
     if dtype_x != dtype_y or dtype_x != dtype_z or dtype_y != dtype_z:
         raise RuntimeError(" Three input dtype must keep the same")
 
     if dtype_x == "float32":
-        if not tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul",
-                                                       "float32"):
-            raise RuntimeError(
-                "Input dtype only support float16 while input dtype is float32"
-            )
+        if not tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
 
-        if not tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
-                                                       "float32"):
-            raise RuntimeError(
-                "Input dtype only support float16 while input dtype is float32"
-            )
+        if not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
+            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
 
-        if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
-                                                       "float32"):
-            raise RuntimeError(
-                "Input dtype only support float16 while input dtype is float32"
-            )
+        if not tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
 
-        if not tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd",
-                                                       "float32"):
-            raise RuntimeError(
-                "Input dtype only support float16 while input dtype is float32"
-            )
+        if not tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
 
     weight = tvm.placeholder(shape_x, name="weight", dtype=dtype_x)
     weight_grad = tvm.placeholder(shape_y, name="weight_grad", dtype=dtype_y)
     const_input = tvm.placeholder(shape_z, name="const_input", dtype=dtype_z)
 
-    res1, res2 = fused_mul_addn_l2loss_compute(weight, const_input,
-                                               weight_grad)
+    res1, res2 = fused_mul_addn_l2loss_compute(weight, const_input, weight_grad)
     res_list = [res1, res2]
     with tvm.target.cce():
-        sch = generic.auto_schedule(res_list)
-    config = {
-        "name": kernel_name,
-        "tensor_list": [weight, weight_grad, const_input] + res_list
-    }
+        sch = tbe.auto_schedule(res_list)
+    config = {"name": kernel_name, "tensor_list": [weight, weight_grad, const_input] + res_list}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

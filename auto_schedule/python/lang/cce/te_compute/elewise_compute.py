@@ -1,27 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-# pylint: disable=too-many-lines, import-error
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-
 elewise compute
 """
 from decorator import decorator
-from te import platform as cce
 from te import tvm
 from te.platform import intrinsic_check_support
-from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
 
 from .cast_compute import _cast
@@ -301,6 +297,7 @@ def vmins(raw_tensor, scalar):
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_VS_min',
                                args=[scalar])
 
+
 def __vlog_calculate_by_taylor(data_x):
     """
     calculate ln(raw_tensor), use taylor expansion to calculate log
@@ -414,7 +411,7 @@ def __vlog_calculate_by_taylor(data_x):
         data_sel = vsel(index_2, data_vmuls, data_sel)
         data_sel = cast_to(data_sel, dtype)
 
-        # phase3: Taylor
+        # phase3: taylor expands
         taylor = _taylor_compute(data_sel)
 
         # phase4:return back to original data
@@ -553,7 +550,7 @@ def _check_multi_compute_pattern(pattern, *tensors):
             for idx, tag in enumerate(pat):
                 try:
                     tensor_tag = tensors[idx].op.tag
-                except:
+                except Exception:       # 'pylint: disable=broad-except
                     tensor_tag = "unknown"
                 if tag not in tensor_tag:
                     return False
@@ -565,7 +562,7 @@ def _check_multi_compute_pattern(pattern, *tensors):
                 return False
             try:
                 tensor_tag = tensors[0].op.tag
-            except:
+            except Exception:       # 'pylint: disable=broad-except
                 tensor_tag = "unknown"
             if pat not in tensor_tag:
                 return False
@@ -591,15 +588,15 @@ def vrelu(raw_tensor):
     -------
     wrapped_tensor : vrelu(raw_tensor)
     """
-    is_current_chip_support_vaddrelu = intrinsic_check_support("Intrinsic_vaddrelu")
+    _is_current_chip_support_vaddrelu = intrinsic_check_support("Intrinsic_vaddrelu")
     vaddrelu_pattern = _check_multi_compute_pattern(("elewise_binary_add",), raw_tensor)
-    if is_current_chip_support_vaddrelu and vaddrelu_pattern:
+    if _is_current_chip_support_vaddrelu and vaddrelu_pattern:
         input_tensor = tuple(raw_tensor.op.input_tensors)
         return vaddrelu(*input_tensor)
 
-    is_current_chip_support_vsubrelu = intrinsic_check_support("Intrinsic_vsubrelu")
+    _is_current_chip_support_vsubrelu = intrinsic_check_support("Intrinsic_vsubrelu")
     vsubrelu_pattern = _check_multi_compute_pattern(("elewise_binary_sub",), raw_tensor)
-    if is_current_chip_support_vsubrelu and vsubrelu_pattern:
+    if _is_current_chip_support_vsubrelu and vsubrelu_pattern:
         input_tensor = tuple(raw_tensor.op.input_tensors)
         return vsubrelu(*input_tensor)
 
@@ -802,7 +799,8 @@ def check_elewise_single_shape(input_tensor):
                                must be a positive integer")
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-# pylint: cell-var-from-loop
+
+
 def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     """
     factory method of single elewise operations
@@ -955,6 +953,7 @@ def vdiv(lhs, rhs):
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_div")
 
+
 def __vmod_small_hisi(lhs, rhs):
     from .cast_compute import floor
     # small hisi
@@ -981,6 +980,7 @@ def __vmod_cloud(lhs, rhs):
     res = vsub(lhs, res_mul)
 
     return _cast(res, dtype)
+
 
 # pylint: disable=too-many-locals
 def __vmod_mini(lhs, rhs):
@@ -1086,7 +1086,7 @@ def vadd(lhs, rhs):
 
     def is_conv_oper(tensor):
         if hasattr(tensor.op, "reduce_axis") and len(tensor.op.reduce_axis) == 2 and \
-                hasattr(tensor.op, "tag")  and "conv" in tensor.op.tag:
+                hasattr(tensor.op, "tag") and "conv" in tensor.op.tag:
             return True
         if tensor.op.input_tensors:
             for input_tensor in tensor.op.input_tensors:
@@ -1203,6 +1203,7 @@ def vand(lhs, rhs):
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_and")
 
+
 @auto_cast_of_elewise
 def vaxpy(lhs, rhs, scalar):
     """
@@ -1223,6 +1224,7 @@ def vaxpy(lhs, rhs, scalar):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_scalar_axpy",
                                args=[scalar])
 
+
 def _vcmp_supported_types(mode):
     supported_types = None
     # the get_cmpmask need 16b aligned, so if is float32, should cast to float16
@@ -1231,6 +1233,7 @@ def _vcmp_supported_types(mode):
         supported_types = ['float16']
 
     return supported_types
+
 
 # pylint: disable=too-many-branches, too-many-statements
 def vcmp(lhs, rhs, operation='lt', mode='bool'):
@@ -1482,7 +1485,6 @@ def vsubrelu(lhs, rhs):
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-# pylint: consider-using-in
 def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     """
     factory method of binary elewise operations
@@ -1662,6 +1664,7 @@ def vmla(tensor_0, tensor_1, tensor_2):
     return __multiple_elewise_op(tensor_0, tensor_1, tensor_2,
                                  "elewise_multiple_mla")
 
+
 @auto_cast_of_elewise
 def vmadd(tensor_0, tensor_1, tensor_2):
     """
@@ -1680,6 +1683,7 @@ def vmadd(tensor_0, tensor_1, tensor_2):
 
     return __multiple_elewise_op(tensor_0, tensor_1, tensor_2,
                                  "elewise_multiple_madd")
+
 
 @auto_cast_of_elewise
 def vmaddrelu(tensor_0, tensor_1, tensor_2):
@@ -1723,8 +1727,8 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
     shape = tensor_0.shape
     if op_name == "elewise_multiple_mla":
         ztype = tensor_2.dtype
-        lambda_func = lambda *indice: tvm.expr.Cast(ztype, \
-            tensor_0(*indice) * tensor_1(*indice)) + tensor_2(*indice)
+        lambda_func = lambda *indice: tvm.expr.Cast(ztype,
+                                                    tensor_0(*indice) * tensor_1(*indice)) + tensor_2(*indice)
     elif op_name == "elewise_multiple_madd":
         lambda_func = lambda *indice: tensor_0(*indice) * tensor_2(*indice) + tensor_1(*indice)
     elif op_name == "elewise_multiple_maddrelu":
@@ -1770,8 +1774,8 @@ def check_multiple_elewise_op_shape(tensor_0, tensor_1, tensor_2):
 
     for i in range(len(tensor_0.shape)):
         if tensor_0.shape[i].value != tensor_1.shape[i].value or \
-                        tensor_0.shape[i].value != tensor_2.shape[i].value or \
-                        tensor_1.shape[i].value != tensor_2.shape[i].value:
+                tensor_0.shape[i].value != tensor_2.shape[i].value or \
+                tensor_1.shape[i].value != tensor_2.shape[i].value:
             raise RuntimeError("The input shape \
                                must be equal to the each other")
 
@@ -1796,8 +1800,7 @@ def vsel_bit_shape_check(condition, input_tensor):
     for i in range(len(condition.shape)):
         if i == len(condition.shape) - 1:
             if (input_tensor.shape[i].value % 8 != 0) \
-                    or (input_tensor.shape[i].value // 8
-                            != condition.shape[i].value):
+                    or (input_tensor.shape[i].value // 8 != condition.shape[i].value):
                 raise RuntimeError(
                     "the sel tensor's last dim must be multiple of 8 \
                     and div the last dim of condition shape is 8")
@@ -1810,6 +1813,7 @@ def vsel_bit_shape_check(condition, input_tensor):
                 or isinstance(input_tensor.shape[i].value, int) is False:
             raise RuntimeError("The input shape value \
                                must be a positive integer")
+
 
 # pylint: disable=too-many-branches, too-many-statements
 def vsel(condition, lhs, rhs):
@@ -1934,7 +1938,7 @@ def vsel(condition, lhs, rhs):
 
             def _compute(*indice):
                 res_index = get_indice(indice)
-                return tvm.select(condition(*res_index).astype('bool'), \
+                return tvm.select(condition(*res_index).astype('bool'),
                                   lhs(*indice), rhs)
         else:
             # if lhs,rhs are all scalar, only support float16
@@ -1949,6 +1953,7 @@ def vsel(condition, lhs, rhs):
             lhs = get_tvm_scalar(lhs, "float16")
             rhs = get_tvm_scalar(rhs, "float16")
             check_is_equal(lhs, rhs)
+
             def _compute(*indice):
                 res_index = get_indice(indice)
                 return tvm.select(condition(*res_index).astype('bool'), lhs, rhs)
@@ -2006,7 +2011,7 @@ def vcmpsel_data_dtype_check(*args):
             raise RuntimeError("The input dtype \
                                must be the same to the each other!")
 
-# pylint: disable=too-many-branches, too-many-statements
+
 def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     """
     calculate elewise compare
@@ -2534,70 +2539,69 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_tstt_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    else:
-        vcmpsel_data_shape_check(lhs, rhs, slhs, srhs)
-        vcmpsel_data_dtype_check(lhs, rhs, slhs, srhs)
-        lhs = auto_cast_tensor(lhs, "vsel")
-        rhs = auto_cast_tensor(rhs, "vsel")
-        slhs = auto_cast_tensor(slhs, "vsel")
-        srhs = auto_cast_tensor(srhs, "vsel")
+    vcmpsel_data_shape_check(lhs, rhs, slhs, srhs)
+    vcmpsel_data_dtype_check(lhs, rhs, slhs, srhs)
+    lhs = auto_cast_tensor(lhs, "vsel")
+    rhs = auto_cast_tensor(rhs, "vsel")
+    slhs = auto_cast_tensor(slhs, "vsel")
+    srhs = auto_cast_tensor(srhs, "vsel")
 
-        def _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
-                                  lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16":
-                lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
-                name = "vcmpv_" + str(NAME_INDEX[0])
-                NAME_INDEX[0] += 1
-                with tvm.tag_scope(cmp_op):
-                    condition = tvm.compute(shape, lambda_func_cmp, name=name)
-
-                lambda_func_sel = lambda *indice: \
-                    tvm.select(condition(*indice), slhs(*indice), srhs(*indice))
-                name = "vsel_" + str(NAME_INDEX[0])
-                NAME_INDEX[0] += 1
-                with tvm.tag_scope(sel_op):
-                    tmp = tvm.compute(shape, lambda_func_sel, name=name)
-
-                return tmp
-
-            def _get_cmpsel_tttt_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs(*indice),
-                                   slhs(*indice), srhs(*indice))
-                else:
-                    raise RuntimeError("vcmpsel do not support the input op")
-                return lambda_func
-
-            lambda_func = _get_cmpsel_tttt_lambda_func(operation,
-                                                       lhs, rhs, slhs, srhs)
-            name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+    def _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                              lhs, rhs, operation, slhs, srhs):
+        if lhs.dtype == "float16":
+            lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
+            name = "vcmpv_" + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
-            cmpsel_op = cmpsel_op + "|" + operation
-            with tvm.tag_scope(cmpsel_op):
-                tmp = tvm.compute(shape, lambda_func, name=name)
+            with tvm.tag_scope(cmp_op):
+                condition = tvm.compute(shape, lambda_func_cmp, name=name)
+
+            lambda_func_sel = lambda *indice: \
+                tvm.select(condition(*indice), slhs(*indice), srhs(*indice))
+            name = "vsel_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            with tvm.tag_scope(sel_op):
+                tmp = tvm.compute(shape, lambda_func_sel, name=name)
 
             return tmp
 
-        return _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
-                                     lhs, rhs, operation, slhs, srhs)
+        def _get_cmpsel_tttt_lambda_func(operation, lhs, rhs, slhs, srhs):
+            if operation == 'lt':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) < rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            elif operation == 'gt':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) > rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            elif operation == 'le':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) <= rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            elif operation == 'ge':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) >= rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            elif operation == 'eq':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) == rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            elif operation == 'ne':
+                lambda_func = lambda *indice: \
+                    tvm.select(lhs(*indice) != rhs(*indice),
+                               slhs(*indice), srhs(*indice))
+            else:
+                raise RuntimeError("vcmpsel do not support the input op")
+            return lambda_func
+
+        lambda_func = _get_cmpsel_tttt_lambda_func(operation,
+                                                   lhs, rhs, slhs, srhs)
+        name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
+        NAME_INDEX[0] += 1
+        cmpsel_op = cmpsel_op + "|" + operation
+        with tvm.tag_scope(cmpsel_op):
+            tmp = tvm.compute(shape, lambda_func, name=name)
+
+        return tmp
+
+    return _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
+                                 lhs, rhs, operation, slhs, srhs)

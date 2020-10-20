@@ -1,31 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_update
 """
 # pylint: import-error, unused-import, ungrouped-imports
 from __future__ import absolute_import
 from __future__ import division
-from functools import reduce
+import functools
 from math import sqrt
+
 import te.lang.cce
 from te import tvm
 from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as pver
 import te.platform.cce_params as cce
-from te.platform.fusion_manager import fusion_manager
 from .util import get_nearest_factor
 from .util import DTYPE_WIDTH_MAP
 from te.platform import log
@@ -34,6 +34,10 @@ MAX_SHAPE_NUM = 10000000
 BN_TYPE = 0
 IN_TYPE = 1
 GN_TYPE = 2
+
+FORMAT_NCHW = "NCHW"
+FORMAT_NHWC = "NHWC"
+
 
 def get_max_ub_count(dtype, op_type):
     """
@@ -49,8 +53,8 @@ def get_max_ub_count(dtype, op_type):
         total_width_other = 7
         total_width_cloud = 3
     elif op_type == IN_TYPE:
-        total_width_other = 9
-        total_width_cloud = 7
+        total_width_other = 7
+        total_width_cloud = 3
     elif op_type == GN_TYPE:
         total_width_other = 9
         total_width_cloud = 7
@@ -107,7 +111,7 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop,
         split_size = block_tiling_inner_loop
 
     if split_axis == block_tiling_axis \
-                     and split_size > block_tiling_inner_loop:
+            and split_size > block_tiling_inner_loop:
         split_size = block_tiling_inner_loop
 
     ub_split_inner = split_size
@@ -246,7 +250,7 @@ def _need_double_buffer_for_param_buffer_reuse(
     return one_core_loop_number > 1
 
 
-def bn_update_schedule_model_parallel( # pylint: disable=R0912, R0913, R0914, R0915
+def bn_update_schedule_model_parallel(  # pylint: disable=R0912, R0913, R0914, R0915
         shape_x, sch_list, phony_out,
         phony_out_ub, max_ub_count, x_input,
         input_tensor_buffer_tensor_map,
@@ -354,7 +358,7 @@ def bn_update_schedule_model_parallel( # pylint: disable=R0912, R0913, R0914, R0
         if i not in phony_tensor_list:
             if buffer_tensor in input_broadcast_tensor_buffers:
                 shape = i.shape
-                shape_size = reduce(lambda i, j: i * j, shape)
+                shape_size = functools.reduce(lambda i, j: i * j, shape)
                 # pylint: disable=too-many-boolean-expressions
                 if shape_size.value // (batch*c1_size*c0_size) == 1:
                     insn = _get_emit_insn_map(i)
@@ -456,7 +460,7 @@ def _check_is_c1_match(c1_size, core_num):
     check whether c1 is match
     """
     return c1_size < core_num or \
-           (c1_size > core_num and c1_size % core_num != 0)
+        (c1_size > core_num and c1_size % core_num != 0)
 
 
 def _is_shape_contain_prime(shape):
@@ -480,7 +484,7 @@ def _is_shape_contain_prime(shape):
 
 
 def _get_update_condition(cut_mode, block, core_num,
-                          shape,# pylint: disable=too-many-statements
+                          shape,  # pylint: disable=too-many-statements
                           block_split_axis,
                           block_split_size):
     """
@@ -494,7 +498,8 @@ def _get_update_condition(cut_mode, block, core_num,
     if cut_mode == "cut_batch":
         condition.append(block < 1)
     elif cut_mode == "cut_batch_c1":
-        condition.append(block < core_num // batch)
+        if c1_size < core_num:
+            condition.append(block < core_num // batch)
     elif cut_mode == "cut_batch_c1_hw":
         if c1_size == 1:
             condition.append(block < 1)
@@ -545,15 +550,15 @@ def _is_need_do_broadcast(input_tensors):
 
 
 def _gn_update_sch_do_cache(
-    sch, input_tensor_dst_tensor_map,
-    mid_out_tensor_list,
-    mid_tensor_dst_tensor_map,
-    input_broadcast_tensors,
-    broadcast_not_last_axis_tensors,
-    input_tensor_buffer_tensor_map,
-    mid_out_tensor_read_buffer_map,
-    mid_tensor_buffer_tensor_map,
-    input_broadcast_tensor_buffers):
+        sch, input_tensor_dst_tensor_map,
+        mid_out_tensor_list,
+        mid_tensor_dst_tensor_map,
+        input_broadcast_tensors,
+        broadcast_not_last_axis_tensors,
+        input_tensor_buffer_tensor_map,
+        mid_out_tensor_read_buffer_map,
+        mid_tensor_buffer_tensor_map,
+        input_broadcast_tensor_buffers):
     """
     gn_update schedule do cache_read/write and compute_inline
     """
@@ -601,17 +606,31 @@ def _check_gn_update_params(res, input_tensors):
                             should be 3 or 5 or 7.")
 
 
-def _gn_update_sch_do_compute_at(
-    sch, res_out, res_out_ub, mean_compute_at_axis, res_ub_outer,
-    input_tensor_buffer_tensor_map, shape_x_tensor_list,
-    mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-    mid_out_tensor_read_buffer_map, is_block_conflict):
-    """
-    gn_update schedule do compute_at
-    """
-    if is_block_conflict:
-        mean_compute_at_axis, _ = sch[res_out].split(
-            mean_compute_at_axis, factor=32)
+def _gn_update_block_more_than_max_ub_do_compute_at(
+        sch, res_out, res_ub_outer, input_tensor_buffer_tensor_map,
+        mid_tensor_buffer_tensor_map, mid_out_tensor_list,
+        mid_out_tensor_read_buffer_map):
+
+    for i in input_tensor_buffer_tensor_map:
+        input_tensor_buffer = input_tensor_buffer_tensor_map[i]
+        sch[input_tensor_buffer].compute_at(sch[res_out], res_ub_outer)
+
+    for i in mid_tensor_buffer_tensor_map:
+        mid_tensor_buffer = mid_tensor_buffer_tensor_map[i]
+        sch[mid_tensor_buffer].compute_at(sch[res_out], res_ub_outer)
+
+    for i in mid_out_tensor_list:
+        sch[i].compute_at(sch[res_out], res_ub_outer)
+    for i in mid_out_tensor_read_buffer_map:
+        mid_out_buffer = mid_out_tensor_read_buffer_map[i]
+        sch[mid_out_buffer].compute_at(sch[res_out], res_ub_outer)
+
+
+def _gn_update_sch_norm_do_compute_at(
+        sch, res_out, mean_compute_at_axis, res_ub_outer,
+        input_tensor_buffer_tensor_map, shape_x_tensor_list,
+        mid_tensor_buffer_tensor_map, mid_out_tensor_list,
+        mid_out_tensor_read_buffer_map):
 
     for i in input_tensor_buffer_tensor_map:
         input_tensor_buffer = input_tensor_buffer_tensor_map[i]
@@ -642,82 +661,38 @@ def _gn_update_sch_do_compute_at(
         else:
             sch[mid_out_buffer].compute_at(sch[res_out], res_ub_outer)
 
+
+def _gn_update_sch_do_compute_at(
+        sch, res_out, res_out_ub, mean_compute_at_axis, res_ub_outer,
+        input_tensor_buffer_tensor_map, shape_x_tensor_list,
+        mid_tensor_buffer_tensor_map, mid_out_tensor_list,
+        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub):
+    """
+    gn_update schedule do compute_at
+    """
+    if one_block_more_than_max_ub is True:
+        _gn_update_block_more_than_max_ub_do_compute_at(
+            sch, res_out, res_ub_outer,
+            input_tensor_buffer_tensor_map,
+            mid_tensor_buffer_tensor_map, mid_out_tensor_list,
+            mid_out_tensor_read_buffer_map)
+    else:
+        _gn_update_sch_norm_do_compute_at(
+            sch, res_out, mean_compute_at_axis, res_ub_outer,
+            input_tensor_buffer_tensor_map, shape_x_tensor_list,
+            mid_tensor_buffer_tensor_map, mid_out_tensor_list,
+            mid_out_tensor_read_buffer_map)
+
     sch[res_out_ub].compute_at(sch[res_out], res_ub_outer)
 
-    return mean_compute_at_axis
 
-
-def _gn_update_schedule_do_tiling(
-    sch, shape_x, sum_input, dtype, res_out):
-    """
-    gn_update schedule do tiling
-    """
-    max_ub_count = get_max_ub_count(dtype, GN_TYPE)
-    core_num = cceconf.get_soc_spec("CORE_NUM")
-    batch = shape_x[0]
-    group_nums = shape_x[1]
-    block_split_axis = 0
-
-    shape = te.lang.cce.util.shape_to_list(sum_input.shape)
-
-    if batch >= core_num:
-        res_block_outer, res_block_inner = sch[res_out].split(
-            res_out.op.axis[0], nparts=core_num)
-        block_split_inner_size = shape_x[block_split_axis] // core_num
-        fused_axis = res_block_outer
-        one_block_size = (shape[0] // core_num) * shape[1] * shape[2] * \
-                         shape[3] * shape[4]
-    elif group_nums >= core_num:
-        res_block_outer, res_block_inner = sch[res_out].split(
-            res_out.op.axis[1], nparts=core_num)
-        block_split_axis = 1
-        block_split_inner_size = shape_x[block_split_axis] // core_num
-        fused_axis = res_block_outer
-
-        reordered_axis_list = [res_block_outer,
-                               res_out.op.axis[0],
-                               res_block_inner,
-                               res_out.op.axis[2],
-                               res_out.op.axis[3],
-                               res_out.op.axis[4]]
-        sch[res_out].reorder(*reordered_axis_list)
-        one_block_size = shape[1] // core_num * shape[2] * shape[3] * shape[4]
-    elif batch*group_nums >= core_num:
-        block_split_size = batch * shape_x[1] // core_num
-        res_block_outer, res_block_inner = \
-            sch[res_out].split(res_out.op.axis[1],
-                               factor=block_split_size)
-        fused_axis = sch[res_out].fuse(res_block_outer,
-                                       res_out.op.axis[0])
-        block_split_axis = 1
-        block_split_inner_size = block_split_size
-        one_block_size = shape[1] // core_num * shape[2] * shape[3] * shape[4]
-    else:
-        block_split_axis, block_split_size = \
-            _find_split_axis(shape_x, 0, 3, core_num)
-        block_split_inner_size = \
-            shape_x[block_split_axis] // block_split_size
-        res_block_outer, res_block_inner = \
-            sch[res_out].split(res_out.op.axis[block_split_axis],
-                               nparts=block_split_size)
-
-        need_fuse_list = [res_block_outer]
-        one_block_size = shape[block_split_axis] // core_num
-        for i in range(block_split_axis + 1, 5, 1):
-            one_block_size *= shape[i]
-        for i in range(block_split_axis - 1, -1, -1):
-            need_fuse_list.append(res_out.op.axis[i])
-        fused_axis = need_fuse_list[0]
-        for i in range(1, len(need_fuse_list)):
-            fused_axis = sch[res_out].fuse(fused_axis, need_fuse_list[i])
-
-    is_block_conflict = (one_block_size < 8)
-
-    ub_split_axis, ub_split_inner = get_ub_tiling(shape_x, block_split_axis,
-                                                  block_split_inner_size,
-                                                  max_ub_count)
-
+def _gn_update_ub_do_tiling(res_out, ub_split_inner, ub_split_axis,
+                            block_split_axis, block_split_inner_size,
+                            res_block_inner, max_ub_count, one_block_size,
+                            group_nums, sch, shape_x):
+    one_block_more_than_max_ub = False
     split_factor = ub_split_inner
+    is_change_split_axis = False
     if ub_split_axis == block_split_axis:
         if block_split_inner_size % split_factor != 0:
             while block_split_inner_size % split_factor != 0:
@@ -727,10 +702,16 @@ def _gn_update_schedule_do_tiling(
         if is_need_split_next:
             res_ub_outer, res_ub_inner = \
                 sch[res_out].split(res_out.op.axis[2], factor=shape_x[2])
+            is_change_split_axis = True
         elif ub_split_axis == 0:
-            split_factor = group_nums
-            res_ub_outer, res_ub_inner = \
-                sch[res_out].split(res_out.op.axis[1], factor=split_factor)
+            if one_block_size > max_ub_count:
+                res_ub_outer, res_ub_inner = \
+                    sch[res_out].split(res_block_inner, factor=split_factor)
+                one_block_more_than_max_ub = True
+            else:
+                split_factor = group_nums
+                res_ub_outer, res_ub_inner = \
+                    sch[res_out].split(res_out.op.axis[1], factor=split_factor)
         else:
             res_ub_outer, res_ub_inner = \
                 sch[res_out].split(res_block_inner, factor=split_factor)
@@ -738,19 +719,433 @@ def _gn_update_schedule_do_tiling(
         res_ub_outer, res_ub_inner = \
             sch[res_out].split(res_out.op.axis[ub_split_axis],
                                factor=split_factor)
+    return one_block_more_than_max_ub, res_ub_outer,\
+           res_ub_inner, is_change_split_axis
 
-    need_db = _in_update_need_double_buffer(shape_x, block_split_axis,
-                                            block_split_inner_size,
-                                            ub_split_axis,
-                                            ub_split_inner)
 
-    return fused_axis, res_ub_outer, res_ub_inner, need_db, is_block_conflict
+def _get_gn_update_group_nums(shape_x, shape_sum):
+    """
+    get gn_update group_nums
+    """
+    format_input = FORMAT_NCHW
+    if len(shape_x) == len(shape_sum):
+        if shape_x[1] == shape_sum[1] and shape_sum[3] == 1:
+            group_nums = shape_x[1]
+        elif shape_x[3] == shape_sum[3] and shape_sum[1] == 1:
+            group_nums = shape_x[3]
+            format_input = FORMAT_NHWC
+    else:
+        if shape_x[1] == shape_sum[1]:
+            group_nums = shape_x[1]
+        elif shape_x[3] == shape_sum[1]:
+            group_nums = shape_x[3]
+            format_input = FORMAT_NHWC
+
+    return group_nums, format_input
+
+
+def _check_is_block_conflict(block_axis, block_factor,
+                             ub_axis, ub_factor, group_nums,
+                             format_input, dtype):
+    def _check_block_axis_zero():
+        if ub_axis == block_axis:
+            if ub_factor * group_nums * \
+                    DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                return True
+        elif ub_axis > block_axis:
+            if block_factor * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                return True
+        return False
+
+    is_block_conflict = False
+    if block_axis == 0:
+        is_block_conflict = _check_block_axis_zero()
+    else:
+        if format_input == FORMAT_NCHW:
+            if block_axis == 1:
+                if block_factor * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                    is_block_conflict = True
+            elif block_axis == 2:
+                is_block_conflict = True
+        else:
+            if block_axis in [1, 2]:
+                if group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                    is_block_conflict = True
+            elif block_axis == 3:
+                if block_factor * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                    is_block_conflict = True
+
+    return is_block_conflict
+
+
+def _recal_block_tiling(
+        shape_x, block_axis, block_factor, max_ub_count,
+        group_nums, format_input, dtype,
+        core_num):
+    """
+    when block conflict, modify block tiling
+    [N, G1, G0, H, W]  cut G0/H/W
+    [N, H, W, G1, G0]  cut H/W
+    """
+    n_size = shape_x[0]
+    one_core_data_threshold = 32
+
+    def _find_cut_mid_axis_tiling():
+        is_find_tiling = False
+        split_axis = None
+        block_inner = None
+        if format_input == FORMAT_NCHW:
+            temp_size = 1
+            h_axis_index = 2
+            for i in range(h_axis_index, len(shape_x)):
+                if temp_size * shape_x[i] < core_num:
+                    temp_size *= shape_x[i]
+                    continue
+
+                split_axis = i
+                tmp = (core_num + temp_size - 1) // temp_size
+                block_inner = (shape_x[i] + tmp - 1) // tmp
+
+                one_core_size = block_inner
+                for j in range(i + 1, len(shape_x), 1):
+                    one_core_size *= shape_x[j]
+
+                if one_core_size < one_core_data_threshold:
+                    one_core_size = one_core_size // block_inner
+                    if one_core_size * shape_x[i] > one_core_data_threshold:
+                        for k in range(block_inner + 1, shape_x[i] + 1):
+                            if one_core_size  * k < one_core_data_threshold:
+                                continue
+                            block_inner = k
+                            break
+                    else:
+                        return None, None, is_find_tiling
+
+                is_find_tiling = True
+                break
+        else:
+            h_axis_index = 1
+            num_group_axis_index = 3
+            temp_size = 1
+            for i in range(h_axis_index, num_group_axis_index):
+                if temp_size * shape_x[i] < core_num:
+                    temp_size *= shape_x[i]
+                    continue
+
+                split_axis = i
+                tmp = core_num // temp_size
+                block_inner = (shape_x[i] + tmp - 1) // tmp
+
+                one_core_size = block_inner
+                for j in range(i + 1, len(shape_x), 1):
+                    one_core_size *= shape_x[j]
+
+                if one_core_size < one_core_data_threshold:
+                    return None, None, False
+
+                is_find_tiling = True
+                break
+
+        return split_axis, block_inner, is_find_tiling
+
+    new_block_axis, new_block_factor, is_find = \
+        _find_cut_mid_axis_tiling()
+
+    if is_find:
+        return new_block_axis, new_block_factor, True
+
+    new_block_axis = block_axis
+    new_block_factor = block_factor
+
+    def _get_new_block_factor():
+        new_block_axis = 1
+        new_block_factor = group_nums
+        is_find_new_factor = False
+        for i in range(block_factor + 1, group_nums, 1):
+            if group_nums % i != 0:
+                continue
+            if i * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                continue
+            new_block_factor = i
+            is_find_new_factor = True
+            break
+
+        if not is_find_new_factor:
+            new_block_axis = 0
+            new_block_factor = n_size
+            # split aixs 0
+            for i in range(1, n_size, 1):
+                if n_size % i != 0:
+                    continue
+                if i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                    continue
+                new_block_factor = i
+
+        return new_block_axis, new_block_factor
+
+    if block_axis == 0:
+        new_block_factor = n_size
+        for i in range(block_factor + 1, n_size, 1):
+            if n_size % i != 0:
+                continue
+            if i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                continue
+            new_block_factor = i
+            break
+    else:
+        if format_input == FORMAT_NCHW:
+            if block_axis >= 1:
+                new_block_axis, new_block_factor = _get_new_block_factor()
+        else:
+            if block_axis in [1, 2]:
+                new_block_axis = 0
+                new_block_factor = n_size
+
+                for i in range(1, n_size, 1):
+                    if i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                        continue
+                    new_block_factor = i
+                    break
+            elif block_axis == 3:
+                new_block_axis, new_block_factor = _get_new_block_factor()
+
+    return new_block_axis, new_block_factor, False
+
+
+def _cal_gn_update_tiling(shape_x, group_nums, format_input, max_ub_count):
+    """
+    calculate gn_update tiling
+    """
+    core_num = cceconf.get_soc_spec("CORE_NUM")
+
+    one_core_data_threshold = 128
+
+    def _get_block_tiling():
+        block_inner = 1
+        tmp_size = 1
+        find_block_tiling = False
+        for i, dim in enumerate(shape_x):
+            tmp_size = tmp_size*dim
+            if tmp_size < core_num:
+                continue
+            if tmp_size == core_num:
+                block_split_axis = i
+                block_inner = 1
+                break
+
+            tmp_size = tmp_size // dim
+            for j in range(dim, 0, -1):
+                if tmp_size*j > core_num:
+                    continue
+                block_split_axis = i
+                block_inner = (dim + j - 1) // j
+
+                remain_size = 1
+                if len(shape_x[block_split_axis + 1:]) > 0:
+                    remain_size = functools.reduce(lambda m, n: m * n,
+                                         shape_x[block_split_axis + 1:])
+
+                remain_size = remain_size * block_inner
+
+                if remain_size < one_core_data_threshold:
+                    remain_size = remain_size // block_inner
+                    k = 0
+                    for k in range(j, 0, -1):
+                        if dim % k != 0:
+                            continue
+                        if remain_size*(dim // k) < one_core_data_threshold:
+                            continue
+                        block_inner = dim // k
+                        break
+                    if k == 0:
+                        block_split_axis = 0 if block_split_axis == 0 \
+                            else block_split_axis - 1
+                        block_inner = 1
+
+                find_block_tiling = True
+                break
+
+            if find_block_tiling:
+                break
+
+        return block_split_axis, block_inner
+
+    def _get_ub_tiling(block_split_axis, block_inner):
+        ub_split_axis = len(shape_x) - 1
+        ub_inner = shape_x[-1]
+
+        tmp_size = 1
+        i = len(shape_x) - 1
+        is_find_ub_tiling = False
+        for i in range(len(shape_x) - 1, block_split_axis, -1):
+            if tmp_size*shape_x[i] < max_ub_count:
+                tmp_size *= shape_x[i]
+                continue
+            for j in range(shape_x[i], 0, -1):
+                if j*tmp_size > max_ub_count:
+                    continue
+                is_find_ub_tiling = True
+                ub_split_axis = i
+                ub_inner = j
+                break
+            if is_find_ub_tiling:
+                break
+
+        if not is_find_ub_tiling:
+            ub_split_axis = block_split_axis + 1
+
+            for j in range(block_inner, 0, -1):
+                if block_inner % j != 0:
+                    continue
+                if j*tmp_size > max_ub_count:
+                    continue
+
+                ub_split_axis = block_split_axis
+                ub_inner = j
+                break
+
+        return ub_split_axis, ub_inner
+
+    def _is_prime(num):
+        for i in range(2, int(sqrt(num) + 1)):
+            if num % i == 0:
+                return False
+        return True
+
+    block_axis, block_factor = _get_block_tiling()
+
+    ub_axis, ub_factor = _get_ub_tiling(block_axis, block_factor)
+
+    dtype_mean = "float32"
+    is_mean_output_block_conflict = \
+        ub_axis == block_axis and ub_axis == 0 and ub_factor == 1 and \
+        group_nums * DTYPE_WIDTH_MAP[dtype_mean] * 2 < 32 and \
+        _is_prime(block_factor) and block_factor < shape_x[block_axis]
+    if is_mean_output_block_conflict:
+        block_factor += 1
+        ub_axis, ub_factor = _get_ub_tiling(block_axis, block_factor)
+
+    is_block_conflict = \
+        _check_is_block_conflict(block_axis, block_factor, ub_axis,
+                                 ub_factor, group_nums,
+                                 format_input, dtype_mean)
+
+    is_need_reorder = False
+    if is_block_conflict:
+        block_axis, block_factor, is_need_reorder = \
+            _recal_block_tiling(
+                shape_x, block_axis, block_factor, max_ub_count,
+                group_nums, format_input, dtype_mean, core_num)
+        ub_axis, ub_factor = _get_ub_tiling(block_axis, block_factor)
+
+    return block_axis, block_factor, ub_axis, \
+           ub_factor, is_block_conflict, is_need_reorder
+
+
+def _gn_update_schedule_do_tiling(
+        sch, shape_x, sum_input, dtype, res_out):
+    """
+    gn_update schedule do tiling
+    """
+    max_ub_count = get_max_ub_count(dtype, GN_TYPE)
+    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
+
+    group_nums, format_input = \
+        _get_gn_update_group_nums(shape_x, shape_sum)
+
+    block_axis, block_factor, ub_axis, \
+        ub_factor, is_block_conflict, is_need_reorder = \
+        _cal_gn_update_tiling(shape_x, group_nums, format_input, max_ub_count)
+
+    res_block_outer, res_block_inner = sch[res_out].split(
+        res_out.op.axis[block_axis], factor=block_factor)
+
+    def _do_axis_fuse():
+        new_fused_axis = res_block_outer
+        if is_need_reorder:
+            if format_input == FORMAT_NCHW:
+                h_axis_index = 2
+                if block_axis > h_axis_index:
+                    fuse_axis_list = res_out.op.axis[h_axis_index:block_axis]
+                    fuse_axis_list.append(res_block_outer)
+                    new_fused_axis = sch[res_out].fuse(*fuse_axis_list)
+            else:
+                h_axis_index = 1
+                if block_axis > h_axis_index:
+                    fuse_axis_list = \
+                        [res_out.op.axis[h_axis_index], res_block_outer]
+                    new_fused_axis = sch[res_out].fuse(*fuse_axis_list)
+        else:
+            if block_axis != 0:
+                fuse_axis_list = res_out.op.axis[:block_axis]
+                fuse_axis_list.append(res_block_outer)
+                new_fused_axis = sch[res_out].fuse(*fuse_axis_list)
+
+        return new_fused_axis
+
+    fused_axis = _do_axis_fuse()
+
+    one_block_size = block_factor
+    if len(shape_x[block_axis + 1:]) > 0:
+        one_block_size *= \
+            functools.reduce(lambda m, n: m * n, shape_x[block_axis + 1:])
+
+    one_block_more_than_max_ub, res_ub_outer,\
+    res_ub_inner, is_change_split_axis = \
+        _gn_update_ub_do_tiling(res_out, ub_factor, ub_axis,
+                                block_axis, block_factor,
+                                res_block_inner, max_ub_count, one_block_size,
+                                group_nums, sch, shape_x)
+
+    need_db = True
+
+    bind_block_axis = fused_axis
+    mean_compute_at_axis = fused_axis
+
+    def _do_reorder():
+        reorder_axis_list = [fused_axis, ]
+        if format_input == FORMAT_NCHW:
+            h_axis_index = 2
+        else:
+            h_axis_index = 1
+
+        reorder_axis_list += res_out.op.axis[:h_axis_index]
+        if block_axis == ub_axis:
+            if is_change_split_axis:
+                reorder_axis_list.append(res_block_inner)
+                reorder_axis_list += \
+                    res_out.op.axis[block_axis + 1: ub_axis + 1]
+                reorder_axis_list.append(res_ub_outer)
+                reorder_axis_list.append(res_ub_inner)
+                reorder_axis_list += res_out.op.axis[ub_axis + 2:]
+            else:
+                reorder_axis_list.append(res_ub_outer)
+                reorder_axis_list.append(res_ub_inner)
+                reorder_axis_list += res_out.op.axis[block_axis + 1:]
+        else:
+            reorder_axis_list.append(res_block_inner)
+            reorder_axis_list += res_out.op.axis[block_axis + 1: ub_axis]
+            reorder_axis_list.append(res_ub_outer)
+            reorder_axis_list.append(res_ub_inner)
+            reorder_axis_list += res_out.op.axis[ub_axis + 1:]
+
+        sch[res_out].reorder(*reorder_axis_list)
+
+    if is_need_reorder:
+        _do_reorder()
+    else:
+        if is_block_conflict:
+            mean_compute_at_axis, bind_block_axis = sch[res_out].split(
+                fused_axis, nparts=1)
+
+    return mean_compute_at_axis, bind_block_axis, res_ub_outer, \
+        res_ub_inner, need_db, one_block_more_than_max_ub
 
 
 def _gn_update_schedule_do_emit_insn(
-    sch, res_out, res_out_ub, res_ub_inner,
-    input_tensor_buffer_tensor_map, mid_tensor_buffer_tensor_map,
-    mid_out_tensor_list, mid_out_tensor_read_buffer_map):
+        sch, res_out, res_out_ub, res_ub_inner,
+        input_tensor_buffer_tensor_map, mid_tensor_buffer_tensor_map,
+        mid_out_tensor_list, mid_out_tensor_read_buffer_map):
     """
     gn_update schedule do emit_insn
     """
@@ -854,15 +1249,16 @@ def gn_update_schedule(res, input_tensors):
 
     dtype = x_input.dtype.lower()
 
-    fused_axis, res_ub_outer, res_ub_inner, need_db, is_block_conflict =\
+    mean_compute_at_axis, block_axis, res_ub_outer, \
+        res_ub_inner, need_db, one_block_more_than_max_ub = \
         _gn_update_schedule_do_tiling(
             sch, shape_x, input_tensors[0], dtype, res_out)
 
-    fused_axis = _gn_update_sch_do_compute_at(
-        sch, res_out, res_out_ub, fused_axis, res_ub_outer,
+    _gn_update_sch_do_compute_at(
+        sch, res_out, res_out_ub, mean_compute_at_axis, res_ub_outer,
         input_tensor_buffer_tensor_map, shape_x_tensor_list,
         mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-        mid_out_tensor_read_buffer_map, is_block_conflict)
+        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub)
 
     _gn_update_schedule_do_emit_insn(
         sch, res_out, res_out_ub, res_ub_inner,
@@ -870,7 +1266,7 @@ def gn_update_schedule(res, input_tensors):
         mid_out_tensor_list, mid_out_tensor_read_buffer_map)
 
     block = tvm.thread_axis("blockIdx.x")
-    sch[res_out].bind(fused_axis, block)
+    sch[res_out].bind(block_axis, block)
 
     if need_db:
         x_input_ub = input_tensor_buffer_tensor_map[x_input]
@@ -894,12 +1290,12 @@ def _is_gn_update_pattern(shape_x, shape_sum):
     is_gn_update_nchw = True
     for i in nchw_broadcast_axis:
         is_gn_update_nchw = is_gn_update_nchw and \
-                            i in broadcast_aixs
+            i in broadcast_aixs
 
     is_gn_update_nhwc = True
     for i in nhwc_broadcast_axis:
         is_gn_update_nhwc = is_gn_update_nhwc and \
-                            i in broadcast_aixs
+            i in broadcast_aixs
 
     return is_gn_update_nchw or is_gn_update_nhwc
 
@@ -916,6 +1312,7 @@ def _do_check_input_tensor(input_tensors):
         raise RuntimeError("Batch normalization update input nums \
                             should be 3 or 5 or 7.")
 
+
 def _in_update_get_comput_axis(shape_x, mean_compute_at_axis,
                                res_ub_outer, max_ub_count):
     shape_c0 = 16
@@ -931,14 +1328,15 @@ def _in_update_get_comput_axis(shape_x, mean_compute_at_axis,
 
     return mean_compute_at_axis
 
+
 def _in_update_do_compute_at(sch, input_tensor_buffer_tensor_map,
-                  shape_x_tensor_list,
-                  mid_tensor_buffer_tensor_map,
-                  mid_out_tensor_read_buffer_map,
-                  mid_out_tensor_list, shape_x,
-                  phony_out_ub, phony_out,
-                  res_ub_outer, max_ub_count,
-                  mean_compute_at_axis):
+                             shape_x_tensor_list,
+                             mid_tensor_buffer_tensor_map,
+                             mid_out_tensor_read_buffer_map,
+                             mid_out_tensor_list, shape_x,
+                             phony_out_ub, phony_out,
+                             res_ub_outer, max_ub_count,
+                             mean_compute_at_axis):
 
     mean_compute_at_axis = _in_update_get_comput_axis(shape_x,
                                                       mean_compute_at_axis,
@@ -996,6 +1394,8 @@ def _in_update_do_emit_insn(sch, input_tensor_buffer_tensor_map,
     vector_intr_with_boradcast_map = {
         "elewise_binary_mul": "vector_mul_with_broadcast",
         "elewise_binary_add": "vector_add_with_broadcast",
+        "elewise_binary_div": "vector_div_with_broadcast",
+        "elewise_binary_sub": "vector_sub_with_broadcast"
     }
 
     for i in input_tensor_buffer_tensor_map:
@@ -1009,16 +1409,16 @@ def _in_update_do_emit_insn(sch, input_tensor_buffer_tensor_map,
         if i not in phony_tensor_list:
             if buffer_tensor in input_broadcast_tensor_buffers:
                 shape = i.shape
-                shape_size = reduce(lambda i, j: i * j, shape)
+                shape_size = functools.reduce(lambda m, n: m * n, shape)
 
                 def get_insn_tensor_map(
                         shape_size, batch, c1_size, c0_size,
                         ub_split_axis, split_factor, w_size):
                     is_no_reduce = shape_size.value // \
-                                   (batch * c1_size * c0_size) == 1
+                        (batch * c1_size * c0_size) == 1
                     if is_no_reduce or \
                         (ub_split_axis == 3 and split_factor == 1) or \
-                        (ub_split_axis == 2 and split_factor == 1 and \
+                        (ub_split_axis == 2 and split_factor == 1 and
                          w_size == 1):
                         insn = _get_emit_insn_map(i)
                     else:
@@ -1029,7 +1429,9 @@ def _in_update_do_emit_insn(sch, input_tensor_buffer_tensor_map,
                             tag = i.op.tag
 
                         if tag in ["elewise_binary_mul",
-                                   "elewise_binary_add"]:
+                                   "elewise_binary_add",
+                                   "elewise_binary_div",
+                                   "elewise_binary_sub"]:
                             insn = vector_intr_with_boradcast_map[tag]
                         elif tag == "elewise_single_cast":
                             insn = "phony_insn"
@@ -1061,9 +1463,9 @@ def _in_update_do_emit_insn(sch, input_tensor_buffer_tensor_map,
 
 
 def _in_update_get_res_ub_outer_inner(sch, phony_out, res_block_inner,
-                           ub_split_axis, block_split_axis,
-                           block_split_inner_size, split_factor,
-                           shape_x):
+                                      ub_split_axis, block_split_axis,
+                                      block_split_inner_size, split_factor,
+                                      shape_x):
     if ub_split_axis == block_split_axis:
         if block_split_inner_size % split_factor != 0:
             while block_split_inner_size % split_factor != 0:
@@ -1149,7 +1551,7 @@ def _in_update_res_block_outer_inner(sch, phony_out, shape_x):
                 fused_axis, need_fuse_list[i])
 
     return res_block_outer, res_block_inner, block_split_inner_size,\
-           fused_axis, block_split_axis
+        fused_axis, block_split_axis
 
 
 def in_update_schedule(res, input_tensors):
@@ -1167,6 +1569,26 @@ def in_update_schedule(res, input_tensors):
     log.debug("gn update schedule is %d", is_gn_update)
     if is_gn_update:
         return gn_update_schedule(res, input_tensors)
+
+
+    def _check_is_in_infer(res):
+        """
+        check whether is in_infer pattern
+        """
+        stack = [res[0]]
+        visited_list = []
+        while stack:
+            cur_tensor = stack.pop()
+            visited_list.append(cur_tensor)
+            for in_tensor in cur_tensor.op.input_tensors:
+                if in_tensor.op.tag == "elewise_single_rsqrt":
+                    return True
+
+                if in_tensor not in visited_list:
+                    stack.append(in_tensor)
+        return False
+
+    is_in_infer_pattern = _check_is_in_infer(res)
 
     def get_x_input(x_input, input_tensors, shape_x):
         if len(shape_x) != 5:
@@ -1190,7 +1612,8 @@ def in_update_schedule(res, input_tensors):
     # res 0 is cast; res 1 is mul or add; res 2 is mul or add
 
     def get_phony_tensor_list(input_tensors, shape_x, res):
-        if len(input_tensors) == 3 or len(input_tensors) == 5:
+        if (len(input_tensors) == 3 or len(input_tensors) == 5) and \
+            not is_in_infer_pattern:
             phony_add_1 = res[2]
             phony_broadcast = te.lang.cce.broadcast(phony_add_1, shape_x)
             phony_tensor_list = [phony_broadcast]
@@ -1220,7 +1643,7 @@ def in_update_schedule(res, input_tensors):
 
     phony_cast, phony_tensor_list = \
         do_cast_porc(phony_cast, input_tensors,
-        phony_broadcast, phony_tensor_list)
+                     phony_broadcast, phony_tensor_list)
     phony_out = te.lang.cce.vadd(phony_cast, res[0])
 
     tensor_list_map = {}
@@ -1231,7 +1654,8 @@ def in_update_schedule(res, input_tensors):
     mid_out_tensor_list = [res[0], res[1], res[2]]
 
     def get_real_mid_out_tensor_list(input_tensors):
-        if len(input_tensors) == 3 or len(input_tensors) == 5:
+        if (len(input_tensors) == 3 or len(input_tensors) == 5) and \
+            not is_in_infer_pattern:
             real_mid_out_tensor_list = [res[1]]
         else:
             real_mid_out_tensor_list = []
@@ -1302,8 +1726,8 @@ def in_update_schedule(res, input_tensors):
             shape = te.lang.cce.util.shape_to_list(tensor.shape)
             length = len(shape)
             if shape == shape_x and \
-                not tensor.op.tag.find("broadcast") != -1 \
-                or shape[0:length - 2] == shape_x[0:length - 2]:
+                    not tensor.op.tag.find("broadcast") != -1 \
+                    or shape[0:length - 2] == shape_x[0:length - 2]:
                 shape_x_tensor_list.append(tensor)
         return shape_x_tensor_list
 
@@ -1313,8 +1737,8 @@ def in_update_schedule(res, input_tensors):
     max_ub_count = get_max_ub_count(dtype, IN_TYPE)
 
     res_block_outer, res_block_inner, block_split_inner_size, fused_axis, \
-    block_split_axis = _in_update_res_block_outer_inner(sch,
-                                                        phony_out, shape_x)
+        block_split_axis = _in_update_res_block_outer_inner(sch,
+                                                            phony_out, shape_x)
 
     mean_compute_at_axis = fused_axis
 
@@ -1346,6 +1770,7 @@ def in_update_schedule(res, input_tensors):
                                             block_split_inner_size,
                                             ub_split_axis,
                                             ub_split_inner)
+
     def do_double_buffer(need_db, sch,
                          input_tensor_buffer_tensor_map, x_input):
         if need_db:
@@ -1425,7 +1850,7 @@ def bn_update_schedule(res, input_tensors):
         res_y = res[4]
         mask = res[5]
     else:
-        raise RuntimeError("res list size only support 5 or 6, " \
+        raise RuntimeError("res list size only support 5 or 6, "
                            "current is [%d]." % len(res))
 
     # find input_x tensor for add
@@ -1480,8 +1905,8 @@ def bn_update_schedule(res, input_tensors):
         phony_out = te.lang.cce.vadd(phony_add_y, res_y)
 
         phony_tensor_list = phony_tensor_list + \
-                            [phony_mask_cast, phony_mask_reduce, \
-                             phony_mask_brc, phony_add_y]
+            [phony_mask_cast, phony_mask_reduce,
+             phony_mask_brc, phony_add_y]
     else:
         phony_out = te.lang.cce.vadd(phony_cast, res_y)
 
@@ -1555,7 +1980,7 @@ def bn_update_schedule(res, input_tensors):
         length = len(shape)
         # need to check mask shape [****,2]
         if shape == shape_x and not tensor.op.tag.find("broadcast") != -1 \
-            or shape[0:length-2] == shape_x[0:length-2]:
+                or shape[0:length-2] == shape_x[0:length-2]:
             shape_x_tensor_list.append(tensor)
 
     dtype = x_input.dtype.lower()
@@ -1564,7 +1989,7 @@ def bn_update_schedule(res, input_tensors):
     is_model_para_case = _check_is_model_para_case(shape_x, max_ub_count)
 
     is_model_parallel_sch = not is_update_v3 and \
-                            mask is None and is_model_para_case
+        mask is None and is_model_para_case
     if is_model_parallel_sch:
         sch_list = [sch]
         return bn_update_schedule_model_parallel(
@@ -1596,8 +2021,8 @@ def bn_update_schedule(res, input_tensors):
                 is_can_use_conditional_exec = True
                 cut_mode = "cut_batch"
             elif batch*c1_size >= core_num and\
-                batch*c1_size % core_num == 0 and\
-                core_num % batch == 0:
+                    batch*c1_size % core_num == 0 and\
+                    core_num % batch == 0:
                 is_can_use_conditional_exec = True
                 cut_mode = "cut_batch_c1"
             elif batch*c1_size < core_num:
@@ -1610,9 +2035,9 @@ def bn_update_schedule(res, input_tensors):
     size_one_core_threshold = 512
 
     is_general_sch = is_update_v3 or \
-                     ((not is_param_buffer_reuse or \
-                     is_can_use_conditional_exec) and \
-                     h_size*w_size*c0_size > size_one_core_threshold)
+        ((not is_param_buffer_reuse or
+          is_can_use_conditional_exec) and
+         h_size*w_size*c0_size > size_one_core_threshold)
     block_split_size = 1
     if is_general_sch:
         block_split_axis = 0
@@ -1790,7 +2215,7 @@ def bn_update_schedule(res, input_tensors):
         if i not in phony_tensor_list:
             if buffer_tensor in input_broadcast_tensor_buffers:
                 shape = i.shape
-                shape_size = reduce(lambda i, j: i * j, shape)
+                shape_size = functools.reduce(lambda i, j: i * j, shape)
                 # pylint: disable=too-many-boolean-expressions
                 is_match = \
                     shape_size.value // (batch*c1_size*c0_size) == 1 or \
@@ -1824,7 +2249,7 @@ def bn_update_schedule(res, input_tensors):
         sch[i].emit_insn(i.op.axis[0], "dma_copy")
 
         is_need_add_condition = not is_update_v3 and \
-                                is_can_use_conditional_exec
+            is_can_use_conditional_exec
         if is_need_add_condition:
             if index in (2, 3):
                 condition = \

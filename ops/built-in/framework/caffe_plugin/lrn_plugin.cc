@@ -1,38 +1,43 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the
-License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file lrn_plugin.cpp
+ * \brief
+ */
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
 #include "common/util/error_manager/error_manager.h"
 
-using namespace ge;
 namespace domi {
 
-const float LRN_DEFAULT_BETA = 0.75;
-const uint32_t LRN_DEFAULT_NORM_REGION = 0;
-const uint32_t LRN_DEFAULT_LOCAL_SIZE = 5;
-const float LRN_DEFAULT_BIAS = 1.0;
-const float LRN_DEFAULT_ALPHA = 1.0;
-const std::string ACROSS_CHANNELS = "ACROSS_CHANNELS";
-const std::string WITHIN_CHANNEL = "WITHIN_CHANNEL";
 
-
-// Parse parameters
 Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
-    // trans op_src to op_dest
-  const caffe::LayerParameter* layer = \
-      dynamic_cast<const caffe::LayerParameter*>(op_origin);
+   // Parse parameters
+  const float LRN_DEFAULT_BETA = 0.75;
+  const uint32_t LRN_DEFAULT_NORM_REGION = 0;
+  const uint32_t LRN_DEFAULT_LOCAL_SIZE = 5;
+  const float LRN_DEFAULT_BIAS = 1.0;
+  const float LRN_DEFAULT_ALPHA = 1.0;
+  const string LRN_ACROSS_CHANNELS = "ACROSS_CHANNELS";
+  const string LRN_WITHIN_CHANNEL = "WITHIN_CHANNEL";
+
+  // trans op_src to op_dest
+  auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
   // Ckeck operator parameter's validity
   if (nullptr == layer) {
@@ -53,15 +58,14 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
   if (param.has_local_size()) {
     local_size = param.local_size();
     if (0 == local_size % 2) {
-      OP_LOGE(op_dest.GetName().c_str(),
-        "LRN only supports odd values for local_size.");
+      OP_LOGE(op_dest.GetName().c_str(), "LRN only supports odd values for local_size.");
       map<string, string> err_map;
       err_map["op_name"] = "LRN";
       err_map["param_name"] = "local_size";
       err_map["excepted_value"] = "odd value";
       err_map["input_value"] = to_string(local_size);
       std::string report_error_code = "E70007";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);     
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return FAILED;
     }
   }
@@ -86,17 +90,17 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
   op_dest.SetAttr("alpha", alpha / local_size);
 
   if (norm_region == LRN_DEFAULT_NORM_REGION) {
-    op_dest.SetAttr("norm_region", ACROSS_CHANNELS);
+    op_dest.SetAttr("norm_region", LRN_ACROSS_CHANNELS);
   } else {
-    op_dest.SetAttr("norm_region", WITHIN_CHANNEL);
+    op_dest.SetAttr("norm_region", LRN_WITHIN_CHANNEL);
   }
 
   return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("LRN")
-  .FrameworkType(CAFFE)
-  .OriginOpType("LRN")
-  .ParseParamsFn(ParseParamsLrn)
-  .ImplyType(ImplyType::TVM);
+    .FrameworkType(CAFFE)
+    .OriginOpType("LRN")
+    .ParseParamsFn(ParseParamsLrn)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi

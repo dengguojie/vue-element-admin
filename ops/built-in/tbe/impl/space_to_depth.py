@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 space_to_depth
 """
 from te import tik
@@ -22,6 +22,8 @@ import impl
 from impl import common_util
 from impl import constant_util as constant
 from te.utils.op_utils import *
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):
@@ -78,6 +80,40 @@ def space_to_depth(x, filter,
     else:
         fun = SpaceToDepth(x, block_size, kernel_name)
         return fun.space_to_depth_compute()
+
+
+def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_to_depth"):
+    """
+    select format dynamically
+    """
+    ori_shape_x = x.get("ori_shape")
+    if ori_shape_x[3] <= 64:
+        datatype = "float16, float, int8, uint8, int16, uint16, int32," \
+                   "uint32, uint64, int64"
+        input_format = "NC1HWC0, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC"
+    else:
+        datatype = "float16, float, int8, uint8, int16, uint16, int32," \
+                   "uint32, uint64, int64"
+        input_format = "NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC"
+    input0 = gen_param(
+        classify="input0",
+        name="x",
+        datatype=datatype,
+        format=input_format)
+    input1 = gen_param(classify="input1", name="filter",
+                       datatype="float16, float16, float16, float16, float16, float16," \
+                                "float16, float16, float16, float16",
+                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z," \
+                              "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
+    output0 = gen_param(
+        classify="output0",
+        name="y",
+        datatype=datatype,
+        format=input_format)
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 def _check_param(x, y, block_size, data_format, kernel_name):

@@ -19,11 +19,9 @@ from __future__ import absolute_import
 
 import te.lang.dynamic
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from impl.util import fusion_util
-from topi.cce import util as util_cce
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -33,8 +31,7 @@ from te.utils.op_utils import variable_shape
 from te.utils.op_utils import check_elewise_shape_range
 from te.utils.op_utils import broadcast_shapes
 from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import OP_ERROR_CODE_018
-
+from te.utils.error_manager import error_manager_vector
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -102,30 +99,13 @@ def real_div(x1, x2, y, kernel_name="real_div"):
     check_dtype(y_dtype, check_list, param_name="input_y")
     check_elewise_shape_range([x1, x2], support_broadcast=True)
     if x_dtype != y_dtype:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_018
-        error_info['op_name'] = 'real_div'
-        error_info['param_name1'] = 'x_dtype'
-        error_info['param_name2'] = 'y_dtype'
-        error_info['param1_dtype'] = str(x_dtype)
-        error_info['param2_dtype'] = str(y_dtype)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
-
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "x2",
+                                                              x_dtype, y_dtype)
     ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with te.op.compute():
             x_shape, y_shape = variable_shape([x1, x2], support_broadcast=True)
-            x_shape, y_shape, _ = broadcast_shapes(x_shape, y_shape,
-                                                   param_name_input1="input_x",
-                                                   param_name_input2="input_y")
             x_shape, y_shape = refine_shapes_for_broadcast(x_shape, y_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")

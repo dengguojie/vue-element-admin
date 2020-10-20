@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 in_training_update_v2
 """
 from __future__ import division
@@ -203,17 +203,12 @@ def in_training_update_compute(x, sum, square_sum,
     variance_div = te.lang.cce.vmuls(square_sum, num_rec)
     variance_square = te.lang.cce.vmul(compute_mean, compute_mean)
     compute_var = te.lang.cce.vsub(variance_div, variance_square)
-    var_boardcast = te.lang.cce.broadcast(compute_var, shape_x)
-
-    # (x - mean) / sqrt(var + eps)
-    # x_mean = x - mean
-    # multiplier_add = var + eps
-    # multiplier_sqrt = sqrt(var + eps)
 
     x_mean = te.lang.cce.vsub(x, mean_boardcast)
-    multiplier_add = te.lang.cce.vadds(var_boardcast, epsilon)
+    multiplier_add = te.lang.cce.vadds(compute_var, epsilon)
     multiplier_sqrt = te.lang.cce.vsqrt(multiplier_add)
-    mean_wo_scale = te.lang.cce.vdiv(x_mean, multiplier_sqrt)
+    sqrt_boardcast = te.lang.cce.broadcast(multiplier_sqrt, shape_x)
+    mean_wo_scale = te.lang.cce.vdiv(x_mean, sqrt_boardcast)
     result = mean_wo_scale
     if gamma is not None and beta is not None:
         gamma = te.lang.cce.broadcast(gamma, shape_x)

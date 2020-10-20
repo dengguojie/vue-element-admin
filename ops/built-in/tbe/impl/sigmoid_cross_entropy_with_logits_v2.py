@@ -1,5 +1,7 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights losserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.You may not use
@@ -11,212 +13,347 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-sigmoid_cross_entropy_with_logitsv2
+sigmoid_cross_entropy_with_logits_v2
 """
 
 import te.lang.cce
 from te import tvm
 from topi import generic
-from topi.cce import util
-from te.utils import op_utils
-from functools import reduce
+from topi.cce.util import compare_tensor_dict_key
+from te import platform as tbe_platform
+from te.platform.fusion_manager import fusion_manager
+from te.utils.op_utils import check_shape, check_dtype, broadcast_shapes
+from te.utils.op_utils import check_op_params, REQUIRED_INPUT, OPTION_INPUT, \
+    REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
+# define a scalar, value = 1
+SCALAR_ONE = 1
+# define a scalar, value = 0
+SCALAR_ZREO = 0
 
-def _shape_check(shape):
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
+def is_support_5hd(predict, target, weight, pos_weight, reduction):
+    """is_support_5hd.
 
-
-def _5hd_input_ori_shape_check(input_1, input_2):
-    ori_shape_input_1 = input_1.get("ori_shape")
-    ori_shape_input_2 = input_2.get("ori_shape")
-    if len(ori_shape_input_1) != len(ori_shape_input_2):
-        raise RuntimeError("if format is NC1HWC0, dims of weight or pos_weight should be same as predict")
-
-
-def _broadcast_shape_check(input_shape, target_shape):
-    try:
-        util.produce_shapes(input_shape, target_shape)
-    except RuntimeError:
-        raise RuntimeError("input_shape can't be broadcast to target_shape")
-
-
-def _optional_input_tensor_apply(input_dict, tensor_name, predict):
-    data_input = None
-    if input_dict is not None:
-        shape_input = input_dict.get("shape")
-        dtype_input = input_dict.get("dtype").lower()
-        shape_predict = predict.get("shape")
-        format_predict = predict.get("format")
-        _shape_check(shape_input)
-        if format_predict == "NC1HWC0":
-            _5hd_input_ori_shape_check(predict, input_dict)
-        _broadcast_shape_check(shape_input, shape_predict)
-        dis_len = len(shape_predict) - len(shape_input)
-        shape_weight_append1 = tuple([1 for i in range(dis_len)]) + shape_input
-        data_input = tvm.placeholder(shape_weight_append1, name=tensor_name, dtype=dtype_input)
-    return data_input
-
-
-def _reduce_operation(ln, reduction, ori_shape):
-    dtype_ln = ln.dtype
-    if reduction == 'mean':
-        element_num = reduce(lambda x, y: x * y, ori_shape)
-        res = te.lang.cce.vmuls(ln, tvm.const(element_num ** -1, dtype=dtype_ln))
-        shape_reduce = te.lang.cce.util.shape_to_list(res.shape)
-        for _ in range(len(shape_reduce)):
-            res = te.lang.cce.sum(res, axis=-1)
-        return res
-    elif reduction == 'sum':
-        res = te.lang.cce.sum(ln, axis=-1)
-        shape_reduce = te.lang.cce.util.shape_to_list(res.shape)
-        for _ in range(len(shape_reduce)):
-            res = te.lang.cce.sum(res, axis=-1)
-        return res
-    else:
-        pass
-    return ln
-
-
-def _get_tensor_list(pos_weight, weight, data_predict, data_target, data_weight, data_pos_weight, res):
-    if pos_weight is None and weight is None:
-        tensor_list = [data_predict, data_target, res]
-    elif pos_weight is None and weight is not None:
-        tensor_list = [data_predict, data_target, data_weight, res]
-    elif pos_weight is not None and weight is None:
-        tensor_list = [data_predict, data_target, data_pos_weight, res]
-    else:
-        tensor_list = [data_predict, data_target, data_weight, data_pos_weight, res]
-    return tensor_list
-
-
-def sigmoid_cross_entropy_with_logitsv2_compute(predict, target, weight, pos_weight, reduction, ori_shape):
-    """
     Parameters
     ----------
-        predict : TVM tensor, the placeholder of predict
-        target: TVM tensor, the placeholder of target
-        weight: TVM tensor, the placeholder of weight
-        pos_weight: TVM tensor, the placeholder of pos_weight
-        reduction : str, specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'
-        ori_shape: it is the ori shape of predict, used to count the number of elements
+    predict : dict
+        shape and dtype of predict
+    target : dict
+        shape and dtype of target
+    weight : dict
+        shape and dtype of weight
+    pos_weight : dict
+        shape and dtype of pos_weight
+
     Returns
     -------
-        res: result of loss value
+    bool
     """
-
-    dtype_input = "float32"
-    if predict.dtype.lower() == "float16":
-        predict = te.lang.cce.cast_to(predict, dtype_input)
-        target = te.lang.cce.cast_to(target, dtype_input)
-
-    reverse_predict = te.lang.cce.vmuls(predict, tvm.const(-1, dtype=dtype_input))  # -x
-    max_val = te.lang.cce.vmaxs(reverse_predict, tvm.const(0, dtype=dtype_input))   # max(-x, 0)
-    reverse_max_val = te.lang.cce.vmuls(max_val, tvm.const(-1, dtype=dtype_input))  # -max_val
-    reverse_target = te.lang.cce.vmuls(target, tvm.const(-1, dtype=dtype_input))    # -y
-    ln_0 = te.lang.cce.vadds(reverse_target, tvm.const(1, dtype=dtype_input))       # (1-y)
-    ln_1 = te.lang.cce.vmul(ln_0, predict)                                          # (1 - y) * x
-
-    add_x_vmax = te.lang.cce.vadd(reverse_predict, reverse_max_val)         # -x-max_val
-    exp_1 = te.lang.cce.vexp(reverse_max_val)                               # e^-max_val
-    exp_2 = te.lang.cce.vexp(add_x_vmax)                                    # e^(-x-max_val)
-    exp_add = te.lang.cce.vadd(exp_1, exp_2)                                # e^-max_val + e^(-x-max_val)
-    log_ = te.lang.cce.vlog(exp_add)                                        # log(e^ + e^)
-    ln_2 = te.lang.cce.vadd(log_, max_val)                                  # log(e^ + e^) + max_val
-
-    if pos_weight is not None:
-        # log_weight is equal to (pos_weight - 1) * y + 1
-        pos_weight = te.lang.cce.cast_to(pos_weight, dtype_input)
-        shape_target = te.lang.cce.util.shape_to_list(target.shape)
-        shape_pos_weight = te.lang.cce.util.shape_to_list(pos_weight.shape)
-        if shape_target != shape_pos_weight:
-            pos_weight_broadcast = te.lang.cce.broadcast(pos_weight, shape_target)
-            log_weight = te.lang.cce.vadds(pos_weight_broadcast, tvm.const(-1, dtype=dtype_input))
-        else:
-            log_weight = te.lang.cce.vadds(pos_weight, tvm.const(-1, dtype=dtype_input))
-        log_weight = te.lang.cce.vmul(log_weight, target)
-        log_weight = te.lang.cce.vadds(log_weight, tvm.const(1, dtype=dtype_input))
-        ln_2 = te.lang.cce.vmul(log_weight, ln_2)
-    ln = te.lang.cce.vadd(ln_1, ln_2)
-
+    predict_shape = predict.get("ori_shape")
+    predict_format = predict.get("ori_format")
+    target_shape = target.get("ori_shape")
+    target_format = target.get("ori_format")
+    
+    if predict_shape != target_shape \
+            or predict_format != target_format:
+        return False
+    
     if weight is not None:
-        # ln is equal to: ln * weight
-        weight = te.lang.cce.cast_to(weight, dtype_input)
-        shape_ln = te.lang.cce.util.shape_to_list(ln.shape)
-        shape_weight = te.lang.cce.util.shape_to_list(weight.shape)
-        if shape_ln != shape_weight:
-            weight_broadcast = te.lang.cce.broadcast(weight, shape_ln)
-            ln = te.lang.cce.vmul(ln, weight_broadcast)
+        weight_shape = weight.get("ori_shape")
+        weight_format = weight.get("ori_format")
+        #broadcast
+        if predict_shape != weight_shape \
+                or predict_format != weight_format:
+            return False
+    
+    if pos_weight is not None:
+        pos_weight_shape = pos_weight.get("ori_shape")
+        pos_weight_format = pos_weight.get("ori_format")
+        #broadcast
+        if predict_shape != pos_weight_shape \
+                or predict_format != pos_weight_format:
+            return False    
+
+    if reduction in ("none", "sum"):
+        return True
+    
+    c0_num = 16
+    if len(predict_shape) == 4:
+        if predict_format == "NCHW":
+            dim_c = predict_shape[1]
+        elif predict_format == "NHWC":
+            dim_c = predict_shape[3]
         else:
-            ln = te.lang.cce.vmul(ln, weight)
+            return False
+    
+        if dim_c % c0_num == 0:
+            return True
+            
+    return False
 
-    res = _reduce_operation(ln, reduction, ori_shape)
+def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
+        kernel_name="sigmoid_cross_entropy_with_logits_v2"):
+    """op_select_format.
 
-    res = te.lang.cce.cast_to(res, dtype_input)
-    return res
-
-
-@op_utils.check_op_params(dict, dict, dict, dict, dict, str, str)
-def sigmoid_cross_entropy_with_logits_v2(predict, target, weight, pos_weight, loss, reduction="mean",
-                                         kernel_name="sigmoid_cross_entropy_with_logitsv2"):
-    """
-    Function: it measures Binary Cross Entropy between target and output logits.
-              this loss combines a Sigmoid layer and the BCELoss in one single class.
     Parameters
     ----------
-        predict: dict, shape_predict and dtype of input, required
-        target: dict, shape_target and dtype of input, required
-                a manual rescaling weight given to the loss of each batch element
-        weight: dict, shape_weight and dtype of input, optional
-        pos_weight: dict, shape_pos_weight and dtype of input, optional
-        loss: dict, shape_loss and dtype of output, should be same shape_predict
-              and type as input
-        reduction: str, specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'
-        kernel_name : str, kernel name
-                      default value is "sigmoid_cross_entropy_with_logitsv2"
+    predict : dict
+        shape and dtype of predict
+    target : dict
+        shape and dtype of target
+    weight : dict
+        shape and dtype of weight
+    pos_weight : dict
+        shape and dtype of pos_weight
+    loss : dict
+        shape and dtype of output, should be same shape and type as input
+    reduction: str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "sigmoid_cross_entropy_with_logits_v2"
+
     Returns
     -------
-        None
-    """
+    None
+    """    
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        dtype = ["float16"]
+    else:
+        dtype = ["float16", "float"]
 
-    util.check_kernel_name(kernel_name)
+    dtype_length = len(dtype)
+    format = ["ND"] * dtype_length
+
+    if is_support_5hd(predict, target, weight, pos_weight, reduction):
+        dtype = dtype * dtype_length
+        format = format + ["NC1HWC0"] * dtype_length
+
+    dtype_total = ','.join(dtype)
+    format_total = ','.join(format)
+
+    input0 = gen_param(
+        classify="input0", name="predict", datatype=dtype_total,
+        format=format_total)
+    input1 = gen_param(
+        classify="input1", name="target", datatype=dtype_total,
+        format=format_total)
+    input2 = gen_param(
+        classify="input2", name="weight", datatype=dtype_total,
+        format=format_total)
+    input3 = gen_param(
+        classify="input3", name="pos_weight", datatype=dtype_total,
+        format=format_total)
+    output0 = gen_param(
+        classify="output0", name="loss", datatype=dtype_total,
+        format=format_total)
+    
+    param_list = [input0, input1, input2, input3, output0]
+
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+# pylint: disable=locally-disabled,unused-argument,too-many-locals
+@fusion_manager.register("sigmoid_cross_entropy_with_logits_v2")
+def sigmoid_cross_entropy_with_logits_v2_compute(predict,
+                                                 target,
+                                                 weight,
+                                                 pos_weight,
+                                                 loss,
+                                                 reduction,
+                                                 kernel_name):
+    """
+    calculating data
+
+    Parameters
+    ----------
+    predict : TVM tensor
+        the placeholder of predict
+    target : TVM tensor
+        the placeholder of target
+    weight : TVM tensor
+        the placeholder of weight
+    pos_weigth : TVM tensor
+        the placeholder of pos_weight
+    loss : dict
+        dict of loss, include keys(shape and dtype)
+    reduction: str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "sigmoid_cross_entropy_with_logits_v2"
+
+    Returns
+    -------
+    output tensor
+    """
+    predict_dtype = predict.dtype
+    
+    is_support_float32 = tbe_platform.cce_conf.api_check_support(
+            "te.lang.cce.vmul", "float32")
+    
+    if is_support_float32:
+        if predict_dtype == "float16":
+            predict = te.lang.cce.cast_to(predict, "float32")
+        
+        if target.dtype == "float16":
+            target = te.lang.cce.cast_to(target, "float32")
+        
+        if weight is not None and weight.dtype == "float16":
+            weight = te.lang.cce.cast_to(weight, "float32")
+            
+        if pos_weight is not None and pos_weight.dtype == "float16":
+            pos_weight = te.lang.cce.cast_to(pos_weight, "float32")
+        
+    shape_predict = te.lang.cce.util.shape_to_list(predict.shape)
+    #log(1+exp(-x)) == max(predict,0)+log(1+exp(-abs(x))
+    const_zero = tvm.const(SCALAR_ZREO, dtype=predict.dtype)
+    const_one = tvm.const(SCALAR_ONE, dtype=predict.dtype)
+    #max(predict,0)
+    max_predict_zero = te.lang.cce.vmaxs(predict, const_zero)
+    #log(1+exp(-abs(x))
+    abs_predict = te.lang.cce.vabs(predict)
+    const_zero_broadcast = te.lang.cce.broadcast(const_zero, shape_predict)
+    reverse_abs_predict = te.lang.cce.vsub(const_zero_broadcast, abs_predict)
+    exp_predict = te.lang.cce.vexp(reverse_abs_predict)
+    adds_exp_predict = te.lang.cce.vadds(exp_predict, const_one)
+    log_exp_predict = te.lang.cce.vlog(adds_exp_predict, priority_flag=1)
+    log_exp_predict_res = te.lang.cce.vadd(max_predict_zero, log_exp_predict)
+    
+    if pos_weight is not None:
+        pos_weight = te.lang.cce.broadcast(pos_weight, shape_predict)
+        mul_pos_weight_target = te.lang.cce.vmul(pos_weight, target)
+        sub_pos_weight = te.lang.cce.vsub(mul_pos_weight_target, target)
+        adds_pos_weight = te.lang.cce.vadds(sub_pos_weight, const_one)
+        mul_pos_weight_log = te.lang.cce.vmul(adds_pos_weight, log_exp_predict_res)
+        mul_pos_weight_target_predict = te.lang.cce.vmul(mul_pos_weight_target, predict)
+        loss = te.lang.cce.vsub(mul_pos_weight_log, mul_pos_weight_target_predict)
+    else:
+        mul_res = te.lang.cce.vmul(predict, target)
+        loss = te.lang.cce.vsub(log_exp_predict_res, mul_res)
+            
+    if weight is not None:
+        weight = te.lang.cce.broadcast(weight, shape_predict)
+        loss = te.lang.cce.vmul(loss, weight)
+        
+    if reduction != "none":
+        axis = list(range(len(shape_predict)))
+        if reduction == "mean":
+            reduce_elts = 1.0
+            for i in axis:
+                reduce_elts *= shape_predict[i]
+            cof = reduce_elts ** (-1)
+            loss = te.lang.cce.vmuls(loss, cof)
+    
+        loss = te.lang.cce.sum(loss, axis)
+        
+    if predict_dtype == "float16":
+        loss = te.lang.cce.cast_to(loss, "float16")
+
+    return loss
+
+
+@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, 
+                 REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME)
+def sigmoid_cross_entropy_with_logits_v2(
+        predict, target, weight, pos_weight, loss, reduction="mean",
+        kernel_name="sigmoid_cross_entropy_with_logits_v2"):
+    """
+    calculating data
+
+    Parameters
+    ----------
+    predict : dict
+        shape and dtype of predict
+    target : dict
+        shape and dtype of target
+    weight : dict
+        shape and dtype of weight
+    pos_weight : dict
+        shape and dtype of pos_weight
+    loss : dict
+        shape and dtype of output, should be same shape and type as input
+    reduction: str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "sigmoid_cross_entropy_with_logits_v2"
+
+    Returns
+    -------
+    None
+    """
+    check_list = ("float16", "float32")
+    
     shape_predict = predict.get("shape")
-    dtype_input = predict.get("dtype").lower()
+    dtype_predict = predict.get("dtype").lower()
+    check_shape(shape_predict, param_name="predict")
+    check_dtype(dtype_predict, check_list, param_name="predict")
+    
     shape_target = target.get("shape")
     dtype_target = target.get("dtype").lower()
-    _shape_check(shape_predict)
-    _shape_check(shape_target)
-
-    if shape_predict != shape_target:
-        raise RuntimeError("target size must be the same as predict size")
-
-    format_predict = predict.get("format")
-    predict_ori_shape = predict.get("ori_shape")
-    if format_predict == "NC1HWC0":
-        if len(predict_ori_shape) > 4:
-            raise RuntimeError("Dim of shape bigger than 4 is not support when format is NC1HWC0")
-        if len(shape_predict) != 5:
-            raise RuntimeError("Dim of shape should be 5 when format is NC1HWC0")
-
-    data_predict = tvm.placeholder(shape_predict, name="data_predict", dtype=dtype_input)
-    data_target = tvm.placeholder(shape_target, name="data_target", dtype=dtype_target)
-
-    data_weight = _optional_input_tensor_apply(weight, "data_weight", predict)
-    data_pos_weight = _optional_input_tensor_apply(pos_weight, "data_pos_weight", predict)
-
-    check_reduct = {"mean", "sum", "none"}
-    if reduction not in check_reduct:
-        raise ValueError("reduction should be one of the ['mean', 'sum', 'none'], \
-                         {} is not a valid value for reduction".format(reduction))
-
-    res = sigmoid_cross_entropy_with_logitsv2_compute(data_predict, data_target, data_weight, data_pos_weight,
-                                                      reduction, predict_ori_shape)
-
+    check_shape(shape_target, param_name="target")
+    check_dtype(dtype_target, check_list, param_name="target")
+    
+    compare_tensor_dict_key(predict, target, "shape")
+    
+    if reduction not in ("mean", "sum", "none"):
+        raise RuntimeError("{} is not a valid value for reduction".format(reduction))
+    
+    data_weight = None
+    if weight is not None:
+        shape_weight = weight.get("shape")
+        dtype_weight = weight.get("dtype").lower()
+        check_shape(shape_weight, param_name=weight)
+        check_dtype(dtype_weight, check_list, param_name="weight")
+        _, shape_weight, _ = broadcast_shapes(shape_predict, shape_weight,
+                                                   param_name_input1="predict",
+                                                   param_name_input2="weight")
+        data_weight = tvm.placeholder(shape_weight,
+                                      name="data_weight",
+                                      dtype=dtype_weight)
+    
+    data_pos_weight = None
+    if pos_weight is not None:
+        shape_pos_weight = pos_weight.get("shape")
+        dtype_pos_weight = pos_weight.get("dtype").lower()
+        check_shape(shape_pos_weight, param_name=weight)
+        check_dtype(dtype_pos_weight, check_list, param_name="pos_weight")
+        _, shape_pos_weight, _ = broadcast_shapes(shape_predict, shape_pos_weight,
+                                                   param_name_input1="predict",
+                                                   param_name_input2="pos_weight")
+        data_pos_weight = tvm.placeholder(shape_pos_weight,
+                                          name="data_pos_weight",
+                                          dtype=dtype_pos_weight)
+        
+    data_predict = tvm.placeholder(shape_predict,
+                                   name="data_predict",
+                                   dtype=dtype_predict)
+    data_target = tvm.placeholder(shape_target,
+                                  name="data_target",
+                                  dtype=dtype_target)
+    
+    loss = sigmoid_cross_entropy_with_logits_v2_compute(data_predict,
+                                                        data_target,
+                                                        data_weight,
+                                                        data_pos_weight,
+                                                        loss,
+                                                        reduction,
+                                                        kernel_name)
+    tensor_list = [data_predict, data_target]
+    if data_weight is not None:
+        tensor_list.append(data_weight)
+        
+    if data_pos_weight is not None:
+        tensor_list.append(data_pos_weight)
+    
+    tensor_list.append(loss)
+    
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
-
-    tensor_list = _get_tensor_list(pos_weight, weight, data_predict, data_target, data_weight, data_pos_weight, res)
+        sch = generic.auto_schedule(loss)
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(schedule, config)
+
+    te.lang.cce.cce_build_code(sch, config)

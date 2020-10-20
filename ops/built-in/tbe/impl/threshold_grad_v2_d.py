@@ -1,26 +1,29 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 threshold_grad_v2_d
 """
 
-import te.lang.cce
-from te import tvm
+from te.lang.cce.te_schedule.cce_schedule import cce_build_code
+from te.lang.cce.te_compute.elewise_compute import vcmpsel as _vcmpsel
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-from te.utils.op_utils import refine_shapes_for_broadcast
+from te.tvm import api as tvm
+from te.tvm.target import cce
+from te.utils import check_para
+from te.utils import operate_shape
+from te.utils.cce import auto_schedule
 
 
 @fusion_manager.register("threshold_grad_v2_d")
@@ -49,14 +52,14 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
     """
 
     dtype = input_gradients.dtype
-    result = te.lang.cce.vcmpsel(input_features, threshold, 'gt',
+    result = _vcmpsel(input_features, threshold, 'gt',
                                  input_gradients, tvm.const(0, dtype))
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
+                 check_para.REQUIRED_OUTPUT, check_para.REQUIRED_ATTR_FLOAT, check_para.KERNEL_NAME)
 def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
                         threshold, kernel_name="threshold_grad_v2_d"):
     """
@@ -86,15 +89,15 @@ def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
     shape_input_features = input_features.get("shape")
     dtype_input_features = input_features.get("dtype").lower()
 
-    shape_list = util.produce_shapes(shape_input_gradients,
+    shape_list = operate_shape.produce_shapes(shape_input_gradients,
                                      shape_input_features)
-    util.check_tensor_shape_size(shape_list[2])
+    check_para.check_tensor_shape_size(shape_list[2])
     shape_input_gradients, shape_input_features = \
-        refine_shapes_for_broadcast(shape_list[0], shape_list[1])
+        operate_shape.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(dtype_input_gradients, check_list)
-    check_dtype(dtype_input_features, check_list)
+    check_para.check_dtype(dtype_input_gradients, check_list)
+    check_para.check_dtype(dtype_input_features, check_list)
 
     data_input_gradients = tvm.placeholder(shape_input_gradients,
                                            name="data_input_gradients",
@@ -105,10 +108,10 @@ def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
     res = threshold_grad_v2_d_compute(data_input_gradients, data_input_features,
                                       output_backprops, threshold, kernel_name)
 
-    with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+    with cce():
+        schedule = auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input_gradients, data_input_features, res]}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    cce_build_code(schedule, config)

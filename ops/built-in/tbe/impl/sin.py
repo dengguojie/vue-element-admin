@@ -1,28 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sin
 """
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from functools import reduce as reduceIns
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # define a string name of "float16"
 FLOAT_16 = "float16"
@@ -54,15 +53,15 @@ def _sin(x):
     -------
     res : the res of sin
     """
-    input_x_power = te.lang.cce.vmul(x, x)
-    iter_value = te.lang.cce.vmul(te.lang.cce.vmuls(input_x_power, FIRST_FACTOR), x)
-    res = te.lang.cce.vadd(x, iter_value)
+    input_x_power = tbe.vmul(x, x)
+    iter_value = tbe.vmul(tbe.vmuls(input_x_power, FIRST_FACTOR), x)
+    res = tbe.vadd(x, iter_value)
 
     i = FIRST_ORDER
     while i < LAST_ORDER:
-        iter_value = te.lang.cce.vmuls(te.lang.cce.vmul(input_x_power, iter_value),
+        iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value),
                                        -1.0 / (i*(i - 1)))
-        res = te.lang.cce.vadd(res, iter_value)
+        res = tbe.vadd(res, iter_value)
         # add 2 to get the next order
         i = i + 2
 
@@ -70,7 +69,7 @@ def _sin(x):
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("sin")
+@tbe_platform.fusion_manager.fusion_manager.register("sin")
 def sin_compute(x, y, kernel_name="sin"):
     """
     algorithm: sin
@@ -90,43 +89,43 @@ def sin_compute(x, y, kernel_name="sin"):
     res : the res of sin
     """
     dtype = x.dtype
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
 
     has_improve_precision = False
     cast_dtype = FLOAT_16
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         has_improve_precision = True
         cast_dtype = FLOAT_32
 
     # cast to type float32 when type is float16
     if dtype == FLOAT_16 and has_improve_precision:
-        x = te.lang.cce.cast_to(x, FLOAT_32)
+        x = tbe.cast_to(x, FLOAT_32)
 
-    pai_multiple = te.lang.cce.vmuls(x, 1 / PI)
-    round_float = te.lang.cce.cast_to(te.lang.cce.round(pai_multiple), cast_dtype)
+    pai_multiple = tbe.vmuls(x, 1 / PI)
+    round_float = tbe.cast_to(tbe.round(pai_multiple), cast_dtype)
     # to adjust x to [-pai/2,pai/2]
-    x = te.lang.cce.vsub(x, te.lang.cce.vmuls(round_float, PI))
+    x = tbe.vsub(x, tbe.vmuls(round_float, PI))
 
     res = _sin(x)
 
     # if round is odd, the final result need to mutiply -1.Need to multipy 1/2 to get the ceil value
-    ceil_value = te.lang.cce.ceil(te.lang.cce.vmuls(round_float, 1 / 2))
+    ceil_value = tbe.ceil(tbe.vmuls(round_float, 1 / 2))
     # if odd, ceil*2-round is 1,if even, the value is 0
-    sub_value = te.lang.cce.vsub(te.lang.cce.vmuls(ceil_value, tvm.const(2, dtype)), round_float)
-    tensor_one = te.lang.cce.broadcast(tvm.const(1, cast_dtype), shape)
-    odd_tensor = te.lang.cce.vsub(tensor_one, sub_value)
-    even_tensor = te.lang.cce.vsub(odd_tensor, tensor_one)
-    odd_even_tensor = te.lang.cce.vadd(odd_tensor, even_tensor)
-    res = te.lang.cce.vmul(res, odd_even_tensor)
+    sub_value = tbe.vsub(tbe.vmuls(ceil_value, tvm.const(2, dtype)), round_float)
+    tensor_one = tbe.broadcast(tvm.const(1, cast_dtype), shape)
+    odd_tensor = tbe.vsub(tensor_one, sub_value)
+    even_tensor = tbe.vsub(odd_tensor, tensor_one)
+    odd_even_tensor = tbe.vadd(odd_tensor, even_tensor)
+    res = tbe.vmul(res, odd_even_tensor)
 
     # cast the dtype to float16
     if dtype == FLOAT_16 and has_improve_precision:
-        res = te.lang.cce.cast_to(res, FLOAT_16)
+        res = tbe.cast_to(res, FLOAT_16)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sin(x, y, kernel_name="sin"):
     """
     algorithm: sin
@@ -148,16 +147,16 @@ def sin(x, y, kernel_name="sin"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype").lower()
 
-    check_shape(shape_input, param_name="x")
+    para_check.check_shape(shape_input, param_name="x")
     check_list = (FLOAT_16, FLOAT_32)
-    check_dtype(dtype_input, check_list, param_name="x")
+    para_check.check_dtype(dtype_input, check_list, param_name="x")
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape_input)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_input)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=dtype_input)
     res = sin_compute(data_input, y, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": (data_input, res)}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

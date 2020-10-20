@@ -1,52 +1,49 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 gelu
 """
-from __future__ import absolute_import
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from functools import reduce as reduceIns
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # const CSVALUE equals 0.044715
 CSVALUE = tvm.const(0.044715, "float32")
-# shape limit for aicore equals 2**31
-SHAPE_SIZE_LIMIT = 2147483648
 
 
 def _tanh_parameter_compute(placeholders):
     """
     compute the parameter of tanh:
+    :param placeholders: input data
     return: result equals (x+0.044715*tf.pow(x,3))
     """
-    data = placeholders
-    mul_0 = te.lang.cce.vmul(data, data)
-    pow_0 = te.lang.cce.vmul(mul_0, data)
-    mul_1 = te.lang.cce.vmuls(pow_0, CSVALUE)
-    result = te.lang.cce.vadd(data, mul_1)
+    mul_0 = tbe.vmul(placeholders, placeholders)
+    pow_0 = tbe.vmul(mul_0, placeholders)
+    mul_1 = tbe.vmuls(pow_0, CSVALUE)
+    result = tbe.vadd(placeholders, mul_1)
 
     return result
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-@fusion_manager.register("gelu")
+@tbe_platform.fusion_manager.fusion_manager.register("gelu")
 def gelu_compute(input_x, output_y, kernel_name="gelu"):
     """
     mathematical formula of gelu(x):
@@ -68,13 +65,13 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     -------
      A TVM tensor same as input placeholders.
     """
-    dtype = input_x.dtype.lower()
+    dtype = input_x.dtype
     has_improve_precision = False
+
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
 
     # gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
     # tanh(y) = 2/(1+exp(-2y)) - 1
@@ -92,30 +89,31 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     const_2 = tvm.const(-1.0, "float32")
     const_3 = tvm.const(0.0, "float32")
     tanh_parameter = _tanh_parameter_compute(input_x)
-    mul_0 = te.lang.cce.vmuls(tanh_parameter, const_0)  # y
+    mul_0 = tbe.vmuls(tanh_parameter, const_0)  # y
 
-    mul_0_min = te.lang.cce.vmins(mul_0, const_3)
-    right_mul = te.lang.cce.vexp(mul_0_min)
+    mul_0_min = tbe.vmins(mul_0, const_3)
+    right_mul = tbe.vexp(mul_0_min)
 
-    mul_0_abs = te.lang.cce.vabs(mul_0)   # abs(y)
-    mul_0_abs_neg = te.lang.cce.vmuls(mul_0_abs, const_2)  # -abs(y)
+    mul_0_abs = tbe.vabs(mul_0)   # abs(y)
+    mul_0_abs_neg = tbe.vmuls(mul_0_abs, const_2)  # -abs(y)
 
     # the formula is e^(-abs(y))
-    mul_0_abs_neg_exp = te.lang.cce.vexp(mul_0_abs_neg)
+    mul_0_abs_neg_exp = tbe.vexp(mul_0_abs_neg)
 
     # the formula is e^(-abs(y)) + 1
-    mul_0_abs_neg_exp_add = te.lang.cce.vadds(mul_0_abs_neg_exp, const_1)
-    left_mul = te.lang.cce.vdiv(input_x, mul_0_abs_neg_exp_add)
+    mul_0_abs_neg_exp_add = tbe.vadds(mul_0_abs_neg_exp, const_1)
+    left_mul = tbe.vdiv(input_x, mul_0_abs_neg_exp_add)
 
-    result = te.lang.cce.vmul(left_mul, right_mul)
+    result = tbe.vmul(left_mul, right_mul)
 
     if has_improve_precision:
-        result = te.lang.cce.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def gelu(input_x, output_y, kernel_name="gelu"):
     """
     mathematical formula of gelu(x):
@@ -135,25 +133,25 @@ def gelu(input_x, output_y, kernel_name="gelu"):
 
     Returns
     -------
-    none.
+    None.
     """
     shape = input_x.get("shape")
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
 
     check_list = ("float16", "float32")
     input_dtype = input_x.get("dtype").lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
     result = gelu_compute(data, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, result]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

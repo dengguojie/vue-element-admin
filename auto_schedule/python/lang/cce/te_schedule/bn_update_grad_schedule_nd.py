@@ -1,18 +1,18 @@
-#!/usr/bin/env python # pylint: disable=too-many-lines, unused-import
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_normalization_forward_training_reduce
 """
 from __future__ import absolute_import
@@ -63,7 +63,7 @@ def _need_dichotomy_add(loop_size, loop_tail_size, dtype):
         vector_inst_one_repeat_size = 64
 
     return loop_size % vector_inst_one_repeat_size == 0 \
-           and loop_tail_size % vector_inst_one_repeat_size == 0
+        and loop_tail_size % vector_inst_one_repeat_size == 0
 
 
 def _need_tuple_reduce_sum_convert_to_dichotomy_add(shape_input, dtype):
@@ -197,7 +197,7 @@ def get_ub_tiling(shape, block_tiling_axis,
     w_size = shape[3]
 
     if max_ub_count // (h_size*w_size) >= 2 \
-            and ((c_size >= core_num and c_size % core_num == 0) \
+            and ((c_size >= core_num and c_size % core_num == 0)
                  or (n_size >= core_num and n_size % core_num == 0)):
         # ub utilization ratio is small, so use "model parallel"
         # c1_size axis as block_axis and n_size axis as ub split axis
@@ -243,7 +243,7 @@ def get_ub_tiling(shape, block_tiling_axis,
         split_size = block_tiling_inner_loop
 
     if split_axis == block_tiling_axis \
-                      and split_size > block_tiling_inner_loop:
+            and split_size > block_tiling_inner_loop:
         split_size = block_tiling_inner_loop
 
     ub_split_inner = split_size
@@ -565,7 +565,6 @@ def schedule_cut_h_or_w_twice(
     for i in range(0, len(final_out_tensor_global_list)):
         res[final_tensors_index_res[i]] = final_out_tensor_global_list[i]
 
-
     sch[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
 
     final_out_tensor_global = final_out_tensor_global_list[0]
@@ -625,8 +624,7 @@ def schedule_cut_h_or_w_twice(
                    [final_out_tensor_ub_rf.op.reduce_axis[2]])
 
     block = tvm.thread_axis("blockIdx.x")
-    sch[final_out_tensor_global].bind(final_out_tensor_global.op.reduce_axis[0]
-                                      , block)
+    sch[final_out_tensor_global].bind(final_out_tensor_global.op.reduce_axis[0], block)
 
     outer_loop = shape_input[2] // split_factor
     outer_loop = outer_loop * shape_input[0] * shape_input[1]
@@ -756,8 +754,7 @@ def schedule_fuse_h_n(sch_list, res, shape_input, split_factor,
                    [final_out_tensor_ub_rf.op.reduce_axis[1]])
 
     block = tvm.thread_axis("blockIdx.x")
-    sch[final_out_tensor_global].bind(final_out_tensor_global.op.reduce_axis[0]
-                                      , block)
+    sch[final_out_tensor_global].bind(final_out_tensor_global.op.reduce_axis[0], block)
 
     outer_loop = shape_input[2] // split_factor
     outer_loop = outer_loop * shape_input[0] * shape_input[1]

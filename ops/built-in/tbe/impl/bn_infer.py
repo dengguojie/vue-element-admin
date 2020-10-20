@@ -1,36 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-bn_infer_grad
+bn_infer
 """
-
-from __future__ import absolute_import
-from __future__ import division
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te.platform import cce_policy
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-cce_policy.disableL2()
-
-MAX_SHAPE_NUM = 10000000
-SCALAR_ONE = 1
+from te.utils import para_check
+from te.utils import shape_util
+tbe_platform.cce_policy.disableL2()
 
 
 def _check_shape(shape_x, shape_scale):
@@ -48,9 +38,9 @@ def _check_shape(shape_x, shape_scale):
     -------
     None
     """
-    check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
 
-    check_shape(shape_scale, param_name="scale")
+    para_check.check_shape(shape_scale, param_name="scale")
 
     if len(shape_x) != 5 or len(shape_scale) != 5:
         raise RuntimeError(
@@ -87,16 +77,16 @@ def _check_dtype(dtype_x, dtype_scale, dtype_offset,
     -------
     None
     """
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
-    check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
-    check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
-    check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
-    check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
+    para_check.check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
+    para_check.check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
+    para_check.check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@fusion_manager.register("bn_infer")
+@tbe_platform.fusion_manager.fusion_manager.register("bn_infer")
 def bn_infer_compute(x, scale, offset, mean, variance,
                      y, epsilon, kernel_name="bn_inf"):
     """
@@ -127,35 +117,35 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     res: TVM tensor
         the result of bn_training_update_v2 compute for inference
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
 
     # compute the oefficient of y
-    multiplier_add = te.lang.cce.vadds(variance, epsilon)
-    multiplier_sqrt = te.lang.cce.vsqrt(multiplier_add)
-    multiplier_div = te.lang.cce.vdiv(scale, multiplier_sqrt)
-    multiplier = te.lang.cce.broadcast(multiplier_div, shape_x)
+    multiplier_add = tbe.vadds(variance, epsilon)
+    multiplier_sqrt = tbe.vsqrt(multiplier_add)
+    multiplier_div = tbe.vdiv(scale, multiplier_sqrt)
+    multiplier = tbe.broadcast(multiplier_div, shape_x)
 
-    addend_mul = te.lang.cce.vmul(multiplier_div, mean)
-    addend_sub = te.lang.cce.vsub(offset, addend_mul)
-    addend = te.lang.cce.broadcast(addend_sub, shape_x)
+    addend_mul = tbe.vmul(multiplier_div, mean)
+    addend_sub = tbe.vsub(offset, addend_mul)
+    addend = tbe.broadcast(addend_sub, shape_x)
 
     # compute the batch normalization of x
     is_cast = False
     if x.dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul",
-                                                    "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
         is_cast = True
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
 
-    res = te.lang.cce.vadd(te.lang.cce.vmul(multiplier, x), addend)
+    res = tbe.vadd(tbe.vmul(multiplier, x), addend)
     if is_cast:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                 OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_infer(x, scale, offset, mean, variance, y,
              epsilon, kernel_name="bn_infer"):
     """
@@ -187,7 +177,6 @@ def bn_infer(x, scale, offset, mean, variance, y,
     -------
     None
     """
-
     shape_x = x.get("shape")
     shape_scale = scale.get("shape")
 
@@ -200,35 +189,29 @@ def bn_infer(x, scale, offset, mean, variance, y,
     data_format = x.get("format").upper()
 
     if data_format not in ("NC1HWC0",):
-        raise RuntimeError(
-            "Format only support 5HD")
+        format_rule = "Format only support 5HD"
+        error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
 
     _check_shape(shape_x, shape_scale)
-    util.compare_tensor_dict_key(scale, offset, "shape")
-    util.compare_tensor_dict_key(scale, mean, "shape")
-    util.compare_tensor_dict_key(scale, variance, "shape")
+    shape_util.compare_tensor_dict_key(scale, offset, "shape")
+    shape_util.compare_tensor_dict_key(scale, mean, "shape")
+    shape_util.compare_tensor_dict_key(scale, variance, "shape")
 
     _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
 
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
-    scale_input = tvm.placeholder(shape_scale, name="scale_input",
-                                  dtype=dtype_scale.lower())
-    offset_input = tvm.placeholder(shape_scale, name="offset_input",
-                                   dtype=dtype_offset.lower())
-    mean_input = tvm.placeholder(shape_scale, name="mean_input",
-                                 dtype=dtype_mean.lower())
-    variance_input = tvm.placeholder(shape_scale, name="variance_input",
-                                     dtype=dtype_variance.lower())
+    scale_input = tvm.placeholder(shape_scale, name="scale_input", dtype=dtype_scale.lower())
+    offset_input = tvm.placeholder(shape_scale, name="offset_input", dtype=dtype_offset.lower())
+    mean_input = tvm.placeholder(shape_scale, name="mean_input", dtype=dtype_mean.lower())
+    variance_input = tvm.placeholder(shape_scale, name="variance_input", dtype=dtype_variance.lower())
 
-    res = bn_infer_compute(x_input, scale_input, offset_input,
-                           mean_input, variance_input, y,
-                           epsilon, kernel_name=kernel_name)
+    res = bn_infer_compute(x_input, scale_input, offset_input, mean_input, variance_input,
+                           y, epsilon, kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
-    tensor_list = [x_input, scale_input, offset_input,
-                   mean_input, variance_input, res]
+    tensor_list = [x_input, scale_input, offset_input, mean_input, variance_input, res]
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

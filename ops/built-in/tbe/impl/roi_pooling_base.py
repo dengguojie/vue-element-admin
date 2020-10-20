@@ -1,22 +1,23 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 roi_pooling_base
 """
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
+
 
 # pylint: disable=C0103
 # pylint: disable=C0330
@@ -66,7 +67,7 @@ def ceil_div(value, factor):
     -------
     res:
     """
-    return (value + factor - 1)//factor
+    return (value + factor - 1) // factor
 
 
 class RoiClass():
@@ -180,8 +181,7 @@ class RoiClass():
         self.fm_w = self.shape[3]
         self.fm_c0 = self.shape[4]
 
-        self.device_core_num = \
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.proposal_num_per_tiling = 128
         self.roi_max_num = self.rois_shape[2]
@@ -204,32 +204,30 @@ class RoiClass():
             output_offset = \
                 self.tik_instance.Tensor(dtype="int32",
                                          shape=(self.feature_batch, 64),
-                                         scope=tik.scope_ubuf,
+                                         scope=tbe_platform.scope_ubuf,
                                          name="output_offset")
 
-            self.tik_instance.vec_dup(128//2,
-                                         output_offset[0, 0],
-                                         0, 64*4//256, 8)
+            self.tik_instance.vec_dup(128 // 2, output_offset[0, 0], 0, 64 * 4 // 256, 8)
 
-            for row in range(self.feature_batch-1):
-                self.tik_instance.data_move(output_offset[row+1, 0],
+            for row in range(self.feature_batch - 1):
+                self.tik_instance.data_move(output_offset[row + 1, 0],
                                             self.roi_actual_num[row, 0],
                                             0, 1, 1, 0, 0)
 
             with self.tik_instance.for_range(1, self.feature_batch) as bid:
                 self.tik_instance.vec_add(128//2, output_offset[bid, 0], \
-                                       output_offset[bid, 0],
-                                       output_offset[bid-1, 0], \
-                                       64*4//256, 8, 8, 8)
+                                          output_offset[bid, 0],
+                                          output_offset[bid - 1, 0], \
+                                          64 * 4 // 256, 8, 8, 8)
             self.ouput_proposal_offset.set_as(output_offset[batch_id, 0])
 
             roi_actual_num_ub_tmp = \
                 self.tik_instance.Tensor(dtype="int32", shape=(8,),
                                          name="roi_actual_num_ub",
-                                         scope=tik.scope_ubuf)
+                                         scope=tbe_platform.scope_ubuf)
             self.tik_instance.data_move(roi_actual_num_ub_tmp, \
-                            self.roi_actual_num[batch_id, 0], \
-                            0, 1, 1, 0, 0, 0)
+                                        self.roi_actual_num[batch_id, 0], \
+                                        0, 1, 1, 0, 0, 0)
             self.roi_actual_num_ub.set_as(roi_actual_num_ub_tmp[0])
 
     def cal_output_offset_without_actualnum(self, batch_id):
@@ -269,8 +267,7 @@ class RoiClass():
         if self.roi_max_num % self.proposal_num_per_tiling == 0:
             self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling
         else:
-            self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling \
-                              + 1
+            self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling + 1
 
         # all flooring pos roi_start_h
         self.roi_start_h = \
@@ -278,51 +275,51 @@ class RoiClass():
                                      [self.pooled_h,
                                       self.proposal_num_per_tiling],
                                      name="roi_start_h",
-                                     scope=tik.scope_ubuf)
+                                     scope=tbe_platform.scope_ubuf)
         self.roi_start_w = \
             self.tik_instance.Tensor("int32",
                                      [self.pooled_w,
                                       self.proposal_num_per_tiling],
                                      name="roi_start_w",
-                                     scope=tik.scope_ubuf)
+                                     scope=tbe_platform.scope_ubuf)
 
         # all ceiling pos  roi_bin_h
         self.roi_bin_h = \
             self.tik_instance.Tensor("int32", [self.pooled_h,
                                                self.proposal_num_per_tiling],
-                                     name="roi_bin_h", scope=tik.scope_ubuf)
+                                     name="roi_bin_h", scope=tbe_platform.scope_ubuf)
         self.roi_bin_w = \
             self.tik_instance.Tensor("int32",
                                      [self.pooled_w,
                                       self.proposal_num_per_tiling],
                                      name="roi_bin_w",
-                                     scope=tik.scope_ubuf)
+                                     scope=tbe_platform.scope_ubuf)
         self.roi_start_w_from0 = \
             self.tik_instance.Tensor("int32",
                                      shape=(self.pooled_w,
                                             self.proposal_num_per_tiling),
-                                     scope=tik.scope_ubuf,
+                                     scope=tbe_platform.scope_ubuf,
                                      name="roi_start_w_from0")
         self.proposals_ub_int32 = \
             self.tik_instance.Tensor("int32",
                                      [5, self.proposal_num_per_tiling],
                                      name="proposals_ub_int32",
-                                     scope=tik.scope_ubuf)
+                                     scope=tbe_platform.scope_ubuf)
         self.roi_height = \
             self.tik_instance.Tensor("int32",
                                      shape=(self.proposal_num_per_tiling,),
-                                     scope=tik.scope_ubuf, name="roi_height")
+                                     scope=tbe_platform.scope_ubuf, name="roi_height")
         self.roi_width = \
             self.tik_instance.Tensor("int32",
                                      shape=(self.proposal_num_per_tiling,),
-                                     scope=tik.scope_ubuf, name="roi_width")
+                                     scope=tbe_platform.scope_ubuf, name="roi_width")
 
         self.const_value = self.tik_instance.Tensor("int32", shape=(64,),
                                                     name="const_value",
-                                                    scope=tik.scope_ubuf)
+                                                    scope=tbe_platform.scope_ubuf)
         self.const_zero = self.tik_instance.Tensor("int32", (64,),
                                                    name="const_zero",
-                                                   scope=tik.scope_ubuf)
+                                                   scope=tbe_platform.scope_ubuf)
 
         self.calced_rois = self.tik_instance.Scalar("int32")
         self.calced_rois.set_as(0)
@@ -350,8 +347,7 @@ class RoiClass():
         if self.roi_max_num % self.proposal_num_per_tiling == 0:
             self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling
         else:
-            self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling \
-                              + 1
+            self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling + 1
 
         self.calced_rois = self.tik_instance.Scalar("int32")
         self.calced_rois.set_as(0)
@@ -377,7 +373,7 @@ class RoiClass():
             proposals_ub = \
                 self.tik_instance.Tensor(self.dtype, \
                         shape=(5, self.proposal_num_per_tiling), \
-                        name="proposals_ub", scope=tik.scope_ubuf)
+                        name="proposals_ub", scope=tbe_platform.scope_ubuf)
 
             if self.tiling_num == 1:
                 self.proposal_ub_validnum.set_as(self.roi_max_num - \
@@ -455,44 +451,45 @@ class RoiClass():
                 8, 8)
 
             self.tik_instance.vec_conv(128 // 2, "round", self.proposals_ub_int32,
-                                    proposals_ub,
-                                    self.proposal_num_per_tiling*5 // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       proposals_ub,
+                                       self.proposal_num_per_tiling * 5 // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
 
         self.tik_instance.vec_sub(128 // 2, self.roi_height, \
-                               self.proposals_ub_int32[4, 0], \
-                               self.proposals_ub_int32[2, 0], \
-                               self.proposal_num_per_tiling // 64, \
-                               8, 8, 8)
+                                  self.proposals_ub_int32[4, 0], \
+                                  self.proposals_ub_int32[2, 0], \
+                                  self.proposal_num_per_tiling // 64, \
+                                  8, 8, 8)
         self.tik_instance.vec_sub(128 // 2, self.roi_width, \
-                               self.proposals_ub_int32[3, 0], \
-                               self.proposals_ub_int32[1, 0], \
-                               self.proposal_num_per_tiling // 64, \
-                               8, 8, 8)
+                                  self.proposals_ub_int32[3, 0], \
+                                  self.proposals_ub_int32[1, 0], \
+                                  self.proposal_num_per_tiling // 64, \
+                                  8, 8, 8)
 
         self.tik_instance.vec_dup(64, self.const_value, 1, 1, 0)
 
         self.tik_instance.vec_dup(64, self.const_zero, 0, 1, 0)
 
         self.tik_instance.vec_add(128 // 2, self.roi_height, self.roi_height,
-                               self.const_value,
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 0)
+                                  self.const_value,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_add(128 // 2, self.roi_width, self.roi_width,
-                               self.const_value,
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 0)
+                                  self.const_value,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 0)
 
         self.tik_instance.vec_max(128 // 2, self.roi_height, self.const_value,
-                               self.roi_height,
-                               self.proposal_num_per_tiling // 64,
-                               8, 0, 8)
+                                  self.roi_height,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 0, 8)
         self.tik_instance.vec_max(128 // 2, self.roi_width, self.const_value,
-                               self.roi_width,
-                               self.proposal_num_per_tiling // 64,
-                               8, 0, 8)
+                                  self.roi_width,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 0, 8)
 
-    def get_proposal_height_width_param(self, tiling_index, blockid, proposals_ub_int32, roi_height, roi_width, const_value, const_zero):
+    def get_proposal_height_width_param(self, tiling_index, blockid, proposals_ub_int32, roi_height,
+                                        roi_width, const_value, const_zero):
         """
         calculate all proposals's height and width which are loaded to ub
 
@@ -506,12 +503,11 @@ class RoiClass():
         -------
         None
         """
-
         with self.tik_instance.new_stmt_scope():
             proposals_ub = \
                 self.tik_instance.Tensor(self.dtype, \
                         shape=(5, self.proposal_num_per_tiling), \
-                        name="proposals_ub", scope=tik.scope_ubuf)
+                        name="proposals_ub", scope=tbe_platform.scope_ubuf)
 
             if self.tiling_num == 1:
                 self.proposal_ub_validnum.set_as(self.roi_max_num - \
@@ -590,42 +586,42 @@ class RoiClass():
                 8, 8)
 
             self.tik_instance.vec_conv(128 // 2, "round", proposals_ub_int32,
-                                    proposals_ub,
-                                    self.proposal_num_per_tiling*5 // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       proposals_ub,
+                                       self.proposal_num_per_tiling * 5 // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
 
         self.tik_instance.vec_sub(128 // 2, roi_height, \
-                               proposals_ub_int32[4, 0], \
-                               proposals_ub_int32[2, 0], \
-                               self.proposal_num_per_tiling // 64, \
-                               8, 8, 8)
+                                  proposals_ub_int32[4, 0], \
+                                  proposals_ub_int32[2, 0], \
+                                  self.proposal_num_per_tiling // 64, \
+                                  8, 8, 8)
         self.tik_instance.vec_sub(128 // 2, roi_width, \
-                               proposals_ub_int32[3, 0], \
-                               proposals_ub_int32[1, 0], \
-                               self.proposal_num_per_tiling // 64, \
-                               8, 8, 8)
+                                  proposals_ub_int32[3, 0], \
+                                  proposals_ub_int32[1, 0], \
+                                  self.proposal_num_per_tiling // 64, \
+                                  8, 8, 8)
 
         self.tik_instance.vec_dup(64, const_value, 1, 1, 0)
 
         self.tik_instance.vec_dup(64, const_zero, 0, 1, 0)
 
         self.tik_instance.vec_add(128 // 2, roi_height, roi_height,
-                               const_value,
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 0)
+                                  const_value,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_add(128 // 2, roi_width, roi_width,
-                               const_value,
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 0)
+                                  const_value,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 0)
 
         self.tik_instance.vec_max(128 // 2, roi_height, const_value,
-                               roi_height,
-                               self.proposal_num_per_tiling // 64,
-                               8, 0, 8)
+                                  roi_height,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 0, 8)
         self.tik_instance.vec_max(128 // 2, roi_width, const_value,
-                               roi_width,
-                               self.proposal_num_per_tiling // 64,
-                               8, 0, 8)
+                                  roi_width,
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 0, 8)
 
     def init_pooled_proposal_start_hw(self):
         """
@@ -645,20 +641,19 @@ class RoiClass():
                                          [self.pooled_h + 1,
                                           self.proposal_num_per_tiling],
                                          name="bin_h_fp16",
-                                         scope=tik.scope_ubuf)
+                                         scope=tbe_platform.scope_ubuf)
             bin_w_fp16 = \
                 self.tik_instance.Tensor(self.dtype,
                                          [self.pooled_w + 1,
                                           self.proposal_num_per_tiling],
                                          name="bin_w_fp16",
-                                         scope=tik.scope_ubuf)
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in \
-                    ("Hi3796CV300CS", "Hi3796CV300ES"):
+                                         scope=tbe_platform.scope_ubuf)
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300CS,
+                                                                       tbe_platform.HI3796CV300ES):
                 src_scalar = self.tik_instance.Scalar(dtype="int32")
                 to_dst_scalar = self.tik_instance.Scalar(dtype="float32")
                 to_dst_scalar_16 = self.tik_instance.Scalar(dtype="float16")
-                with self.tik_instance.for_range(0, \
-                        self.proposal_num_per_tiling) as i:
+                with self.tik_instance.for_range(0, self.proposal_num_per_tiling) as i:
                     src_scalar.set_as(self.roi_height[i])
                     self.tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
                     self.tik_instance.scalar_conv('', to_dst_scalar_16, to_dst_scalar)
@@ -670,89 +665,90 @@ class RoiClass():
             else:
                 if self.dtype == "float16":
                     self.tik_instance.vec_conv(128 // 2, "", bin_h_fp16[1, 0],
-                                            self.roi_height,
-                                            self.proposal_num_per_tiling // 64,
-                                            2*TYPELEN_DICT[self.dtype], 8,
-                                            1.0)
+                                               self.roi_height,
+                                               self.proposal_num_per_tiling // 64,
+                                               2 * TYPELEN_DICT[self.dtype], 8,
+                                               1.0)
                     self.tik_instance.vec_conv(128 // 2,
-                                            "", bin_w_fp16[1, 0],
-                                            self.roi_width,
-                                            self.proposal_num_per_tiling // 64,
-                                            2*TYPELEN_DICT[self.dtype], 8,
-                                            1.0)
+                                               "", bin_w_fp16[1, 0],
+                                               self.roi_width,
+                                               self.proposal_num_per_tiling // 64,
+                                               2 * TYPELEN_DICT[self.dtype], 8,
+                                               1.0)
                 else:
                     self.tik_instance.vec_conv(128 // 2, "", bin_h_fp16[1, 0],
-                                            self.roi_height,
-                                            self.proposal_num_per_tiling // 64,
-                                            2*TYPELEN_DICT[self.dtype], 8)
+                                               self.roi_height,
+                                               self.proposal_num_per_tiling // 64,
+                                               2 * TYPELEN_DICT[self.dtype], 8)
                     self.tik_instance.vec_conv(128 // 2,
-                                            "", bin_w_fp16[1, 0],
-                                            self.roi_width,
-                                            self.proposal_num_per_tiling // 64,
-                                            2*TYPELEN_DICT[self.dtype], 8)
+                                               "", bin_w_fp16[1, 0],
+                                               self.roi_width,
+                                               self.proposal_num_per_tiling // 64,
+                                               2 * TYPELEN_DICT[self.dtype], 8)
 
             self.tik_instance.vec_dup(256 // TYPELEN_DICT[self.dtype],
-                                         bin_h_fp16[0, 0], 0,
-                                         self.proposal_num_per_tiling * \
-                                            TYPELEN_DICT[self.dtype] // 256,
-                                         8)
+                                      bin_h_fp16[0, 0], 0,
+                                      self.proposal_num_per_tiling * \
+                                      TYPELEN_DICT[self.dtype] // 256,
+                                      8)
             self.tik_instance.vec_dup(256 // TYPELEN_DICT[self.dtype],
-                                         bin_w_fp16[0, 0], 0,
-                                         self.proposal_num_per_tiling * \
-                                             TYPELEN_DICT[self.dtype] // 256,
-                                         8)
+                                      bin_w_fp16[0, 0], 0,
+                                      self.proposal_num_per_tiling * \
+                                      TYPELEN_DICT[self.dtype] // 256,
+                                      8)
             self.tik_instance.vec_muls(256 // TYPELEN_DICT[self.dtype],
-                                    bin_h_fp16[1, 0],
-                                    bin_h_fp16[1, 0],
-                                    1.0 / self.pooled_h,
-                                    self.proposal_num_per_tiling * \
-                                        TYPELEN_DICT[self.dtype] // 256,
-                                    8, 8)
+                                       bin_h_fp16[1, 0],
+                                       bin_h_fp16[1, 0],
+                                       1.0 / self.pooled_h,
+                                       self.proposal_num_per_tiling * \
+                                       TYPELEN_DICT[self.dtype] // 256,
+                                       8, 8)
             self.tik_instance.vec_muls(256 // TYPELEN_DICT[self.dtype],
-                                    bin_w_fp16[1, 0],
-                                    bin_w_fp16[1, 0],
-                                    1.0 / self.pooled_w,
-                                    self.proposal_num_per_tiling * \
-                                        TYPELEN_DICT[self.dtype] // 256,
-                                    8, 8)
+                                       bin_w_fp16[1, 0],
+                                       bin_w_fp16[1, 0],
+                                       1.0 / self.pooled_w,
+                                       self.proposal_num_per_tiling * \
+                                       TYPELEN_DICT[self.dtype] // 256,
+                                       8, 8)
 
             with self.tik_instance.for_range(2, self.pooled_h + 1) as i:
                 self.tik_instance.vec_add(256 // TYPELEN_DICT[self.dtype],
-                                       bin_h_fp16[i, 0],
-                                       bin_h_fp16[i - 1, 0], bin_h_fp16[1, 0],
-                                       self.proposal_num_per_tiling * \
-                                           TYPELEN_DICT[self.dtype] // 256,
-                                       8, 8, 8)
+                                          bin_h_fp16[i, 0],
+                                          bin_h_fp16[i - 1, 0], bin_h_fp16[1, 0],
+                                          self.proposal_num_per_tiling * \
+                                          TYPELEN_DICT[self.dtype] // 256,
+                                          8, 8, 8)
             with self.tik_instance.for_range(2, self.pooled_w + 1) as i:
                 self.tik_instance.vec_add(256 // TYPELEN_DICT[self.dtype],
-                                       bin_w_fp16[i, 0],
-                                       bin_w_fp16[i - 1, 0], bin_w_fp16[1, 0],
-                                       self.proposal_num_per_tiling * \
-                                           TYPELEN_DICT[self.dtype] // 256,
-                                       8, 8, 8)
+                                          bin_w_fp16[i, 0],
+                                          bin_w_fp16[i - 1, 0], bin_w_fp16[1, 0],
+                                          self.proposal_num_per_tiling * \
+                                          TYPELEN_DICT[self.dtype] // 256,
+                                          8, 8, 8)
 
             self.tik_instance.vec_conv(128 // 2, "floor", self.roi_start_h[0, 0],
-                                    bin_h_fp16[0, 0],
-                                    self.proposal_num_per_tiling *
-                                    self.pooled_h // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_h_fp16[0, 0],
+                                       self.proposal_num_per_tiling *
+                                       self.pooled_h // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "ceil", self.roi_bin_h[0, 0],
-                                    bin_h_fp16[1, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_h // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_h_fp16[1, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_h // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "floor", self.roi_start_w[0, 0],
-                                    bin_w_fp16[0, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_w // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_w_fp16[0, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_w // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "ceil", self.roi_bin_w[0, 0],
-                                    bin_w_fp16[1, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_w // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_w_fp16[1, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_w // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
 
-    def init_pooled_proposal_start_hw_param(self, roi_start_h, roi_start_w, roi_bin_h, roi_bin_w, roi_height, roi_width):
+    def init_pooled_proposal_start_hw_param(self, roi_start_h, roi_start_w, roi_bin_h, roi_bin_w,
+                                            roi_height, roi_width):
         """
         calculate all proposals's h and w coordinate start from zero.
 
@@ -764,26 +760,24 @@ class RoiClass():
         -------
         None
         """
-
         with self.tik_instance.new_scope():
             bin_h_fp16 = \
                 self.tik_instance.Tensor(self.dtype,
                                          [self.pooled_h + 1,
                                           self.proposal_num_per_tiling],
                                          name="bin_h_fp16",
-                                         scope=tik.scope_ubuf)
+                                         scope=tbe_platform.scope_ubuf)
             bin_w_fp16 = \
                 self.tik_instance.Tensor(self.dtype,
                                          [self.pooled_w + 1,
                                           self.proposal_num_per_tiling],
                                          name="bin_w_fp16",
-                                         scope=tik.scope_ubuf)
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS"):
+                                         scope=tbe_platform.scope_ubuf)
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300CS,):
                 src_scalar = self.tik_instance.Scalar(dtype="int32")
                 to_dst_scalar = self.tik_instance.Scalar(dtype="float32")
                 to_dst_scalar_16 = self.tik_instance.Scalar(dtype="float16")
-                with self.tik_instance.for_range(0, \
-                        self.proposal_num_per_tiling) as i:
+                with self.tik_instance.for_range(0, self.proposal_num_per_tiling) as i:
                     src_scalar.set_as(roi_height[i])
                     self.tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
                     self.tik_instance.scalar_conv('', to_dst_scalar_16,
@@ -796,77 +790,77 @@ class RoiClass():
                     bin_w_fp16[1, i].set_as(to_dst_scalar_16)
             else:
                 self.tik_instance.vec_conv(128 // 2, "", bin_h_fp16[1, 0],
-                                        roi_height,
-                                        self.proposal_num_per_tiling // 64,
-                                        2*TYPELEN_DICT[self.dtype], 8,
-                                        1.0)
+                                           roi_height,
+                                           self.proposal_num_per_tiling // 64,
+                                           2 * TYPELEN_DICT[self.dtype], 8,
+                                           1.0)
                 self.tik_instance.vec_conv(128 // 2,
-                                        "", bin_w_fp16[1, 0],
-                                        roi_width,
-                                        self.proposal_num_per_tiling // 64,
-                                        2*TYPELEN_DICT[self.dtype], 8,
-                                        1.0)
+                                           "", bin_w_fp16[1, 0],
+                                           roi_width,
+                                           self.proposal_num_per_tiling // 64,
+                                           2 * TYPELEN_DICT[self.dtype], 8,
+                                           1.0)
 
             self.tik_instance.vec_dup(256 // TYPELEN_DICT[self.dtype],
-                                         bin_h_fp16[0, 0], 0,
-                                         self.proposal_num_per_tiling * \
-                                            TYPELEN_DICT[self.dtype] // 256,
-                                         8)
+                                      bin_h_fp16[0, 0], 0,
+                                      self.proposal_num_per_tiling * \
+                                      TYPELEN_DICT[self.dtype] // 256,
+                                      8)
             self.tik_instance.vec_dup(256 // TYPELEN_DICT[self.dtype],
-                                         bin_w_fp16[0, 0], 0,
-                                         self.proposal_num_per_tiling * \
-                                             TYPELEN_DICT[self.dtype] // 256,
-                                         8)
+                                      bin_w_fp16[0, 0], 0,
+                                      self.proposal_num_per_tiling * \
+                                      TYPELEN_DICT[self.dtype] // 256,
+                                      8)
             self.tik_instance.vec_muls(256 // TYPELEN_DICT[self.dtype],
-                                    bin_h_fp16[1, 0],
-                                    bin_h_fp16[1, 0],
-                                    1.0 / self.pooled_h,
-                                    self.proposal_num_per_tiling * \
-                                        TYPELEN_DICT[self.dtype] // 256,
-                                    8, 8)
+                                       bin_h_fp16[1, 0],
+                                       bin_h_fp16[1, 0],
+                                       1.0 / self.pooled_h,
+                                       self.proposal_num_per_tiling * \
+                                       TYPELEN_DICT[self.dtype] // 256,
+                                       8, 8)
             self.tik_instance.vec_muls(256 // TYPELEN_DICT[self.dtype],
-                                    bin_w_fp16[1, 0],
-                                    bin_w_fp16[1, 0],
-                                    1.0 / self.pooled_w,
-                                    self.proposal_num_per_tiling * \
-                                        TYPELEN_DICT[self.dtype] // 256,
-                                    8, 8)
+                                       bin_w_fp16[1, 0],
+                                       bin_w_fp16[1, 0],
+                                       1.0 / self.pooled_w,
+                                       self.proposal_num_per_tiling * \
+                                       TYPELEN_DICT[self.dtype] // 256,
+                                       8, 8)
 
             with self.tik_instance.for_range(2, self.pooled_h + 1) as i:
                 self.tik_instance.vec_add(256 // TYPELEN_DICT[self.dtype],
-                                       bin_h_fp16[i, 0],
-                                       bin_h_fp16[i - 1, 0], bin_h_fp16[1, 0],
-                                       self.proposal_num_per_tiling * \
-                                           TYPELEN_DICT[self.dtype] // 256,
-                                       8, 8, 8)
+                                          bin_h_fp16[i, 0],
+                                          bin_h_fp16[i - 1, 0], bin_h_fp16[1, 0],
+                                          self.proposal_num_per_tiling * \
+                                          TYPELEN_DICT[self.dtype] // 256,
+                                          8, 8, 8)
             with self.tik_instance.for_range(2, self.pooled_w + 1) as i:
                 self.tik_instance.vec_add(256 // TYPELEN_DICT[self.dtype],
-                                       bin_w_fp16[i, 0],
-                                       bin_w_fp16[i - 1, 0], bin_w_fp16[1, 0],
-                                       self.proposal_num_per_tiling * \
-                                           TYPELEN_DICT[self.dtype] // 256,
-                                       8, 8, 8)
+                                          bin_w_fp16[i, 0],
+                                          bin_w_fp16[i - 1, 0], bin_w_fp16[1, 0],
+                                          self.proposal_num_per_tiling * \
+                                          TYPELEN_DICT[self.dtype] // 256,
+                                          8, 8, 8)
 
             self.tik_instance.vec_conv(128 // 2, "floor", roi_start_h[0, 0],
-                                    bin_h_fp16[0, 0],
-                                    self.proposal_num_per_tiling *
-                                    self.pooled_h // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_h_fp16[0, 0],
+                                       self.proposal_num_per_tiling *
+                                       self.pooled_h // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "ceil", roi_bin_h[0, 0],
-                                    bin_h_fp16[1, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_h // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_h_fp16[1, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_h // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "floor", roi_start_w[0, 0],
-                                    bin_w_fp16[0, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_w // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_w_fp16[0, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_w // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
             self.tik_instance.vec_conv(128 // 2, "ceil", roi_bin_w[0, 0],
-                                    bin_w_fp16[1, 0],
-                                    self.proposal_num_per_tiling * \
-                                        self.pooled_w // 64,
-                                    8, 2*TYPELEN_DICT[self.dtype])
+                                       bin_w_fp16[1, 0],
+                                       self.proposal_num_per_tiling * \
+                                       self.pooled_w // 64,
+                                       8, 2 * TYPELEN_DICT[self.dtype])
 
     def get_pooled_proposal_start_h(self):
         """
@@ -885,21 +879,21 @@ class RoiClass():
                                      self.fm_h, 1, 0, 0, 0)
         with self.tik_instance.for_range(0, self.pooled_h) as i:
             self.tik_instance.vec_add(128 // 2, self.roi_start_h[i, 0],
-                                   self.roi_start_h[i, 0], \
-                                   self.proposals_ub_int32[2, 0], \
-                                   self.proposal_num_per_tiling // 64, \
-                                   8, 8, 8)
+                                      self.roi_start_h[i, 0], \
+                                      self.proposals_ub_int32[2, 0], \
+                                      self.proposal_num_per_tiling // 64, \
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, self.roi_start_h, self.roi_start_h, \
-                               self.const_zero, \
-                               self.proposal_num_per_tiling * \
-                                   self.pooled_h // 64, \
-                               8, 8, 0)
-        self.tik_instance.vec_min(128//2, self.roi_start_h, self.roi_start_h, \
-                               self.const_value, \
-                               self.proposal_num_per_tiling * \
-                                   self.pooled_h // 64, \
-                               8, 8, 0)
+                                  self.const_zero, \
+                                  self.proposal_num_per_tiling * \
+                                  self.pooled_h // 64, \
+                                  8, 8, 0)
+        self.tik_instance.vec_min(128 // 2, self.roi_start_h, self.roi_start_h, \
+                                  self.const_value, \
+                                  self.proposal_num_per_tiling * \
+                                  self.pooled_h // 64, \
+                                  8, 8, 0)
 
     def get_pooled_proposal_start_h_param(self, roi_start_h, proposals_ub_int32, const_value, const_zero):
         """
@@ -913,28 +907,26 @@ class RoiClass():
         -------
         None
         """
-
         self.tik_instance.vector_dup(128 // 2,
                                      const_value,
                                      self.fm_h, 1, 0, 0, 0)
         with self.tik_instance.for_range(0, self.pooled_h) as i:
             self.tik_instance.vec_add(128 // 2, roi_start_h[i, 0],
-                                   roi_start_h[i, 0], \
-                                   proposals_ub_int32[2, 0], \
-                                   self.proposal_num_per_tiling // 64, \
-                                   8, 8, 8)
+                                      roi_start_h[i, 0], \
+                                      proposals_ub_int32[2, 0], \
+                                      self.proposal_num_per_tiling // 64, \
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, roi_start_h, roi_start_h, \
-                               const_zero, \
-                               self.proposal_num_per_tiling * \
-                                   self.pooled_h // 64, \
-                               8, 8, 0)
-        self.tik_instance.vec_min(128//2, roi_start_h, roi_start_h, \
-                               const_value, \
-                               self.proposal_num_per_tiling * \
-                                   self.pooled_h // 64, \
-                               8, 8, 0)
-
+                                  const_zero, \
+                                  self.proposal_num_per_tiling * \
+                                  self.pooled_h // 64, \
+                                  8, 8, 0)
+        self.tik_instance.vec_min(128 // 2, roi_start_h, roi_start_h, \
+                                  const_value, \
+                                  self.proposal_num_per_tiling * \
+                                  self.pooled_h // 64, \
+                                  8, 8, 0)
 
     def get_pooled_proposal_bin_h(self):
         """
@@ -950,27 +942,27 @@ class RoiClass():
         """
         with self.tik_instance.for_range(0, self.pooled_h) as i:
             self.tik_instance.vec_add(128 // 2, self.roi_bin_h[i, 0],
-                                   self.roi_bin_h[i, 0],
-                                   self.proposals_ub_int32[2, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      self.roi_bin_h[i, 0],
+                                      self.proposals_ub_int32[2, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, self.roi_bin_h, self.roi_bin_h,
-                               self.const_zero,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               0)
+                                  self.const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  0)
         self.tik_instance.vec_min(128 // 2, self.roi_bin_h, self.roi_bin_h,
-                               self.const_value,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               0)
+                                  self.const_value,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  0)
 
         self.tik_instance.vec_sub(128//2, self.roi_bin_h, self.roi_bin_h,
-                               self.roi_start_h,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               8)
+                                  self.roi_start_h,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  8)
 
     def get_pooled_proposal_bin_h_param(self, roi_start_h, roi_bin_h, proposals_ub_int32, const_value, const_zero):
         """
@@ -984,30 +976,29 @@ class RoiClass():
         -------
         None
         """
-
         with self.tik_instance.for_range(0, self.pooled_h) as i:
             self.tik_instance.vec_add(128 // 2, roi_bin_h[i, 0],
-                                   roi_bin_h[i, 0],
-                                   proposals_ub_int32[2, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      roi_bin_h[i, 0],
+                                      proposals_ub_int32[2, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, roi_bin_h, roi_bin_h,
-                               const_zero,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               0)
+                                  const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  0)
         self.tik_instance.vec_min(128 // 2, roi_bin_h, roi_bin_h,
-                               const_value,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               0)
+                                  const_value,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  0)
 
-        self.tik_instance.vec_sub(128//2, roi_bin_h, roi_bin_h,
-                               roi_start_h,
-                               self.proposal_num_per_tiling*self.pooled_h // 64,
-                               8, 8,
-                               8)
+        self.tik_instance.vec_sub(128 // 2, roi_bin_h, roi_bin_h,
+                                  roi_start_h,
+                                  self.proposal_num_per_tiling * self.pooled_h // 64,
+                                  8, 8,
+                                  8)
 
     def get_pooled_proposal_start_w(self):
         """
@@ -1025,27 +1016,28 @@ class RoiClass():
                                      1, 0, 0)
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_add(128 // 2, self.roi_start_w[i, 0],
-                                   self.roi_start_w[i, 0],
-                                   self.proposals_ub_int32[1, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      self.roi_start_w[i, 0],
+                                      self.proposals_ub_int32[1, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, self.roi_start_w, self.roi_start_w,
-                               self.const_zero,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  self.const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_min(128 // 2, self.roi_start_w, self.roi_start_w,
-                               self.const_value,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  self.const_value,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_sub(64, self.roi_start_w_from0[i, 0],
-                                   self.roi_start_w[i, 0],
-                                   self.roi_start_w[0, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      self.roi_start_w[i, 0],
+                                      self.roi_start_w[0, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
-    def get_pooled_proposal_start_w_param(self, roi_start_w, roi_start_w_from0, proposals_ub_int32, const_value, const_zero):
+    def get_pooled_proposal_start_w_param(self, roi_start_w, roi_start_w_from0, proposals_ub_int32,
+                                          const_value, const_zero):
         """
         calculate all proposals's w coordinate start from fm's width.
 
@@ -1057,30 +1049,29 @@ class RoiClass():
         -------
         None
         """
-
         self.tik_instance.vector_dup(128 // 2, const_value, self.fm_w,
                                      1, 0, 0)
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_add(128 // 2, roi_start_w[i, 0],
-                                   roi_start_w[i, 0],
-                                   proposals_ub_int32[1, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      roi_start_w[i, 0],
+                                      proposals_ub_int32[1, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
         self.tik_instance.vec_max(128 // 2, roi_start_w, roi_start_w,
-                               const_zero,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_min(128 // 2, roi_start_w, roi_start_w,
-                               const_value,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  const_value,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_sub(64, roi_start_w_from0[i, 0],
-                                   roi_start_w[i, 0],
-                                   roi_start_w[0, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      roi_start_w[i, 0],
+                                      roi_start_w[0, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
 
     def get_pooled_proposal_bin_w(self):
         """
@@ -1096,30 +1087,31 @@ class RoiClass():
         """
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_add(128 // 2, self.roi_bin_w[i, 0],
-                                   self.roi_bin_w[i, 0],
-                                   self.proposals_ub_int32[1, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      self.roi_bin_w[i, 0],
+                                      self.proposals_ub_int32[1, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
         self.tik_instance.vec_max(128 // 2, self.roi_bin_w, self.roi_bin_w,
-                               self.const_zero,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  self.const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_min(128 // 2, self.roi_bin_w, self.roi_bin_w,
-                               self.const_value,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  self.const_value,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_sub(128 // 2, self.roi_width,
-                               self.roi_bin_w[self.pooled_w - 1, 0],
-                               self.roi_start_w[0, 0],
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 8)
+                                  self.roi_bin_w[self.pooled_w - 1, 0],
+                                  self.roi_start_w[0, 0],
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 8)
 
         self.tik_instance.vec_sub(128 // 2, self.roi_bin_w, self.roi_bin_w,
-                               self.roi_start_w,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 8)
+                                  self.roi_start_w,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 8)
 
-    def get_pooled_proposal_bin_w_param(self, roi_start_w, roi_bin_w, proposals_ub_int32, roi_width, const_value, const_zero):
+    def get_pooled_proposal_bin_w_param(self, roi_start_w, roi_bin_w, proposals_ub_int32,
+                                        roi_width, const_value, const_zero):
         """
         calculate all proposals's sub width of all pooled w
 
@@ -1133,28 +1125,28 @@ class RoiClass():
         """
         with self.tik_instance.for_range(0, self.pooled_w) as i:
             self.tik_instance.vec_add(128 // 2, roi_bin_w[i, 0],
-                                   roi_bin_w[i, 0],
-                                   proposals_ub_int32[1, 0],
-                                   self.proposal_num_per_tiling // 64,
-                                   8, 8, 8)
+                                      roi_bin_w[i, 0],
+                                      proposals_ub_int32[1, 0],
+                                      self.proposal_num_per_tiling // 64,
+                                      8, 8, 8)
         self.tik_instance.vec_max(128 // 2, roi_bin_w, roi_bin_w,
-                               const_zero,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  const_zero,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_min(128 // 2, roi_bin_w, roi_bin_w,
-                               const_value,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 0)
+                                  const_value,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 0)
         self.tik_instance.vec_sub(128 // 2, roi_width,
-                               roi_bin_w[self.pooled_w - 1, 0],
-                               roi_start_w[0, 0],
-                               self.proposal_num_per_tiling // 64,
-                               8, 8, 8)
+                                  roi_bin_w[self.pooled_w - 1, 0],
+                                  roi_start_w[0, 0],
+                                  self.proposal_num_per_tiling // 64,
+                                  8, 8, 8)
 
         self.tik_instance.vec_sub(128 // 2, roi_bin_w, roi_bin_w,
-                               roi_start_w,
-                               self.proposal_num_per_tiling*self.pooled_w // 64,
-                               8, 8, 8)
+                                  roi_start_w,
+                                  self.proposal_num_per_tiling * self.pooled_w // 64,
+                                  8, 8, 8)
 
     def roi_pooling_main(self):
         """

@@ -1,21 +1,22 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 decode_cornerpoints_target_bg
 """
-
 from te import tik
-from topi.cce import util
+from te.utils import para_check
 
 # the max num of single copy
 SINGLE_N_MAX = 1024
@@ -453,7 +454,7 @@ def calculate_process(tik_instance,
         CONFIG_ONE, burst_z, 0, 0)
 
 
-@util.check_input_type(dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, str)
 def decode_cornerpoints_target_bg(keypoints_prediction,
                                   anchors,
                                   keypoints_decoded,
@@ -468,7 +469,7 @@ def decode_cornerpoints_target_bg(keypoints_prediction,
     """
     tik_instance = tik.Tik(tik.Dprofile(), True)
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
     check_decode_cornerpoints_target_bg_params(keypoints_prediction,
                                                anchors,

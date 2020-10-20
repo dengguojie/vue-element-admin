@@ -1,20 +1,25 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-maxpool_grad_with_argmax
+max_pool_grad_with_argmax_cut_one_h
 """
 import math
+
 from te import tik
 from impl import constant_util as constant
-from impl.max_pool_grad_with_argmax_cut_w import MaxpoolGardObject
+from impl import max_pool_grad_with_argmax_cut_w as argmax_cut_w
 
 # size of vector calc one repeat
 ONE_REPEAT = 256
@@ -30,7 +35,7 @@ BLOCK_SIZE = 32
 
 
 # pylint: disable=locally-disabled,too-few-public-methods,too-many-instance-attributes
-class MaxpoolGradCustom(MaxpoolGardObject):
+class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
     """
     parameter for max_pool_grad_with_pool
     """
@@ -98,7 +103,7 @@ class MaxpoolGradCustom(MaxpoolGardObject):
         v_rep_last_fp32 = 2 * v_rep_time % V_MAX_REPEAT
 
         # when every looph move data after, then dup col2img data
-        v_rep_afmv = (windowh - hoverlap) * channel *\
+        v_rep_afmv = (windowh - hoverlap) * channel * \
                      col2img_w * dtype_size * 2 // ONE_REPEAT
         v_rep_afmv_cycle = v_rep_afmv // V_MAX_REPEAT
         v_rep_afmv_last = v_rep_afmv % V_MAX_REPEAT
@@ -649,7 +654,7 @@ class MaxpoolGradCustom(MaxpoolGardObject):
                             with self.tik_instance.if_scope(looph == h_cycle - 1):
                                 output_cuthline.set_as(windowh - pad_bottom)
                     # fp32 to fp16
-                    v_rep_time_col = 2 * (col2img_w * channel * col2img_h + 64) *\
+                    v_rep_time_col = 2 * (col2img_w * channel * col2img_h + 64) * \
                                      dtype_size // ONE_REPEAT
                     v_rep_cycle_col = v_rep_time_col // V_MAX_REPEAT
                     v_rep_last_col = v_rep_time_col % V_MAX_REPEAT

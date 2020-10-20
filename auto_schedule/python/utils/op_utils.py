@@ -1,21 +1,20 @@
-#/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0. You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 common function
 """
-
 import re
 import math
 from functools import reduce as functools_reduce
@@ -34,6 +33,13 @@ ZERO_DIM = 0
 MAX_KERNEL_NAEM_LEN = 200
 MIN_UNKOWN_SHAPE_RANK = 0
 MAX_UNKOWN_SHAPE_NUM = 2 ** 31 - 1
+
+CONST = "const"
+SPECIAL = "special"
+ORIGINAL = "original"
+SPECIAL_SCALAR = "special_scalar"
+COMMON = "common"
+BROADCAST = "broadcast"
 
 REQUIRED_INPUT = "required_input"
 OPTION_INPUT = "option_input"
@@ -95,10 +101,12 @@ OP_ERROR_CODE_025 = 'E80025'
 OP_ERROR_CODE_026 = 'E80026'
 OP_ERROR_CODE_027 = 'E80027'
 
+
 class OpParamInfoKey:  # pylint: disable=too-few-public-methods
     """
     Define op params
     """
+
     def __init__(self):
         pass
 
@@ -114,6 +122,7 @@ class TensorFormat:  # pylint: disable=too-few-public-methods
     """
     Define op params
     """
+
     def __init__(self):
         pass
 
@@ -143,6 +152,8 @@ ALL_DTYPE_LIST = ("int8", "uint8", "int16", "uint16", "int32", "uint32",
                   "int64", "uint64", "float16", "float32", "float64", "bool")
 OP_NAME = ""
 PARAM_NAME = ""
+
+
 def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-statements
                     **type_kwargs):  # pylint: disable=unused-argument,
     """
@@ -170,9 +181,10 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['param_type'] = 'dict'
             error_info['actual_type'] = op_param.__class__.__name__
             raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s type should be [%s],  "
-                                           "but actually is [%s]." % (error_info['op_name'],\
-                                            error_info['param_name'], error_info['param_type']\
-                                            , error_info['actual_type']))
+                                           "but actually is [%s]." % (error_info['op_name'],
+                                                                      error_info['param_name'],
+                                                                      error_info['param_type'],
+                                                                      error_info['actual_type']))
         if OpParamInfoKey.SHAPE not in op_param.keys():
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_004
@@ -181,8 +193,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['key'] = OpParamInfoKey.SHAPE
             raise RuntimeError(error_info,
                                "In op[%s], the input[%s] does not contain the item[%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['key']))
+                               % (error_info['op_name'], error_info['param_name'], error_info['key']))
         if OpParamInfoKey.FORMAT not in op_param.keys():
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_004
@@ -191,8 +202,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['key'] = OpParamInfoKey.FORMAT
             raise RuntimeError(error_info,
                                "In op[%s], the input[%s] does not contain the item[%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['key']))
+                               % (error_info['op_name'], error_info['param_name'], error_info['key']))
         if OpParamInfoKey.ORI_SHAPE not in op_param.keys():
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_004
@@ -201,8 +211,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['key'] = OpParamInfoKey.ORI_SHAPE
             raise RuntimeError(error_info,
                                "In op[%s], the input[%s] does not contain the item[%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['key']))
+                               % (error_info['op_name'], error_info['param_name'], error_info['key']))
         if OpParamInfoKey.ORI_FORMAT not in op_param.keys():
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_004
@@ -211,8 +220,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['key'] = OpParamInfoKey.ORI_FORMAT
             raise RuntimeError(error_info,
                                "In op[%s], the input[%s] does not contain the item[%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['key']))
+                               % (error_info['op_name'], error_info['param_name'], error_info['key']))
         if OpParamInfoKey.D_TYPE not in op_param.keys():
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_004
@@ -251,8 +259,10 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
 
             raise RuntimeError(error_info, "In op[%s], the format of input[%s] "
                                            "should be one of [%s], but actually is [%s]."
-                               %(error_info['op_name'], error_info['param_name']\
-                                 , error_info['excepted_format_list'], error_info['format']))
+                               % (error_info['op_name'],
+                                  error_info['param_name'],
+                                  error_info['excepted_format_list'],
+                                  error_info['format']))
 
         if op_param[OpParamInfoKey.ORI_FORMAT] not in TensorFormat.__dict__.keys():
             error_info = {}
@@ -263,9 +273,11 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['format'] = op_param[OpParamInfoKey.ORI_FORMAT]
             raise RuntimeError(error_info,
                                "In op[%s], the ori format of input[%s] should be one of [%s]"
-                               ", but actually is [%s]."\
-                               %(error_info['op_name'], error_info['param_name']\
-                                 , ",".join(ALL_FORMAT_LIST), error_info['format']))
+                               ", but actually is [%s]."
+                               % (error_info['op_name'],
+                                  error_info['param_name'],
+                                  ",".join(ALL_FORMAT_LIST),
+                                  error_info['format']))
 
         if not isinstance(op_param[OpParamInfoKey.D_TYPE], str):
             error_info = {}
@@ -275,9 +287,10 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['param_type'] = 'str'
             error_info['actual_type'] = op_param[OpParamInfoKey.D_TYPE].__class__.__name__
             raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s type should be [%s],  "
-                                           "but actually is [%s]." % (error_info['op_name'],\
-                                            error_info['param_name'], error_info['param_type']\
-                                            , error_info['actual_type']))
+                                           "but actually is [%s]." % (error_info['op_name'],
+                                                                      error_info['param_name'],
+                                                                      error_info['param_type'],
+                                                                      error_info['actual_type']))
 
         if op_param[OpParamInfoKey.D_TYPE] is None or op_param[OpParamInfoKey.D_TYPE].lower() not in ALL_DTYPE_LIST:
             error_info = {}
@@ -289,8 +302,10 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s]'s dtype should be "
                                "one of [%s], but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name']
-                                , error_info['excepted_dtype_list'], error_info['dtype']))
+                               (error_info['op_name'],
+                                error_info['param_name'],
+                                error_info['excepted_dtype_list'],
+                                error_info['dtype']))
 
     def _check_input(op_param, param_name, param_type, op_name=OP_NAME):
         if param_type == REQUIRED_INPUT:
@@ -300,7 +315,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['param_name'] = param_name
             if op_param is None:
                 raise RuntimeError(error_info, "In op[%s], the mandatory "
-                                               "parameter[%s] is missed."\
+                                               "parameter[%s] is missed."
                                    % (error_info['op_name'], error_info['param_name']))
             _check_input_output_dict(op_param, param_name, op_name)
         elif param_type == OPTION_INPUT:
@@ -315,9 +330,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 error_info['param_type'] = "list truple"
                 error_info['actual_type'] = op_param.__class__.__name__
                 raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s type should be [%s]"
-                                               ",  but actually is [%s]."\
-                                   % (op_name, param_name, error_info['param_type']\
-                                      , error_info['actual_type']))
+                                               ",  but actually is [%s]."
+                                   % (op_name, param_name, error_info['param_type'], error_info['actual_type']))
             if not op_param:
                 error_info = {}
                 error_info['errCode'] = OP_ERROR_CODE_001
@@ -351,16 +365,15 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 error_info['param_type'] = "list tuple"
                 error_info['actual_type'] = op_param.__class__.__name__
                 raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s "
-                                               "type should be [%s],  but actually is [%s]."\
-                                   % (op_name, param_name, error_info['param_type']\
-                                      , error_info['actual_type']))
+                                               "type should be [%s],  but actually is [%s]."
+                                   % (op_name, param_name, error_info['param_type'], error_info['actual_type']))
             if not op_param:
                 error_info = {}
                 error_info['errCode'] = OP_ERROR_CODE_001
                 error_info['op_name'] = op_name
                 error_info['param_name'] = param_name
                 raise RuntimeError(error_info, "In op[%s], the mandatory"
-                                               " parameter[%s] is missed."\
+                                               " parameter[%s] is missed."
                                    % (op_name, param_name))
             for one_input in op_param:
                 _check_input_output_dict(one_input, param_name, op_name)
@@ -376,8 +389,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s]'s type should be [%s],"
                                " but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['param_type'], error_info['actual_type']))
+                               % (error_info['op_name'], error_info['param_name'],
+                                  error_info['param_type'], error_info['actual_type']))
         if py_type_name == "float":
             if math.isinf(op_param) or math.isnan(op_param):
                 error_info = {}
@@ -388,8 +401,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 error_info['real_value'] = str(op_param)
                 raise RuntimeError(error_info,
                                    "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                                   % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['excepted_value'], error_info['real_value']))
+                                   % (error_info['op_name'], error_info['param_name'],
+                                      error_info['excepted_value'], error_info['real_value']))
 
     def _check_list_attr_element(op_param, param_name, py_type, py_type_name, op_name=OP_NAME):
         if not isinstance(op_param, py_type):
@@ -402,8 +415,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s]'s type should be [%s],"
                                " but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['param_type'], error_info['actual_type']))
+                               % (error_info['op_name'], error_info['param_name'],
+                                  error_info['param_type'], error_info['actual_type']))
         if py_type_name == "float":
             if math.isinf(op_param) or math.isnan(op_param):
                 error_info = {}
@@ -414,8 +427,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 error_info['real_value'] = str(op_param)
                 raise RuntimeError(error_info,
                                    "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                                   % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['excepted_value'], error_info['real_value']))
+                                   % (error_info['op_name'], error_info['param_name'],
+                                      error_info['excepted_value'], error_info['real_value']))
 
     def _check_list_attr(op_param, param_name, param_type, op_name=OP_NAME):
         if not isinstance(op_param, (list, tuple)):
@@ -427,9 +440,9 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['actual_type'] = op_param.__class__.__name__
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s]'s type should be [%s],"
-                               "  but actually is [%s]."\
-                               % (error_info['op_name'], error_info['param_name']\
-                                  , error_info['param_type'], error_info['actual_type']))
+                               "  but actually is [%s]."
+                               % (error_info['op_name'], error_info['param_name'],
+                                  error_info['param_type'], error_info['actual_type']))
 
         if param_type in [REQUIRED_ATTR_LIST_BOOL, OPTION_ATTR_LIST_BOOL]:
             for one_attr in op_param:
@@ -454,9 +467,11 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                     error_info['actual_type'] = op_param.__class__.__name__
                     raise RuntimeError(error_info,
                                        "In op[%s], the parameter[%s]'s type should be [%s],"
-                                       " but actually is [%s]."\
-                                       % (error_info['op_name'], error_info['param_name']\
-                                          , error_info['param_type'], error_info['actual_type']))
+                                       " but actually is [%s]."
+                                       % (error_info['op_name'],
+                                          error_info['param_name'],
+                                          error_info['param_type'],
+                                          error_info['actual_type']))
 
                 for ele in one_attr:
                     _check_list_attr_element(ele, param_name, int, "int", op_name)
@@ -469,7 +484,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             error_info['op_name'] = op_name
             error_info['param_name'] = param_name
             raise RuntimeError(error_info,
-                               "In op[%s], the mandatory parameter[%s] is missed."\
+                               "In op[%s], the mandatory parameter[%s] is missed."
                                % (op_name, param_name))
         if not op_param:
             return
@@ -496,9 +511,11 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                 error_info['actual_type'] = op_param.__class__.__name__
                 raise RuntimeError(error_info,
                                    "In op[%s], the parameter[%s]'s dtype should"
-                                   " be one of [%s], but actually is [%s]."\
-                                   % (error_info['op_name'], error_info['param_name']\
-                                , error_info['param_type'], error_info['actual_type']))
+                                   " be one of [%s], but actually is [%s]."
+                                   % (error_info['op_name'],
+                                      error_info['param_name'],
+                                      error_info['param_type'],
+                                      error_info['actual_type']))
 
         if param_type in list_type_attr:
             _check_list_attr(op_param, param_name, param_type, op_name)
@@ -531,17 +548,19 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s] should be in the range of [%s, %s],"
                                "but actually is [%s]." % (error_info['op_name'],
-                               error_info['param_name'], error_info['min_value'], error_info['max_value']
-                               , error_info['real_value']))
+                                                          error_info['param_name'],
+                                                          error_info['min_value'],
+                                                          error_info['max_value'],
+                                                          error_info['real_value']))
 
         pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
         if not pattern.match(kernel_name):
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_020
             error_info['op_name'] = op_name
-            raise RuntimeError(error_info, 
-                                "In op[%s],kernel_name can only contain letters, numbers and underscores,"
-                                " and begin with underscores or letters" % (error_info['op_name']))
+            raise RuntimeError(error_info,
+                               "In op[%s],kernel_name can only contain letters, numbers and underscores,"
+                               " and begin with underscores or letters" % (error_info['op_name']))
 
     def _check_one_op_param(op_param, param_name, param_type, op_name=OP_NAME):
 
@@ -553,7 +572,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
             if op_param is None:
                 return
             _check_kernel_name(op_param, param_name, op_name)
-        else: # else is attr_params:
+        else:  # else is attr_params:
             _check_attr(op_param, param_name, param_type, op_name)
 
     def _out_wrapper(func):
@@ -582,9 +601,8 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
 
 
 def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-arguments
-                max_dim=RANK_LIMIT, max_shape_num=MAX_UNKOWN_SHAPE_NUM, # pylint: disable=too-many-arguments
-                param_name=PARAM_NAME): # pylint: disable=too-many-arguments
-
+                max_dim=RANK_LIMIT, max_shape_num=MAX_UNKOWN_SHAPE_NUM,  # pylint: disable=too-many-arguments
+                param_name=PARAM_NAME):  # pylint: disable=too-many-arguments
     """
     check rule for tensor shape
     """
@@ -642,7 +660,7 @@ def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-argum
                                (error_info['param_name'], error_info['param_type'],
                                 error_info['actual_type']))
         valid_type = isinstance(range_i[0], int) and \
-                     isinstance(range_i[1], int)
+            isinstance(range_i[1], int)
         if len(range_i) != 2:
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_023
@@ -665,9 +683,14 @@ def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-argum
             error_info['min_range_value'] = 0
             error_info['max_range_value'] = max_shape_num
             raise RuntimeError(error_info,
-                               "In op, the ndim of first range input[%s] is less than that of the second range input[%s],"
+                               "In op, the ndim of first range input[%s] "
+                               "is less than that of the second range input[%s], "
                                "and the ndim of range should be in the range of [%s, %s]."
-                               % (error_info['first_real_value'], error_info['second_real_value'], 0, max_shape_num))
+                               % (error_info['first_real_value'],
+                                  error_info['second_real_value'],
+                                  0,
+                                  max_shape_num))
+
 
 def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_name=PARAM_NAME):
     if len(shape) < MIN_UNKOWN_SHAPE_RANK or len(shape) > max_rank:
@@ -680,7 +703,7 @@ def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_nam
         error_info['real_value'] = len(shape)
         raise RuntimeError(error_info,
                            "In op, the num of dimensions of input[%s] should be in"
-                           "the range of [%s, %s], but actually is [%s]." \
+                           "the range of [%s, %s], but actually is [%s]."
                            % (error_info['param_name'], MIN_UNKOWN_SHAPE_RANK, max_rank, len(shape)))
     for _, dim in enumerate(shape):
         valid_dim = -1 <= dim <= max_dim and dim != 0
@@ -694,8 +717,9 @@ def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_nam
             error_info['real_value'] = dim
             raise RuntimeError(error_info,
                                "In op, the parameter[%s] should be in the range of [%s, %s] and cannot be zero,"
-                               "but actually is [%s]." \
+                               "but actually is [%s]."
                                % (error_info['param_name'], -1, max_dim, dim))
+
 
 def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many-arguments
                 min_rank=0, max_rank=RANK_LIMIT,  # pylint: disable=too-many-arguments
@@ -744,22 +768,21 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many
             error_info['real_value'] = len(shape)
             raise RuntimeError(error_info,
                                "In op, the num of dimensions of input[%s] should be in"
-                               "the range of [%s, %s], but actually is [%s]."\
+                               "the range of [%s, %s], but actually is [%s]."
                                % (error_info['param_name'], min_rank, max_rank, len(shape)))
 
         for _, dim in enumerate(shape):
-            if dim < min_dim or dim > max_dim:
+            if dim < min_dim:
                 error_info = {}
                 error_info['errCode'] = OP_ERROR_CODE_002
                 error_info['op_name'] = OP_NAME
                 error_info['param_name'] = param_name
                 error_info['min_value'] = min_dim
-                error_info['max_value'] = max_dim
                 error_info['real_value'] = dim
                 raise RuntimeError(error_info,
-                                   "In op, the parameter[%s] should be in the range of [%s, %s],"
-                                   "but actually is [%s]."\
-                                   % (error_info['param_name'], min_dim, max_dim, dim))
+                                   "In op, the dim value[%s] should more than [%s],"
+                                   "but actually is [%s]."
+                                   % (error_info['param_name'], min_dim, dim))
         if shape:
             shape_size = functools_reduce(lambda x, y: x * y, shape[:])
         else:
@@ -773,7 +796,7 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many
             error_info['real_value'] = shape_size
             raise RuntimeError(error_info,
                                "In op, the shape size(product of all dimensions) of "
-                               "input[%s] should more than [%s], but actually is [%s]." \
+                               "input[%s] should more than [%s], but actually is [%s]."
                                % (error_info['min_value'], min_size, shape_size))
 
 
@@ -790,16 +813,15 @@ def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
                            (error_info['param_name']))
 
     if not isinstance(dtype, str):
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_003
-            error_info['op_name'] = OP_NAME
-            error_info['param_name'] = param_name
-            error_info['param_type'] = 'str'
-            error_info['actual_type'] = dtype.__class__.__name__
-            raise RuntimeError(error_info, "In op, the parameter[%s]'s type should be [%s],  "
-                                           "but actually is [%s]." % \
-                                            (error_info['param_name'], error_info['param_type']\
-                                            , error_info['actual_type']))
+        error_info = {}
+        error_info['errCode'] = OP_ERROR_CODE_003
+        error_info['op_name'] = OP_NAME
+        error_info['param_name'] = param_name
+        error_info['param_type'] = 'str'
+        error_info['actual_type'] = dtype.__class__.__name__
+        raise RuntimeError(error_info, "In op, the parameter[%s]'s type should be [%s],  "
+                                       "but actually is [%s]." %
+                           (error_info['param_name'], error_info['param_type'], error_info['actual_type']))
     if dtype.lower() not in check_list:
         error_info = {}
         error_info['errCode'] = OP_ERROR_CODE_008
@@ -808,9 +830,9 @@ def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
         error_info['excepted_dtype_list'] = check_list
         error_info['dtype'] = dtype.lower()
         raise RuntimeError(error_info, "In op, the parameter[%s]'s dtype should be one of [%s]"
-                                       ", but actually is [%s]."\
-                              % (error_info['param_name'],
-                                 error_info['excepted_dtype_list'], error_info['dtype']))
+                                       ", but actually is [%s]."
+                           % (error_info['param_name'],
+                              error_info['excepted_dtype_list'], error_info['dtype']))
 
 
 def check_format(data_format, check_list=ALL_FORMAT_LIST, param_name=PARAM_NAME):
@@ -834,9 +856,9 @@ def check_format(data_format, check_list=ALL_FORMAT_LIST, param_name=PARAM_NAME)
         error_info['excepted_format_list'] = ",".join(check_list)
         error_info['format'] = data_format
         raise RuntimeError(error_info, "In op, the format of input[%s] should "
-                                       "be one of [%s], but actually is [%s]."\
-                            %(error_info['param_name'],
-                              error_info['excepted_format_list'], error_info['format']))
+                                       "be one of [%s], but actually is [%s]."
+                           % (error_info['param_name'],
+                               error_info['excepted_format_list'], error_info['format']))
 
 
 def check_elewise_shape_range(inputs: list, support_broadcast=False):
@@ -874,7 +896,8 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
                     error_info['op_name'] = operation.get_context().get_op_type()
                     error_info['param_name'] = PARAM_NAME
                     raise RuntimeError(error_info,
-                                       "In op[%s],the range at the same location must have intersections" % (error_info['op_name']))
+                                       "In op[%s],the range at the same location "
+                                       "must have intersections" % (error_info['op_name']))
             else:
                 if not _has_intersection(range_x[-i], range_y[-i]):
                     error_info = {}
@@ -882,7 +905,8 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
                     error_info['op_name'] = operation.get_context().get_op_type()
                     error_info['param_name'] = PARAM_NAME
                     raise RuntimeError(error_info,
-                                       "In op[%s],the range at the same location must have intersections" % (error_info['op_name']))
+                                       "In op[%s],the range at the same location "
+                                       "must have intersections" % (error_info['op_name']))
 
     if len(inputs) <= 1:
         return
@@ -898,9 +922,10 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
             error_info['param_type'] = 'dict'
             error_info['actual_type'] = _input.__class__.__name__
             raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s type should be [%s],  "
-                                           "but actually is [%s]." % (error_info['op_name'], \
-                                                                      error_info['param_name'], error_info['param_type'] \
-                                                                          , error_info['actual_type']))
+                                           "but actually is [%s]." % (error_info['op_name'],
+                                                                      error_info['param_name'],
+                                                                      error_info['param_type'],
+                                                                      error_info['actual_type']))
         for key in inputs_keys:
             if key not in _input.keys():
                 error_info = {}
@@ -1059,7 +1084,7 @@ def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', para
             error_info['input2_shape'] = ",".join(str(i) for i in shape2)
             raise RuntimeError(error_info, "In op[%s], the inputs[%s][%s] could "
                                            "not be broadcast together with shapes[%s][%s]."
-                               % (op_name, param_name_input1, param_name_input2,\
+                               % (op_name, param_name_input1, param_name_input2,
                                   error_info['input1_shape'], error_info['input2_shape']))
         if operation.in_dynamic():
             _generate_dynamic_output(shape1_i, shape2_i, out_shape, i)
@@ -1101,6 +1126,9 @@ def refine_shapes_for_broadcast(shape1, shape2):
         fusion_index = []
         current_index = []
         state = None
+        mode = operation.get_context().get("mode")
+        if mode != ORIGINAL:
+            return shape1, shape2
         for index, (i_a, i_b) in enumerate(zip(shape1, shape2)):
             if _equals_one(i_a) and _equals_one(i_b):
                 pass
@@ -1184,6 +1212,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     shape2 = [1] * _dv + shape2
 
     if operation.in_dynamic():
+        operation.add_compile_info("_fusion", 2)
         fused_shape1, fused_shape2 = \
             _dynamic_refine_shapes_for_broadcast(shape1, shape2)
     else:
@@ -1220,7 +1249,8 @@ def _equal(expr_a, expr_b):
             error_info['op_name'] = operation.get_context().get_op_type()
             error_info['param_expr'] = expr
             raise RuntimeError(error_info,
-                               "In op[%s], unsupported expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+                               "In op[%s], unsupported expr: [%s]" % (error_info['op_name'],
+                                                                      error_info['param_expr']))
 
     return elements1 == elements2
 
@@ -1234,7 +1264,8 @@ def _parse_expr(expr, elements: dict):
         error_info['op_name'] = operation.get_context().get_op_type()
         error_info['param_expr'] = expr
         raise RuntimeError(error_info,
-                           "In op[%s], unsupported expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+                           "In op[%s], unsupported expr: [%s]" % (error_info['op_name'],
+                                                                  error_info['param_expr']))
 
 
 def _parse_mul(expr, elements: dict):
@@ -1244,7 +1275,8 @@ def _parse_mul(expr, elements: dict):
         error_info['op_name'] = operation.get_context().get_op_type()
         error_info['param_expr'] = expr
         raise RuntimeError(error_info,
-                           "In op[%s], it is not mul expr: [%s]" % (error_info['op_name'], error_info['param_expr']))
+                           "In op[%s], it is not mul expr: [%s]" % (error_info['op_name'],
+                                                                    error_info['param_expr']))
 
     const_types = (tvm.expr.IntImm,)
     var_types = (tvm.expr.Var,)
@@ -1281,7 +1313,7 @@ def variable_shape(inputs: list, support_broadcast=False):
     def _update_range(shape0, range0, shape1, range1):
         for index in range(len(range0)):
             verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
-                           shape0[index] == 1 or shape1[index] == 1
+                shape0[index] == 1 or shape1[index] == 1
             if verify_shape:
                 continue
             range_x = list(range0[index])
@@ -1294,7 +1326,7 @@ def variable_shape(inputs: list, support_broadcast=False):
             x_const = shape0[index] != -1 and shape1[index] == -1
             y_const = shape0[index] == -1 and shape1[index] != -1
             variable_intersection = _has_intersection(range_x, range_y) and \
-                                    range_x[0] > 1 and range_y[0] > 1
+                range_x[0] > 1 and range_y[0] > 1
             if x_const:
                 range_y = (_select(range_y[0] <= 1, range_y[0], shape0[index]),
                            _select(range_y[1] >= shape0[index], shape0[index], 1))
@@ -1354,15 +1386,59 @@ def variable_shape(inputs: list, support_broadcast=False):
                     return True
         return False
 
+    def _mode_process():
+        if mode == CONST:
+            if support_broadcast:
+                input1 = inputs[0]["shape"]
+                input2 = inputs[1]["shape"]
+                const_shape = [a & b for a, b in zip(input1, input2)]
+            else:
+                const_shape = inputs[0]["shape"]
+            operation.get_context().get_current_compute(). \
+                add("const_shape", const_shape)
+        elif mode == SPECIAL:
+            pattern = inputs[0].get("pattern")
+            operation.get_context().\
+                get_current_compute().add("pattern", pattern)
+            if support_broadcast:
+                for i, _pattern in enumerate(pattern):
+                    if _pattern == COMMON:
+                        for j in range(len(shapes)):
+                            shapes[j][i] = -77
+        elif mode == SPECIAL_SCALAR:
+            pattern = inputs[0].get("pattern")
+            operation.get_context(). \
+                get_current_compute().add("pattern", pattern)
+
+    if len(inputs) < 1:
+        return []
+    mode = inputs[0].get("mode")
+    if mode is None:
+        mode = ORIGINAL
+    operation.get_context().add("mode", mode)
+    current_compute = operation.get_context().get_current_compute()
+    if current_compute:
+        current_compute.add("mode", mode)
+    operation.get_context().add("support_broadcast", support_broadcast)
+
     shapes, ranges = _fill(inputs)
+    _mode_process()
+
     d_shapes = [[] for _ in shapes]
     for i in range(len(shapes[0])):
         _var = None
         need_two_vars = _maybe_broadcast()
         _suffix = 0
         for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
-            if shape[i] == -1:
+            if shape[i] == -1 and _range[i][0] == _range[i][1]:
+                d_shape.append(_range[i][0])
+            elif shape[i] == -1:
                 if _var is None or need_two_vars:
+                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                                         _range[i])
+                d_shape.append(_var)
+            elif shape[i] == -77:
+                if _var is None:
                     _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
                                          _range[i])
                 d_shape.append(_var)

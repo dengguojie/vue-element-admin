@@ -1,15 +1,25 @@
 /**
- * @file conv_scale_fusion_pass.h
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief fuse conv and other op
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#ifndef _FE_CONV_FUSION_BASE_H_
-#define _FE_CONV_FUSION_BASE_H_
+
+/*!
+ * \file conv_fusion_pass_base.h
+ * \brief fuse conv and other op
+ */
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV_FUSION_PASS_BASE_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV_FUSION_PASS_BASE_H_
 
 #include <vector>
 #include <string>
@@ -45,25 +55,20 @@ const int32_t CHWN_DIM_N = 3;
 const int32_t DHWCN_DIM_N = 4;
 class ConvFusionPassBase : public PatternFusionBasePass {
  public:
-  Status DoFusion(ge::ComputeGraph &graph, ge::NodePtr convNode,
-                  ge::NodePtr destNode, vector<ge::NodePtr> &fusionNodes);
+  Status DoFusion(ge::ComputeGraph& graph, ge::NodePtr convNode, ge::NodePtr destNode,
+                  vector<ge::NodePtr>& fusionNodes);
 
-  Status GetConvFilterInputIndex(const ge::NodePtr &convNode,
-                                 int &filterInputIdx);
+  Status GetConvFilterInputIndex(const ge::NodePtr& convNode, int& filterInputIdx);
 
-  Status GetAllConstInput(const ge::NodePtr &node,
-                          vector<ge::GeTensorDesc> &conv2dInputs,
-                          vector<string> &conv2dInputsName,
-                          vector<ge::InDataAnchorPtr> &conv2dInputAncors,
-                          vector<ge::GeTensorDesc> &constOutputs,
-                          vector<ge::OutDataAnchorPtr> &constOutputAncors);
+  Status GetAllConstInput(const ge::NodePtr& node, vector<ge::GeTensorDesc>& conv2dInputs,
+                          vector<string>& conv2dInputsName, vector<ge::InDataAnchorPtr>& conv2dInputAncors,
+                          vector<ge::GeTensorDesc>& constOutputs, vector<ge::OutDataAnchorPtr>& constOutputAncors);
 
-  Status AddBiasNode(ge::ComputeGraph &graph, ge::NodePtr &convNode);
+  Status AddBiasNode(ge::ComputeGraph& graph, ge::NodePtr& convNode);
 
-  Status GetConvKernelIndex(ge::OpDescPtr convOpdesc,
-                            const ge::GeTensorDesc &constInputDesc,
-                            ge::Format &filterFormat, size_t &kernerlIndex);
+  Status GetConvKernelIndex(ge::OpDescPtr convOpdesc, const ge::GeTensorDesc& constInputDesc, ge::Format& filterFormat,
+                            size_t& kernerlIndex);
   const float FLOAT_NUM_ZERO = 0.;
 };
 }  // namespace fe
-#endif  // _FE_CONV_SCALE_FUSION_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV_FUSION_PASS_BASE_H_

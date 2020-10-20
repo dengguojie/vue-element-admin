@@ -1,19 +1,20 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-gather_v2d
+gather_v2d 
 """
-
 from te import tvm
 import te.lang.dynamic
 from te import tik
@@ -32,7 +33,6 @@ from te.utils.error_manager import error_manager_vector
 PARAMS_SIZE = 2**31 - 1
 INDICES_NUM = 2**31 - 1
 TILING_ARG_NUM = 32
-# TILING_ARG_NUM = 19
 
 # data type of int32
 INT32 = "int32"
@@ -282,7 +282,6 @@ class GatherV2():
             with tik_instance.for_range(0, self.params_pre) as pre_i:
                 gm_offset_base = pre_i * self.params_axis
 
-                # indices_num_each_core = indices_row_num_once * indices_loop_num + indices_row_num_last
                 with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
                     indices_offset = block_id * self.indices_num_each_core + \
                                      indices_loop_i * self.indices_row_num_once
@@ -290,8 +289,6 @@ class GatherV2():
                     tik_instance.data_move(indices_ub, self.indices[indices_offset], 0, 1,
                                            ceil_value(self.indices_row_num_once * indices_dsize, BLOCK_SIZE), 0, 0)
 
-                    # indices_row_num_once = row_num_once_ub * inner_loop_num + row_num_once_tail_ub
-                    # a1. row_num_once_ub * inner_loop_num
                     burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * params_dsize, BLOCK_SIZE)
 
                     with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
@@ -635,10 +632,13 @@ class GatherV2():
 
         self.gather_v2_compute_tiling()
 
+        opt_config = {
+            "out_of_bound_sync_check": True
+        }
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x, self.indices, self.axis),
                                    outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True)
+                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
 
         # add compile info
         te.op.add_compile_info("vars", {"core_num": self.core_num,
@@ -648,6 +648,41 @@ class GatherV2():
                                         "indices_dsize": self.indices_dsize
                                         })
 
+    def gather_compute(self):
+            """
+            compute of gather
+
+            Parameters
+            ----------
+            None
+
+            Returns
+            -------
+            compile info
+            """
+            self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
+                                            name="x", scope=tik.scope_gm)
+            self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
+                                                    name="indices", scope=tik.scope_gm)
+            self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+                                                    name="ddr_arg", scope=tik.scope_gm)
+            self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
+                                            name="y", scope=tik.scope_gm)
+
+            self.gather_v2_compute_tiling()
+
+            self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                    inputs=(self.x, self.indices),
+                                    outputs=(self.y,),
+                                    flowtable=(self.tiling_gm,), enable_l2=True)
+
+            # add compile info
+            te.op.add_compile_info("vars", {"core_num": self.core_num,
+                                            "ub_size": self.ub_size,
+                                            "l1_size": self.l1_size,
+                                            "params_dsize": self.params_dsize,
+                                            "indices_dsize": self.indices_dsize
+                                            })
 
 @te.op.register_operator("GatherV2")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)

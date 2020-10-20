@@ -1,37 +1,35 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-caffe pooling
+dynamic reduce sum
 """
-import te
-import te.lang.dynamic
+import te.lang.dynamic as dynamic
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from topi import generic
-from topi.cce import util as cce_util
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
-from te.platform.operation import add_compile_info
 
 NONETYPE = type(None)
 
 
 def fused_reduce_axis(shape, shape_range, reduce_axis):
+    # convert reduce axis
+    for idx, value in enumerate(reduce_axis):
+        if value < 0:
+            reduce_axis[idx] = len(shape) + value
+
     # if all reduce axis is 1, do not del axis which is 1
     is_del_axis = False
     for idx, _ in enumerate(shape):
@@ -133,16 +131,16 @@ def reduce_sum_d_compute(x,
     """
     dtype = x.dtype
     if dtype == "float16":
-        x = te.lang.dynamic.cast_to(x, "float32")
-    res_sum = te.lang.dynamic.sum(x, axis=axis, keepdims=keepdims)
-    res = te.lang.dynamic.cast_to(res_sum, dtype)
+        x = dynamic.cast_to(x, "float32")
+    res_sum = dynamic.sum(x, axis=axis, keepdims=keepdims)
+    res = dynamic.cast_to(res_sum, dtype)
 
     return res
 
 # 'pylint: disable=too-many-locals,invalid-name
-@te.op.register_operator("ReduceSumD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@tbe_platform.register_operator("ReduceSumD")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     """reduce a tensor on a certain axis based on sum.
 
@@ -167,9 +165,9 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     dtype = x["dtype"]
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
-    check_dtype(dtype_lower, check_list, param_name="x")
+    para_check.check_dtype(dtype_lower, check_list, param_name="x")
 
-    with te.op.compute():
+    with tbe_platform.compute():
         shape = x["shape"]
         shape_range = x["range"]
 
@@ -180,24 +178,24 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
                 axes.append(i)
         else:
             axes = list(axis)
-        axes = cce_util.axis_check(shape_len, axes)
+        axes = shape_util.axis_check(shape_len, axes)
 
         shape_new, shape_range_new, axes_new, fused_rel_dic = \
             fused_reduce_axis(shape, shape_range, axes)
 
-        add_compile_info("fused_rel_dic", fused_rel_dic)
+        tbe_platform.add_compile_info("fused_rel_dic", fused_rel_dic)
         x["shape"] = shape_new
         x["range"] = shape_range_new
-        shape_var_new = variable_shape([x])[0]
+        shape_var_new = shape_util.variable_shape([x])[0]
 
         data_input = tvm.placeholder(shape_var_new, name="data_input",
                                      dtype=dtype_lower)
         res = reduce_sum_d_compute(data_input, y, axes_new, keepdims)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = dynamic.auto_schedule(res)
 
     # build
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.dynamic.build(sch, config)
+    dynamic.build(sch, config)

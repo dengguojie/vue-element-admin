@@ -1,38 +1,37 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 util_apply_op_schedule
 """
-
 import collections
 from functools import reduce as function_reduce
 import operator
 import math
 
-from te import tvm
-from te.platform import cce_params as param
+from te.tvm import api as tvm
+from te.tvm import build_module
+from te.tvm import tensor as _tensor
+from te.tvm.schedule import create_schedule
+from te.platform import cce_conf
+from te.platform import cce_params
+from te.utils import check_para
+from te.utils import operate_shape
 from te.platform.cce_build import build_config
 from te.platform.cce_build import build_config_update
-from te import platform as cceconf
-from te.tvm import build_module
-from topi.cce import util
 
-# shape limit 2^31
-SHAPE_SIZE_LIMIT = 2147483648
+
 THREAD_AXIS_IDX = 0
 OUTER_AXIS_IDX = 1
 INNER_AXIS_IDX = 2
@@ -67,7 +66,7 @@ def _get_custom_max_ub_count(compute_width):
     """
 
     # converted to the number of float16
-    total_size = cceconf.CceProductParams().getParams("Unified_Buffer") // 2
+    total_size = cce_conf.CceProductParams().getParams("Unified_Buffer") // 2
     # enable double buffer
     total_size = total_size // 2
 
@@ -105,9 +104,7 @@ def _tile_apply_ops(shape, input_dtype, compute_width):
     return factor, axis
 
 
-def _cache_and_inline(sch,
-                      cache_list,
-                      inline_compute_list,
+def _cache_and_inline(sch, cache_list, inline_compute_list,
                       ir_tensor_list=None):
     """
     cache_read/cache_write/compute_inline
@@ -130,19 +127,20 @@ def _cache_and_inline(sch,
     buffer_read_list = []
     for read_tensor in cache_list['read']:
         buffer_read_list.append(
-            sch.cache_read(read_tensor[0], param.scope_ubuf, read_tensor[1]))
+            sch.cache_read(read_tensor[0], cce_params.scope_ubuf,
+                           read_tensor[1]))
 
     # cache_write
     # store the ub write buffer list
     buffer_write_list = []
     for write_tensor in cache_list['write']:
         buffer_write_list.append(
-            sch.cache_write(write_tensor, param.scope_ubuf))
+            sch.cache_write(write_tensor, cce_params.scope_ubuf))
 
     if ir_tensor_list is not None:
         print('----------- after cache_read/cache_write IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     # compute_inline
     for inline_tensor in inline_compute_list:
@@ -151,7 +149,7 @@ def _cache_and_inline(sch,
     if ir_tensor_list is not None:
         print('----------- after compute_inline IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     return {'read': buffer_read_list, 'write': buffer_write_list}
 
@@ -263,7 +261,7 @@ def _get_info_from_gragh(outs):
         operation_list.append(tensor)
 
     def get_read_and_inline(cur_buf):
-        if isinstance(cur_buf.op, tvm.tensor.PlaceholderOp):
+        if isinstance(cur_buf.op, _tensor.PlaceholderOp):
             tmp = (cur_buf, tmp_op['dst_buffer'])
             if tmp not in read_cache:
                 read_cache.append(tmp)
@@ -366,7 +364,7 @@ def _execute_split_core(sch, out, shape, split_axis, rfactor):
     thread_axis = outer_axis
     if out_extent > 1:
         block_index = tvm.thread_axis('blockIdx.x')
-        max_core_num = cceconf.CceProductParams().getParams("Device_core_num")
+        max_core_num = cce_conf.CceProductParams().getParams("Device_core_num")
 
         if _split_core_strategy(max_core_num,
                                 out_extent) or out_extent <= max_core_num:
@@ -440,7 +438,7 @@ def _execute_insn_emit(sch, buffer_list, cache_list, op_dict):
     # pragam
     for read_buffer in buffer_list['read']:
         sch[read_buffer].emit_insn(sch[read_buffer].op.axis[0],
-                                   cceconf.dma_copy)
+                                   cce_params.dma_copy)
 
 
 def _enable_double_buffer(sch, buffer_list):
@@ -490,11 +488,8 @@ def _execute_rewrite_inputs(sch, buffer_list, rewrite_back_map, axes):
                 index += 1
 
 
-def common_apply_op_schedule(outs,
-                             rewrite_back_map,
-                             compute_width,
-                             scalar_name,
-                             ir_tensor_list=None):
+def _common_apply_op_schedule(outs, rewrite_back_map, compute_width,
+                              scalar_name, ir_tensor_list=None):
     """
     Parameters
     ----------
@@ -514,11 +509,11 @@ def common_apply_op_schedule(outs,
     cache_list, inline_compute_list, op_dict = _get_info_from_gragh(outs)
 
     # create origin schedule
-    sch = tvm.create_schedule([out_tensor.op for out_tensor in outs])
+    sch = create_schedule([out_tensor.op for out_tensor in outs])
     if ir_tensor_list is not None:
         print('----------- origin IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     # cache and inline
     buffer_list = _cache_and_inline(sch, cache_list, inline_compute_list,
@@ -534,7 +529,7 @@ def common_apply_op_schedule(outs,
     if ir_tensor_list is not None:
         print('----------- after compute_at IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     _execute_insn_emit(sch, buffer_list, cache_list, op_dict)
     # for muti-outs, the outs is a group, the old dma coy can't deal it,
@@ -543,7 +538,7 @@ def common_apply_op_schedule(outs,
     if ir_tensor_list is not None:
         print('----------- after emit_insn IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     _enable_double_buffer(sch, buffer_list)
 
@@ -551,7 +546,7 @@ def common_apply_op_schedule(outs,
     if ir_tensor_list is not None:
         print('----------- after reuse input IR -----------')
         with _custom_build_config():
-            print(tvm.lower(sch, ir_tensor_list, simple_mode=True))
+            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     return sch
 
@@ -574,11 +569,11 @@ def _check_shape_rule(input_tensors, dtype_check_list):
     for i, tensor_dict in enumerate(input_tensors):
         shape = tensor_dict.get('shape')
         dtype = tensor_dict.get('dtype')
-        util.check_shape_rule(shape)
-        util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-        util.check_dtype_rule(dtype, dtype_check_list)
+        check_para.check_shape_rule(shape)
+        check_para.check_shape_size(shape, check_para.SHAPE_SIZE_LIMIT)
+        check_para.check_dtype_rule(dtype, dtype_check_list)
         normalized_dtype_list[i] = dtype.lower()
-        broadcast_shape_list[i], _, _ = util.produce_shapes(
+        broadcast_shape_list[i], _, _ = operate_shape.produce_shapes(
             shape, input_tensors[0].get('shape'))
     return normalized_dtype_list, broadcast_shape_list
 
@@ -598,7 +593,7 @@ def _check_scalar_shape(shape_list, name_idx_map, scalar_name):
     True or False
     """
     need_to_check = [shape_list[name_idx_map[name]] for name in scalar_name]
-    return all(util.is_scalar(item) for item in need_to_check)
+    return all(check_para.is_scalar(item) for item in need_to_check)
 
 
 # pylint: disable=locally-disabled, too-few-public-methods
@@ -625,7 +620,7 @@ class ApplyOpConfig:
         self.options = options
 
 
-def check_shape_and_dtype(config, name_idx_map, same_flag):
+def _check_shape_and_dtype(config, name_idx_map, same_flag):
     """
     check shape and dtype
 
@@ -683,7 +678,7 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
     """
 
     # check kernel name
-    util.check_kernel_name(kernel_name)
+    check_para.check_kernel_name(kernel_name)
 
     # correspondence between tensor name and indexing
     name_idx_map = {name: idx for idx, name in enumerate(config.name.all)}
@@ -697,7 +692,8 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
             config.args.input_vars[name_idx_map[scalar]]['shape'] = (1,)
 
     # check shape and dtype
-    shape_list, dtype_list = check_shape_and_dtype(config, name_idx_map, same_flag)
+    shape_list, dtype_list = _check_shape_and_dtype(
+        config, name_idx_map, same_flag)
 
     # get placeholder of all tensors
     input_tensors = [None] * len(name_idx_map)
@@ -712,8 +708,8 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
         attrs = [attrs]
 
     if isinstance(config.args.output, list):
-        outs = config.args.compute(*(input_tensors + config.args.output +
-                                     list(attrs)))
+        outs = config.args.compute(
+            *(input_tensors + config.args.output + list(attrs)))
     else:
         outs = config.args.compute(*(input_tensors + [config.args.output] +
                                      list(attrs)))
@@ -725,9 +721,10 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
         rewrite_back_map[input_tensors[name_idx_map[name]]] = outs[i]
 
     # execute the schedule operation
-    sch = common_apply_op_schedule(outs, rewrite_back_map, config.args.width,
-                                   config.name.scalar)
+    sch = _common_apply_op_schedule(outs, rewrite_back_map, config.args.width,
+                                    config.name.scalar)
 
     # build
     with config.options.build:
-        tvm.build(sch, input_tensors + list(outs), "cce", name=kernel_name)
+        build_module.build(sch, input_tensors + list(outs),
+                           "cce", name=kernel_name)

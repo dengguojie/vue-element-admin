@@ -1,43 +1,41 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 fused_mul_apply_momentum
-
-  Op_description :
-    Update '*var' according to the ApplyMomentum algorithm.
 """
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.lang.cce
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("fused_mul_apply_momentum")
-def _fused_mul_apply_momentum_compute(var,
-                                      accum,
-                                      lr,
-                                      x1,
-                                      momentum,
-                                      x2,
-                                      out_var,
-                                      out_accum,
-                                      use_nesterov,
-                                      kernel_name='fused_mul_apply_momentum'):
+@tbe_platform.fusion_manager.fusion_manager.register("fused_mul_apply_momentum")
+def fused_mul_apply_momentum_compute(var,
+                                     accum,
+                                     lr,
+                                     x1,
+                                     momentum,
+                                     x2,
+                                     out_var,
+                                     out_accum,
+                                     use_nesterov,
+                                     kernel_name='fused_mul_apply_momentum'):
     """
     Update '*var' according to the ApplyMomentum algorithm.
 
@@ -80,36 +78,36 @@ def _fused_mul_apply_momentum_compute(var,
     dtype = var.dtype
 
     if dtype == "float16":
-        var = te.lang.cce.cast_to(var, "float32")
-        accum = te.lang.cce.cast_to(accum, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        x1 = te.lang.cce.cast_to(x1, "float32")
-        x2 = te.lang.cce.cast_to(x2, "float32")
-        momentum = te.lang.cce.cast_to(momentum, "float32")
+        var = tbe.cast_to(var, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        x1 = tbe.cast_to(x1, "float32")
+        x2 = tbe.cast_to(x2, "float32")
+        momentum = tbe.cast_to(momentum, "float32")
 
     # calc grad
-    x2_brc = te.lang.cce.broadcast(x2, x1.shape)
-    grad = te.lang.cce.vmul(x1, x2_brc)
+    x2_brc = tbe.broadcast(x2, x1.shape)
+    grad = tbe.vmul(x1, x2_brc)
     # update accum
-    momentum_brc = te.lang.cce.broadcast(momentum, accum.shape)
-    accum_delta = te.lang.cce.vmul(accum, momentum_brc)
-    accum_t = te.lang.cce.vadd(accum_delta, grad)
+    momentum_brc = tbe.broadcast(momentum, accum.shape)
+    accum_delta = tbe.vmul(accum, momentum_brc)
+    accum_t = tbe.vadd(accum_delta, grad)
 
     # update var
-    lr_brc = te.lang.cce.broadcast(lr, accum.shape)
+    lr_brc = tbe.broadcast(lr, accum.shape)
     if use_nesterov:
-        var_delta = te.lang.cce.vmul(grad, lr_brc)
-        var_delta_2 = te.lang.cce.vmul(accum_t, momentum_brc)
-        var_delta_2 = te.lang.cce.vmul(var_delta_2, lr_brc)
-        var_delta = te.lang.cce.vadd(var_delta, var_delta_2)
-        var_t = te.lang.cce.vsub(var, var_delta)
+        var_delta = tbe.vmul(grad, lr_brc)
+        var_delta_2 = tbe.vmul(accum_t, momentum_brc)
+        var_delta_2 = tbe.vmul(var_delta_2, lr_brc)
+        var_delta = tbe.vadd(var_delta, var_delta_2)
+        var_t = tbe.vsub(var, var_delta)
     else:
-        var_delta = te.lang.cce.vmul(accum_t, lr_brc)
-        var_t = te.lang.cce.vsub(var, var_delta)
+        var_delta = tbe.vmul(accum_t, lr_brc)
+        var_t = tbe.vsub(var, var_delta)
 
     if dtype == "float16":
-        var_t = te.lang.cce.cast_to(var_t, "float16")
-        accum_t = te.lang.cce.cast_to(accum_t, "float16")
+        var_t = tbe.cast_to(var_t, "float16")
+        accum_t = tbe.cast_to(accum_t, "float16")
 
     return var_t, accum_t
 
@@ -122,29 +120,23 @@ def _get_placeholder(dict_list, name_list):
         dtype = var.get('dtype').lower()
         if name == 'var':
             var_shape = list(shape)
-        if name != 'lr' and name != 'momentum' and name != 'x2' \
-            and var_shape != list(shape):
-            raise RuntimeError(
-                "The shapes of var, accum and x1 must be equal.")
-        if (name == 'lr' or name == 'momentum'
-                or name == 'x2') and shape[0] != 1:
-            raise RuntimeError(
-                "The shapes of lr, momentum and x2 must be scalar.")
+        if name != 'lr' and name != 'momentum' and name != 'x2' and var_shape != list(shape):
+            raise RuntimeError("The shapes of var, accum and x1 must be equal.")
+        if (name == 'lr' or name == 'momentum' or name == 'x2') and shape[0] != 1:
+            raise RuntimeError("The shapes of lr, momentum and x2 must be scalar.")
 
-        op_utils.check_dtype(dtype, ('float32', 'float16'), param_name="var")
-        op_utils.check_shape(shape, param_name="var")
-        shape_refine = (functools_reduce(operator.mul, shape), )
-        list_placeholder.append(
-            tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
+        para_check.check_dtype(dtype, ('float32', 'float16'), param_name="var")
+        para_check.check_shape(shape, param_name="var")
+        shape_refine = (functools.reduce(operator.mul, shape), )
+        list_placeholder.append(tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
 
 # pylint: disable=unbalanced-tuple-unpacking
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def fused_mul_apply_momentum(var,
                              accum,
                              lr,
@@ -193,14 +185,13 @@ def fused_mul_apply_momentum(var,
     """
 
     input_name_list = ['var', 'accum', 'lr', 'x1', 'momentum', 'x2']
-    var, accum, lr, x1, momentum, x2 = _get_placeholder(
-        [var, accum, lr, x1, momentum, x2], input_name_list)
-    out_var, out_accum = _fused_mul_apply_momentum_compute(
-        var, accum, lr, x1, momentum, x2, out_var, out_accum, use_nesterov)
+    var, accum, lr, x1, momentum, x2 = _get_placeholder([var, accum, lr, x1, momentum, x2], input_name_list)
+    out_var, out_accum = fused_mul_apply_momentum_compute(var, accum, lr, x1, momentum, x2, out_var, out_accum,
+                                                          use_nesterov)
     outs = [out_var, out_accum]
     build_list = [var, accum, lr, x1, momentum, x2, out_var, out_accum]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(outs)
+        sch = tbe.auto_schedule(outs)
     config = {"name": kernel_name, "tensor_list": build_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

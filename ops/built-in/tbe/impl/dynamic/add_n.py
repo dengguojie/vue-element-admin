@@ -1,38 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic add_n
 """
-from functools import reduce as reduceIns
-from te.platform.cce_conf import api_check_support
+import functools
 
-import te.lang.dynamic
+import te.lang.dynamic as dynamic
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.shape_classifier import classify, Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import DYNAMIC_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import OP_ERROR_CODE_012
-from te.utils.op_utils import OP_ERROR_CODE_017
-from te.utils.op_utils import OP_ERROR_CODE_018
-from topi import generic
 
 
 def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
@@ -52,30 +41,28 @@ def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     res : output of the data's add_n
     """
     data_type = datas[0].dtype
-    has_covert_float32 = (data_type == "float16" and api_check_support(
-        "te.lang.dynamic.vadd", "float32"))
+    has_covert_float32 = (data_type == "float16" and
+                          tbe_platform.api_check_support("te.lang.dynamic.vadd", "float32"))
 
-    first_data = datas[
-        0] if not has_covert_float32 else te.lang.dynamic.cast_to(datas[0],
-                                                                  "float32")
+    first_data = datas[0] if not has_covert_float32 else dynamic.cast_to(datas[0], "float32")
     res = first_data
 
     for i, data_i in enumerate(datas):
         if i == 0:
             continue
         tmp_data = data_i if not has_covert_float32 else \
-            te.lang.dynamic.cast_to(data_i, "float32")
-        res = te.lang.dynamic.vadd(res, tmp_data)
+            dynamic.cast_to(data_i, "float32")
+        res = dynamic.vadd(res, tmp_data)
 
     if has_covert_float32:
-        res = te.lang.dynamic.cast_to(res, "float16")
+        res = dynamic.cast_to(res, "float16")
 
     return res
 
 
-@te.op.register_operator("AddN")
-@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
-                 KERNEL_NAME)
+@tbe_platform.register_operator("AddN")
+@para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def add_n(inputs, output, tensor_num, kernel_name="add_n"):
     """
     algorithm: add_n
@@ -103,7 +90,7 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
     input_num = len(inputs)
     if input_num < 2:
         error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_012
+        error_info['errCode'] = para_check.OP_ERROR_CODE_012
         error_info['op_name'] = 'add_n'
         error_info['param_name'] = 'input_num'
         error_info['max_value'] = '8'
@@ -119,7 +106,7 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
                                error_info['real_value']))
     if input_num != tensor_num:
         error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_017
+        error_info['errCode'] = para_check.OP_ERROR_CODE_017
         error_info['op_name'] = 'add_n'
         error_info['param_name1'] = 'input_num'
         error_info['param_name2'] = 'tensor_num'
@@ -134,71 +121,52 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
                                error_info['param_name2'],
                                error_info['param2_shape']))
 
-    ins = classify(inputs, Mode.ELEWISE)
+    dtype_0 = inputs[0].get("dtype").lower()
+    for index in range(0, tensor_num):
+        shape_input = inputs[index].get("shape")
+        para_check.check_shape(shape_input, param_name="inputs")
+        dtype_input = inputs[index].get("dtype").lower()
+        check_list = ("float16", "float32", "int32")
+        para_check.check_dtype(dtype_input, check_list, param_name="inputs")
+        if dtype_input != dtype_0:
+            error_info = {}
+            error_info['errCode'] = para_check.OP_ERROR_CODE_018
+            error_info['op_name'] = 'add_n'
+            error_info['param_name1'] = 'dtype_input'
+            error_info['param_name2'] = 'dtype_0'
+            error_info['param1_dtype'] = str(dtype_input)
+            error_info['param2_dtype'] = str(dtype_0)
+            raise RuntimeError(error_info, "In op[%s], the parameter"
+                                           "[%s][%s] are not equal in "
+                                           "dtype with dtype[%s][%s]." % (
+                                   error_info['op_name'],
+                                   error_info['param_name1'],
+                                   error_info['param_name2'],
+                                   error_info['param1_dtype'],
+                                   error_info['param2_dtype']))
+
+    ins = tbe_platform.classify(inputs, tbe_platform.Mode.ELEWISE)
     schedules, tensors = [], []
     for inputs in ins:
-        with te.op.compute():
-            # check inputs shape and dtype
-            shape_0 = inputs[0].get("shape")
-            dtype_0 = inputs[0].get("dtype").lower()
-            check_list = ("float16", "float32", "int32")
-            shape_normlize = variable_shape(inputs)
+        with tbe_platform.compute():
+            shape_normlize = shape_util.variable_shape(inputs)
             fuse_shape = [1]
             datas = []
             for (i, input_dict), shape_i in zip(enumerate(inputs),
                                                 shape_normlize):
-                shape_input = input_dict.get("shape")
-                if list(shape_0) != list(shape_input):
-                    error_info = {}
-                    error_info['errCode'] = OP_ERROR_CODE_017
-                    error_info['op_name'] = 'add_n'
-                    error_info['param_name1'] = 'shape_0'
-                    error_info['param_name2'] = 'shape_input'
-                    error_info['param1_shape'] = ','.join(
-                        str(i) for i in shape_0)
-                    error_info['param2_shape'] = ','.join(
-                        str(i) for i in shape_input)
-                    raise RuntimeError(error_info,
-                                       "In op[%s], the parameter[%s][%s] is "
-                                       "not match with the parameter[%s][%s],"
-                                       "it should be the same." % (
-                                           error_info['op_name'],
-                                           error_info['param_name1'],
-                                           error_info['param1_shape'],
-                                           error_info['param_name2'],
-                                           error_info['param2_shape']))
-                check_shape(shape_input, param_name="inputs")
-                dtype_input = input_dict.get("dtype").lower()
-                check_dtype(dtype_input, check_list, param_name="inputs")
-                if dtype_input != dtype_0:
-                    error_info = {}
-                    error_info['errCode'] = OP_ERROR_CODE_018
-                    error_info['op_name'] = 'add_n'
-                    error_info['param_name1'] = 'dtype_input'
-                    error_info['param_name2'] = 'dtype_0'
-                    error_info['param1_dtype'] = str(dtype_input)
-                    error_info['param2_dtype'] = str(dtype_0)
-                    raise RuntimeError(error_info, "In op[%s], the parameter" 
-                                                   "[%s][%s] are not equal in "
-                                                   "dtype with dtype[%s][%s]."
-                                       % (error_info['op_name'],
-                                          error_info['param_name1'],
-                                          error_info['param_name2'],
-                                          error_info['param1_dtype'],
-                                          error_info['param2_dtype']))
-                fuse_shape[0] = reduceIns(lambda x, y: x * y, shape_i)
+                fuse_shape[0] = functools.reduce(lambda x, y: x * y, shape_i)
                 datas.append(tvm.placeholder(fuse_shape, name="data_%d" % i,
-                                             dtype=dtype_input))
+                                             dtype=dtype_0))
 
             # add_n_compute
             res = add_n_compute(datas, output, kernel_name)
 
             tensors.append(datas)
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = dynamic.auto_schedule(res)
         schedules.append(sch)
 
     # build
     datas.append(res)
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    dynamic.build(schedules, config)

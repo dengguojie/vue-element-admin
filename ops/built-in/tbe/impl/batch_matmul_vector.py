@@ -1,38 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-matmul_vector
+batch_matmul_vector
 """
-from __future__ import absolute_import
-from __future__ import division
-
 from te import tvm
-from te import platform as cce
-from te.platform.cce_build import build_config
-from te.platform import insn_cmd
-
+import te.platform as tbe_platform
+from te.utils import shape_util
 from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
 from .transpose_d import _write_code
 
-import topi
 
-
-# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,too-many-statements,too-many-lines,too-many-branches
+# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals
+# pylint: disable=too-many-statements,too-many-lines,too-many-branches
 def _schedule_large_km_kn(shape, list_computes, src_type):
     """
     Matrix multiplication matmul_vector for KN x KN, schedule for the km_kn when the shape is large
@@ -111,45 +103,45 @@ def _schedule_large_km_kn(shape, list_computes, src_type):
     if n_axis_inner[1] % 8 == 0:
         schedule[result].bind(axis_batch[0], tvm.thread_axis('blockIdx.x'))
 
-    schedule[tensor_a_ub].set_scope(cce.scope_ubuf)
-    schedule[tensor_b_ub].set_scope(cce.scope_ubuf)
+    schedule[tensor_a_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[tensor_b_ub].set_scope(tbe_platform.scope_ubuf)
 
     if tensor_bais_ub is not None:
         if src_type == "int32":
-            schedule[tensor_temp_bias].set_scope(cce.scope_ubuf)
-        schedule[tensor_bais_ub].set_scope(cce.scope_ubuf)
-        schedule[the_result_bais_ub].set_scope(cce.scope_ubuf)
+            schedule[tensor_temp_bias].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_bais_ub].set_scope(tbe_platform.scope_ubuf)
+        schedule[the_result_bais_ub].set_scope(tbe_platform.scope_ubuf)
 
-    schedule[the_result_mul_ub].set_scope(cce.scope_ubuf)
-    schedule[the_result_ub].set_scope(cce.scope_ubuf)
+    schedule[the_result_mul_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[the_result_ub].set_scope(tbe_platform.scope_ubuf)
 
     if src_type == "int32":
-        schedule[tensor_temp_a].set_scope(cce.scope_ubuf)
-        schedule[tensor_temp_b].set_scope(cce.scope_ubuf)
-        schedule[tensor_result_ub_cast].set_scope(cce.scope_ubuf)
-        schedule[tensor_temp_a].emit_insn(tensor_temp_a.op.axis[axis_inner], insn_cmd.CAST)
-        schedule[tensor_temp_b].emit_insn(tensor_temp_b.op.axis[axis_inner], insn_cmd.CAST)
+        schedule[tensor_temp_a].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_temp_b].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_result_ub_cast].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_temp_a].emit_insn(tensor_temp_a.op.axis[axis_inner], tbe_platform.insn_cmd.CAST)
+        schedule[tensor_temp_b].emit_insn(tensor_temp_b.op.axis[axis_inner], tbe_platform.insn_cmd.CAST)
         schedule[tensor_result_ub_cast].emit_insn(tensor_result_ub_cast.op.axis[axis_inner],
-                                                  insn_cmd.CAST_ROUND)
+                                                  tbe_platform.insn_cmd.CAST_ROUND)
 
-    schedule[tensor_a_ub].emit_insn(tensor_a_ub.op.axis[axis_inner], insn_cmd.DMA_COPY)
-    schedule[tensor_b_ub].emit_insn(tensor_b_ub.op.axis[axis_inner], insn_cmd.DMA_COPY)
+    schedule[tensor_a_ub].emit_insn(tensor_a_ub.op.axis[axis_inner], tbe_platform.insn_cmd.DMA_COPY)
+    schedule[tensor_b_ub].emit_insn(tensor_b_ub.op.axis[axis_inner], tbe_platform.insn_cmd.DMA_COPY)
 
     if tensor_bais_ub is not None:
         if src_type == "int32":
             schedule[tensor_temp_bias].emit_insn(tensor_temp_bias.op.axis[axis_inner],
-                                                 insn_cmd.CAST)
-        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[axis_inner], insn_cmd.DMA_COPY)
+                                                 tbe_platform.insn_cmd.CAST)
+        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[axis_inner], tbe_platform.insn_cmd.DMA_COPY)
 
     schedule[the_result_mul_ub].emit_insn(the_result_mul_ub.op.axis[axis_inner + 1],
-                                          insn_cmd.MULVS)
-    schedule[the_result_ub].emit_insn(the_result_ub.op.axis[axis_inner], insn_cmd.ADD)
+                                          tbe_platform.insn_cmd.MULVS)
+    schedule[the_result_ub].emit_insn(the_result_ub.op.axis[axis_inner], tbe_platform.insn_cmd.ADD)
 
     if the_result_bais_ub is not None:
         schedule[the_result_bais_ub].emit_insn(the_result_bais_ub.op.axis[axis_inner],
-                                               insn_cmd.ADD)
+                                               tbe_platform.insn_cmd.ADD)
 
-    schedule[result].emit_insn(axis_two[1], insn_cmd.DMA_COPY)
+    schedule[result].emit_insn(axis_two[1], tbe_platform.insn_cmd.DMA_COPY)
 
     return schedule
 
@@ -161,8 +153,8 @@ def _get_tiling_km_kn(shape):
     """
     # the float32 num take up the four bytes, there float32_size equal four
     float32_size = 4
-    ub_size = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)/float32_size
-    shape_n = shape[len(shape)-2]
+    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) / float32_size
+    shape_n = shape[len(shape) - 2]
     n_axis_inner = shape_n
     n_outter = 1
     min_m_axis = 1
@@ -221,13 +213,13 @@ def _compute_for_km_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
     tensor_temp_b = tensor_b_ub
     tensor_temp_bias = tensor_bais_ub
     if src_type == "int32":
-        tensor_temp_a = tvm.compute(shape_a, lambda *i: topi.cast(tensor_a_ub(*i), "float32"),
+        tensor_temp_a = tvm.compute(shape_a, lambda *i: shape_util.cast(tensor_a_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
-        tensor_temp_b = tvm.compute(shape_b, lambda *i: topi.cast(tensor_b_ub(*i), "float32"),
+        tensor_temp_b = tvm.compute(shape_b, lambda *i: shape_util.cast(tensor_b_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
         if tensor_bais_ub is not None:
             tensor_temp_bias = tvm.compute(output_shape,
-                                           lambda *i: topi.cast(tensor_bais_ub(*i), "float32"),
+                                           lambda *i: shape_util.cast(tensor_bais_ub(*i), "float32"),
                                            name='tensor_bais_ub_cast')
 
     def _get_axis_a(*index):
@@ -282,7 +274,7 @@ def _compute_for_km_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
 
     if src_type == "int32":
         tensor_result_ub_cast = tvm.compute(output_shape,
-                                            lambda *i: topi.cast(the_result_temp(*i), "int32"),
+                                            lambda *i: shape_util.cast(the_result_temp(*i), "int32"),
                                             name='tensor_result_ub_cast')
     else:
         tensor_result_ub_cast = the_result_temp
@@ -310,29 +302,25 @@ def _matmul_new_km_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, sh
     tensor_a_ub = tvm.compute(shape_a, lambda *i: tensor_a(*i), name='tensor_a_ub')
     tensor_b_ub = tvm.compute(shape_b, lambda *i: tensor_b(*i), name='tensor_b_ub')
 
-    def get_bias_axis(*index):
+    def _get_bias_axis(*index):
         """
         get the axis_info when applying the align
         ----------
         """
         return index[shape_len-1]
 
+    tensor_bais_ub = None
     if tensor_bais is not None:
         tensor_bais_ub = tvm.compute(output_bais,
-                                     lambda *index: tensor_bais(get_bias_axis(*index)),
+                                     lambda *index: tensor_bais(_get_bias_axis(*index)),
                                      name="tensor_bais_ub")
-    else:
-        tensor_bais_ub = None
 
     tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias, the_result_mul_ub, \
-                        the_result_ub, the_result_bais_ub, the_result = _compute_for_km_kn(
-                            tensor_a_ub, tensor_b_ub,
-                            shape_a, shape_b,
-                            tensor_bais_ub, src_type,
-                            output_bais)
+        the_result_ub, the_result_bais_ub, the_result = _compute_for_km_kn(
+            tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_ub, src_type, output_bais)
 
     shape_schedule = output_bais[:]
-    shape_schedule.append(shape_a[len(shape_a)-2])
+    shape_schedule.append(shape_a[len(shape_a) - 2])
     schedule = _schedule_large_km_kn(shape_schedule, (the_result, tensor_a_ub, tensor_b_ub,
                                                       the_result_mul_ub,
                                                       the_result_ub, tensor_bais_ub,
@@ -365,27 +353,27 @@ def _schedule_large_mk_kn(shape, list_computes, src_type):
     schedule = tvm.create_schedule([the_result.op])
     tiling_number = _get_tiling_mk_kn(shape)
 
-    schedule[tensor_a_ub].set_scope(cce.scope_ubuf)
-    schedule[tensor_b_ub].set_scope(cce.scope_ubuf)
+    schedule[tensor_a_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[tensor_b_ub].set_scope(tbe_platform.scope_ubuf)
 
     if src_type == "int32":
-        schedule[tensor_temp_a].set_scope(cce.scope_ubuf)
-        schedule[tensor_temp_b].set_scope(cce.scope_ubuf)
-        schedule[tensor_result_ub_cast].set_scope(cce.scope_ubuf)
+        schedule[tensor_temp_a].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_temp_b].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_result_ub_cast].set_scope(tbe_platform.scope_ubuf)
 
     if tensor_bais_ub is not None:
-        schedule[tensor_bais_ub].set_scope(cce.scope_ubuf)
+        schedule[tensor_bais_ub].set_scope(tbe_platform.scope_ubuf)
         if src_type == "int32":
-            schedule[tensor_temp_bias].set_scope(cce.scope_ubuf)
+            schedule[tensor_temp_bias].set_scope(tbe_platform.scope_ubuf)
 
-    schedule[the_result_mul_ub].set_scope(cce.scope_ubuf)
-    schedule[the_result_ub].set_scope(cce.scope_ubuf)
+    schedule[the_result_mul_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[the_result_ub].set_scope(tbe_platform.scope_ubuf)
 
     if the_result_bais_ub is not None:
-        schedule[the_result_bais_ub].set_scope(cce.scope_ubuf)
+        schedule[the_result_bais_ub].set_scope(tbe_platform.scope_ubuf)
 
-    dim_one = len(shape)-2
-    dim_zero = len(shape)-3
+    dim_one = len(shape) - 2
+    dim_zero = len(shape) - 3
 
     axis_batch_reduce = []
     for i in range(0, len(shape) - 3):
@@ -454,28 +442,28 @@ def _schedule_large_mk_kn(shape, list_computes, src_type):
 
     if src_type == "int32":
         schedule[tensor_result_ub_cast].compute_at(schedule[the_result], axis_four[0])
-        schedule[tensor_temp_a].emit_insn(axis_one_cast[1], insn_cmd.CAST)
-        schedule[tensor_temp_b].emit_insn(tensor_temp_b.op.axis[dim_one], insn_cmd.CAST)
+        schedule[tensor_temp_a].emit_insn(axis_one_cast[1], tbe_platform.insn_cmd.CAST)
+        schedule[tensor_temp_b].emit_insn(tensor_temp_b.op.axis[dim_one], tbe_platform.insn_cmd.CAST)
         schedule[tensor_result_ub_cast].emit_insn(tensor_result_ub_cast.op.axis[dim_one],
-                                                  insn_cmd.CAST_ROUND)
+                                                  tbe_platform.insn_cmd.CAST_ROUND)
 
-    schedule[tensor_a_ub].emit_insn(axis_one[1], insn_cmd.DMA_COPY)
-    schedule[tensor_b_ub].emit_insn(tensor_b_ub.op.axis[dim_one], insn_cmd.DMA_COPY)
+    schedule[tensor_a_ub].emit_insn(axis_one[1], tbe_platform.insn_cmd.DMA_COPY)
+    schedule[tensor_b_ub].emit_insn(tensor_b_ub.op.axis[dim_one], tbe_platform.insn_cmd.DMA_COPY)
 
     if tensor_bais_ub is not None:
-        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[dim_one], insn_cmd.DMA_COPY)
+        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[dim_one], tbe_platform.insn_cmd.DMA_COPY)
         schedule[the_result_bais_ub].emit_insn(the_result_bais_ub.op.axis[dim_one],
-                                               insn_cmd.ADD)
+                                               tbe_platform.insn_cmd.ADD)
         if src_type == "int32":
             schedule[tensor_temp_bias].emit_insn(tensor_temp_bias.op.axis[dim_one],
-                                                 insn_cmd.CAST)
+                                                 tbe_platform.insn_cmd.CAST)
 
     schedule[the_result_mul_ub].emit_insn(the_result_mul_ub.op.axis[dim_one+1], \
-                              insn_cmd.MULVS)
+                              tbe_platform.insn_cmd.MULVS)
     schedule[the_result_ub].emit_insn(the_result_ub.op.axis[dim_one],
-                                      insn_cmd.ADD)
+                                      tbe_platform.insn_cmd.ADD)
 
-    schedule[the_result].emit_insn(axis_four[1], insn_cmd.DMA_COPY)
+    schedule[the_result].emit_insn(axis_four[1], tbe_platform.insn_cmd.DMA_COPY)
 
     return schedule
 
@@ -487,7 +475,7 @@ def _get_tiling_mk_kn(shape):
     """
     # the float32 num take up the four bytes, there float32_size equal four
     float32_size = 4
-    ub_size = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)/float32_size
+    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)/float32_size
     shape_n = shape[len(shape)-2]
     shape_k = shape[len(shape)-1]
     n_axis_outer = 1
@@ -496,8 +484,6 @@ def _get_tiling_mk_kn(shape):
     k_axis_inner = shape_k
     min_m_axis = 1
     min_k_axis = 2
-
-
 
     if _get_restriction_mk_kn(min_m_axis, n_axis_inner,
                               min_k_axis, shape_n, shape_k) < ub_size:
@@ -553,10 +539,10 @@ def _get_restriction_mk_kn(m_axis_inner, n_axis_inner, k_axis_inner, shape_n, sh
         cur_n_axis_inner = block_size*(n_axis_inner // block_size + 1)
     else:
         cur_n_axis_inner = n_axis_inner
-    the_result = m_axis_inner*cur_n_axis_inner + cur_k_axis_inner + 2*cur_n_axis_inner
+    the_result = m_axis_inner * cur_n_axis_inner + cur_k_axis_inner + 2 * cur_n_axis_inner
 
     if n_axis_be_divided:
-        the_result = the_result + max(3*n_axis_remainder + k_axis_inner, cur_n_axis_inner)
+        the_result = the_result + max(3 * n_axis_remainder + k_axis_inner, cur_n_axis_inner)
 
     if k_axis_be_divided:
         the_result = the_result + k_axis_remainder + cur_n_axis_inner
@@ -592,13 +578,13 @@ def _compute_for_mk_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
     tensor_temp_b = tensor_b_ub
 
     if src_type == "int32":
-        tensor_temp_a = tvm.compute(shape_a, lambda *i: topi.cast(tensor_a_ub(*i), "float32"),
+        tensor_temp_a = tvm.compute(shape_a, lambda *i: shape_util.cast(tensor_a_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
-        tensor_temp_b = tvm.compute(shape_b, lambda *i: topi.cast(tensor_b_ub(*i), "float32"),
+        tensor_temp_b = tvm.compute(shape_b, lambda *i: shape_util.cast(tensor_b_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
         if tensor_bais_ub is not None:
             tensor_temp_bias = tvm.compute(output_shape,
-                                           lambda *i: topi.cast(tensor_bais_ub(*i), "float32"),
+                                           lambda *i: shape_util.cast(tensor_bais_ub(*i), "float32"),
                                            name='tensor_bais_ub_cast')
 
     def _get_axis_b(*index):
@@ -654,7 +640,7 @@ def _compute_for_mk_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
 
     if src_type == "int32":
         tensor_result_ub_cast = tvm.compute(output_shape,
-                                            lambda *i: topi.cast(the_result_temp(*i), "int32"),
+                                            lambda *i: shape_util.cast(the_result_temp(*i), "int32"),
                                             name='tensor_result_ub_cast')
     else:
         tensor_result_ub_cast = the_result_temp
@@ -672,15 +658,15 @@ def _matmul_new_mk_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, sh
     """
     output_bais = shape_a[:]
 
-    axis_last = len(shape_a)-1
+    axis_last = len(shape_a) - 1
 
-    output_bais[axis_last] = shape_b[len(shape_b)-1]
+    output_bais[axis_last] = shape_b[len(shape_b) - 1]
 
     tensor_a_ub = tvm.compute(shape_a, lambda *i: tensor_a(*i), name='tensor_a_ub')
     tensor_b_ub = tvm.compute(shape_b, lambda *i: tensor_b(*i), name='tensor_b_ub')
 
     def _get_bias_axis(*index):
-        return index[len(shape_a)-1]
+        return index[len(shape_a) - 1]
 
     if tensor_bais is not None:
         tensor_bais_ub = tvm.compute(output_bais,
@@ -699,9 +685,9 @@ def _matmul_new_mk_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, sh
                                                                        tensor_bais_ub, src_type,
                                                                        output_bais)
 
-    schedule = _get_schedule_mk_kn(schedule_shape, \
+    schedule = _get_schedule_mk_kn(schedule_shape,
                                    (the_result, tensor_a_ub, tensor_b_ub,
-                                    the_result_mul_ub, the_result_ub, \
+                                    the_result_mul_ub, the_result_ub,
                                     tensor_bais_ub, the_result_bais_ub,
                                     tensor_temp_a, tensor_temp_b,
                                     tensor_result_ub_cast,
@@ -751,15 +737,15 @@ def _single_tiling(shape, schedule, list_computes, src_type, shape_length):
 
     schedule[the_result_mul_ub].compute_at(schedule[the_result_ub], axis_four[0])
 
-    schedule[tensor_a_ub].emit_insn(axis_one[1], insn_cmd.DMA_COPY)
-    schedule[tensor_b_ub].emit_insn(axis_two[1], insn_cmd.DMA_COPY)
+    schedule[tensor_a_ub].emit_insn(axis_one[1], tbe_platform.insn_cmd.DMA_COPY)
+    schedule[tensor_b_ub].emit_insn(axis_two[1], tbe_platform.insn_cmd.DMA_COPY)
 
     if src_type == "int32":
-        schedule[tensor_temp_a].emit_insn(axis_one_cast[1], insn_cmd.CAST)
-        schedule[tensor_temp_b].emit_insn(axis_two_cast[1], insn_cmd.CAST)
+        schedule[tensor_temp_a].emit_insn(axis_one_cast[1], tbe_platform.insn_cmd.CAST)
+        schedule[tensor_temp_b].emit_insn(axis_two_cast[1], tbe_platform.insn_cmd.CAST)
 
-    schedule[the_result_mul_ub].emit_insn(axis_three[1], insn_cmd.MUL)
-    schedule[the_result_ub].emit_insn(axis_four[1], insn_cmd.REDUCE_SUM)
+    schedule[the_result_mul_ub].emit_insn(axis_three[1], tbe_platform.insn_cmd.MUL)
+    schedule[the_result_ub].emit_insn(axis_four[1], tbe_platform.insn_cmd.REDUCE_SUM)
 
 
 def _schedule_large_mk_nk(shape, list_computes, src_type, shape_length):
@@ -827,38 +813,38 @@ def _schedule_large_mk_nk(shape, list_computes, src_type, shape_length):
     if tiling_number[1] % 8 == 0:
         schedule[the_result].bind(axis_batch[0], tvm.thread_axis('blockIdx.x'))
 
-    schedule[tensor_a_ub].set_scope(cce.scope_ubuf)
-    schedule[tensor_b_ub].set_scope(cce.scope_ubuf)
+    schedule[tensor_a_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[tensor_b_ub].set_scope(tbe_platform.scope_ubuf)
 
     if src_type == "int32":
-        schedule[tensor_temp_a].set_scope(cce.scope_ubuf)
-        schedule[tensor_temp_b].set_scope(cce.scope_ubuf)
-        schedule[tensor_result_ub_cast].set_scope(cce.scope_ubuf)
+        schedule[tensor_temp_a].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_temp_b].set_scope(tbe_platform.scope_ubuf)
+        schedule[tensor_result_ub_cast].set_scope(tbe_platform.scope_ubuf)
         schedule[tensor_result_ub_cast].emit_insn(tensor_result_ub_cast.op.axis[dim_one],
-                                                  insn_cmd.CAST_ROUND)
+                                                  tbe_platform.insn_cmd.CAST_ROUND)
 
     if tensor_bais_ub is not None:
-        schedule[tensor_bais_ub].set_scope(cce.scope_ubuf)
+        schedule[tensor_bais_ub].set_scope(tbe_platform.scope_ubuf)
         if src_type == "int32":
-            schedule[tensor_temp_bias].set_scope(cce.scope_ubuf)
+            schedule[tensor_temp_bias].set_scope(tbe_platform.scope_ubuf)
 
-    schedule[the_result_mul_ub].set_scope(cce.scope_ubuf)
-    schedule[the_result_ub].set_scope(cce.scope_ubuf)
+    schedule[the_result_mul_ub].set_scope(tbe_platform.scope_ubuf)
+    schedule[the_result_ub].set_scope(tbe_platform.scope_ubuf)
 
     if the_result_bais_ub is not None:
-        schedule[the_result_bais_ub].set_scope(cce.scope_ubuf)
+        schedule[the_result_bais_ub].set_scope(tbe_platform.scope_ubuf)
 
     if tensor_bais_ub is not None:
-        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[dim_one], insn_cmd.DMA_COPY)
+        schedule[tensor_bais_ub].emit_insn(tensor_bais_ub.op.axis[dim_one], tbe_platform.insn_cmd.DMA_COPY)
         if src_type == "int32":
             schedule[tensor_temp_bias].emit_insn(tensor_temp_bias.op.axis[dim_one],
-                                                 insn_cmd.CAST)
+                                                 tbe_platform.insn_cmd.CAST)
 
     if the_result_bais_ub is not None:
         schedule[the_result_bais_ub].emit_insn(the_result_bais_ub.op.axis[dim_one],
-                                               insn_cmd.ADD)
+                                               tbe_platform.insn_cmd.ADD)
 
-    schedule[the_result].emit_insn(axis_two[1], insn_cmd.DMA_COPY)
+    schedule[the_result].emit_insn(axis_two[1], tbe_platform.insn_cmd.DMA_COPY)
 
     return schedule
 
@@ -870,7 +856,7 @@ def _get_tiling_mk_nk(shape):
     """
     # the float32 num take up the four bytes, there float32_size equal four
     float32_size = 4
-    ub_size = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) / float32_size
+    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) / float32_size
     shape_n = shape[len(shape)-2]
     shape_k = shape[len(shape)-1]
     n_axis_outer = 1
@@ -921,9 +907,9 @@ def _get_restraint_mk_nk(m_axis_inner, n_axis_inner, k_axis_inner):
         k_axis_inner = block_size*(k_axis_inner // block_size + 1)
 
     if n_axis_inner % block_size != 0:
-        n_axis_inner = block_size*(n_axis_inner // block_size + 1)
+        n_axis_inner = block_size * (n_axis_inner // block_size + 1)
 
-    the_result = m_axis_inner*n_axis_inner + 3*k_axis_inner + 3*n_axis_inner
+    the_result = m_axis_inner * n_axis_inner + 3 * k_axis_inner + 3 * n_axis_inner
 
     return the_result
 
@@ -933,14 +919,14 @@ def _get_schedule_mk_nk(shape, list_computes, src_type):
     Matrix multiplication matmul_vector for MK x NK choose the schedule for different shape
     ----------
     """
-    schedule = _schedule_large_mk_nk(shape, list_computes, src_type, len(shape)-1)
+    schedule = _schedule_large_mk_nk(shape, list_computes, src_type, len(shape) - 1)
     return schedule
 
 
 def _get_core_num(m_axis):
     """
-
-    :param m_axis:
+    get core num
+    :param m_axis
     :return:
     """
     res = -1
@@ -961,34 +947,34 @@ def _compute_for_mk_nk(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
     ----------
     """
     output_shape_mul = output_shape[:]
-    output_shape_mul.append(shape_a[len(shape_a)-1])
+    output_shape_mul.append(shape_a[len(shape_a) - 1])
     tensor_temp_a = tensor_a_ub
     tensor_temp_b = tensor_b_ub
     tensor_temp_bias = tensor_bais_ub
 
     if src_type == "int32":
-        tensor_temp_a = tvm.compute(shape_a, lambda *i: topi.cast(tensor_a_ub(*i), "float32"),
+        tensor_temp_a = tvm.compute(shape_a, lambda *i: shape_util.cast(tensor_a_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
-        tensor_temp_b = tvm.compute(shape_b, lambda *i: topi.cast(tensor_b_ub(*i), "float32"),
+        tensor_temp_b = tvm.compute(shape_b, lambda *i: shape_util.cast(tensor_b_ub(*i), "float32"),
                                     name='tensor_a_ub_cast')
         if tensor_bais_ub is not None:
             tensor_temp_bias = tvm.compute(output_shape,
-                                           lambda *i: topi.cast(tensor_bais_ub(*i), "float32"),
+                                           lambda *i: shape_util.cast(tensor_bais_ub(*i), "float32"),
                                            name='tensor_bais_ub_cast')
 
     def _get_axis_a(*index):
         res_axis = []
-        for i in range(0, len(output_shape_mul)-3):
+        for i in range(0, len(output_shape_mul) - 3):
             res_axis.append(index[i])
 
-        res_axis.append(index[len(output_shape_mul)-3])
-        res_axis.append(index[len(output_shape_mul)-1])
+        res_axis.append(index[len(output_shape_mul) - 3])
+        res_axis.append(index[len(output_shape_mul) - 1])
 
         return res_axis
 
     def _get_axis_b(*index):
         res_axis = []
-        for i in range(0, len(output_shape_mul)-3):
+        for i in range(0, len(output_shape_mul) - 3):
             res_axis.append(index[i])
 
         res_axis.append(index[len(output_shape_mul) - 2])
@@ -1032,8 +1018,7 @@ def _compute_for_mk_nk(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
         the_result_temp = the_result_bais_ub
 
     if src_type == "int32":
-        tensor_result_ub_cast = tvm.compute(output_shape, lambda *i: topi.cast(the_result_temp(*i),
-                                                                               "int32"),
+        tensor_result_ub_cast = tvm.compute(output_shape, lambda *i: shape_util.cast(the_result_temp(*i), "int32"),
                                             name='tensor_result_ub_cast')
     else:
         tensor_result_ub_cast = the_result_temp
@@ -1077,27 +1062,25 @@ def _matmul_new_mk_nk_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, sh
     schedule_shape = output_bais[:]
     schedule_shape.append(shape_a[axis_last])
 
-    schedule = _get_schedule_mk_nk(schedule_shape, \
-                              (the_result, tensor_a_ub, tensor_b_ub, the_result_mul_ub,
-                               the_result_ub, \
-                               tensor_bais_ub, the_result_bais_ub,
-                               tensor_temp_a, tensor_temp_b,
-                               tensor_result_ub_cast,
-                               tensor_temp_bias), src_type)
+    schedule = _get_schedule_mk_nk(schedule_shape,
+                                   (the_result, tensor_a_ub, tensor_b_ub, the_result_mul_ub,
+                                    the_result_ub, tensor_bais_ub, the_result_bais_ub, tensor_temp_a, tensor_temp_b,
+                                    tensor_result_ub_cast, tensor_temp_bias),
+                                   src_type)
 
     return schedule, the_result
 
 
 def _tranpose_schedule(schedule, data, data_ub, res, shape_res, dtype):
     sch = schedule
-    sch[data_ub].set_scope(cce.scope_ubuf)
+    sch[data_ub].set_scope(tbe_platform.scope_ubuf)
 
     split_axis, split_factor = _tilling_axis_not_last(shape_res, dtype)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis], factor=split_factor)
     sch[data_ub].compute_at(sch[res], axis_outer)
-    sch[data_ub].emit_insn(data_ub.op.axis[split_axis], insn_cmd.DMA_COPY)
+    sch[data_ub].emit_insn(data_ub.op.axis[split_axis], tbe_platform.insn_cmd.DMA_COPY)
     sch = _do_storage_align(sch, data_ub, shape_res, dtype)
-    sch[res].emit_insn(axis_inner, insn_cmd.DMA_COPY)
+    sch[res].emit_insn(axis_inner, tbe_platform.insn_cmd.DMA_COPY)
     tensor_list = [data, res]
 
     return sch, tensor_list
@@ -1318,6 +1301,7 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
         else:
             build_list = [tensor_a, tensor_b, the_result, tensor_a_gm, tensor_b_gm]
 
+    from te.platform.cce_build import build_config
     with build_config:
         tvm.lower(schedule, build_list, simple_mode=True)
     with build_config:

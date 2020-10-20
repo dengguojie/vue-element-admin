@@ -1,17 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2020 Huawei Technologies Co., Ltd
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 unsorted_segment_sum
 """
 import sys
@@ -40,6 +41,7 @@ SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN = 4
 SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E = 5
 SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E = 6
 SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MODIFY = 7
+SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI = 8
 
 # int32 select key
 SELECT_KEY_MODE_INT32_SMALL_E = 11
@@ -87,6 +89,9 @@ TILING_PARAMS_NUM = 64
 
 # fp32 ele num one ub block
 ELE_NUM_ONE_BLOCK_FP32 = BYTE_BLOCK // BYTE_FP32
+
+# modify last axis one, multi times
+MULTI = 4
 
 # num fp32
 ONE = 1.0
@@ -1044,7 +1049,28 @@ class UnsortedSegmentSum():
                             self.obj_fp32_input_data_input_scalar,
                             self.obj_fp32_ids_input_scalar,
                             self.obj_fp32_output_init_input_scalar)
-
+                    with self.tik_instance.if_scope(
+                        self.obj_common_scalar.select_key ==
+                        SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI):
+                        # fp32 last axis is 1 multi 64
+                        def _compute_input_ub_row():
+                            one_row_size = BYTE_FP32 + BYTE_INT32
+                            return _floor(self.ub_size // one_row_size,
+                                          16 * MASK_FP32)
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
+                            self.input_dtype, (_compute_input_ub_row(), ),
+                            name="input_ub", scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
+                            self.ids_dtype, (_compute_input_ub_row(), ),
+                            name="ids_ub", scope=tik.scope_ubuf)
+                        _tik_atomic_add_last_axis_one_multi(block_index,
+                            self.tik_instance,
+                            self.obj_gm_tensor,
+                            self.obj_ub_tensor,
+                            self.obj_common_scalar,
+                            self.obj_fp32_input_data_input_scalar,
+                            self.obj_fp32_ids_input_scalar,
+                            self.obj_fp32_output_init_input_scalar)
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key ==
                             SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN):
@@ -1594,6 +1620,125 @@ def _tik_atomic_add_ub2gm_by_id_last_axis_one_modify_last_part(tik_inst,
             id_val_scalar.set_as(ids_ub[offset_last_part + ids_index])
             tik_inst.data_move(output_gm[id_val_scalar], zero_ub[0],
                                0, 1, 1, 0, 0)
+
+
+def last_axis_one_modify_multi(tik_inst,
+                               input_ub,
+                               ids_ub,
+                               times_by_multi,
+                               output_gm,
+                               id_val_scalar):
+    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
+    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                             tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
+    multi = 4
+    with tik_inst.for_range(0, times_by_multi) as index:
+        # times divided by mask
+        conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32 * multi, ),
+                                  tik.scope_ubuf, "conv_ub")
+        tik_inst.vconv(MASK_FP32, "", conv_ub[0],
+                       ids_ub[index * multi * MASK_FP32],
+                       multi, 1, 1, 8, 8)
+        with tik_inst.for_range(0, multi) as multi_index:
+            with tik_inst.for_range(0, MASK_FP32) as ids_index:
+                # traversal ids
+                id_val_fp32.set_as(conv_ub[multi_index * MASK_FP32 +
+                                           ids_index])
+                with tik_inst.if_scope(id_val_fp32 >= ZERO):
+                    output_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,),
+                                                tik.scope_ubuf, "output_ub")
+                    tik_inst.vector_dup(MASK_FP32, output_ub[0], ZERO, 1, 1, 8)
+                    # new id
+                    zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                              tik.scope_ubuf, "zero_ub")
+                    tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
+                    dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                             tik.scope_ubuf, "dup_ub")
+                    tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32,
+                                        1, 1, 8)
+                    with tik_inst.for_range(multi_index, multi) as cmp_index:
+                        cmpmask = tik_inst.vcmp_eq(MASK_FP32,
+                                                   dup_ub[0],
+                                                   conv_ub[cmp_index *
+                                                           MASK_FP32], 1, 1)
+                        tik_inst.vsel(MASK_FP32, 0,
+                                      conv_ub[cmp_index * MASK_FP32], cmpmask,
+                                      neg_ub[0],
+                                      conv_ub[cmp_index * MASK_FP32],
+                                      1, 1, 1, 1, 8, 8, 8)
+                        sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                                 tik.scope_ubuf, "sel_ub")
+                        tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask,
+                                      input_ub[index * multi * MASK_FP32 +
+                                               cmp_index * MASK_FP32],
+                                      zero_ub[0],
+                                      1, 1, 1, 1, 8, 8, 8)
+                        cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                                  tik.scope_ubuf, "cadd_ub")
+                        tik_inst.vector_dup(MASK_FP32, cadd_ub[0], ZERO,
+                                            1, 1, 8)
+                        tik_inst.vcadd(MASK_FP32, cadd_ub[0],
+                                       sel_ub[0], 1, 1, 1, 8)
+                        tik_inst.vadd(MASK_FP32, output_ub[0],
+                                      output_ub[0], cadd_ub[0], 1, 1,
+                                      1, 1, 8, 8, 8)
+                    id_val_scalar.set_as(ids_ub[index * multi * MASK_FP32 +
+                                                multi_index * MASK_FP32 +
+                                                ids_index])
+                    tik_inst.data_move(output_gm[id_val_scalar], output_ub[0],
+                                       0, 1, 1, 0, 0)
+
+
+def last_axis_one_modify_single(tik_inst,
+                                input_ub,
+                                ids_ub,
+                                times_by_mask,
+                                output_gm,
+                                id_val_scalar,
+                                offset):
+    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
+    input_val = tik_inst.Scalar(DTYPE_FP32, "input_val")
+    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                             tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
+    with tik_inst.for_range(0, times_by_mask) as index:
+        # times divided by mask
+        conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                  tik.scope_ubuf, "conv_ub")
+        tik_inst.vconv(MASK_FP32, "", conv_ub[0],
+                       ids_ub[offset + index * MASK_FP32],
+                       1, 1, 1, 8, 8)
+        with tik_inst.for_range(0, MASK_FP32) as ids_index:
+            # traversal ids
+            id_val_fp32.set_as(conv_ub[ids_index])
+            with tik_inst.if_scope(id_val_fp32 >= ZERO):
+                # new id
+                zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,),
+                                          tik.scope_ubuf, "zero_ub")
+                tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
+                dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                         tik.scope_ubuf, "dup_ub")
+                tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32,
+                                    1, 1, 8)
+                cmpmask = tik_inst.vcmp_eq(MASK_FP32, dup_ub[0], conv_ub[0],
+                                           1, 1)
+                tik_inst.vsel(MASK_FP32, 0, conv_ub[0], cmpmask,
+                              neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32, ),
+                                         tik.scope_ubuf, "sel_ub")
+                tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask,
+                              input_ub[offset + index * MASK_FP32], zero_ub[0],
+                              1, 1, 1, 1, 8, 8, 8)
+                cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,),
+                                          tik.scope_ubuf, "cadd_ub")
+                tik_inst.vcadd(MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
+                input_val.set_as(cadd_ub[0])
+                zero_ub[0].set_as(input_val)
+                id_val_scalar.set_as(
+                    ids_ub[offset + index * MASK_FP32 + ids_index])
+                tik_inst.data_move(output_gm[id_val_scalar], zero_ub[0], 0,
+                                   1, 1, 0, 0)
 
 
 def _tik_atomic_add_ub2gm_by_id_last_axis_align(tik_inst,
@@ -2727,6 +2872,280 @@ def _tik_atomic_add_last_axis_one_modify(block_index,
                     obj_gm_tensor.output_gm,
                     id_val_scalar,
                     offset_last_part)
+
+
+def _tik_atomic_add_last_axis_one_multi(block_index,
+                                        tik_inst,
+                                        obj_gm_tensor,
+                                        obj_ub_tensor,
+                                        obj_common_scalar,
+                                        obj_input_data_scalar,
+                                        obj_fp32_ids_input_scalar,
+                                        obj_output_init_scalar):
+    id_val_scalar = obj_common_scalar.id_val_scalar
+    with tik_inst.if_scope(block_index < obj_common_scalar.need_core_num - 1):
+        # front core
+        with tik_inst.for_range(0,
+            obj_fp32_ids_input_scalar.mov_times_gm2ub_front_core) as \
+                ids_mov_times_front_core_index:
+            # ids tiling by ub front core
+            with tik_inst.if_scope(ids_mov_times_front_core_index <
+                obj_fp32_ids_input_scalar.mov_times_gm2ub_front_core - 1):
+                # ids front part front core
+                ids_offset_gm = block_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_front_core + \
+                                ids_mov_times_front_core_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_ub_front_part_front_core
+                ids_offset_ub = 0
+                ids_n_burst = 1
+                ids_burst_len = obj_fp32_ids_input_scalar.\
+                    front_burst_len_front_core
+                _tik_mov_ids_gm2ub(tik_inst,
+                                   obj_gm_tensor.ids_gm,
+                                   obj_ub_tensor.ids_ub,
+                                   ids_offset_gm,
+                                   ids_offset_ub,
+                                   ids_n_burst,
+                                   ids_burst_len)
+                # input front part front core
+                input_offset_gm = block_index * \
+                                  obj_input_data_scalar.\
+                                      ele_num_front_core + \
+                                  ids_mov_times_front_core_index * \
+                                  obj_fp32_ids_input_scalar.\
+                                      ele_num_ub_front_part_front_core
+                input_offset_ub = 0
+                input_n_burst = 1
+                input_burst_len = obj_input_data_scalar.\
+                    front_burst_len_front_part_front_core
+                _tik_mov_input_gm2ub_continue(tik_inst,
+                                              obj_gm_tensor.input_gm,
+                                              obj_ub_tensor.input_ub,
+                                              input_offset_gm,
+                                              input_offset_ub,
+                                              input_n_burst,
+                                              input_burst_len)
+                # cadd front part front core
+                # multi 64 part
+                last_axis_one_modify_multi(tik_inst,
+                    obj_ub_tensor.input_ub,
+                    obj_ub_tensor.ids_ub,
+                    obj_output_init_scalar.
+                        init_times_front_part_front_core,
+                    obj_gm_tensor.output_gm,
+                    id_val_scalar)
+                # single 64 part
+                offset_multi = obj_output_init_scalar.\
+                                   init_times_front_part_front_core * \
+                               MULTI * MASK_FP32
+                times_by_mask = obj_output_init_scalar.\
+                    last_repeat_time_front_part_front_core
+                last_axis_one_modify_single(tik_inst,
+                                            obj_ub_tensor.input_ub,
+                                            obj_ub_tensor.ids_ub,
+                                            times_by_mask,
+                                            obj_gm_tensor.output_gm,
+                                            id_val_scalar,
+                                            offset_multi)
+            with tik_inst.if_scope(ids_mov_times_front_core_index ==
+                obj_fp32_ids_input_scalar.mov_times_gm2ub_front_core - 1):
+                # ids last part front core
+                ids_offset_gm = block_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_front_core + \
+                                ids_mov_times_front_core_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_ub_front_part_front_core
+                ids_offset_ub = 0
+                ids_n_burst = 1
+                ids_burst_len = obj_fp32_ids_input_scalar.\
+                    last_burst_len_front_core
+                _tik_mov_ids_gm2ub(tik_inst,
+                                   obj_gm_tensor.ids_gm,
+                                   obj_ub_tensor.ids_ub,
+                                   ids_offset_gm,
+                                   ids_offset_ub,
+                                   ids_n_burst,
+                                   ids_burst_len)
+                # input last part front core
+                input_offset_gm = block_index * \
+                                  obj_input_data_scalar.\
+                                      ele_num_front_core + \
+                                  ids_mov_times_front_core_index * \
+                                  obj_fp32_ids_input_scalar.\
+                                      ele_num_ub_front_part_front_core
+                input_offset_ub = 0
+                input_n_burst = 1
+                input_burst_len = obj_input_data_scalar.\
+                    front_burst_len_last_part_front_core
+                _tik_mov_input_gm2ub_continue(tik_inst,
+                                              obj_gm_tensor.input_gm,
+                                              obj_ub_tensor.input_ub,
+                                              input_offset_gm,
+                                              input_offset_ub,
+                                              input_n_burst,
+                                              input_burst_len)
+                # cadd last part front core
+                # multi 64 part
+                last_axis_one_modify_multi(tik_inst,
+                    obj_ub_tensor.input_ub,
+                    obj_ub_tensor.ids_ub,
+                    obj_output_init_scalar.
+                        init_times_last_part_front_core,
+                    obj_gm_tensor.output_gm,
+                    id_val_scalar)
+                # single 64 part
+                offset_multi = obj_output_init_scalar.\
+                                   init_times_last_part_front_core * \
+                               MULTI * MASK_FP32
+                times_by_mask = obj_output_init_scalar.\
+                    last_repeat_time_last_part_front_core
+                last_axis_one_modify_single(tik_inst,
+                                            obj_ub_tensor.input_ub,
+                                            obj_ub_tensor.ids_ub,
+                                            times_by_mask,
+                                            obj_gm_tensor.output_gm,
+                                            id_val_scalar,
+                                            offset_multi)
+    with tik_inst.if_scope(block_index ==
+                           obj_common_scalar.need_core_num - 1):
+        # last core
+        with tik_inst.for_range(0, obj_fp32_ids_input_scalar.
+            mov_times_gm2ub_last_core) as ids_mov_times_last_core_index:
+            # ids tiling by ub last core
+            with tik_inst.if_scope(ids_mov_times_last_core_index <
+                obj_fp32_ids_input_scalar.mov_times_gm2ub_last_core - 1):
+                # ids front part last core
+                ids_offset_gm = block_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_front_core + \
+                                ids_mov_times_last_core_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_ub_front_part_last_core
+                ids_offset_ub = 0
+                ids_n_burst = 1
+                ids_burst_len = obj_fp32_ids_input_scalar.\
+                    front_burst_len_last_core
+                _tik_mov_ids_gm2ub(tik_inst,
+                                   obj_gm_tensor.ids_gm,
+                                   obj_ub_tensor.ids_ub,
+                                   ids_offset_gm,
+                                   ids_offset_ub,
+                                   ids_n_burst,
+                                   ids_burst_len)
+                # input front part last core
+                input_offset_gm = block_index * \
+                                  obj_input_data_scalar.\
+                                      ele_num_front_core + \
+                                  ids_mov_times_last_core_index * \
+                                  obj_fp32_ids_input_scalar.\
+                                      ele_num_ub_front_part_last_core
+                input_offset_ub = 0
+                input_n_burst = 1
+                input_burst_len = obj_input_data_scalar.\
+                    front_burst_len_front_part_last_core
+                _tik_mov_input_gm2ub_continue(tik_inst,
+                                              obj_gm_tensor.input_gm,
+                                              obj_ub_tensor.input_ub,
+                                              input_offset_gm,
+                                              input_offset_ub,
+                                              input_n_burst,
+                                              input_burst_len)
+                # cadd front part last core
+                # multi 64 part
+                last_axis_one_modify_multi(tik_inst,
+                    obj_ub_tensor.input_ub,
+                    obj_ub_tensor.ids_ub,
+                    obj_output_init_scalar.
+                        init_times_front_part_last_core,
+                    obj_gm_tensor.output_gm,
+                    id_val_scalar)
+                # single 64 part
+                offset_multi = obj_output_init_scalar. \
+                                   init_times_front_part_last_core * \
+                               MULTI * MASK_FP32
+                times_by_mask = obj_output_init_scalar.\
+                    last_repeat_time_front_part_last_core
+                last_axis_one_modify_single(tik_inst,
+                                            obj_ub_tensor.input_ub,
+                                            obj_ub_tensor.ids_ub,
+                                            times_by_mask,
+                                            obj_gm_tensor.output_gm,
+                                            id_val_scalar,
+                                            offset_multi)
+            with tik_inst.if_scope(ids_mov_times_last_core_index ==
+                obj_fp32_ids_input_scalar.mov_times_gm2ub_last_core - 1):
+                # ids last part last core
+                ids_offset_gm = block_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_front_core + \
+                                ids_mov_times_last_core_index * \
+                                obj_fp32_ids_input_scalar.\
+                                    ele_num_ub_front_part_last_core
+                ids_offset_ub = 0
+                ids_n_burst = 1
+                ids_burst_len = obj_fp32_ids_input_scalar.\
+                    last_burst_len_last_core
+                _tik_mov_ids_gm2ub(tik_inst,
+                                   obj_gm_tensor.ids_gm,
+                                   obj_ub_tensor.ids_ub,
+                                   ids_offset_gm,
+                                   ids_offset_ub,
+                                   ids_n_burst,
+                                   ids_burst_len)
+                # input last part last core
+                input_offset_gm = block_index * \
+                                  obj_fp32_ids_input_scalar.\
+                                      ele_num_front_core + \
+                                  ids_mov_times_last_core_index * \
+                                  obj_fp32_ids_input_scalar.\
+                                      ele_num_ub_front_part_last_core
+                input_offset_ub = 0
+                input_n_burst = 1
+                input_burst_len = obj_input_data_scalar.\
+                    front_burst_len_last_part_last_core
+                _tik_mov_input_gm2ub_continue(tik_inst,
+                                              obj_gm_tensor.input_gm,
+                                              obj_ub_tensor.input_ub,
+                                              input_offset_gm,
+                                              input_offset_ub,
+                                              input_n_burst,
+                                              input_burst_len)
+                # cadd last part last core
+                # multi 64 part
+                last_axis_one_modify_multi(tik_inst,
+                    obj_ub_tensor.input_ub,
+                    obj_ub_tensor.ids_ub,
+                    obj_output_init_scalar.
+                        init_times_last_part_last_core,
+                    obj_gm_tensor.output_gm,
+                    id_val_scalar)
+                # single 64 part
+                offset_multi = obj_output_init_scalar.\
+                    init_times_last_part_last_core * MULTI * MASK_FP32
+                times_by_mask = obj_output_init_scalar.\
+                    last_repeat_time_last_part_last_core
+                last_axis_one_modify_single(tik_inst,
+                                            obj_ub_tensor.input_ub,
+                                            obj_ub_tensor.ids_ub,
+                                            times_by_mask,
+                                            obj_gm_tensor.output_gm,
+                                            id_val_scalar,
+                                            offset_multi)
+                # last mask part
+                with tik_inst.if_scope(obj_output_init_scalar.
+                                               last_part_vadd_mask > 0):
+                    offset_last_part = offset_multi + times_by_mask * MASK_FP32
+                    _tik_atomic_add_ub2gm_by_id_last_axis_one_modify_last_part(
+                        tik_inst,
+                        obj_ub_tensor.input_ub,
+                        obj_ub_tensor.ids_ub,
+                        obj_output_init_scalar.last_part_vadd_mask,
+                        obj_gm_tensor.output_gm,
+                        id_val_scalar,
+                        offset_last_part)
 
 
 def _tik_atomic_add_last_axis_not_align_small_e(block_index,

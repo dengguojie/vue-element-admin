@@ -1,19 +1,19 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-in_training_update
+in_infer_v2
 """
 from __future__ import division
 
@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from te.utils.op_utils import *
+from te import platform as tbe_platform
 
 NONETYPE = type(None)
 
@@ -63,11 +64,11 @@ def check_rule(data, rule_desc, param_name=PARAM_NAME):
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
     raise RuntimeError(error_info,
-                       "Op[%s] has rule: %s, but [%s] is [%s]."\
-                        % (error_info['op_name'],
-                        error_info['rule_desc'],
-                        error_info['param_name'],
-                        error_info['param_value']))
+                       "Op[%s] has rule: %s, but [%s] is [%s]." \
+                       % (error_info['op_name'],
+                          error_info['rule_desc'],
+                          error_info['param_name'],
+                          error_info['param_value']))
 
 
 def _check_dims_equal(shape_x, shape):
@@ -90,7 +91,7 @@ def _check_dims_equal(shape_x, shape):
     if shape_x[0] != shape[0] or \
             shape_x[1] != shape[1] or shape_x[4] != shape[4]:
         check_rule("{} and {}".format(shape_x, shape),
-                   "The dimensions N, C1, C0 of shape_x"\
+                   "The dimensions N, C1, C0 of shape_x" \
                    "and shape must be equal",
                    "shape_x and shape")
     if shape[2] != 1 or shape[3] != 1:
@@ -99,11 +100,12 @@ def _check_dims_equal(shape_x, shape):
                    "H,W")
 
 
-@fusion_manager.register("in_training_update_v2")
+@fusion_manager.register("in_infer_v2")
 def in_infer_compute(x,
                      gamma, beta, mean, variance,
                      y, mean_out, variance_out,
-                     epsilon, kernel_name="in_training_update_v2"):
+                     epsilon, kernel_name="in_infer_v2",
+                     impl_mode="high_performance"):
     """
     algorithm: instance_norm_v2
     instance normalization.
@@ -146,25 +148,30 @@ def in_infer_compute(x,
         x = te.lang.cce.cast_to(x, "float32")
     mean_board = te.lang.cce.broadcast(mean, shape_x)
 
-    # compute the saved variance of x
-    var_board = te.lang.cce.broadcast(variance, shape_x)
-
-    # (x - mean) / sqrt(var + eps)
-    # x_mean = x - mean
-    # multiplier_add = var + eps
-    # multiplier_sqrt = sqrt(var + eps)
-
     x_mean = te.lang.cce.vsub(x, mean_board)
-    multiplier_add = te.lang.cce.vadds(var_board, epsilon)
-    multiplier_sqrt = te.lang.cce.vsqrt(multiplier_add)
-    mean_wo_scale = te.lang.cce.vdiv(x_mean, multiplier_sqrt)
 
-    result = mean_wo_scale
+    multiplier_add = te.lang.cce.vadds(variance, epsilon)
+
+    if impl_mode == 'high_precision':
+        multiplier_sqrt = te.lang.cce.vrsqrt(multiplier_add, priority_flag=1)
+    else:
+        multiplier_sqrt = te.lang.cce.vsqrt(multiplier_add, priority_flag=0)
+
     if gamma is not None and beta is not None:
-        gamma = te.lang.cce.broadcast(gamma, shape_x)
+        if impl_mode == 'high_precision':
+            mean_wo_scale = te.lang.cce.vmul(gamma, multiplier_sqrt)
+        else:
+            mean_wo_scale = te.lang.cce.vdiv(gamma, multiplier_sqrt)
+        mean_wo_board = te.lang.cce.broadcast(mean_wo_scale, shape_x)
         beta = te.lang.cce.broadcast(beta, shape_x)
-        gamma_scale = te.lang.cce.vmul(result, gamma)
+        gamma_scale = te.lang.cce.vmul(x_mean, mean_wo_board)
         result = te.lang.cce.vadd(gamma_scale, beta)
+    else:
+        multiplier_sqrt_board = te.lang.cce.broadcast(multiplier_sqrt, shape_x)
+        if impl_mode == 'high_precision':
+            result = te.lang.cce.vmul(x_mean, multiplier_sqrt_board)
+        else:
+            result = te.lang.cce.vdiv(x_mean, multiplier_sqrt_board)
 
     if is_cast:
         result = te.lang.cce.cast_to(result, "float16")
@@ -182,7 +189,8 @@ def in_infer_compute(x,
                  OPTION_ATTR_FLOAT, KERNEL_NAME)
 def in_infer_v2(x, gamma, beta, mean, variance,
                 y, batch_mean, batch_variance,
-                epsilon=0.00001, kernel_name="in_infer_v2"):
+                epsilon=0.00001, kernel_name="in_infer_v2",
+                impl_mode="high_performance"):
     """
     algorithm: instance_norm_infer
     instance normalization.
@@ -279,7 +287,7 @@ def in_infer_v2(x, gamma, beta, mean, variance,
     res = in_infer_compute(x_input,
                            gamma_input, beta_input, mean_input, var_input,
                            y, batch_mean, batch_variance, epsilon,
-                           kernel_name=kernel_name)
+                           kernel_name=kernel_name, impl_mode=impl_mode)
 
     with tvm.target.cce():
         sch = generic.auto_schedule(res)

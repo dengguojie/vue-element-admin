@@ -14,8 +14,7 @@
 # ============================================================================
 
 set(_proto_srcs
-  # "${CANN_ROOT}/third_party/metadef/inc/common/proto/insert_op.proto"
-  "${CANN_ROOT}/ops/proto/insert_op.proto"
+  "${CANN_ROOT}/third_party/metadef/inc/common/proto/insert_op.proto"
 )
 
 # the output path of generated files
@@ -60,6 +59,7 @@ set(_op_proto_srcs
   functional_ops.cc
   hcom_ops.cc
   hvd_ops.cc
+  ifmr.cc
   image_ops.cc
   internal_ops.cc
   linalg_ops.cc
@@ -118,12 +118,17 @@ add_library(opsproto SHARED
 
 target_include_directories(opsproto PRIVATE
   util
+  inc
+  ${CANN_ROOT}/ops
   ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
   ${CANN_ROOT}/inc/external/graph
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${_proto_include}
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}

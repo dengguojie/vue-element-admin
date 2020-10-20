@@ -1,16 +1,18 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0. You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 inplace schedule, provide a schedule for inplace compute
 """
 from te import tvm
@@ -36,6 +38,7 @@ class CceInplaceOp:
     CceOp_instance : instance of CceOp
 
     """
+
     def __init__(self, scope):
         self._scope = scope
         self._schedule = None
@@ -243,8 +246,8 @@ class CceInplaceOp:
         # traversing: input_tensors is ComputeOp result buffer (not PlaceholderOp)
         for in_tensor in list(tmp.op.input_tensors):
             if (not isinstance((in_tensor.op), tvm.tensor.PlaceholderOp)) \
-                and (in_tensor not in self._spec_node_list) \
-                and (in_tensor not in self._get_op_list_traversed_tensor):
+                    and (in_tensor not in self._spec_node_list) \
+                    and (in_tensor not in self._get_op_list_traversed_tensor):
                 self._get_op_list_traversed_tensor.add(in_tensor)
                 self._get_op_list(in_tensor)
 
@@ -292,10 +295,10 @@ class CceInplaceOp:
         inplace_buffer = self._op_list[self._inplace_op_pos]["dst_buffer"][0]
         lhs_related_cache, rhs_related_cache = self._get_inplace_input_related_cache()
         row_nums = len(self._write_cache[0:self._write_buffer.index(inplace_buffer) + 1]) + \
-                    len(lhs_related_cache) + \
-                    len(rhs_related_cache)*ids_len
-        max_shape0 = (total_size // 32 - \
-                      len(self._write_cache[0:self._write_buffer.index(inplace_buffer) + 1]) - \
+            len(lhs_related_cache) + \
+            len(rhs_related_cache)*ids_len
+        max_shape0 = (total_size // 32 -
+                      len(self._write_cache[0:self._write_buffer.index(inplace_buffer) + 1]) -
                       len(lhs_related_cache)) // len(rhs_related_cache)
 
         # base on the diff data type, get the max count based on usable ub
@@ -459,7 +462,6 @@ class CceInplaceOp:
 
         return need_double_buffer
 
-
     def _calculate_tiling(self):
         """
         (a_0, .., a_t, ..., a_k, ..., a_n)
@@ -547,10 +549,10 @@ class CceInplaceOp:
             self._ub_split_xo, self._ub_split_xi = self._schedule[res].split(
                 res.op.axis[self._ub_split_axis], factor=self._ub_split_factor)
             reorder_axis_list = self._schedule[res].op.axis[1:self._ub_split_axis] + \
-                                [self._ub_split_xo, ] + \
-                                [self._first_axis, ] + \
-                                [self._ub_split_xi, ] + \
-                                self._schedule[res].op.axis[self._ub_split_axis+1:]
+                [self._ub_split_xo, ] + \
+                [self._first_axis, ] + \
+                [self._ub_split_xi, ] + \
+                self._schedule[res].op.axis[self._ub_split_axis+1:]
             self._schedule[res].reorder(*reorder_axis_list)
 
     def _do_block_tiling(self, res):

@@ -1,31 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-reverse_ext2
+reverse_v2_d
 """
 # pylint: disable=redefined-outer-name
-
 import math
-from functools import reduce as functools_reduce
-from te.utils.op_utils import *
+import functools
 
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tik
-from te import platform as cce
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util import util_select_op_base
 
 
 MAX_BLOCK_NUM = 65536
@@ -39,7 +37,7 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     input_ori_format = input_x.get("ori_format")
 
     axis = list(set(axis))
-    axis = util.axis_check(len(input_ori_shape), axis)
+    axis = shape_util.axis_check(len(input_ori_shape), axis)
 
     is_support_5hd = True
 
@@ -54,7 +52,7 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
             and (input_ori_shape[1] % 16 != 0):
         is_support_5hd = False
 
-    cce_product = cce.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES",  "Hi3796CV300CS"):
         dtype_base = [
             "float16", "int8", "int16", "int32", "int64", "uint8",
@@ -83,18 +81,18 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     dtype_str = ','.join(dtype_base)
     format_str = ','.join(format_base)
 
-    input0 = gen_param(
+    input0 = util_select_op_base.gen_param(
         classify="input0", name="x", datatype=dtype_str, format=format_str)
-    output0 = gen_param(
+    output0 = util_select_op_base.gen_param(
         classify="output0", name="y", datatype=dtype_str, format=format_str)
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
 # pylint: disable=unused-argument
 def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     """
@@ -121,7 +119,7 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     adjusted_axis = []
     if input_format == "NC1HWC0":
         for i in axis:
-            adj_axis = util.axis_transfrom_5d(i, ori_format)
+            adj_axis = shape_util.axis_transform_5d(i, ori_format)
             adjusted_axis.append(adj_axis)
         axis = adjusted_axis
 
@@ -160,12 +158,12 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     Returns:
     axis: list
     """
-    check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_x, param_name="input_x")
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
-    check_dtype(dtype_x.lower(), check_list, param_name="input_x")
+    para_check.check_dtype(dtype_x.lower(), check_list, param_name="input_x")
     axis = list(set(axis))
-    axis = util.axis_check(len(shape_x), axis)
+    axis = shape_util.axis_check(len(shape_x), axis)
 
     return axis
 
@@ -260,7 +258,7 @@ def get_new_shape_axis(shape, axis):
     out_shape_len = len(out_shape)
 
     if out_shape_len > 0:
-        out_ele_num = functools_reduce(lambda x, y: x * y, out_shape)
+        out_ele_num = functools.reduce(lambda x, y: x * y, out_shape)
         if out_ele_num == 1:
             dst_out_shape = shape[axis[0]:]
             dst_axis = [i - out_shape_len for i in axis]
@@ -324,8 +322,7 @@ class ReverseExt2:
         shape_x, axis = get_new_shape_axis(shape_x, axis)
 
         self.tik_instance = tik.Tik(tik.Dprofile())
-        #self.aicore_num = tik.Dprofile().get_aicore_num()
-        self.aicore_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.shape_x = list(shape_x)
         self.dtype_x = dtype_x
@@ -334,14 +331,14 @@ class ReverseExt2:
 
         block_bite_size = 32
         ub_size_bytes = (
-            cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) -
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
             block_bite_size)
-        dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype_x) // 8
+        dtype_bytes_size = tbe_platform.get_bit_len(dtype_x) // 8
         self.data_each_block = block_bite_size // dtype_bytes_size
         self.ub_element_number = (
             ub_size_bytes // dtype_bytes_size // self.data_each_block *
             self.data_each_block)
-        self.input_total_num = functools_reduce(lambda x, y: x * y,
+        self.input_total_num = functools.reduce(lambda x, y: x * y,
                                                 self.shape_x)
 
         # To initialize the split_axis and the split_factor.
@@ -364,7 +361,7 @@ class ReverseExt2:
         if axis[-1] == len(shape_x) - 1:
             self.reverse_bytesize = 1
         else:
-            self.reverse_bytesize = functools_reduce(lambda x, y: x * y,
+            self.reverse_bytesize = functools.reduce(lambda x, y: x * y,
                                                      shape_x[axis[-1] + 1:])
         self.data_x_gm = self.tik_instance.Tensor(
             self.dtype_x, self.old_shape_x, name="data_x_gm", scope=tik.scope_gm)
@@ -431,7 +428,7 @@ class ReverseExt2:
         None
         """
 
-        move_num = functools_reduce(lambda x, y: x * y, inner_shape)
+        move_num = functools.reduce(lambda x, y: x * y, inner_shape)
 
         move_loop = move_num // self.input_ub_num
         last_num = move_num - move_loop * self.input_ub_num
@@ -538,8 +535,7 @@ class ReverseExt2:
         out_shape = self.shape_x[:self.axis[-1] + 1]
 
         first_dim = self.shape_x[0]
-        inner_num = functools_reduce(lambda x, y: x * y, self.shape_x[1:])
-
+        inner_num = functools.reduce(lambda x, y: x * y, self.shape_x[1:])
 
         if first_dim <= self.aicore_num:
             with self.tik_instance.for_range(
@@ -749,7 +745,7 @@ class ReverseExt2:
             name="sorted_align",
             scope=tik.scope_ubuf)
 
-        inner_data_num = functools_reduce(lambda x, y: x * y, self.inner_shape)
+        inner_data_num = functools.reduce(lambda x, y: x * y, self.inner_shape)
 
         if inner_data_num % self.data_each_block == 0:
             self.align_flag = True
@@ -785,7 +781,7 @@ class ReverseExt2:
         -------
         None
         """
-        inner_data_num = functools_reduce(lambda x, y: x * y, self.inner_shape)
+        inner_data_num = functools.reduce(lambda x, y: x * y, self.inner_shape)
         if loop_axis == 0 and inner_data_num > 32 and self.shape_x[0] < MAX_BLOCK_NUM:
             with self.tik_instance.for_range(
                     0, outer_loop_shape[0],
@@ -898,7 +894,7 @@ class ReverseExt2:
         """
         half_ub_size = self.ub_element_number // 2
         for index, _ in enumerate(self.shape_x):
-            ele_cnt = functools_reduce(lambda x, y: x * y, self.shape_x[index:])
+            ele_cnt = functools.reduce(lambda x, y: x * y, self.shape_x[index:])
             if ele_cnt <= half_ub_size:
                 self.split_axis = index - 1
                 self.split_factor = half_ub_size // ele_cnt
@@ -938,7 +934,6 @@ class ReverseExt2:
         self.split_axis = 0
 
 
-
 class MoveFromGm2Gm:
     """
     Function: move the data from gm to gm via ub
@@ -963,23 +958,23 @@ class MoveFromGm2Gm:
         """
         self.tik_instance = tik.Tik(tik.Dprofile())
 
-        self.aicore_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.shape = list(shape)
         self.dtype = dtype
         self.kernel_name = kernel_name
 
         block_byte_size = 32
-        dtype_byte_size = cce.cce_intrin.get_bit_len(dtype) // 8
+        dtype_byte_size = tbe_platform.get_bit_len(dtype) // 8
 
         self.data_each_block = block_byte_size // dtype_byte_size
 
         ub_byte_size = (
-            cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) - block_byte_size)
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - block_byte_size)
 
         self.ub_element_number = (ub_byte_size // dtype_byte_size //
                                   self.data_each_block * self.data_each_block)
-        self.input_total_num = functools_reduce(lambda x, y: x*y, shape)
+        self.input_total_num = functools.reduce(lambda x, y: x*y, shape)
 
         self.data_num_each_core = self.input_total_num // self.aicore_num
         self.last_data_num = self.input_total_num % self.aicore_num
@@ -1032,8 +1027,6 @@ class MoveFromGm2Gm:
                                                      scope=tik.scope_ubuf)
             move_index = 0
             self.move_little_shape(move_index, self.input_total_num)
-
-
 
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
@@ -1092,7 +1085,6 @@ class MoveFromGm2Gm:
                                         0,
                                         1, burst_len,
                                         0, 0)
-
 
         last_num = move_num % self.data_each_block
         if last_num > 0:

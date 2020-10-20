@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 This file achieved the apply_centered_rms_prop_d which is a optimizer operator
 to update weight.
 
@@ -49,18 +47,11 @@ apply_centered_rms_prop_d
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-import te.lang.cce
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
 
 # const value
 NUM_ONE = 1.0
@@ -69,7 +60,7 @@ NUM_ONE_NA = -1.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
-@fusion_manager.register("apply_centered_rms_prop_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_centered_rms_prop_d")
 def apply_centered_rms_prop_d_compute(var,
                                       mg,
                                       ms,
@@ -129,17 +120,16 @@ def apply_centered_rms_prop_d_compute(var,
     """
 
     inp_dtype = var.dtype
-    if inp_dtype == "float16" and api_check_support("te.lang.cce.vadd",
-                                                    "float32"):
-        var = te.lang.cce.cast_to(var, "float32")
-        mg = te.lang.cce.cast_to(mg, "float32")
-        ms = te.lang.cce.cast_to(ms, "float32")
-        mom = te.lang.cce.cast_to(mom, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        rho = te.lang.cce.cast_to(rho, "float32")
-        momentum = te.lang.cce.cast_to(momentum, "float32")
-        epsilon = te.lang.cce.cast_to(epsilon, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
+    if inp_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, "float32")
+        mg = tbe.cast_to(mg, "float32")
+        ms = tbe.cast_to(ms, "float32")
+        mom = tbe.cast_to(mom, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        rho = tbe.cast_to(rho, "float32")
+        momentum = tbe.cast_to(momentum, "float32")
+        epsilon = tbe.cast_to(epsilon, "float32")
+        grad = tbe.cast_to(grad, "float32")
 
     tensor_one_rho = tvm.compute(rho.shape,
                                  lambda *indices: rho(*indices)
@@ -157,16 +147,16 @@ def apply_centered_rms_prop_d_compute(var,
     rhs = tvm.compute(grad.shape,
                       lambda *indices: grad(*indices) * tensor_one_rho[0],
                       tag='elewise_single_VS_mul')
-    out_mg = te.lang.cce.vadd(mg_rho, rhs)
+    out_mg = tbe.vadd(mg_rho, rhs)
 
     ms_rho = tvm.compute(ms.shape,
                          lambda *indices: ms(*indices) * rho[0],
                          tag='elewise_single_VS_mul')
-    rhs = te.lang.cce.vmul(grad, grad)
+    rhs = tbe.vmul(grad, grad)
     rhs = tvm.compute(rhs.shape,
                       lambda *indices: rhs(*indices) * tensor_one_rho[0],
                       tag='elewise_single_VS_mul')
-    out_ms = te.lang.cce.vadd(ms_rho, rhs)
+    out_ms = tbe.vadd(ms_rho, rhs)
 
     lhs_mom = tvm.compute(mom.shape,
                           lambda *indices: mom(*indices) * momentum[0],
@@ -174,26 +164,26 @@ def apply_centered_rms_prop_d_compute(var,
     lr_grad = tvm.compute(grad.shape,
                           lambda *indices: grad(*indices) * lr[0],
                           tag='elewise_single_VS_mul')
-    rhs = te.lang.cce.vmul(out_mg, out_mg)
-    rhs = te.lang.cce.vsub(out_ms, rhs)
+    rhs = tbe.vmul(out_mg, out_mg)
+    rhs = tbe.vsub(out_ms, rhs)
     rhs_eps = tvm.compute(rhs.shape,
                           lambda *indices: rhs(*indices) + epsilon[0],
                           tag='elewise_single_VS_add')
-    rhs_eps = te.lang.cce.vsqrt(rhs_eps)
-    rhs_eps = te.lang.cce.vdiv(lr_grad, rhs_eps)
-    out_mom = te.lang.cce.vadd(lhs_mom, rhs_eps)
+    rhs_eps = tbe.vsqrt(rhs_eps)
+    rhs_eps = tbe.vdiv(lr_grad, rhs_eps)
+    out_mom = tbe.vadd(lhs_mom, rhs_eps)
 
-    out_var = te.lang.cce.vsub(var, out_mom)
+    out_var = tbe.vsub(var, out_mom)
 
     if inp_dtype == "float16":
-        out_var = te.lang.cce.cast_to(out_var, "float16")
-        out_mg = te.lang.cce.cast_to(out_mg, "float16")
-        out_ms = te.lang.cce.cast_to(out_ms, "float16")
-        out_mom = te.lang.cce.cast_to(out_mom, "float16")
+        out_var = tbe.cast_to(out_var, "float16")
+        out_mg = tbe.cast_to(out_mg, "float16")
+        out_ms = tbe.cast_to(out_ms, "float16")
+        out_mom = tbe.cast_to(out_mom, "float16")
 
-    mg_output_data = te.lang.cce.vadds(out_mg, NUM_ZERO)
-    ms_output_data = te.lang.cce.vadds(out_ms, NUM_ZERO)
-    mom_output_data = te.lang.cce.vadds(out_mom, NUM_ZERO)
+    mg_output_data = tbe.vadds(out_mg, NUM_ZERO)
+    ms_output_data = tbe.vadds(out_ms, NUM_ZERO)
+    mom_output_data = tbe.vadds(out_mom, NUM_ZERO)
 
     # this compute is for multi output
     def _compute(*index):
@@ -204,10 +194,11 @@ def apply_centered_rms_prop_d_compute(var,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def apply_centered_rms_prop_d(var,
                               mg,
                               ms,
@@ -276,16 +267,15 @@ def apply_centered_rms_prop_d(var,
     out = [var_out, mg_out, ms_out, mom_out]
     check_list = ('float16', 'float32')
     dtype = var.get('dtype')
-    check_dtype(dtype, check_list, param_name="var")
+    para_check.check_dtype(dtype, check_list, param_name="var")
     dtype = dtype.lower()
 
-    args = ApplyOpConfig.TensorArgs(input_dict,
-                                    apply_centered_rms_prop_d_compute, out,
-                                    6 if dtype == "float32" else 12)
-    name = ApplyOpConfig.TensorName(all=('var', 'mg', 'ms', 'mom', 'lr', 'rho',
-                                         'momentum', 'epsilon', 'grad'),
-                                    scalar=('lr', 'rho', 'momentum',
-                                            'epsilon'),
-                                    reuse=('mg', 'ms', 'mom', 'var'))
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict,
+                                                           apply_centered_rms_prop_d_compute, out,
+                                                           6 if dtype == "float32" else 12)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'mg', 'ms', 'mom', 'lr', 'rho',
+                                                                'momentum', 'epsilon', 'grad'),
+                                                           scalar=('lr', 'rho', 'momentum', 'epsilon'),
+                                                           reuse=('mg', 'ms', 'mom', 'var'))
 
-    common_apply_op_process(ApplyOpConfig(args, name), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name), kernel_name)

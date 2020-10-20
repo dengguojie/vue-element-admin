@@ -19,19 +19,17 @@ from functools import reduce as functools_reduce
 
 import te.lang.dynamic
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from functools import reduce as reduceIns
 from topi import generic
-from impl.util import fusion_util
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -88,7 +86,8 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
                                                          "float32")
     if dtype == "float32" and (not vlog_check):
         input_x = te.lang.dynamic.cast_to(input_x, "float16")
-    data_add = te.lang.dynamic.vadds(input_x, tvm.const(SCALAR_ONE, input_x.dtype))
+    data_add = te.lang.dynamic.vadds(input_x,
+                                     tvm.const(SCALAR_ONE, input_x.dtype))
     res = te.lang.dynamic.vlog(data_add)
     if not vlog_check:
         res = _log1p_mini_compute(res, input_x, shape_in)
@@ -119,11 +118,17 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     newton_exp_res = _newton_exp_log1p(input_x, input_y)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, input_y.dtype)
-    tensor_input_left_border = te.lang.dynamic.broadcast(input_left_border, shape)
+    tensor_input_left_border = te.lang.dynamic.broadcast(input_left_border,
+                                                         shape)
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
-    tensor_input_right_border = te.lang.dynamic.broadcast(input_right_border, shape)
-    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_left_border, 'gt', newton_taylor_res, newton_exp_res)
-    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_right_border, 'lt', exp_taylor_neg, newton_exp_res)
+    tensor_input_right_border = te.lang.dynamic.broadcast(input_right_border,
+                                                          shape)
+    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_left_border,
+                                             'gt', newton_taylor_res,
+                                             newton_exp_res)
+    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_right_border,
+                                             'lt', exp_taylor_neg,
+                                             newton_exp_res)
     return mini_res
 
 
@@ -179,11 +184,16 @@ def _exp_taylor_compute(input_x):
     # calculate first order tayloy plus one section : 1 + x
     res_first_taylor = te.lang.dynamic.vadds(input_x,
                                              tvm.const(SCALAR_ONE, "float32"))
-    res_second_taylor = te.lang.dynamic.vadd(res_first_taylor, data_power_2_div_2)
-    res_third_taylor = te.lang.dynamic.vadd(res_second_taylor, data_power_3_div_6)
-    res_fourth_taylor = te.lang.dynamic.vadd(res_third_taylor, data_power_4_div_24)
-    res_fifth_taylor = te.lang.dynamic.vadd(res_fourth_taylor, data_power_5_div_120)
-    res_sixth_taylor = te.lang.dynamic.vadd(res_fifth_taylor, data_power_6_div_720)
+    res_second_taylor = te.lang.dynamic.vadd(res_first_taylor,
+                                             data_power_2_div_2)
+    res_third_taylor = te.lang.dynamic.vadd(res_second_taylor,
+                                            data_power_3_div_6)
+    res_fourth_taylor = te.lang.dynamic.vadd(res_third_taylor,
+                                             data_power_4_div_24)
+    res_fifth_taylor = te.lang.dynamic.vadd(res_fourth_taylor,
+                                            data_power_5_div_120)
+    res_sixth_taylor = te.lang.dynamic.vadd(res_fifth_taylor,
+                                            data_power_6_div_720)
     res = te.lang.dynamic.vadd(res_sixth_taylor, data_power_7_div_5040)
 
     return res
@@ -308,9 +318,9 @@ def log1p(input_x, output_y, kernel_name="log1p"):
             x_shape = variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_input")
+            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+                                         name="data_input")
             res = log1p_compute(data_input, output_y, kernel_name)
-
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = generic.auto_schedule(res)

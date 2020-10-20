@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce atomic schedule
 """
 import copy
@@ -139,7 +139,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         else:
             self._schedule = tvm.create_schedule([self._res_tensor.op])
 
-        self._schedule.disable_allocate(cceconf.scope_ubuf)
         self._out_tensors = copy.copy(outs)
 
         self._select_tiling_case(tiling_case)
@@ -149,13 +148,12 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._do_cache_write()
         self._do_compute_inline()
 
-        self._do_storage_bound()
-
         self._calculate_tiling()
         self._do_tiling()
 
         self._do_reorder()
 
+        self._do_storage_bound()
         self._do_set_constraint()
 
         self._caculate_storage_align()
@@ -409,7 +407,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 if tensor.op.tag.find("reduce") != -1:
                     self._reduce_tensors.append(tensor)
                 if tensor.op.tag.find("broadcast") != -1:
-                    if tensor.op.tag == "broadcast_for_tensor":
+                    if tensor.op.tag == "unified_broadcast":
                         self._broadcast_tensors.append(tensor)
                     else:
                         self._vector_dup_tensors.append(tensor)
@@ -769,6 +767,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         for tensor in self._mid_output_tensors:
             self._schedule[tensor].set_storage_bound(tensor_space)
 
+        self._schedule[self._final_out_tensor_ub_rf].set_storage_bound(tensor_space)
+        self._schedule[self._final_out_tensor_global].set_storage_bound(tensor_space)
+
     def _caculate_storage_align(self):
         """
         :return:
@@ -848,16 +849,16 @@ class ReduceAtomicSchedule(VectorSchedule):
                 self._final_out_tensor_ub_rf.dtype]
             para = {"align_axis_var": self._final_out_tensor_ub_rf.op.axis[
                 res_align_axis + self._axis_offset],
-                    "align_factor": align_factor,
-                    "offset": 0
-                    }
+                "align_factor": align_factor,
+                "offset": 0
+            }
             self._storage_align_para[self._final_out_tensor_ub_rf] = para
 
             para = {"align_axis_var": self._final_out_tensor_global.op.axis[
                 res_align_axis],
-                    "align_factor": align_factor,
-                    "offset": 0
-                    }
+                "align_factor": align_factor,
+                "offset": 0
+            }
             self._storage_align_para[self._final_out_tensor_global] = para
 
         else:
@@ -912,7 +913,6 @@ class ReduceAtomicSchedule(VectorSchedule):
             return False
 
         return True
-
 
     @staticmethod
     def _find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index):
@@ -1015,7 +1015,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._tiling_factor_vars.clear()
 
         tiling_case = self._tiling_case_list[self._tiling_case_index]
-
 
         block_split_axis = tiling_case["block_split_axis"]
         block_factor = tiling_case["block_factor"]
@@ -1198,7 +1197,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         else:
             self._axis_offset = 0
 
-
         if len(self._last_output_tensors) > 1:
             final_out_tensor_ub_rf = final_out_tensor_ub_rf[0]
         self._schedule[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
@@ -1211,7 +1209,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._final_out_tensor_global = final_out_tensor_global
         self._final_out_tensor_ub_rf = final_out_tensor_ub_rf
         self.__replace_out_tensors(final_out_tensor_global_list)
-
 
     def _do_set_constraint(self):
         """
@@ -1486,7 +1483,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         # append rbo_fused
         ub_rf_reordered_axis_list = [out_tensor_ub_rf.op.axis[-1 + self._axis_offset]]
 
-
         def __reorder_case_1(ub_rf_reordered_axis_list):
             # add axis (ak,..a2)
             for i in range(0, a1_start_index):
@@ -1523,7 +1519,6 @@ class ReduceAtomicSchedule(VectorSchedule):
 
             self._schedule[out_tensor_ub_rf].reorder(*(ub_rf_reordered_axis_list))
 
-
         def __reorder_case_2(ub_rf_reordered_axis_list):
             # add axis (ak,..a2)
             for i in range(0, a1_start_index):
@@ -1557,7 +1552,6 @@ class ReduceAtomicSchedule(VectorSchedule):
                     self._schedule[out_tensor_ub_rf].op.axis[
                         none_reduce_index + self._axis_offset])
             self._schedule[out_tensor_ub_rf].reorder(*(ub_rf_reordered_axis_list))
-
 
         def __reorder_case_3(ub_rf_reordered_axis_list):
             # add axis (ak,..a2)
@@ -1706,7 +1700,6 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         self._schedule[out_tensor_ub_rf].reorder(*ub_rf_reordered_axis_list)
 
-
     @staticmethod
     def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index, keep_dims):
         """
@@ -1840,6 +1833,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         ub_tiling_result = ub_tiling_result_list[0]
         ub_tiling_tensor = ub_tiling_result["tiling_tensor"]
         res_ub_inner = ub_tiling_result["inner_itervar"]
+
         def get_insn(tensor_):
             tag = tensor_.op.tag
             if tensor_.op.tag.find("|") != -1:

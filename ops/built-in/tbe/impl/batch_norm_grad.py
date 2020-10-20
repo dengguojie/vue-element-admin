@@ -1,28 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_norm_grad
 """
-from __future__ import absolute_import
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # define a scalar, value = 0.0
 SCALAR_ZERO = 0.0
@@ -34,7 +31,7 @@ NONETYPE = type(None)
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("batch_norm_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("batch_norm_grad")
 def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
                             reserve_space_2,
                             x_backprop, scale_backprop,
@@ -96,8 +93,8 @@ def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
         the result of batch_norm_grad compute
     """
 
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    shape_scale = te.lang.cce.util.shape_to_list(scale.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_scale = shape_util.shape_to_list(scale.shape)
     format_data = x_backprop.get("format")
     y_backprop, x_cast = _get_parms_cast(y_backprop, x)
 
@@ -109,48 +106,45 @@ def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
         num = shape_x[0] * shape_x[2] * shape_x[3]
     num_rec = 1.0 / num
 
-    reserve_space_1_broadcast = te.lang.cce.broadcast(reserve_space_1, shape_x)
+    reserve_space_1_broadcast = tbe.broadcast(reserve_space_1, shape_x)
 
-    data_sub = te.lang.cce.vsub(x_cast, reserve_space_1_broadcast)
-    data_adds = te.lang.cce.vadds(reserve_space_2, epsilon)
-    data_rsqrt = te.lang.cce.vsqrt(data_adds)
-    data_cast = te.lang.cce.broadcast(tvm.const(SCALAR_ONE, "float32"),
-                                      shape_scale)
-    data_rsqrts = te.lang.cce.vdiv(data_cast, data_rsqrt)
-    data_rsqrts_broadcast = te.lang.cce.broadcast(data_rsqrts, shape_x)
-    input_xl = te.lang.cce.vmul(data_sub, data_rsqrts_broadcast)
-    scale_backprop_mul = te.lang.cce.vmul(y_backprop, input_xl)
-    scale_backprop = te.lang.cce.sum(scale_backprop_mul, axis, True)
-    offset_backprop = te.lang.cce.sum(y_backprop, axis, True)
+    data_sub = tbe.vsub(x_cast, reserve_space_1_broadcast)
+    data_adds = tbe.vadds(reserve_space_2, epsilon)
+    data_rsqrt = tbe.vsqrt(data_adds)
+    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_scale)
+    data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
+    data_rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
+    input_xl = tbe.vmul(data_sub, data_rsqrts_broadcast)
+    scale_backprop_mul = tbe.vmul(y_backprop, input_xl)
+    scale_backprop = tbe.sum(scale_backprop_mul, axis, True)
+    offset_backprop = tbe.sum(y_backprop, axis, True)
 
-    coef_mul = te.lang.cce.vmul(scale, data_rsqrts)
-    coef_mul_broadcast = te.lang.cce.broadcast(coef_mul, shape_x)
+    coef_mul = tbe.vmul(scale, data_rsqrts)
+    coef_mul_broadcast = tbe.broadcast(coef_mul, shape_x)
 
     # output x_backprop
     if not is_training:
-        x_backprop = te.lang.cce.vmul(y_backprop, coef_mul_broadcast)
+        x_backprop = tbe.vmul(y_backprop, coef_mul_broadcast)
     else:
-        y_mean = te.lang.cce.vmuls(offset_backprop, num_rec)
-        y_mean_broadcast = te.lang.cce.broadcast(y_mean, shape_x)
-        y_cen = te.lang.cce.vsub(y_backprop, y_mean_broadcast)
-        coef_vmuls = te.lang.cce.vmuls(scale_backprop, num_rec)
-        coef_vmuls_broadcast = te.lang.cce.broadcast(coef_vmuls, shape_x)
-        coef_vmul = te.lang.cce.vmul(coef_vmuls_broadcast, input_xl)
-        coef_sub = te.lang.cce.vsub(y_cen, coef_vmul)
-        x_backprop = te.lang.cce.vmul(coef_sub, coef_mul_broadcast)
+        y_mean = tbe.vmuls(offset_backprop, num_rec)
+        y_mean_broadcast = tbe.broadcast(y_mean, shape_x)
+        y_cen = tbe.vsub(y_backprop, y_mean_broadcast)
+        coef_vmuls = tbe.vmuls(scale_backprop, num_rec)
+        coef_vmuls_broadcast = tbe.broadcast(coef_vmuls, shape_x)
+        coef_vmul = tbe.vmul(coef_vmuls_broadcast, input_xl)
+        coef_sub = tbe.vsub(y_cen, coef_vmul)
+        x_backprop = tbe.vmul(coef_sub, coef_mul_broadcast)
 
     if x.dtype == "float16":
-        x_backprop = te.lang.cce.cast_to(x_backprop, "float16")
+        x_backprop = tbe.cast_to(x_backprop, "float16")
     # output_scale
-    scale_backprop = te.lang.cce.vadds(scale_backprop, tvm.const(SCALAR_ZERO,
-                                                                 "float32"))
+    scale_backprop = tbe.vadds(scale_backprop, tvm.const(SCALAR_ZERO, "float32"))
     # output_offset
-    offset_backprop = te.lang.cce.vadds(offset_backprop, tvm.const(SCALAR_ZERO,
-                                                                   "float32"))
+    offset_backprop = tbe.vadds(offset_backprop, tvm.const(SCALAR_ZERO, "float32"))
 
     if format_data != "NC1HWC0":
-        scale_backprop = te.lang.cce.sum(scale_backprop, axis, False)
-        offset_backprop = te.lang.cce.sum(offset_backprop, axis, False)
+        scale_backprop = tbe.sum(scale_backprop, axis, False)
+        offset_backprop = tbe.sum(offset_backprop, axis, False)
 
     if reserve_space_4 is None and reserve_space_5 is None:
         res_list = [x_backprop, scale_backprop, offset_backprop]
@@ -177,12 +171,10 @@ def _get_parms_reserve():
     reserve_space_5:TVM tensor
                         [0.]
     """
-    output_reserve_space_4_new = te.lang.cce.broadcast(tvm.const(0, "float32"),
-                                                       (1,), "float32")
-    output_reserve_space_4 = te.lang.cce.vmuls(output_reserve_space_4_new, 0)
-    output_reserve_space_5_new = te.lang.cce.broadcast(tvm.const(0, "float32"),
-                                                       (1,), "float32")
-    output_reserve_space_5 = te.lang.cce.vmuls(output_reserve_space_5_new, 0)
+    output_reserve_space_4_new = tbe.broadcast(tvm.const(0, "float32"), (1,), "float32")
+    output_reserve_space_4 = tbe.vmuls(output_reserve_space_4_new, 0)
+    output_reserve_space_5_new = tbe.broadcast(tvm.const(0, "float32"), (1,), "float32")
+    output_reserve_space_5 = tbe.vmuls(output_reserve_space_5_new, 0)
     return output_reserve_space_4, output_reserve_space_5
 
 
@@ -205,9 +197,9 @@ def _get_parms_cast(y_backprop, x):
     dtype_y_backprop = y_backprop.dtype
     dtype_x = x.dtype
     if dtype_y_backprop == "float16":
-        y_backprop = te.lang.cce.cast_to(y_backprop, "float32")
+        y_backprop = tbe.cast_to(y_backprop, "float32")
     if dtype_x == "float16":
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
     return y_backprop, x
 
 
@@ -297,11 +289,11 @@ def _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
     -------
     None
     """
-    check_shape(shape_y_backprop, param_name="y_backprop")
-    check_shape(shape_x, param_name="x")
-    check_shape(shape_scale, param_name="scale")
-    check_shape(shape_reserve_space_1, param_name="reserve_space_1")
-    check_shape(shape_reserve_space_2, param_name="reserve_space_2")
+    para_check.check_shape(shape_y_backprop, param_name="y_backprop")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_scale, param_name="scale")
+    para_check.check_shape(shape_reserve_space_1, param_name="reserve_space_1")
+    para_check.check_shape(shape_reserve_space_2, param_name="reserve_space_2")
 
     if data_format == "NHWC":
         if shape_scale[-1] != shape_y_backprop[-1]:
@@ -369,10 +361,11 @@ def _change_shape(shape_scale, shape_reserve_space_1, shape_reserve_space_2,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 OPTION_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
                     x_backprop, scale_backprop,
                     offset_backprop, reserve_space_4, reserve_space_5,
@@ -450,13 +443,12 @@ def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
     reserve_space_1_dtype = reserve_space_1.get("dtype").lower()
     reserve_space_2_dtype = reserve_space_2.get("dtype").lower()
 
-
-    check_dtype(y_backprop_dtype, ("float32", "float16"), param_name="y_backprop")
-    check_dtype(x_dtype, ("float32", "float16"), param_name="x")
-    check_dtype(scale_dtype, ("float32",), param_name="scale")
-    check_dtype(reserve_space_1_dtype, ("float32",), param_name="reserve_space_1")
-    check_dtype(reserve_space_2_dtype, ("float32",), param_name="reserve_space_2")
-    util.compare_tensor_dict_key(y_backprop, x, "dtype")
+    para_check.check_dtype(y_backprop_dtype, ("float32", "float16"), param_name="y_backprop")
+    para_check.check_dtype(x_dtype, ("float32", "float16"), param_name="x")
+    para_check.check_dtype(scale_dtype, ("float32",), param_name="scale")
+    para_check.check_dtype(reserve_space_1_dtype, ("float32",), param_name="reserve_space_1")
+    para_check.check_dtype(reserve_space_2_dtype, ("float32",), param_name="reserve_space_2")
+    shape_util.compare_tensor_dict_key(y_backprop, x, "dtype")
 
     _format_check(x, data_format)
     format_data = x.get("format")
@@ -466,9 +458,9 @@ def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
                      format_data)
     _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
                  shape_reserve_space_2, format_data)
-    util.compare_tensor_dict_key(y_backprop, x, "shape")
-    util.compare_tensor_dict_key(scale, reserve_space_1, "shape")
-    util.compare_tensor_dict_key(scale, reserve_space_2, "shape")
+    shape_util.compare_tensor_dict_key(y_backprop, x, "shape")
+    shape_util.compare_tensor_dict_key(scale, reserve_space_1, "shape")
+    shape_util.compare_tensor_dict_key(scale, reserve_space_2, "shape")
 
     shape_list = _change_shape(shape_scale, shape_reserve_space_1,
                                shape_reserve_space_2, format_data)
@@ -493,11 +485,11 @@ def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
                                        epsilon, data_format, is_training,
                                        kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res_list)
+        sch = tbe.auto_schedule(res_list)
 
     tensor_list = [y_backprop, x, scale, reserve_space_1,
                    reserve_space_2] + list(res_list)
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

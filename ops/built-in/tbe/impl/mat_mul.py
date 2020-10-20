@@ -1,31 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License == distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 matmul
 """
-from __future__ import absolute_import
-
-import te.lang.cce
-import te.platform.cce_params as cce
+import te.lang.cce as tbe
 from te.platform.fusion_manager import fusion_manager
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils.error_manager import error_manager_vector
 
 from impl.matmul_vector import matmul_vector_cce
 
@@ -58,7 +53,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     shape_len = len(shape_a)
     src_dtype = src_dtype.lower()
-    k_block_size = cce.BLOCK_REDUCE
+    k_block_size = tbe_platform.cce_params.BLOCK_REDUCE
 
     check_list = ("float16")
 
@@ -95,17 +90,17 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     if km_shape != kn_shape:
         raise RuntimeError("reduce axis not same")
 
-    if m_shape % cce.BLOCK_IN != 0 and m_shape != 1:
+    if m_shape % tbe_platform.cce_params.BLOCK_IN != 0 and m_shape != 1:
         raise RuntimeError(
-            "input shape M should be 1 or multiple of %d" % cce.BLOCK_IN)
+            "input shape M should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN)
 
     if m_shape != 1:
         if km_shape % k_block_size != 0:
             raise RuntimeError(
-                "input shape K1 should be multiple of %d" % cce.BLOCK_IN)
+                "input shape K1 should be multiple of %d" % tbe_platform.cce_params.BLOCK_IN)
 
-    if n_shape % cce.BLOCK_IN != 0 and n_shape != 1:
-        raise RuntimeError("input shape N should be 1 or multiple of %d" % cce.BLOCK_IN)
+    if n_shape % tbe_platform.cce_params.BLOCK_IN != 0 and n_shape != 1:
+        raise RuntimeError("input shape N should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN)
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
         if shape_bias_length == 1:
@@ -226,8 +221,8 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
     shape_a = input_x1.get("ori_shape")
     shape_b = input_x2.get("ori_shape")
     src_dtype = input_x1.get("dtype")
-    check_shape(shape_a, param_name="input_x1")
-    check_shape(shape_b, param_name="input_x2")
+    para_check.check_shape(shape_a, param_name="input_x1")
+    para_check.check_shape(shape_b, param_name="input_x2")
     trans_a_f = bool(1 - trans_a)
     target_type = ["float32", "int32"]
     res = True
@@ -275,7 +270,7 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
 # pylint: disable=locally-disabled, too-many-arguments
 # pylint: disable=locally-disabled, simplifiable-if-expression
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
-@fusion_manager.register("mat_mul")
+@tbe_platform.fusion_manager.fusion_manager.register("mat_mul")
 def mat_mul_compute(input_x1, input_x2, bias, offset_w={}, output_y={},
                     trans_a=False, trans_b=False, offset_x=0,
                     kernel_name="matmul"):
@@ -328,12 +323,20 @@ def mat_mul_compute(input_x1, input_x2, bias, offset_w={}, output_y={},
     dst_dtype = output_y.get("dtype").lower()
     src_dtype = input_x1.dtype.lower()
 
-    result = te.lang.cce.matmul(tensor_a=input_x1, tensor_b=input_x2,
-                                trans_a=trans_a_local,
-                                trans_b=trans_b_local,
-                                format_a=format_a, format_b=format_b,
-                                alpha_num=1.0, beta_num=0.0,
-                                dst_dtype=dst_dtype, tensor_bias=bias)
+    attrs = {
+        "offset_w": offset_w,
+        "offset_x": offset_x
+    }
+    if offset_w is not None:
+        error_manager_vector.raise_err_specific_reson("mat_mul",
+                                                      "For MatMul, tensor offset_w must be None!")
+
+    result = tbe.matmul(tensor_a=input_x1, tensor_b=input_x2,
+                        trans_a=trans_a_local,
+                        trans_b=trans_b_local,
+                        format_a=format_a, format_b=format_b,
+                        alpha_num=1.0, beta_num=0.0,
+                        dst_dtype=dst_dtype, tensor_bias=bias, attrs=attrs)
 
     return result
 
@@ -389,11 +392,20 @@ def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
         trans_b_local = trans_b
 
     dst_dtype = output_y.get("dtype").lower()
-    result = te.lang.cce.matmul(tensor_a=input_x1, tensor_b=input_x2,
-                                trans_a=trans_a_local, trans_b=trans_b_local,
-                                format_a=format_a, format_b=format_b,
-                                alpha_num=1.0, beta_num=0.0,
-                                dst_dtype=dst_dtype, tensor_bias=bias)
+
+    attrs = {
+        "offset_w": offset_w,
+        "offset_x": offset_x
+    }
+    if offset_w is not None:
+        error_manager_vector.raise_err_specific_reson("mat_mul",
+                                                      "For MatMul, tensor offset_w must be None!")
+
+    result = tbe.matmul(tensor_a=input_x1, tensor_b=input_x2,
+                        trans_a=trans_a_local, trans_b=trans_b_local,
+                        format_a=format_a, format_b=format_b,
+                        alpha_num=1.0, beta_num=0.0,
+                        dst_dtype=dst_dtype, tensor_bias=bias, attrs=attrs)
 
     return result
 
@@ -401,9 +413,11 @@ def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 # pylint: disable=too-many-locals, line-too-long
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_ATTR_BOOL, REQUIRED_ATTR_BOOL,
-                 OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.REQUIRED_ATTR_BOOL,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
             trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
@@ -462,8 +476,8 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
         shape_a = _get_input_shape(shape_a, trans_a)
         shape_b = _get_input_shape_b(shape_b, trans_b)
 
-    check_shape(shape_a, param_name="input_x1")
-    check_shape(shape_b, param_name="input_x2")
+    para_check.check_shape(shape_a, param_name="input_x1")
+    para_check.check_shape(shape_b, param_name="input_x2")
 
     shape_bias = ()
     if bias is not None and bool(bias):
@@ -505,12 +519,17 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
         tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
                                       dtype=dst_dtype)
 
-    result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, offset_w,
+    if offset_w is None:
+        tensor_offset_w = None
+    else:
+        error_manager_vector.raise_err_specific_reson("mat_mul", "offset_w must be None!")
+
+    result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
                                   output_y,
                                   trans_a, trans_b, offset_x, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(result)
+        schedule = tbe.auto_schedule(result)
 
     tensor_list = [tensor_a, tensor_b, result]
     if shape_bias_length > 0:
@@ -520,5 +539,5 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
               "name": kernel_name,
               "tensor_list": tensor_list}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)
 

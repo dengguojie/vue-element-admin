@@ -1,48 +1,57 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
+
+/*!
+ * \file batch_normalization_plugin.cpp
+ * \brief
+ */
 #include <string>
 #include <vector>
 
+#include "proto/onnx/ge_onnx.pb.h"
+#include "register/register.h"
+#include "graph/utils/op_desc_utils.h"
+
+#include "op_log.h"
+
 namespace domi {
 
-static const float EPSILON = 0.00001;
-static const std::string DATA_FORMAT = "NCHW";
-static const bool IS_TRAINING = false;
+Status ParseParamsBatchNorm(const Message* op_src, ge::Operator& op_dest) {
+  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+  if (node == nullptr) {
+    OP_LOGE("BatchNorm", "Dynamic cast op_src to NodeProto failed.");
+    return FAILED;
+  }
 
-Status ParseParamsBatchNorm(const Message *op_src, ge::Operator &op_dest)
-{
-    const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
-    if (node == nullptr) {
-        OP_LOGE("BatchNorm", "Dynamic cast op_src to NodeProto failed.");
-        return FAILED;
+  float epsilon = 0.00001;
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "epsilon" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
+      epsilon = attr.f();
+      break;
     }
+  }
+  op_dest.SetAttr("epsilon", epsilon);
 
-    float epsilon = EPSILON;
-    for (const auto& attr : node->attribute()) {
-        if (attr.name() == "epsilon" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
-            epsilon = attr.f();
-            break;
-        }
-    }
-    op_dest.SetAttr("epsilon", epsilon);
-    op_dest.SetAttr("data_format", DATA_FORMAT);
-    op_dest.SetAttr("is_training", IS_TRAINING);
+  const std::string data_format = "NCHW";
+  op_dest.SetAttr("data_format", data_format);
 
-    return SUCCESS;
+  const bool is_training = false;
+  op_dest.SetAttr("is_training", is_training);
+
+  return SUCCESS;
 }
 
 // register ReduceMean op info to GE

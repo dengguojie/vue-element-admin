@@ -1,34 +1,33 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 matrix_diag_d
 """
-from __future__ import absolute_import
-
 from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # define a scalar, value = 2
 SCALAR_TWO = 2
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("matrix_diag_d")
+@tbe_platform.fusion_manager.fusion_manager.register("matrix_diag_d")
 def matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
                           kernel_name="matrix_diag_d"):
     """
@@ -50,21 +49,22 @@ def matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
     res: TVM tensor
         the result of compute
     """
-    input_help_shape = te.lang.cce.util.shape_to_list(input_help.shape)
+    input_help_shape = shape_util.shape_to_list(input_help.shape)
     input_diagonal_dtype = input_diagonal.dtype
 
     if input_diagonal_dtype in ("int8", "uint8"):
-        input_diagonal = te.lang.cce.cast_to(input_diagonal, "float16")
-    res_broadcast = te.lang.cce.broadcast(input_diagonal, input_help_shape)
-    res = te.lang.cce.vmul(res_broadcast, input_help)
+        input_diagonal = tbe.cast_to(input_diagonal, "float16")
+    res_broadcast = tbe.broadcast(input_diagonal, input_help_shape)
+    res = tbe.vmul(res_broadcast, input_help)
     if input_diagonal_dtype in ("int8", "uint8"):
-        res = te.lang.cce.cast_to(res, input_diagonal_dtype,
+        res = tbe.cast_to(res, input_diagonal_dtype,
                                   f1628IntegerFlag=True)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def matrix_diag_d(input_diagonal, input_help, output_diagonal,
                   kernel_name="matrix_diag_d"):
     """
@@ -91,14 +91,14 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
     input_help_shape = input_help.get("shape")
     input_help_dtype = input_help.get("dtype")
 
-    check_shape(input_diagonal_shape, param_name="input_diagonal")
-    check_shape(input_help_shape, param_name="input_help")
+    para_check.check_shape(input_diagonal_shape, param_name="input_diagonal")
+    para_check.check_shape(input_help_shape, param_name="input_help")
 
     input_diagonal_shape_chgshape = list(input_diagonal_shape)
     # The penultimate dimension of the input_diagonal_shape is
     # extended for broadcast
     input_diagonal_shape_chgshape.insert(-1, 1)
-    check_shape(input_diagonal_shape_chgshape, param_name="input_diagonal")
+    para_check.check_shape(input_diagonal_shape_chgshape, param_name="input_diagonal")
 
     if len(input_help_shape) < SCALAR_TWO:
         raise RuntimeError("Only the rank of input tensors >= 2 are supported!")
@@ -108,9 +108,9 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     input_diagonal_dtype = input_diagonal_dtype.lower()
-    check_dtype(input_diagonal_dtype, check_list, param_name="input_diagonal")
+    para_check.check_dtype(input_diagonal_dtype, check_list, param_name="input_diagonal")
     input_help_dtype = input_help_dtype.lower()
-    check_dtype(input_help_dtype, check_list, param_name="input_help")
+    para_check.check_dtype(input_help_dtype, check_list, param_name="input_help")
 
     input_diagonal = tvm.placeholder(input_diagonal_shape_chgshape,
                                      name="input_diagonal",
@@ -121,8 +121,8 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
     res = matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
                                 kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_diagonal, input_help, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

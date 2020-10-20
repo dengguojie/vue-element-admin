@@ -1,31 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-lin_space
+lin_space_d
 """
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
-@fusion_manager.register("lin_space_d")
+@tbe_platform.fusion_manager.fusion_manager.register("lin_space_d")
 def lin_space_d_compute(input_assist, input_start, input_stop, input_num,
                         output_op, kernel_name="lin_space"):
     """
@@ -55,24 +55,25 @@ def lin_space_d_compute(input_assist, input_start, input_stop, input_num,
     res: TVM tensor
         the result of linspace compute
     """
-    num_float = te.lang.cce.cast_to(input_num, "float32")
-    num_divided = te.lang.cce.vadds(num_float, -1.0)
+    num_float = tbe.cast_to(input_num, "float32")
+    num_divided = tbe.vadds(num_float, -1.0)
 
-    step_divider = te.lang.cce.vsub(input_stop, input_start)
-    step = te.lang.cce.vdiv(step_divider, num_divided)
+    step_divider = tbe.vsub(input_stop, input_start)
+    step = tbe.vdiv(step_divider, num_divided)
 
-    res_temp = te.lang.cce.vmul(input_assist,
-                                te.lang.cce.broadcast(step,
+    res_temp = tbe.vmul(input_assist,
+                                tbe.broadcast(step,
                                                       input_assist.shape))
-    res = te.lang.cce.vadd(res_temp,
-                           te.lang.cce.broadcast(input_start,
+    res = tbe.vadd(res_temp,
+                           tbe.broadcast(input_start,
                                                  input_assist.shape))
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def lin_space_d(input_assist, input_start, input_stop,
                 input_num, output_op, kernel_name="lin_space_d"):
     """
@@ -111,12 +112,12 @@ def lin_space_d(input_assist, input_start, input_stop,
     dtype_input_stop = input_stop.get("dtype")
     dtype_input_assist = input_assist.get("dtype")
     dtype_num = input_num.get("dtype")
-    check_shape(shape_assist, param_name="input_assist")
+    para_check.check_shape(shape_assist, param_name="input_assist")
 
-    check_dtype(dtype_input_assist.lower(), ("float32",), param_name="input_assist")
-    check_dtype(dtype_input.lower(), ("float32",), param_name="input_start")
-    check_dtype(dtype_input_stop.lower(), ("float32",), param_name="input_stop")
-    check_dtype(dtype_num.lower(), ("int32",), param_name="input_num")
+    para_check.check_dtype(dtype_input_assist.lower(), ("float32",), param_name="input_assist")
+    para_check.check_dtype(dtype_input.lower(), ("float32",), param_name="input_start")
+    para_check.check_dtype(dtype_input_stop.lower(), ("float32",), param_name="input_stop")
+    para_check.check_dtype(dtype_num.lower(), ("int32",), param_name="input_num")
 
     # check shape of start, stop and num, must be (1,)
     shape_start = tuple(shape_start)
@@ -145,7 +146,7 @@ def lin_space_d(input_assist, input_start, input_stop,
     res = lin_space_d_compute(assist_input, start_input, stop_input,
                               num_input, output_op, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [assist_input,
@@ -153,4 +154,4 @@ def lin_space_d(input_assist, input_start, input_stop,
                               stop_input,
                               num_input,
                               res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

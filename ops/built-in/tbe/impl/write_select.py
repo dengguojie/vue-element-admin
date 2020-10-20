@@ -1,24 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 write_select
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 
 WRITE_SELECT_TAG = "write_select"
 PARA_LIST_LEN = 5
@@ -26,7 +26,7 @@ NAME_INDEX = [0]
 
 
 # pylint: disable=locally-disabled,unnecessary-lambda,unused-argument
-@fusion_manager.register("write_select")
+@tbe_platform.fusion_manager.fusion_manager.register("write_select")
 def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
     """
     calculating data
@@ -44,7 +44,6 @@ def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
     -------
     output tensor
     """
-    # input_shape = output_x.get("shape")
     input_shape = input_tensor.shape
     valid_shape = output_x.get("valid_shape")
 
@@ -64,7 +63,7 @@ def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
 
 
 # pylint: disable=locally-disabled,too-many-locals,unexpected-keyword-arg
-@util.check_input_type(dict, dict, str)
+@para_check.check_input_type(dict, dict, str)
 def write_select(input_x, output_x, kernel_name="write_select"):
     """
     Write data with offset
@@ -86,13 +85,13 @@ def write_select(input_x, output_x, kernel_name="write_select"):
     input_dtype = input_x.get("dtype").lower()
     valid_shape = output_x.get("valid_shape")
 
-    util.check_shape_rule(input_shape)
-    util.check_shape_rule(valid_shape)
-    util.check_tensor_shape_size(input_shape)
-    util.check_tensor_shape_size(valid_shape)
-    util.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(input_shape)
+    para_check.check_shape_rule(valid_shape)
+    para_check.check_tensor_shape_size(input_shape)
+    para_check.check_tensor_shape_size(valid_shape)
+    para_check.check_kernel_name(kernel_name)
 
-    if util.is_lhisi_version():
+    if tbe_platform.is_lhisi_version():
         check_list = ["int32", "float16", "int8"]
     else:
         check_list = ["int32", "float16", "float32", "int8"]
@@ -120,8 +119,8 @@ def write_select(input_x, output_x, kernel_name="write_select"):
     res = write_select_compute(input_tensor, output_x, kernel_name=kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_tensor_ph, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

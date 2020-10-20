@@ -1,31 +1,25 @@
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 conv3d backprop filter schudule.
-
 """
-from __future__ import absolute_import
-from __future__ import print_function
+import te.platform as tbe_platform
+from te.lang.cce.te_compute import util as te_util
+from te.domain.tiling import tiling_query
+from te.utils.error_manager import error_manager_util
 from te import tvm
-from te.platform import scope_ubuf
-from te.platform import scope_ca
-from te.platform import scope_cb
-from te.platform import scope_cc
-from te.platform import scope_cbuf
-from te.platform import get_soc_spec
-from te.domain.tiling.tiling_query import tiling_query
-from te.utils.error_manager import error_manager_util as err_mana
 
 
 CUBE_DIM = 16
@@ -35,37 +29,7 @@ OPEN_DOUBLE_BUFFER = 2
 DEFAULT_TILING_CASE = 32
 
 
-def ceil_div(dividend, divisor):
-    """
-    do division and round up to an integer
-
-    """
-    if divisor == 0:
-        dict_args = {
-            'errCode': 'E62502',
-            'first_operand': str(dividend),
-            'second_operand': str(divisor)
-        }
-        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
-    return (dividend + divisor - 1) // divisor
-
-
-def align(x_1, x_2):
-    """
-    do align
-
-    """
-    if x_2 == 0:
-        dict_args = {
-            'errCode': 'E62502',
-            'first_operand': str(x_1),
-            'second_operand': str(x_2)
-        }
-        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
-    return (x_1 + x_2 - 1) // x_2 * x_2
-
-
-def print_ir_conv(process, sch):
+def _print_ir_conv(process, sch):
     """
     print ir for input sch
 
@@ -79,15 +43,15 @@ def print_ir_conv(process, sch):
     start = process + " IR start"
     end = process + " IR end\n"
     print(start)
-    bounds = tvm.schedule.InferBound(sch)
-    stmt = tvm.schedule.ScheduleOps(sch, bounds, True)
+    bounds = InferBound(sch)
+    stmt = ScheduleOps(sch, bounds, True)
     print(stmt)
     print(end)
 
     return False
 
 
-class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
+class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-methods
     """
     CceConv3dBackpropFilterOp: schedule definition of conv3d_backprop_filter
 
@@ -98,6 +62,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
     schedule : schedule definition of conv3d_backprop_filter
 
     """
+
     def __init__(self, scope, need_tensorize=True, need_pragma=True):
         """
         initialization
@@ -160,7 +125,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'multiple of AL0_matrix'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
                 if al1_shape[1] < 1:
                     dict_args = {
                         'errCode': 'E62306',
@@ -168,7 +133,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'multiple of AL0_matrix'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
 
             if bl1_shape:
                 if (bl1_shape[0] // CUBE_DIM) % bl0_matrix[0] != 0:
@@ -178,7 +143,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'multiple of BL0_matrix'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
                 if bl1_shape[1] < 1:
                     dict_args = {
                         'errCode': 'E62306',
@@ -186,7 +151,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'multiple of BL0_matrix'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
 
             if al0_matrix:
                 if al0_matrix[0] != cl0_matrix[1]:
@@ -196,7 +161,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'should be same'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
 
             if bl0_matrix:
                 if bl0_matrix[1] != cl0_matrix[0]:
@@ -206,7 +171,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'should be same'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
 
             if al0_matrix and bl0_matrix:
                 if al0_matrix[1] != bl0_matrix[0]:
@@ -216,7 +181,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 'should be same'
                     }
                     raise RuntimeError(dict_args,
-                                       err_mana.get_error_message(dict_args))
+                        error_manager_util.get_error_message(dict_args))
 
         def _tiling_buffer_check():
             """
@@ -233,14 +198,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             cub_pbuff = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
             cl0_matrix = tiling.get("CL0_matrix")
             cub_matrix = tiling.get("CUB_matrix")
-            if cl0_matrix[0] % cub_matrix[0] != 0 \
-               or cl0_matrix[1] != cub_matrix[1]:
+            if cl0_matrix[0] % cub_matrix[0] != 0 or cl0_matrix[1] != cub_matrix[1]:
                 dict_args = {
                     'errCode': 'E62306',
                     'desc': 'invalid CUB_matrix value'
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
             # blockIdx must be positive int
             if block_cout < 1:
                 dict_args = {
@@ -248,7 +212,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'desc': 'blockIdx must be positive int'
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             # only support no dbuffer/ dbuffer
             if al1_pbuff not in (1, 2):
@@ -259,7 +223,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(al1_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             if bl1_pbuff not in (1, 2):
                 dict_args = {
@@ -269,7 +233,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(bl1_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             if al0_pbuff not in (1, 2):
                 dict_args = {
@@ -279,7 +243,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(al0_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             if bl0_pbuff not in (1, 2):
                 dict_args = {
@@ -289,7 +253,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(bl0_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             if l0c_pbuff not in (1, 2):
                 dict_args = {
@@ -299,7 +263,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(l0c_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
             if cub_pbuff not in (1, 2):
                 dict_args = {
@@ -309,7 +273,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(cub_pbuff)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
         def _l1_limit_check():
             """
@@ -319,22 +283,18 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             al1_min_byte = CUBE_DIM * CUBE_DIM * FLOAT16_SIZE
             if width_grads >= CUBE_DIM:
                 if width_grads % CUBE_DIM == 0:
-                    bl1_min_byte = kernel_height * width_fmap * CUBE_DIM *\
-                                   FLOAT16_SIZE
+                    bl1_min_byte = kernel_height * width_fmap * CUBE_DIM * FLOAT16_SIZE
                 else:
-                    bl1_min_byte = (kernel_height+stride_height) \
-                                   * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                    bl1_min_byte = (kernel_height + stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
             else:
-                bl1_align_factor = ceil_div(CUBE_DIM, width_grads)
+                bl1_align_factor = te_util.int_ceil_div(CUBE_DIM, width_grads)
                 if CUBE_DIM % width_grads == 0:
-                    bl1_min_byte = (kernel_height+(bl1_align_factor-1)
-                                    * stride_height) * width_fmap * CUBE_DIM *\
-                                   FLOAT16_SIZE
+                    bl1_min_byte = (kernel_height + (bl1_align_factor-1)
+                                    * stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
                 else:
                     bl1_min_byte = (kernel_height +
-                                    bl1_align_factor * stride_height) \
-                                    * width_fmap * CUBE_DIM * FLOAT16_SIZE
-            l1_size = get_soc_spec("L1_SIZE")  # L1 size
+                                    bl1_align_factor * stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
+            l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
             if (al1_min_byte + bl1_min_byte) > l1_size:
                 dict_args = {
                     'errCode': 'E60011',
@@ -343,7 +303,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     'value': str(al1_min_byte + bl1_min_byte)
                 }
                 raise RuntimeError(dict_args,
-                                   err_mana.get_error_message(dict_args))
+                    error_manager_util.get_error_message(dict_args))
 
         def _atomic_add(sch, res_cc, res_ub, res_ddr):
             """
@@ -356,23 +316,20 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             ddr_reduce = res_ddr
 
             batch, real_k = sch[res_cc].op.reduce_axis
-            batch_core, batch_in = sch[res_cc].split(batch,
-                                                     nparts=block_dim_batch)
+            batch_core, batch_in = sch[res_cc].split(batch, nparts=block_dim_batch)
 
             real_k, k_in = sch[res_cc].split(real_k, CUBE_DIM)
-            k_1_multicore, real_k = sch[res_cc].split(real_k,
-                                                      nparts=block_dim_hw)
+            k_1_multicore, real_k = sch[res_cc].split(real_k, nparts=block_dim_hw)
 
-            sch[res_cc].reorder(k_1_multicore, batch_core, batch_in, real_k,
-                                k_in)
+            sch[res_cc].reorder(k_1_multicore, batch_core, batch_in, real_k, k_in)
             fused_atomic_write = sch[res_cc].fuse(k_1_multicore, batch_core)
 
             # after rfactor op, dw_cc becomes dw_ddr, original dw_ub and dw_ddr
             # will be dropped
             res_ddr = res_cc
             res_cc = sch.rfactor(res_ddr, fused_atomic_write)
-            sch[res_cc].set_scope(scope_cc)
-            res_ub = sch.cache_read(res_cc, scope_ubuf, [res_ddr])
+            sch[res_cc].set_scope(tbe_platform.scope_cc)
+            res_ub = sch.cache_read(res_cc, tbe_platform.scope_ubuf, [res_ddr])
             return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce
 
         def _full_k_check():
@@ -389,27 +346,24 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # if k is fully load in BL1 and
             # there is multi load in N1 and N1 in BL1
             # isn't aligned to kernel_height*kernel_width, then align to it
-            if tiling.get("BL1_shape") and tiling.get("BL1_shape")[1] > 1 and \
-                    tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1] \
-                    % (kernel_height * kernel_width) != 0:
-                tiling["BL1_shape"][1] = align(tiling.get("BL1_shape")[1] *
-                                               tiling.get("BL0_matrix")[1],
-                                               kernel_height * kernel_width) \
-                                         // tiling.get("BL0_matrix")[1]
+            if (tiling.get("BL1_shape") and tiling.get("BL1_shape")[1] > 1 and
+                    tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1]
+                    % (kernel_height * kernel_width) != 0):
+                tiling["BL1_shape"][1] = te_util.align(
+                    tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1],
+                    kernel_height * kernel_width) // tiling.get("BL0_matrix")[1]
 
             # whether axis K is fully loaded in L0A and L0B
             # excluding axis batch
             if not tiling["AL0_matrix"]:
                 full_k_l0a = 1
             else:
-                full_k_l0a = tiling["AL0_matrix"][1] \
-                             // ceil_div(hw_pad_1, block_dim_hw)
+                full_k_l0a = tiling["AL0_matrix"][1] // te_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
             if not tiling["BL0_matrix"]:
                 full_k_l0b = 1
             else:
-                full_k_l0b = tiling["BL0_matrix"][0] \
-                             // ceil_div(hw_pad_1, block_dim_hw)
+                full_k_l0b = tiling["BL0_matrix"][0] // te_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
             return full_k_l0a, full_k_l0b
 
@@ -429,26 +383,26 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             ]
             # nparts N, nparts M
             # dw_tiling_nparts only describe the nparts from single core to L0
-            dw_tiling_nparts = \
-                [ceil_div(fkk // block_dim_cin, dw_tiling_factor[0]),
-                 ceil_div(ceil_div(c1_grads, dw_tiling_factor[1]),
-                          block_dim_cout)]
+            dw_tiling_nparts = [
+                te_util.int_ceil_div(fkk // block_dim_cin, dw_tiling_factor[0]),
+                te_util.int_ceil_div(te_util.int_ceil_div(c1_grads, dw_tiling_factor[1]),
+                                     block_dim_cout)
+                ]
 
             # tiling parameters of dw_ub
             dw_ub_tiling_factor = [
                 tiling["CUB_matrix"][0], tiling["CUB_matrix"][1]
             ]
             dw_ub_tiling_nparts = [
-                ceil_div(dw_tiling_factor[0], dw_ub_tiling_factor[0]),
-                ceil_div(dw_tiling_factor[1], dw_ub_tiling_factor[1])
+                te_util.int_ceil_div(dw_tiling_factor[0], dw_ub_tiling_factor[0]),
+                te_util.int_ceil_div(dw_tiling_factor[1], dw_ub_tiling_factor[1])
             ]
 
             # only support loading one batch to L1 at a time for now
             # cout:out->single core(sc)->L1
             if tiling["AL1_shape"]:  # if grads needs tiling in L1
                 if len(tiling["AL1_shape"]) == 1:  # but no C_1 tiling info
-                    tiling["AL1_shape"] = \
-                        tiling["AL1_shape"] + [1]
+                    tiling["AL1_shape"] = tiling["AL1_shape"] + [1]
                 # nparts K1 in L1, nparts M1 in L1
                 grads_l1_tiling_nparts = [
                     hw_pad_1 // block_dim_hw //
@@ -460,8 +414,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if tiling["BL1_shape"]:  # if fmap needs tiling in L1
                 if len(tiling["BL1_shape"]) == 1:  # but no fkk tiling info
-                    tiling["BL1_shape"] = \
-                        tiling["BL1_shape"] + [1]  # tiling fkk=1
+                    tiling["BL1_shape"] = tiling["BL1_shape"] + [1]  # tiling fkk=1
                 # DDR to L1 [nparts K1, nparts N1]
                 fmap_l1_tiling_nparts = [
                     hw_pad_1 // block_dim_hw //
@@ -472,9 +425,10 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 fmap_l1_tiling_nparts = [1, 1]
 
             # during L1 to L0 [nparts N1, nparts M1]
-            l1_2_l0_tiling_nparts = \
-                [dw_tiling_nparts[0] // fmap_l1_tiling_nparts[1],
-                 dw_tiling_nparts[1] // grads_l1_tiling_nparts[1]]
+            l1_2_l0_tiling_nparts = [
+                dw_tiling_nparts[0] // fmap_l1_tiling_nparts[1],
+                dw_tiling_nparts[1] // grads_l1_tiling_nparts[1]
+            ]
             # ka and kb may be different,
             # the min value corresponds to one MMAD,
             # the larger one is []
@@ -490,8 +444,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             tiling_patrs_dict["dw_tiling_nparts"] = dw_tiling_nparts
             tiling_patrs_dict["dw_ub_tiling_factor"] = dw_ub_tiling_factor
             tiling_patrs_dict["dw_ub_tiling_nparts"] = dw_ub_tiling_nparts
-            tiling_patrs_dict["grads_l1_tiling_nparts"] = \
-                grads_l1_tiling_nparts
+            tiling_patrs_dict["grads_l1_tiling_nparts"] = grads_l1_tiling_nparts
             tiling_patrs_dict["fmap_l1_tiling_nparts"] = fmap_l1_tiling_nparts
             tiling_patrs_dict["l1_2_l0_tiling_nparts"] = l1_2_l0_tiling_nparts
             tiling_patrs_dict["dw_k"] = dw_k
@@ -560,31 +513,25 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             achieve double_buffer
 
             """
-            if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == OPEN_DOUBLE_BUFFER:
                 sch[grads_matrix].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == OPEN_DOUBLE_BUFFER:
                 if not flag_all_one_case:
                     sch[fmap_l1].double_buffer()
                 else:
                     sch[fmap_matrix].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") == OPEN_DOUBLE_BUFFER:
                 sch[grads_fractal].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("BL0_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("BL0_pbuffer") == OPEN_DOUBLE_BUFFER:
                 sch[fmap_fractal].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == OPEN_DOUBLE_BUFFER:
                 sch[dw_cc].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") \
-                    == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == OPEN_DOUBLE_BUFFER:
                 sch[dw_ub].double_buffer()
 
         def _emit_insn():
@@ -729,15 +676,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 'UBG_pbuffer': 1
             }
         }
-        batch_grads, depth_grads, c1_grads, height_grads, width_grads, c0_grads \
-            = list(x.value for x in grads.shape)
+        batch_grads, depth_grads, c1_grads, height_grads, width_grads, c0_grads = list(x.value for x in grads.shape)
         grads_shape = [
             batch_grads, depth_grads, c1_grads, height_grads, width_grads,
             c0_grads
         ]
 
-        batch_fmap, depth_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap \
-            = list(x.value for x in fmap.shape)
+        batch_fmap, depth_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap = list(x.value for x in fmap.shape)
         fkk, _, _ = list(x.value for x in dw_cc.shape)
         _, hw_pad_1, _, _, _ = list(x.value for x in fmap_fractal.shape)
 
@@ -778,11 +723,9 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             flag_all_one_case = False
             height_all_one = False
             width_all_one = False
-            if stride_height == 1 and height_grads == 1 and height_fmap == 1 \
-                and kernel_height == 1:
+            if stride_height == 1 and height_grads == 1 and height_fmap == 1 and kernel_height == 1:
                 height_all_one = True
-            if stride_width == 1 and width_grads == 1 and width_fmap == 1 \
-                and kernel_width == 1:
+            if stride_width == 1 and width_grads == 1 and width_fmap == 1 and kernel_width == 1:
                 width_all_one = True
             if height_all_one and width_all_one:
                 flag_all_one_case = True
@@ -791,31 +734,31 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         flag_all_one_case = _flag_all_one()
 
-        tiling = tiling_query(grads_shape,
-                              fmap_shape,
-                              weight_shape,
-                              a_dtype=grads.dtype,
-                              b_dtype=fmap.dtype,
-                              c_dtype=dw_cc.dtype,
-                              mad_dtype=dw_cc.dtype,
-                              padl=pad_left,
-                              padr=pad_right,
-                              padu=pad_up,
-                              padd=pad_down,
-                              strideh=stride_height,
-                              stridew=stride_width,
-                              strideh_expand=1,
-                              stridew_expand=1,
-                              dilationh=dilation_height,
-                              dilationw=dilation_width,
-                              group=1,
-                              fused_double_operand_num=0,
-                              bias_flag=0,
-                              op_tag='conv3d_backprop_filter',
-                              padf=pad_front,
-                              padb=pad_back,
-                              strided=stride_depth,
-                              kernel_name=kernel_name)
+        tiling = tiling_query.tiling_query(grads_shape,
+                                           fmap_shape,
+                                           weight_shape,
+                                           a_dtype=grads.dtype,
+                                           b_dtype=fmap.dtype,
+                                           c_dtype=dw_cc.dtype,
+                                           mad_dtype=dw_cc.dtype,
+                                           padl=pad_left,
+                                           padr=pad_right,
+                                           padu=pad_up,
+                                           padd=pad_down,
+                                           strideh=stride_height,
+                                           stridew=stride_width,
+                                           strideh_expand=1,
+                                           stridew_expand=1,
+                                           dilationh=dilation_height,
+                                           dilationw=dilation_width,
+                                           group=1,
+                                           fused_double_operand_num=0,
+                                           bias_flag=0,
+                                           op_tag='conv3d_backprop_filter',
+                                           padf=pad_front,
+                                           padb=pad_back,
+                                           strided=stride_depth,
+                                           kernel_name=kernel_name)
 
         _tiling_shape_check()
         _tiling_buffer_check()
@@ -833,11 +776,11 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         block_dim_cout = tiling.get("block_dim")[2]
         block_dim_cin = tiling.get("block_dim")[1]
 
-        sch[grads_matrix].set_scope(scope_cbuf)
+        sch[grads_matrix].set_scope(tbe_platform.scope_cbuf)
         sch[grads_matrix].storage_align(sch[grads_matrix].op.axis[1],
                                         CUBE_MUL_SHAPE, 0)
 
-        sch[grads_fractal].set_scope(scope_ca)
+        sch[grads_fractal].set_scope(tbe_platform.scope_ca)
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, CUBE_DIM),
                                         (1, CUBE_DIM))
 
@@ -848,7 +791,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         #                               kernel_width,
         #                               C0_fmap)
         if not flag_all_one_case:
-            sch[fmap_l1].set_scope(scope_cbuf)
+            sch[fmap_l1].set_scope(tbe_platform.scope_cbuf)
             sch[fmap_matrix].buffer_align(
                 (1, 1), (width_grads, width_grads), (1, 1),
                 (kernel_height, kernel_height), (kernel_width, kernel_width),
@@ -857,14 +800,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             sch[fmap_matrix].storage_align(sch[fmap_matrix].op.axis[1],
                                            CUBE_MUL_SHAPE, 0)
 
-        sch[fmap_matrix].set_scope(scope_cbuf)
+        sch[fmap_matrix].set_scope(tbe_platform.scope_cbuf)
 
-        sch[fmap_fractal].set_scope(scope_cb)
+        sch[fmap_fractal].set_scope(tbe_platform.scope_cb)
         sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, CUBE_DIM),
                                        (1, CUBE_DIM))
 
-        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce = \
-            _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
+        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce = _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
 
         # #######################tiling parameters analyze####################
         batch_num_sc = batch_num // block_dim_batch
@@ -875,15 +817,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         dw_tiling_factor = tiling_patrs_dict["dw_tiling_factor"]
         dw_tiling_nparts = tiling_patrs_dict["dw_tiling_nparts"]
         dw_ub_tiling_factor = tiling_patrs_dict["dw_ub_tiling_factor"]
-        grads_l1_tiling_nparts = \
-            tiling_patrs_dict["grads_l1_tiling_nparts"]
+        grads_l1_tiling_nparts = tiling_patrs_dict["grads_l1_tiling_nparts"]
         fmap_l1_tiling_nparts = tiling_patrs_dict["fmap_l1_tiling_nparts"]
         l1_2_l0_tiling_nparts = tiling_patrs_dict["l1_2_l0_tiling_nparts"]
         dw_k = tiling_patrs_dict["dw_k"]
 
         # #############################split axis N##########################
-        c_fmap_multicore, c_fmap_mad_at \
-            = sch[dw_ddr].split(sch[dw_ddr].op.axis[0], nparts=block_dim_cin)
+        c_fmap_multicore, c_fmap_mad_at = sch[dw_ddr].split(sch[dw_ddr].op.axis[0], nparts=block_dim_cin)
 
         c_fmap_mad_at, c_fmap_mad_insn = sch[dw_ddr].split(
             c_fmap_mad_at, nparts=dw_tiling_nparts[0])
@@ -896,45 +836,33 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # for N axis, if Hk and Wk needs split, do explict split
             if not flag_all_one_case:
                 if tiling.get("BL1_shape"):
-                    nc_cc = tiling.get("CL0_matrix")[0] * \
-                            tiling.get("BL1_shape")[1]
+                    nc_cc = tiling.get("CL0_matrix")[0] * tiling.get("BL1_shape")[1]
                 else:
-                    nc_cc = kernel_depth * c1_fmap * kernel_width * \
-                            kernel_height // block_dim_cin
+                    nc_cc = kernel_depth * c1_fmap * kernel_width * kernel_height // block_dim_cin
 
-                factor_kw = ceil_div(kernel_width, nc_cc)
-                factor_kh = ceil_div(kernel_width * kernel_height,
-                                     nc_cc) // factor_kw
+                factor_kw = te_util.int_ceil_div(kernel_width, nc_cc)
+                factor_kh = te_util.int_ceil_div(kernel_width * kernel_height, nc_cc) // factor_kw
 
-                c_fmap_l1_out, c_fmap_l1_at \
-                    = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
+                c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
 
-                c_fmap_l1_c1, c_fmap_l1_kh \
-                    = sch[dw_ddr].split(c_fmap_l1_out, factor_kh)
+                c_fmap_l1_c1, c_fmap_l1_kh = sch[dw_ddr].split(c_fmap_l1_out, factor_kh)
             else:
                 factor_kw = 1
                 factor_kh = 1
-                c_fmap_l1_out, c_fmap_l1_at \
-                    = sch[dw_ddr].split(c_fmap_l1_ori, 1)
+                c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, 1)
 
-                c_fmap_l1_c1, c_fmap_l1_kh \
-                    = sch[dw_ddr].split(c_fmap_l1_out, 1)
-            return c_fmap_l1_c1, c_fmap_l1_kh, \
-                c_fmap_l1_at, factor_kw, factor_kh
+                c_fmap_l1_c1, c_fmap_l1_kh = sch[dw_ddr].split(c_fmap_l1_out, 1)
+            return c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at, factor_kw, factor_kh
 
-        c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at, factor_kw, factor_kh \
-            = _ddr_n_split()
+        c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at, factor_kw, factor_kh = _ddr_n_split()
 
         # split axis M
-        c_grads_mad_at, c_grads_mad_insn \
-            = sch[dw_ddr].split(sch[dw_ddr].op.axis[1],
-                                dw_tiling_factor[1]*CUBE_DIM)
+        c_grads_mad_at, c_grads_mad_insn = sch[dw_ddr].split(sch[dw_ddr].op.axis[1],
+                                               dw_tiling_factor[1]*CUBE_DIM)
 
-        c_grads_multicore, c_grads_mad_at \
-            = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+        c_grads_multicore, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
 
-        c_grads_l1_at, c_grads_mad_at = \
-            sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+        c_grads_l1_at, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
 
         # reorder according to requirments of mmad EmitInsn
         sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0], c_grads_multicore,
@@ -956,8 +884,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             # dw_ub attach
             # dw_ub split
-            c_fmap_2_ub_at, c_fmap_2_ub_insn \
-                = sch[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
+            c_fmap_2_ub_at, c_fmap_2_ub_insn = sch[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
             # dw_ub attach
             sch[dw_ub].compute_at(sch[dw_ddr], c_fmap_2_ub_at)
 
@@ -975,8 +902,7 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         batch_axis_sc, k_1_axis_sc, k_0 = sch[dw_cc].op.reduce_axis
 
         # dw_k is the part for one MMAD
-        hw_mad_1_mad_at, hw_mad_1_mad_insn \
-            = sch[dw_cc].split(k_1_axis_sc, dw_k)
+        hw_mad_1_mad_at, hw_mad_1_mad_insn = sch[dw_cc].split(k_1_axis_sc, dw_k)
 
         # mad_pattern :2 , the 1st axis should be 1, so do a fake split
         batch_insn_o, batch_insn = sch[dw_cc].split(batch_axis_sc, 1)
@@ -1014,13 +940,11 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     fmap_l1_tiling_nparts[0]) + hw_mad_1_mad_at
 
         # split dw_cc.op.axis[0](N1), factor is one MMAD
-        fkk_mad_at, fkk_mad_insn \
-            = sch[dw_cc].split(sch[dw_cc].op.axis[1], dw_tiling_factor[0])
+        fkk_mad_at, fkk_mad_insn  = sch[dw_cc].split(sch[dw_cc].op.axis[1], dw_tiling_factor[0])
 
         # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
-        lc_mad_at, lc_mad_insn \
-            = sch[dw_cc].split(sch[dw_cc].op.axis[2],
-                               dw_tiling_factor[1] * CUBE_DIM)
+        lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[2],
+                                                  dw_tiling_factor[1] * CUBE_DIM)
 
         sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                            batch_insn_o, hw_mad_1_l1_out_at, hw_mad_1_l1_in_at,
@@ -1030,16 +954,13 @@ class CceConv3dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         # #############################multi core#############################
         def _bind_core():
-            fused_multi_core = \
-                sch[dw_ddr].fuse(sch[dw_ddr].op.reduce_axis[0],
-                                 c_grads_multicore, c_fmap_multicore)
-            fused_multi_core, pragma_at = \
-                sch[dw_ddr].split(fused_multi_core, 1)
+            fused_multi_core = sch[dw_ddr].fuse(sch[dw_ddr].op.reduce_axis[0],
+                                                c_grads_multicore, c_fmap_multicore)
+            fused_multi_core, pragma_at = sch[dw_ddr].split(fused_multi_core, 1)
             block = tvm.thread_axis("blockIdx.x")
 
             sch[dw_ddr].bind(fused_multi_core, block)
-            blocks =\
-                block_dim_batch * block_dim_cin * block_dim_cout * block_dim_hw
+            blocks = block_dim_batch * block_dim_cin * block_dim_cout * block_dim_hw
             if blocks == block_dim_batch:
                 sch[dw_ddr].pragma(pragma_at, 'json_info_batchBindOnly')
 

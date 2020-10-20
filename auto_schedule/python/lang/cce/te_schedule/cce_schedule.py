@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2020 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
@@ -23,7 +21,6 @@ import copy
 import json
 import os
 import re
-import traceback
 import stat
 import itertools
 
@@ -42,7 +39,6 @@ from te.platform.fusion_manager import fusion_manager
 
 from te.lang.cce import ConvParam  # pylint: disable=C0412
 from te.lang.cce.rl_bank import rl_bank
-from topi import generic  # pylint: disable=E0401
 from topi.cce import util  # pylint: disable=E0401
 
 from .util import gen_dfs_tensor_map
@@ -106,7 +102,7 @@ from .strided_write_schedule import strided_write_schedule
 from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
 from .ascend_requant_schedule import ascend_requant_schedule
 from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
-from . import util as te_util # pylint: disable=E0401
+from . import util as te_util  # pylint: disable=E0401
 from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
 
@@ -226,6 +222,7 @@ def verify_compute_tensor(tensors):
             return True
     return False
 
+
 def rl_search_proc(outs, option):
     """
     rl_search schedule
@@ -236,16 +233,16 @@ def rl_search_proc(outs, option):
     real_outs = outs
     if "rl_schedule_dict" in option:
         log.info("start to call offline rl_search.")
-        from schedule_search.offline_schedule import offline_schedule # pylint: disable=E0401
+        from schedule_search.offline_schedule import offline_schedule  # pylint: disable=E0401
         schedule = offline_schedule(outs, option["rl_schedule_dict"])
     else:
         log.info("start to call online rl_search.")
-        from schedule_search.online_infer import online_infer # pylint: disable=E0401
+        from schedule_search.online_infer import online_infer  # pylint: disable=E0401
         schedule = online_infer(outs, option)
     return schedule, tensor_list, real_outs
 
 
-def schedule_cce(outs, option=None): # pylint: disable=R0912, R0914, R0915
+def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     """
     schedule cce
     """
@@ -317,7 +314,7 @@ def schedule_cce(outs, option=None): # pylint: disable=R0912, R0914, R0915
                     dfs tensor graph
                     """
                     for current_tensor in list(
-                            tensor.op.input_tensors): # pylint: disable=cell-var-from-loop
+                            tensor.op.input_tensors):  # pylint: disable=cell-var-from-loop
                         if current_tensor in op_info["mid_tensors"] or \
                                 current_tensor in op_info["input_tensors"]:
                             # record the tensor map input:[outputs]
@@ -328,7 +325,7 @@ def schedule_cce(outs, option=None): # pylint: disable=R0912, R0914, R0915
                             continue
                         else:
                             # record the tensor
-                            if current_tensor == out: # pylint: disable=cell-var-from-loop
+                            if current_tensor == out:  # pylint: disable=cell-var-from-loop
                                 input_tensors.insert(0, current_tensor)
                             else:
                                 mid_tensors.insert(0, current_tensor)
@@ -481,14 +478,14 @@ def decl_memory(buffer_scope):
 
     try:
         @tvm.register_func(
-            "tvm.info.mem.%s" % buffer_scope) # pylint: disable=unused-variable, protected-access
-        def mem_info_ub_buffer(): # pylint: disable=unused-variable,
+            "tvm.info.mem.%s" % buffer_scope)  # pylint: disable=unused-variable, protected-access
+        def mem_info_ub_buffer():  # pylint: disable=unused-variable,
             return tvm.make.node("MemoryInfo",
                                  unit_bits=32 * 8,
                                  max_simd_bits=32 * 8,
                                  max_num_bits=get_soc_spec("UB_SIZE") * 8,
                                  head_address=tvm.const(0, 'int32'))
-    except tvm._ffi.base.TVMError: # pylint: disable=W0212
+    except tvm._ffi.base.TVMError:  # pylint: disable=W0212
         raise RuntimeError("declare memory failed!")
 
 
@@ -686,7 +683,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                     if tensor_i.op.tag.count("broadcast"):
                         continue
                     # need to update tensor for elewise_single
-                    while (tmp.op.tag.count("elewise_single") and \
+                    while (tmp.op.tag.count("elewise_single") and
                            ((tmp not in spec_mid_list) or (tmp in res_list))):
                         update_tensor = tmp
                         if (tmp not in res_list) and (len(tensor_map[tmp]) < 2):
@@ -716,7 +713,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             if tensor_i.op.tag.count("broadcast") and len(
                     tensor_map[tensor_i]) < 2:
                 tmp = tensor_map[tensor_i][0]
-                while tmp not in (spec_mid_list + res_list): # pylint: disable=superfluous-parens
+                while tmp not in (spec_mid_list + res_list):  # pylint: disable=superfluous-parens
                     tmp = tensor_map[tmp][0]
                 if tmp.op.tag.count("reduce") or tmp.op.tag.count("elewise"):
                     spec_mid_list.remove(tensor_i)
@@ -815,7 +812,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
 
         return __reduce_schedule(tensor, scope, sch_list)
 
-    #ugly, for complexity check
+    # ugly, for complexity check
     def __do_schedule_wrapper(reduce_multi_sch, temp_outs):
         try:
             schedule_valid, sch = reduce_multi_sch.do_schedule(temp_outs,
@@ -1191,7 +1188,8 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         return schedule, spec_mid_list, outs
     return None, spec_mid_list, outs
 
-def cce_build_code( # pylint: disable=R0912, R0914, R0915
+
+def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         sch, config_map=None):
     """
     API of building or printing lower code, just can be used when device is CCE
@@ -1307,11 +1305,10 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
 
         l1_tensors_list = []
         for ten_i in input_tensors:
-            l1_tensors_list.append(\
-                l1_tensors_map.get(ten_i, tvm.var("dummy")))
+            if ten_i in l1_tensors_map:
+                l1_tensors_list.append(l1_tensors_map.get(ten_i, tvm.var("dummy")))
 
         return l1_tensors_list
-
 
     def _build(sch, tensor_list, name="cce_op", ):
         """
@@ -1353,7 +1350,7 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
 
     for key in local_config_map:
         if (config_map.get(key) is not None) and \
-                (isinstance(config_map[key], type(local_config_map[key])) or \
+                (isinstance(config_map[key], type(local_config_map[key])) or
                  (local_config_map[key] is None)):
             local_config_map[key] = config_map[key]
 
@@ -1369,7 +1366,7 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
     # update the config_tensor_list:update 1 auto_cast tensor 2 compute
     # group tensor
     config_tensor_list_tmp = []
-    for tensor in config_tensor_list: # pylint: disable=not-an-iterable
+    for tensor in config_tensor_list:  # pylint: disable=not-an-iterable
         if tensor not in orign_out_tensors:
             config_tensor_list_tmp.append(tensor)
         else:
@@ -1401,7 +1398,7 @@ def cce_build_code( # pylint: disable=R0912, R0914, R0915
 class ScheduleDispatch:
     @generic_dispatch(key=1)
     def handle_case(self, case):
-        raise RuntimeError("Unknown key %d in generic_dispatch" %(key))
+        raise RuntimeError("Unknown key %d in generic_dispatch" % (key))
 
     @handle_case.register('segment')
     def _(self, case, templet_name, tensor, scope, spec_node_list, sch_list):

@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce 5hd c axis schedule
 """
 import math
@@ -31,6 +31,7 @@ SINGLE_CORE_BYTE_SIZE_THRESHOLD = 32
 
 class Reduce5HDCSchedule:  # pylint: disable=R0902
     """Schedule for reduce 5HD C axis"""
+
     def __init__(self):
         # Schedule object
         self._schedule = None
@@ -117,6 +118,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         self.do_tiling()
         self.do_compute_at()
         self.do_emit_insn()
+        self._schedule[self._input_tensor_ub].double_buffer()
 
         return True
 
@@ -173,6 +175,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
     def obtain_tensor_info(self):
         """Get reduce node info"""
         for tensor in self._all_tensors:
+            # Only one reduce tensor is supported
             if "reduce" in tensor.op.tag:
                 if self.reduce_node is None:
                     self.reduce_node = tensor
@@ -212,34 +215,54 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
 
     def calculate_tiling(self, intermediate=None):  # pylint: disable=R0912
         """Get calculation unit info"""
+
         # Simple liveness simulator
         available_axis, available_axis_size, intermediate, total_size, \
-            current_out_size = self._get_tiling_basic_info(intermediate)
+            current_out_size, current_out_tail_size = self._get_tiling_basic_info(intermediate)
         # Rule 1: if ub/2 is not full, try to use more available_axis but keep it more than core num
         optimal_need = self.device_ub_size // 2 // total_size
-        if optimal_need > 1 and available_axis_size > self.device_core_num:
-            last_available_axis_size = self.in_shape[available_axis[-1]]
-            satisfiable_need = None
-            for current_need in range(min(optimal_need, last_available_axis_size), 1, -1):
-                # available_axis_size must be more than core num
-                # last_available_axis_size must be divisible by current_need
-                # size must be smaller than ub/2
-                if (available_axis_size // current_need < self.device_core_num or
-                        not last_available_axis_size % current_need == 0 or
-                        total_size * current_need > self.device_ub_size // 2) and \
-                        current_out_size >= get_align_factor(self._input_tensor.dtype)[0]:
-                    continue
-                satisfiable_need = current_need
-                break
-            if satisfiable_need is not None:
+        rule_one_flag = optimal_need > 1 and available_axis_size > self.device_core_num
+        satisfiable_need = None
+        satisfiable_need = self._apply_rule_one(available_axis, available_axis_size, current_out_size, optimal_need,
+                                                rule_one_flag, satisfiable_need, total_size)
+        if satisfiable_need is not None:
+            intermediate.insert(0, available_axis[-1])
+            self.tiling_calculation_unit_factor = satisfiable_need
+            return self.calculate_tiling(intermediate)
+
+        # Rule 2:
+        # conditions:
+        # 1. Current calculation unit output is smaller than 1 block
+        # 2. There are usable free axis on ub_tiling_axis's higher dimension
+        # actions:
+        # move ub_tiling_axis to higher dimension and completely consume the higher dim
+        # to solve multicore trample
+        dtype_size = get_align_factor(self._out_tensor.dtype)[1]
+        rule_two_flag = current_out_size < SINGLE_CORE_BYTE_SIZE_THRESHOLD // dtype_size
+        rule_two_tail_flag = 0 < current_out_tail_size < SINGLE_CORE_BYTE_SIZE_THRESHOLD // dtype_size
+        if rule_two_flag:
+            if available_axis:
+                last_available_axis_size = self.in_shape[available_axis[-1]]
+                satisfiable_need_size = math.ceil(SINGLE_CORE_BYTE_SIZE_THRESHOLD / (current_out_size * dtype_size))
                 intermediate.insert(0, available_axis[-1])
-                self.tiling_calculation_unit_factor = satisfiable_need
-                return self.calculate_tiling(intermediate)
-        # Rule 2: if ub exceeded, check if intermediate tiling is available, if not, schedule fails
+                satisfiable_factor = min(last_available_axis_size, satisfiable_need_size)
+                self.tiling_calculation_unit_factor = satisfiable_factor
+            else:
+                self.device_core_num = 1
+            return self.calculate_tiling(intermediate)
+        if rule_two_tail_flag:
+            self.tiling_calculation_unit_factor -= 1
+            return self.calculate_tiling(intermediate)
+        # Rule 3: if ub exceeded, check if intermediate tiling is available, if not, schedule fails
         if total_size > self.device_ub_size:
             if intermediate:
+                # Disable multi-core
+                self.device_core_num = 1
                 split_axis = intermediate[0]
-                split_axis_size = self.in_shape[split_axis]
+                if self.tiling_calculation_unit_factor:
+                    split_axis_size = self.tiling_calculation_unit_factor
+                else:
+                    split_axis_size = self.in_shape[split_axis]
                 unit_size = total_size // split_axis_size
                 for factor in range(1, split_axis_size, 1):
                     if (factor + 1) * unit_size > self.device_ub_size // 2:
@@ -251,6 +274,24 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         if intermediate:
             self.tiling_calculation_unit_axis = intermediate[0]
         return True
+
+    def _apply_rule_one(self, available_axis, available_axis_size, current_out_size, optimal_need, rule_one_flag,
+                        satisfiable_need, total_size):
+        if rule_one_flag:
+            last_available_axis_size = self.in_shape[available_axis[-1]]
+            for current_need in range(min(optimal_need, last_available_axis_size), 1, -1):
+                # available_axis_size must be more than core num
+                # last_available_axis_size must be divisible by current_need
+                # size must be smaller than ub/2
+                continue_flag = (available_axis_size // current_need < self.device_core_num or
+                                 not last_available_axis_size % current_need == 0 or
+                                 total_size * current_need > self.device_ub_size // 2) and \
+                                current_out_size >= get_align_factor(self._input_tensor.dtype)[0]
+                if continue_flag:
+                    continue
+                satisfiable_need = current_need
+                break
+        return satisfiable_need
 
     def _get_tiling_basic_info(self, intermediate):
         """Get basic info"""
@@ -270,7 +311,15 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         for axis in intermediate:
             axis_size = self.in_shape[axis]
             current_out_size *= axis_size
-        return available_axis, available_axis_size, intermediate, total_size, current_out_size
+        if self.tiling_calculation_unit_factor is None or not intermediate:
+            current_out_tail_size = 0
+        else:
+            current_out_tail_size = 1
+            axes_size = [self.in_shape[axis] for axis in intermediate]
+            axes_size[0] %= self.tiling_calculation_unit_factor
+            for axis_size in axes_size:
+                current_out_tail_size *= axis_size
+        return available_axis, available_axis_size, intermediate, total_size, current_out_size, current_out_tail_size
 
     def get_calculation_unit_size(self, intermediate):
         """Get current calculation unit size"""
@@ -286,9 +335,11 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
                 axis_size = int(current_tensor.shape[axis])
                 my_size *= axis_size
             # Add intermediates
-            for axis in intermediate:
+            for axis in intermediate[1:]:
                 axis_size = int(current_tensor.shape[axis])
                 my_size *= axis_size
+            if self.tiling_calculation_unit_factor:
+                my_size *= self.tiling_calculation_unit_factor
             # Convert to byte size
             dtype_size = get_align_factor(current_tensor.dtype)[1]
             my_size *= dtype_size

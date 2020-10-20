@@ -18,8 +18,12 @@ import te.lang.dynamic
 from te import tvm
 from topi import generic
 from functools import reduce as reduceIns
-from te.utils.op_utils import check_op_params, check_dtype
-from te.utils.op_utils import REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME, OPTION_ATTR_BOOL
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import KERNEL_NAME
+from te.utils.op_utils import OPTION_ATTR_BOOL
 from te.utils.error_manager import error_manager_vector
 
 MAX_ZERO_DIM_INDICE = 2**31 - 1
@@ -31,9 +35,13 @@ MAX_UB_CORE_INDICES = 474
 MAX_ALIGN_NUMBER = 128
 MAX_INDICES_BURST_LEN = 60
 
+MASK_FP32 = 64
+MASK_FP16 = 128
+
+
 class Scatter():
     def __init__(self, var, indices, updates, var_out, use_locking, kernel_name):
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+        self.tik_instance = tik.Tik()
         self.indicesdtype = indices.get("dtype").lower()
         self.updatesdtype = updates.get("dtype").lower()
         self.vardtype = var.get("dtype")
@@ -54,7 +62,7 @@ class Scatter():
         self.indices_ub = None
         self.updates_ub = None
         self.updates_negative_ub = None
-        self.updates_negative_scalar = self.tik_instance.Scalar(dtype="int32", init_value=-1)
+        self.updates_negative_scalar = self.tik_instance.Scalar(dtype="float32", init_value=-1.0)
         self.core_num = self._tik_get_core_num()
         self.ub_size = self._tik_get_ub_size()
 
@@ -110,8 +118,7 @@ class Scatter():
                                    inputs=[self.input_var, self.input_indices, self.input_updates],
                                    outputs=[self.output_var], flowtable=[self.tiling_gm])
 
-        te.add_compile_info("vars", {"ub_size": self.ub_size, "core_num": self.core_num})
-        return {"compile_info": te.get_compile_info()}
+        te.op.add_compile_info("vars", {"ub_size": self.ub_size, "core_num": self.core_num})
 
 
     def _init_ub_tensor(self):
@@ -168,8 +175,13 @@ class Scatter():
             self.var_read_index.set_as(self.indices_ub[indices_index])
             self.var_read_index.set_as(self.var_read_index * self.updates_data_num)
             self.updates_read_index.set_as(indices_index * self.updates_data_num)
-            self.tik_instance.vec_muls(128, self.updates_ub[self.updates_read_index], self.updates_ub[self.updates_read_index],
-                updates_negative_scalar, 1, 8, 8)
+            mul_times = self.updates_data_num // MASK_FP32
+            mul_tail = self.updates_data_num % MASK_FP32
+            with self.tik_instance.if_scope(mul_times != 0):
+                self.tik_instance.vec_muls(MASK_FP32, self.updates_ub[self.updates_read_index], self.updates_ub[self.updates_read_index], self.updates_negative_scalar, mul_times, 8, 8)
+            with self.tik_instance.if_scope(mul_tail != 0):
+                tail_updates_read_index = self.updates_read_index + mul_times * MASK_FP32
+                self.tik_instance.vec_muls(mul_tail, self.updates_ub[tail_updates_read_index], self.updates_ub[tail_updates_read_index], self.updates_negative_scalar, 1, 0, 0)
             self.tik_instance.set_atomic_add(1)
             self.tik_instance.data_move(self.input_var[self.var_read_index], self.updates_ub[self.updates_read_index],
                                         0, 1, self.updates_burst_fact_len, 0, 0)
@@ -186,7 +198,7 @@ class Scatter():
             with self.tik_instance.if_scope(self.updates_data_num < self.block_number):
                 self.tik_instance.data_move(self.updates_ub, self.input_updates[self.updates_read_index],
                                             0, 1, 1, 0, 0)
-                self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                 self.tik_instance.vadd(self.updates_data_num, self.updates_ub_two, self.updates_ub_one, self.updates_ub,
                                        1, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.set_atomic_add(1)
@@ -197,7 +209,7 @@ class Scatter():
                 with self.tik_instance.if_scope(self.updates_data_num < MAX_UB_UPDATES):
                     self.tik_instance.data_move(self.updates_ub, self.input_updates[self.updates_read_index],
                                                 0, 1, self.updates_burst_fact_len, 0, 0)
-                    self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                    self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                     self.tik_instance.vadd(mid_compute, self.updates_ub_two, self.updates_ub_one,
                                            self.updates_ub[self.max_align_updates_data_num], 1, 1, 1, 1, 8, 8, 8)
                     self.tik_instance.set_atomic_add(1)
@@ -213,7 +225,7 @@ class Scatter():
                         self.tik_instance.data_move(self.updates_ub,
                                                     self.input_updates[self.updates_read_index + idx * MAX_UB_UPDATES],
                                                     0, 1, MAX_UB_UPDATES // self.block_number, 0, 0)
-                        self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                        self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                         self.tik_instance.set_atomic_add(1)
                         self.tik_instance.data_move(self.output_var[self.var_read_index + idx * MAX_UB_UPDATES],
                                                     self.updates_ub, 0, 1, MAX_UB_UPDATES // self.block_number, 0, 0)
@@ -224,7 +236,7 @@ class Scatter():
                                                     self.input_updates[self.updates_read_index + updates_loop_index *
                                                                        MAX_UB_UPDATES],
                                                     0, 1, self.tail_updates_burst_len, 0, 0)
-                        self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                        self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                         self.tik_instance.vadd(vadd_number, self.updates_ub_two, self.updates_ub_one,
                                                self.updates_ub[self.tail_updates_can_div], 1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.set_atomic_add(1)
@@ -247,7 +259,7 @@ class Scatter():
             with self.tik_instance.if_scope(self.updates_data_num <= MAX_UB_UPDATES):
                 self.tik_instance.data_move(self.updates_ub, self.input_updates[self.updates_read_index],
                                             0, 1, self.updates_burst_fact_len, 0, 0)
-                self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                 self.tik_instance.set_atomic_add(1)
                 self.tik_instance.data_move(self.output_var[self.var_read_index], self.updates_ub,
                                             0, 1, self.updates_burst_fact_len, 0, 0)
@@ -259,7 +271,7 @@ class Scatter():
                     self.tik_instance.data_move(self.updates_ub,
                                                 self.input_updates[self.updates_read_index + idx * MAX_UB_UPDATES],
                                                 0, 1, MAX_UB_UPDATES // self.block_number, 0, 0)
-                    self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                    self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                     self.tik_instance.set_atomic_add(1)
                     self.tik_instance.data_move(self.output_var[self.var_read_index + idx * MAX_UB_UPDATES],
                                                 self.updates_ub, 0, 1, MAX_UB_UPDATES // self.block_number, 0, 0)
@@ -268,7 +280,7 @@ class Scatter():
                     self.tik_instance.data_move(self.updates_ub, self.input_updates[self.updates_read_index +
                                                                                     loop_index_one * MAX_UB_UPDATES],
                                                 0, 1, tail_loop_num // self.block_number, 0, 0)
-                    self.tik_instance.vec_muls(128, self.updates_ub, self.updates_ub, updates_negative_scalar, 1, 8, 8)
+                    self.tik_instance.vec_muls(MASK_FP32, self.updates_ub, self.updates_ub, self.updates_negative_scalar, 1, 8, 8)
                     self.tik_instance.set_atomic_add(1)
                     self.tik_instance.data_move(self.output_var[self.var_read_index + loop_index_one * MAX_UB_UPDATES],
                                                 self.updates_ub, 0, 1, tail_loop_num // self.block_number, 0, 0)
@@ -547,7 +559,7 @@ class Scatter():
                             self._traversing_indices_more_than_last_core()
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@te.register_operator("ScatterSub")
+@te.op.register_operator("ScatterSub")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_BOOL, KERNEL_NAME)
 def scatter_sub(var, indices, updates, var_out, use_locking=False, kernel_name="ScatterSub"):
@@ -560,7 +572,7 @@ def scatter_sub(var, indices, updates, var_out, use_locking=False, kernel_name="
         indices_dict: input indices shape, dtype and range
         updates_dict: input updates shape, dtype and range
         var_out_dict: output shape, dtype and range
-        kernel_name: kernel name of scatter_add op
+        kernel_name: kernel name of scatter_sub op
 
         Returns
         -------

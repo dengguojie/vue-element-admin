@@ -1,33 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 logical_or
 """
 from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import *
-from topi import generic
-from topi.cce import util
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # pylint: disable=unused-argument,invalid-name
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@fusion_manager.register("logical_or")
+@tbe_platform.fusion_manager.fusion_manager.register("logical_or")
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or_compute
@@ -47,20 +45,21 @@ def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     -------
     result res
     """
-    _, _, shape_max = broadcast_shapes(te.lang.cce.util.shape_to_list(
-        x1.shape), te.lang.cce.util.shape_to_list(x2.shape), param_name_input1="x1",
+    _, _, shape_max = shape_util.broadcast_shapes(shape_util.shape_to_list(
+        x1.shape), shape_util.shape_to_list(x2.shape), param_name_input1="x1",
         param_name_input2="x2")
-    x1 = te.lang.cce.cast_to(x1, "float16")
-    x2 = te.lang.cce.cast_to(x2, "float16")
-    x1 = te.lang.cce.broadcast(x1, shape_max)
-    x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vmax(x1, x2)
-    res = te.lang.cce.cast_to(res, "int8")
+    x1 = tbe.cast_to(x1, "float16")
+    x2 = tbe.cast_to(x2, "float16")
+    x1 = tbe.broadcast(x1, shape_max)
+    x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vmax(x1, x2)
+    res = tbe.cast_to(res, "int8")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def logical_or(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or
@@ -93,14 +92,14 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
         dtype_x1 = "int8"
         dtype_x2 = "int8"
 
-    check_shape(shape_x1, param_name="x1")
-    check_shape(shape_x2, param_name="x2")
+    para_check.check_shape(shape_x1, param_name="x1")
+    para_check.check_shape(shape_x2, param_name="x2")
 
     check_tuple = ("int8",)
-    check_dtype(dtype_x1, check_tuple, param_name="x1")
-    check_dtype(dtype_x2, check_tuple, param_name="x2")
+    para_check.check_dtype(dtype_x1, check_tuple, param_name="x1")
+    para_check.check_dtype(dtype_x2, check_tuple, param_name="x2")
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
                                                      param_name_input1="x1",
                                                      param_name_input2="x2")
     dtype = dtype_x1.lower()
@@ -110,10 +109,10 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
     res = logical_or_compute(data_x1, data_x2, y, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "need_build": False,
               "name": kernel_name,
               "tensor_list": (data_x1, data_x2, res)}
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.cce_build_code(schedule, config)

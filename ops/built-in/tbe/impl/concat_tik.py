@@ -1,24 +1,27 @@
-#!/usr/bin/env python
+# /usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 concat_tik
 """
 import math
 import numpy as np
+
 from te import tik
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 
 
 # pylint: disable=too-many-instance-attributes,unused-argument
@@ -435,8 +438,7 @@ class ConcatSchedule:
         ping_pang_flag = 0
         loop_burst_len = int(loop_burst_len)
         if loop_num > 0:
-            with self.tik_instance.for_range(
-                    0, loop_num // 2) as inner_loop:
+            with self.tik_instance.for_range(0, loop_num // 2) as inner_loop:
                 ub_tensor = tensor_list[0]
                 offset = inner_loop * 2 * ele_each_loop
                 self.tik_instance.data_move(ub_tensor,
@@ -558,8 +560,7 @@ class ConcatSchedule:
                 ele_num_each_loop = input_shape[self.concat_axis]
 
             def _run_one_input_double_buff(ele_num):
-                with self.tik_instance.for_range(
-                        0, out_loop // 2) as loop_index:
+                with self.tik_instance.for_range(0, out_loop // 2) as loop_index:
                     one_core_idx = loop_index*2
                     if one_core_flag:
                         _run_one_core(one_core_idx, out_offset,
@@ -598,8 +599,7 @@ class ConcatSchedule:
             if ele_last == 0:
                 _run_one_input_double_buff(ele_num_each_loop)
             else:
-                with self.tik_instance.if_scope(
-                        core_index < self.aicore_num - 1):
+                with self.tik_instance.if_scope(core_index < self.aicore_num - 1):
                     _run_one_input_double_buff(ele_num_each_loop)
                 with self.tik_instance.else_scope():
                     _run_one_input_double_buff(ele_last)
@@ -650,9 +650,7 @@ class ConcatSchedule:
         self.aicore_num = core_used
 
         if last_loop_num == 0:
-            with self.tik_instance.for_range(
-                    0, self.aicore_num,
-                    block_num=self.aicore_num) as index:
+            with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
                 in_offset = index * loop_num
                 out_offset = \
                     (index * loop_num * self.output_shape[self.concat_axis])
@@ -660,11 +658,8 @@ class ConcatSchedule:
                 self.concat_compute_each_core_scalar(
                     in_offset, out_offset, compute_loop)
         else:
-            with self.tik_instance.for_range(
-                    0, self.aicore_num,
-                    block_num=self.aicore_num) as index:
-                with self.tik_instance.if_scope(
-                        index < self.aicore_num - 1):
+            with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
+                with self.tik_instance.if_scope(index < self.aicore_num - 1):
                     in_offset = index * loop_num
                     out_offset = \
                         (index * loop_num
@@ -905,11 +900,9 @@ class ConcatSchedule:
 
         concat_fuc = self.proc_vector_scedule
         # for core loop
-        with self.tik_instance.for_range(
-                0, core_used, block_num=core_used) as _core_index:
+        with self.tik_instance.for_range(0, core_used, block_num=core_used) as _core_index:
             # core 0
-            with self.tik_instance.if_scope(
-                    _core_index == 0):
+            with self.tik_instance.if_scope(_core_index == 0):
                 core_dims_offset = 0
                 concat_fuc(dims_per_core + core_zero_tail, core_dims_offset,
                            thread_num, core_zero_tail)
@@ -917,8 +910,7 @@ class ConcatSchedule:
             with self.tik_instance.else_scope():
                 core_dims_offset = _core_index * dims_per_core + core_zero_tail
                 if tail_dims_core != dims_per_core:
-                    with self.tik_instance.if_scope(
-                            _core_index < (core_used - 1)):
+                    with self.tik_instance.if_scope(_core_index < (core_used - 1)):
                         concat_fuc(dims_per_core,
                                    core_dims_offset, thread_num)
                     with self.tik_instance.else_scope():
@@ -939,8 +931,7 @@ class ConcatSchedule:
                 self.dtype,
                 (self.max_input_dim_size + self.ele_each_block,),
                 name="copy_tensor", scope=tik.scope_ubuf)
-            with self.tik_instance.for_range(
-                    0, core_zero) as _dims_loop:
+            with self.tik_instance.for_range(0, core_zero) as _dims_loop:
                 _offset = 0
                 for input_index, input_shape in enumerate(self.input_shapes):
                     if input_index != 0:
@@ -978,8 +969,7 @@ class ConcatSchedule:
                 + dims_core_zero_offset
             self.function_for_vector_concat(_dims_len, dim_offset, core_zero)
 
-        with self.tik_instance.for_range(
-                0, dims_loop, thread_num=thread_num) as _dims_loop:
+        with self.tik_instance.for_range(0, dims_loop, thread_num=thread_num) as _dims_loop:
             _run_one_segment(self.max_dims, _dims_loop)
         if dims_len != 0:
             _run_one_segment(dims_len, dims_loop)
@@ -1216,13 +1206,11 @@ class ConcatSchedule:
             data_size_first_dim - (core_used - 1)*dims_per_core
 
         # for core loop
-        with self.tik_instance.for_range(
-                0, core_used, block_num=core_used) as _core_index:
+        with self.tik_instance.for_range(0, core_used, block_num=core_used) as _core_index:
             core_dims_offset = _core_index * dims_per_core
             if tail_dims_core != dims_per_core:
                 # for copy segment loop
-                with self.tik_instance.if_scope(
-                        _core_index < (core_used - 1)):
+                with self.tik_instance.if_scope(_core_index < (core_used - 1)):
                     concat_fuc(_core_index, core_dims_offset, dims_per_core)
 
                 with self.tik_instance.else_scope():
@@ -1278,8 +1266,7 @@ class ConcatSchedule:
             copy_ub_0, copy_ub_1 = [ub_tensor, ub_tensor_1]
             if core_process % 2 == 1 and input_index % 2 == 1:
                 copy_ub_0, copy_ub_1 = [ub_tensor_1, ub_tensor]
-            with self.tik_instance.for_range(
-                    0, core_process // 2) as _dims_loop:
+            with self.tik_instance.for_range(0, core_process // 2) as _dims_loop:
                 _copy_one_dim(self.input_tensors[input_index],
                               self.output_tensor,
                               _dims_loop*2 + core_dims_offset,
@@ -1348,8 +1335,7 @@ class ConcatSchedule:
             name="ub_tensor_1", scope=tik.scope_ubuf)
         for _, _index in enumerate(range(input_num)):
             input_index = input_num - _index - 1
-            with self.tik_instance.for_range(
-                    0, core_process // 2) as _dims_loop:
+            with self.tik_instance.for_range(0, core_process // 2) as _dims_loop:
                 _copy_one_dim(self.input_tensors[input_index],
                               self.output_tensor,
                               _dims_loop*2 + core_dims_offset,
@@ -1395,8 +1381,7 @@ class ConcatSchedule:
             self.concat_last_dim_for_scalar()
         else:
             # tensor move branch
-            with self.tik_instance.for_range(
-                    0, self.aicore_num, block_num=self.aicore_num) as index:
+            with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
                 self.concat_compute_each_core(index)
 
         self.tik_instance.BuildCCE(

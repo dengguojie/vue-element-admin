@@ -1,31 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batch_norm
 """
-
-from __future__ import absolute_import
-from __future__ import division
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 NONETYPE = type(None)
 
@@ -149,17 +143,17 @@ def _shape_check(shape_x, shape_scale, shape_offset,
     _check_shape_dims(shape_scale, data_format)
     _check_shape_dims(shape_offset, data_format)
 
-    check_shape(shape_x, param_name="x")
-    check_shape(shape_scale, param_name="scale")
-    check_shape(shape_offset, param_name="offset")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_scale, param_name="scale")
+    para_check.check_shape(shape_offset, param_name="offset")
     _check_dims_equal(shape_x, shape_scale, data_format)
     _check_dims_equal(shape_x, shape_offset, data_format)
 
     if not is_training:
         shape_mean = mean.get("shape")
         shape_variance = variance.get("shape")
-        check_shape(shape_mean, param_name="mean")
-        check_shape(shape_variance, param_name="variance")
+        para_check.check_shape(shape_mean, param_name="mean")
+        para_check.check_shape(shape_variance, param_name="variance")
         _check_shape_dims(shape_mean, data_format)
         _check_shape_dims(shape_variance, data_format)
         _check_dims_equal(shape_x, shape_mean, data_format)
@@ -194,14 +188,14 @@ def _output_data_y_compute(x, mean, variance, scale, offset, epsilon):
     res: TVM tensor
         the y of batch_norm_ext2 compute
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    y_add = te.lang.cce.vadds(variance, epsilon)
-    y_sqrt = te.lang.cce.vsqrt(y_add)
-    var_sub = te.lang.cce.vsub(x, mean)
-    y_norm = te.lang.cce.vdiv(var_sub, y_sqrt)
-    scale_broad = te.lang.cce.broadcast(scale, shape_x)
-    offset_broad = te.lang.cce.broadcast(offset, shape_x)
-    res = te.lang.cce.vadd(te.lang.cce.vmul(scale_broad, y_norm), offset_broad)
+    shape_x = shape_util.shape_to_list(x.shape)
+    y_add = tbe.vadds(variance, epsilon)
+    y_sqrt = tbe.vsqrt(y_add)
+    var_sub = tbe.vsub(x, mean)
+    y_norm = tbe.vdiv(var_sub, y_sqrt)
+    scale_broad = tbe.broadcast(scale, shape_x)
+    offset_broad = tbe.broadcast(offset, shape_x)
+    res = tbe.vadd(tbe.vmul(scale_broad, y_norm), offset_broad)
 
     return res
 
@@ -232,22 +226,21 @@ def _fused_batch_norm_inf_compute(x, scale, offset, mean, variance,
     res: TVM tensor list
         the result of batch_norm_ext2 inference compute
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
     is_cast = False
 
     if x.dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                                    "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
         is_cast = True
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
 
-    mean_broadcast = te.lang.cce.broadcast(mean, shape_x)
-    var_broadcast = te.lang.cce.broadcast(variance, shape_x)
+    mean_broadcast = tbe.broadcast(mean, shape_x)
+    var_broadcast = tbe.broadcast(variance, shape_x)
 
     res_y = _output_data_y_compute(x, mean_broadcast, var_broadcast,
                                    scale, offset, epsilon)
     if is_cast:
-        res_y = te.lang.cce.cast_to(res_y, "float16")
+        res_y = tbe.cast_to(res_y, "float16")
 
     if format_data == "NHWC":
         axis = [0, 1, 2]
@@ -255,21 +248,19 @@ def _fused_batch_norm_inf_compute(x, scale, offset, mean, variance,
         axis = [0, 2, 3]
 
     scaler_zero = 0.0
-    res_batch_mean = te.lang.cce.vadds(mean, scaler_zero)
-    res_batch_var = te.lang.cce.vadds(variance, scaler_zero)
+    res_batch_mean = tbe.vadds(mean, scaler_zero)
+    res_batch_var = tbe.vadds(variance, scaler_zero)
     if format_data != "NC1HWC0":
-        res_batch_mean = te.lang.cce.sum(res_batch_mean, axis, False)
-        res_batch_var = te.lang.cce.sum(res_batch_var, axis, False)
+        res_batch_mean = tbe.sum(res_batch_mean, axis, False)
+        res_batch_var = tbe.sum(res_batch_var, axis, False)
     res = [res_y, res_batch_mean, res_batch_var]
 
     if not is_py:
-        res_reserve_space_1 = te.lang.cce.vadds(mean, scaler_zero)
-        res_reserve_space_2 = te.lang.cce.vadds(variance, scaler_zero)
+        res_reserve_space_1 = tbe.vadds(mean, scaler_zero)
+        res_reserve_space_2 = tbe.vadds(variance, scaler_zero)
         if format_data != "NC1HWC0":
-            res_reserve_space_1 = te.lang.cce.sum(res_reserve_space_1,
-                                                  axis, False)
-            res_reserve_space_2 = te.lang.cce.sum(res_reserve_space_2,
-                                                  axis, False)
+            res_reserve_space_1 = tbe.sum(res_reserve_space_1, axis, False)
+            res_reserve_space_2 = tbe.sum(res_reserve_space_2, axis, False)
         res = res + [res_reserve_space_1, res_reserve_space_2]
 
     return res
@@ -298,12 +289,11 @@ def _fused_batch_norm_train_compute(x, scale, offset, epsilon,
     """
     is_cast = False
     if x.dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                                    "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
         is_cast = True
-        x = te.lang.cce.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
 
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
 
     if format_data == "NHWC":
         axis = [0, 1, 2]
@@ -314,49 +304,47 @@ def _fused_batch_norm_train_compute(x, scale, offset, epsilon,
     num_rec = 1.0/num
 
     # compute saved mean according to dimension C of x
-    mean_sum = te.lang.cce.sum(x, axis, True)
-    mean_muls = te.lang.cce.vmuls(mean_sum, num_rec)
-    mean_broad = te.lang.cce.broadcast(mean_muls, shape_x)
+    mean_sum = tbe.sum(x, axis, True)
+    mean_muls = tbe.vmuls(mean_sum, num_rec)
+    mean_broad = tbe.broadcast(mean_muls, shape_x)
 
     # compute saved var according to dimension C of x
-    var_sub = te.lang.cce.vsub(x, mean_broad)
-    var_mul = te.lang.cce.vmul(var_sub, var_sub)
-    var_sum = te.lang.cce.sum(var_mul, axis, True)
-    var_muls = te.lang.cce.vmuls(var_sum, num_rec)
-    var = te.lang.cce.broadcast(var_muls, shape_x)
+    var_sub = tbe.vsub(x, mean_broad)
+    var_mul = tbe.vmul(var_sub, var_sub)
+    var_sum = tbe.sum(var_mul, axis, True)
+    var_muls = tbe.vmuls(var_sum, num_rec)
+    var = tbe.broadcast(var_muls, shape_x)
 
     res_y = _output_data_y_compute(x, mean_broad, var, scale, offset, epsilon)
     if is_cast:
-        res_y = te.lang.cce.cast_to(res_y, "float16")
+        res_y = tbe.cast_to(res_y, "float16")
 
-    res_batch_mean = te.lang.cce.vmuls(mean_sum, num_rec)
+    res_batch_mean = tbe.vmuls(mean_sum, num_rec)
     if format_data != "NC1HWC0":
-        res_batch_mean = te.lang.cce.sum(res_batch_mean, axis, False)
+        res_batch_mean = tbe.sum(res_batch_mean, axis, False)
 
     if num == 1:
         batch_var_scaler = 0.0
     else:
         batch_var_scaler = float(num)/(num - 1)
-    res_batch_var = te.lang.cce.vmuls(var_muls, batch_var_scaler)
+    res_batch_var = tbe.vmuls(var_muls, batch_var_scaler)
     if format_data != "NC1HWC0":
-        res_batch_var = te.lang.cce.sum(res_batch_var, axis, False)
+        res_batch_var = tbe.sum(res_batch_var, axis, False)
 
     res = [res_y, res_batch_mean, res_batch_var]
     if not is_py:
-        res_reserve_space_1 = te.lang.cce.vmuls(mean_sum, num_rec)
-        res_reserve_space_2 = te.lang.cce.vmuls(var_sum, num_rec)
+        res_reserve_space_1 = tbe.vmuls(mean_sum, num_rec)
+        res_reserve_space_2 = tbe.vmuls(var_sum, num_rec)
         if format_data != "NC1HWC0":
-            res_reserve_space_1 = te.lang.cce.sum(res_reserve_space_1,
-                                                  axis, False)
-            res_reserve_space_2 = te.lang.cce.sum(res_reserve_space_2,
-                                                  axis, False)
+            res_reserve_space_1 = tbe.sum(res_reserve_space_1, axis, False)
+            res_reserve_space_2 = tbe.sum(res_reserve_space_2, axis, False)
         res = res + [res_reserve_space_1, res_reserve_space_2]
 
     return res
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-statements
-@fusion_manager.register("batch_norm")
+@tbe_platform.fusion_manager.fusion_manager.register("batch_norm")
 def batch_norm_compute(x, scale, offset, mean, variance, y,
                        batch_mean, batch_variance, reserve_space_1,
                        reserve_space_2, epsilon=0.001,
@@ -419,10 +407,11 @@ def batch_norm_compute(x, scale, offset, mean, variance, y,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                 OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 OPTION_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
                batch_variance, reserve_space_1, reserve_space_2,
                epsilon=0.0001, data_format="NHWC",
@@ -487,8 +476,8 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
     if not is_training:
         dtype_mean = mean.get("dtype")
         dtype_variance = variance.get("dtype")
-        check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
-        check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
+        para_check.check_dtype(dtype_mean.lower(), ("float32", "float16"), param_name="mean")
+        para_check.check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
     _format_check(x, data_format)
     format_data = x.get("format")
@@ -497,9 +486,9 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
                  variance, is_training, format_data)
 
 
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
-    check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
-    check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="scale")
+    para_check.check_dtype(dtype_offset.lower(), ("float32", "float16"), param_name="offset")
 
     if format_data == "NHWC":
         shape_scale = [1, 1, 1] + list(shape_scale)
@@ -535,7 +524,7 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
                              epsilon, data_format,
                              is_training, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     if is_training:
         tensor_list = [x_input, scale_input, offset_input] + list(res)
@@ -545,4 +534,4 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

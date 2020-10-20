@@ -1,34 +1,171 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file rnn.cpp
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file rnn.cpp
+ * \brief
+ */
 #include "inc/rnn.h"
+
+#include <cstring>
 #include <cmath>
 #include <vector>
 #include <string>
-#include <string.h>
-#include "util/util.h"
-#include "op_log.h"
-#include "./util/error_util.h"
-namespace ge {
-IMPLEMT_VERIFIER(DynamicLSTM, DynamicLSTMVerify) {
 
+#include "util/util.h"
+#include "util/error_util.h"
+#include "op_log.h"
+
+namespace ge {
+IMPLEMT_VERIFIER(DynamicRNN, DynamicRNNVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputBTensorDesc = op.GetInputDesc("b");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeW = inputWTensorDesc.GetShape();
+  DataType inputXDtype = inputXTensorDesc.GetDataType();
+  DataType inputBDtype = inputBTensorDesc.GetDataType();
+  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDesc("output_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDesc("output_c");
+  TensorDesc outputITensorDesc = op.GetOutputDesc("i");
+  TensorDesc outputJTensorDesc = op.GetOutputDesc("j");
+  TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
+  TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
+  TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batchSize = 0;
+  int64_t hiddenSize = 0;
+  int64_t num_step = 0;
+  if (dim_num == 3) {
+    num_step = shapeX.GetDims().at(0);
+    batchSize = shapeX.GetDims().at(1);
+    hiddenSize = shapeW.GetDims().at(1) / 4;
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> outputHDims = {num_step, batchSize, hiddenSize};
+
+  outputYTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputHTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputCTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputITensorDesc.SetShape(ge::Shape(outputHDims));
+  outputJTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputFTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputOTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputTanhcTensorDesc.SetShape(ge::Shape(outputHDims));
+
+  outputYTensorDesc.SetDataType(inputBDtype);
+  outputHTensorDesc.SetDataType(inputXDtype);
+  outputCTensorDesc.SetDataType(inputBDtype);
+  outputITensorDesc.SetDataType(inputBDtype);
+  outputJTensorDesc.SetDataType(inputBDtype);
+  outputFTensorDesc.SetDataType(inputBDtype);
+  outputOTensorDesc.SetDataType(inputBDtype);
+  outputTanhcTensorDesc.SetDataType(inputBDtype);
+
+  (void)op.UpdateOutputDesc("y", outputYTensorDesc);
+  (void)op.UpdateOutputDesc("output_h", outputHTensorDesc);
+  (void)op.UpdateOutputDesc("output_c", outputCTensorDesc);
+  (void)op.UpdateOutputDesc("i", outputITensorDesc);
+  (void)op.UpdateOutputDesc("j", outputJTensorDesc);
+  (void)op.UpdateOutputDesc("f", outputFTensorDesc);
+  (void)op.UpdateOutputDesc("o", outputOTensorDesc);
+  (void)op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc);
+
+  inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  (void)op.UpdateInputDesc("w", inputWTensorDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicRNN, DynamicRNNInferShape);
+VERIFY_FUNC_REG(DynamicRNN, DynamicRNNVerify);
+
+IMPLEMT_VERIFIER(DynamicRNNGrad, DynamicRNNGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicRNNGrad, DynamicRNNGradInferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeH = inputHTensorDesc.GetShape();
+  DataType dtype = inputXTensorDesc.GetDataType();
+
+  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
+  TensorDesc outputDct_1TensorDesc = op.GetOutputDesc("dc_prev");
+  TensorDesc outputDwTensorDesc = op.GetOutputDesc("dw");
+  TensorDesc outputDbTensorDesc = op.GetOutputDesc("db");
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batch_size = 0;
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  if (dim_num == 3) {
+    batch_size = shapeX.GetDims().at(1);
+    input_size = shapeX.GetDims().at(2);
+    hidden_size = shapeH.GetDims().at(2);
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "The input shape of X", "not right");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X is not right, please check!");
+    return GRAPH_FAILED;
+  }
+
+  outputDxtTensorDesc.SetShape(shapeX);
+  outputDxtTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDht_1Dims = {batch_size, hidden_size};
+  outputDht_1TensorDesc.SetShape(ge::Shape(outputDht_1Dims));
+  outputDht_1TensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDct_1Dims = {batch_size, hidden_size};
+  outputDct_1TensorDesc.SetShape(ge::Shape(outputDct_1Dims));
+  outputDct_1TensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwDims = {input_size + hidden_size, 4 * hidden_size};
+  outputDwTensorDesc.SetShape(ge::Shape(outputDwDims));
+  outputDwTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDbDims = {4 * hidden_size};
+  outputDbTensorDesc.SetShape(ge::Shape(outputDbDims));
+  outputDbTensorDesc.SetDataType(dtype);
+
+  (void)op.UpdateOutputDesc("dx", outputDxtTensorDesc);
+  (void)op.UpdateOutputDesc("dh_prev", outputDht_1TensorDesc);
+  (void)op.UpdateOutputDesc("dc_prev", outputDct_1TensorDesc);
+  (void)op.UpdateOutputDesc("dw", outputDwTensorDesc);
+  (void)op.UpdateOutputDesc("db", outputDbTensorDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicRNNGrad, DynamicRNNGradInferShape);
+VERIFY_FUNC_REG(DynamicRNNGrad, DynamicRNNGradVerify);
+
+IMPLEMT_VERIFIER(DynamicLSTM, DynamicLSTMVerify) {
   return GRAPH_SUCCESS;
 }
 
@@ -53,8 +190,8 @@ IMPLEMT_INFERFUNC(DynamicLSTM, DynamicLSTMInferShape) {
     batchSize = shapeX.GetDims().at(1);
     hiddenSize = shapeW.GetDims().at(1) / 4;
   } else {
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of X is not right, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
 
@@ -62,8 +199,8 @@ IMPLEMT_INFERFUNC(DynamicLSTM, DynamicLSTMInferShape) {
   outputHTensorDesc.SetShape(ge::Shape(OutputHDims));
   outputHTensorDesc.SetDataType(inputXDtype);
 
-  (void) op.UpdateOutputDesc("output_h", outputHTensorDesc);
-  (void) op.UpdateInputDesc("w", inputWTensorDesc);
+  (void)op.UpdateOutputDesc("output_h", outputHTensorDesc);
+  (void)op.UpdateInputDesc("w", inputWTensorDesc);
   return GRAPH_SUCCESS;
 }
 
@@ -71,14 +208,13 @@ INFER_FUNC_REG(DynamicLSTM, DynamicLSTMInferShape);
 VERIFY_FUNC_REG(DynamicLSTM, DynamicLSTMVerify);
 
 IMPLEMT_VERIFIER(BasicLSTMCell, BasicLSTMCellVerify) {
-
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFERFUNC(BasicLSTMCell, BasicLSTMCellInferShape) {
   ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
   ge::TensorDesc inputCTensorDesc = op.GetInputDesc("c");
-   ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
   ge::Shape shape = inputCTensorDesc.GetShape();
   ge::Shape shapeH = inputHTensorDesc.GetShape();
   DataType inputHDtype = inputHTensorDesc.GetDataType();
@@ -86,7 +222,6 @@ IMPLEMT_INFERFUNC(BasicLSTMCell, BasicLSTMCellInferShape) {
 
   inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
   inputWTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
-
 
   TensorDesc outputCtTensorDesc = op.GetOutputDesc("ct");
   TensorDesc outputHtTensorDesc = op.GetOutputDesc("ht");
@@ -111,14 +246,14 @@ IMPLEMT_INFERFUNC(BasicLSTMCell, BasicLSTMCellInferShape) {
   outputTanhctTensorDesc.SetShape(shape);
   outputTanhctTensorDesc.SetDataType(inputCDtype);
 
-  (void) op.UpdateOutputDesc("ct", outputCtTensorDesc);
-  (void) op.UpdateOutputDesc("ht", outputHtTensorDesc);
-  (void) op.UpdateOutputDesc("it", outputItTensorDesc);
-  (void) op.UpdateOutputDesc("jt", outputJtTensorDesc);
-  (void) op.UpdateOutputDesc("ft", outputFtTensorDesc);
-  (void) op.UpdateOutputDesc("ot", outputOtTensorDesc);
-  (void) op.UpdateOutputDesc("tanhct", outputTanhctTensorDesc);
-  (void) op.UpdateInputDesc("w", inputWTensorDesc);
+  (void)op.UpdateOutputDesc("ct", outputCtTensorDesc);
+  (void)op.UpdateOutputDesc("ht", outputHtTensorDesc);
+  (void)op.UpdateOutputDesc("it", outputItTensorDesc);
+  (void)op.UpdateOutputDesc("jt", outputJtTensorDesc);
+  (void)op.UpdateOutputDesc("ft", outputFtTensorDesc);
+  (void)op.UpdateOutputDesc("ot", outputOtTensorDesc);
+  (void)op.UpdateOutputDesc("tanhct", outputTanhctTensorDesc);
+  (void)op.UpdateInputDesc("w", inputWTensorDesc);
   return GRAPH_SUCCESS;
 }
 
@@ -126,7 +261,6 @@ INFER_FUNC_REG(BasicLSTMCell, BasicLSTMCellInferShape);
 VERIFY_FUNC_REG(BasicLSTMCell, BasicLSTMCellVerify);
 
 IMPLEMT_VERIFIER(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -142,14 +276,13 @@ IMPLEMT_INFERFUNC(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape) {
     batch_size = inputCShape.GetDims().at(0);
     hidden_size = inputCShape.GetDims().at(1);
   } else {
-    OpsAttrValueErrReport(op.GetName(), "c's dim", "2", Strcat(dim_num));
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of C is not right, please check!");
+    OpsAttrValueErrReport(op.GetName(), "c's dim", "2", ConcatString(dim_num));
+    OP_LOGE(op.GetName().c_str(), "The input shape of C is not right, please check!");
     return GRAPH_FAILED;
   }
 
   vector<int64_t> newDims;
-  newDims = {batch_size, hidden_size*4};
+  newDims = {batch_size, hidden_size * 4};
 
   vector<int64_t> oldDims;
   oldDims = {batch_size, hidden_size};
@@ -161,8 +294,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape) {
   outputDct1TensorDesc.SetShape(ge::Shape(oldDims));
   outputDct1TensorDesc.SetDataType(inputCDtype);
 
-  (void) op.UpdateOutputDesc("dgate", outputDgateTensorDesc);
-  (void) op.UpdateOutputDesc("dct_1", outputDct1TensorDesc);
+  (void)op.UpdateOutputDesc("dgate", outputDgateTensorDesc);
+  (void)op.UpdateOutputDesc("dct_1", outputDct1TensorDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -171,7 +304,6 @@ INFER_FUNC_REG(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape);
 VERIFY_FUNC_REG(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradVerify);
 
 IMPLEMT_VERIFIER(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -193,8 +325,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     inputSize = inputXShape.GetDims().at(1);
     hiddenSize = inputHShape.GetDims().at(1);
   } else {
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of X or H is not right, please check!");
+    OpsTwoInputShapeErrReport(op.GetName(), "X Shape Dim", "H Shape Dim", "The input shape of X and H should be 2!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X and H should be 2, please check!");
     return GRAPH_FAILED;
   }
 
@@ -202,22 +334,22 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
   vector<int64_t> dwDims = {};
   vector<int64_t> dbDims = {};
   if (outputdw_format == FORMAT_HWCN) {
-    dwDims = {inputSize + hiddenSize, hiddenSize*4};
-    dbDims = {hiddenSize*4};
+    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
+    dbDims = {hiddenSize * 4};
   } else if (outputdw_format == FORMAT_ND) {
     outputDwTensorDesc.SetFormat(ge::FORMAT_HWCN);
     outputDwTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
-    dwDims = {inputSize + hiddenSize, hiddenSize*4};
-    dbDims = {hiddenSize*4};
+    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
+    dbDims = {hiddenSize * 4};
   } else if (outputdw_format == FORMAT_NCHW) {
-    dwDims = {hiddenSize*4, inputSize + hiddenSize, 1, 1};
-    dbDims = {hiddenSize*4, 1, 1, 1};
+    dwDims = {hiddenSize * 4, inputSize + hiddenSize, 1, 1};
+    dbDims = {hiddenSize * 4, 1, 1, 1};
   } else if (outputdw_format == FORMAT_NHWC) {
-    dwDims = {hiddenSize*4, 1, 1, inputSize + hiddenSize};
-    dbDims = {hiddenSize*4, 1, 1, 1};
+    dwDims = {hiddenSize * 4, 1, 1, inputSize + hiddenSize};
+    dbDims = {hiddenSize * 4, 1, 1, 1};
   } else {
-    string expected_format_list = Strcat("FORMAT_HWCN, FORMAT_NCHW, FORMAT_NHWC, FORMAT_ND");
-    OpsInputFormatErrReport(op.GetName(), "dw", expected_format_list, Strcat(outputdw_format));
+    string expected_format_list = ConcatString("FORMAT_HWCN, FORMAT_NCHW, FORMAT_NHWC, FORMAT_ND");
+    OpsInputFormatErrReport(op.GetName(), "dw", expected_format_list, ConcatString(outputdw_format));
     OP_LOGE(op.GetName().c_str(), "Not supported the format of dw");
   }
 
@@ -226,8 +358,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
   outputDbTensorDesc.SetShape(ge::Shape(dbDims));
   outputDbTensorDesc.SetDataType(inputDgateDtype);
 
-  (void) op.UpdateOutputDesc("dw", outputDwTensorDesc);
-  (void) op.UpdateOutputDesc("db", outputDbTensorDesc);
+  (void)op.UpdateOutputDesc("dw", outputDwTensorDesc);
+  (void)op.UpdateOutputDesc("db", outputDbTensorDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -236,7 +368,6 @@ INFER_FUNC_REG(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape);
 VERIFY_FUNC_REG(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradVerify);
 
 IMPLEMT_VERIFIER(BasicLSTMCellInputGrad, BasicLSTMCellInputGradVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -255,9 +386,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
     batchSize = inputDgateShape.GetDims().at(0);
     hiddenSize = inputDgateShape.GetDims().at(1) / 4;
   } else {
-    OpsAttrValueErrReport(op.GetName(), "Dgate's dim", "2", Strcat(dim_num));
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of Dgate is not right, please check!");
+    OpsAttrValueErrReport(op.GetName(), "Dgate's dim", "2", ConcatString(dim_num));
+    OP_LOGE(op.GetName().c_str(), "The input shape of Dgate is not right, please check!");
     return GRAPH_FAILED;
   }
 
@@ -265,14 +395,14 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
   if (dim_num_w == 2) {
     inputSize = inputWShape.GetDims().at(0) - hiddenSize;
   } else {
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape or dataformat of W is not right, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "W Shape Dim", "The input shape of W should be 2, please check!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of W should be 2, please check!");
     return GRAPH_FAILED;
   }
 
   inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
   inputWTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
-  (void) op.UpdateInputDesc("w", inputWTensorDesc);
+  (void)op.UpdateInputDesc("w", inputWTensorDesc);
 
   vector<int64_t> dxtDims = {batchSize, inputSize};
   vector<int64_t> dhtDims = {batchSize, hiddenSize};
@@ -285,8 +415,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
   outputDhtTensorDesc.SetShape(ge::Shape(dhtDims));
   outputDhtTensorDesc.SetDataType(inputDgateDtype);
 
-  (void) op.UpdateOutputDesc("dxt", outputDxtTensorDesc);
-  (void) op.UpdateOutputDesc("dht", outputDhtTensorDesc);
+  (void)op.UpdateOutputDesc("dxt", outputDxtTensorDesc);
+  (void)op.UpdateOutputDesc("dht", outputDhtTensorDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -294,10 +424,9 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
 INFER_FUNC_REG(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape);
 VERIFY_FUNC_REG(BasicLSTMCellInputGrad, BasicLSTMCellInputGradVerify);
 
-//----------------BasicLSTMCell Op-------------------
+// ----------------BasicLSTMCell Op-------------------
 
 IMPLEMT_VERIFIER(RNN, RNNVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -312,9 +441,8 @@ IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
   if (dimNumsX == 3) {
     batchSize = shapeX.GetDims().at(1);
   } else {
-    OpsAttrValueErrReport(op.GetName(), "x's dim'", "3", Strcat(dimNumsX));
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of x is not right, please check!");
+    OpsAttrValueErrReport(op.GetName(), "x's dim'", "3", ConcatString(dimNumsX));
+    OP_LOGE(op.GetName().c_str(), "The input shape of x is not right, please check!");
     return GRAPH_FAILED;
   }
 
@@ -336,8 +464,8 @@ IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
   outputHtTensorDesc.SetShape(ge::Shape(dimsHt));
   outputHtTensorDesc.SetDataType(dtypeDst);
 
-  (void) op.UpdateOutputDesc("o", outputOTensorDesc);
-  (void) op.UpdateOutputDesc("h_t", outputHtTensorDesc);
+  (void)op.UpdateOutputDesc("o", outputOTensorDesc);
+  (void)op.UpdateOutputDesc("h_t", outputHtTensorDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -346,7 +474,6 @@ INFER_FUNC_REG(RNN, RNNInferShape);
 VERIFY_FUNC_REG(RNN, RNNVerify);
 
 IMPLEMT_VERIFIER(BasicRNNCell, BasicRNNCellVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -367,8 +494,8 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
   if (dimNumsX == 2) {
     batchSize = shapeX.GetDims().at(0);
   } else {
-    OP_LOGE(op.GetName().c_str(),
-      "The input shape of x is not right, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X should be 2!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X should be 2, please check!");
     return GRAPH_FAILED;
   }
   vector<int64_t> dimsOt = {batchSize, hiddenSize};
@@ -382,8 +509,8 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
   outputHtTensorDesc.SetShape(ge::Shape(dimsHt));
   outputHtTensorDesc.SetDataType(dtypeDst);
 
-  (void) op.UpdateOutputDesc("o_t", outputOtTensorDesc);
-  (void) op.UpdateOutputDesc("h_t", outputHtTensorDesc);
+  (void)op.UpdateOutputDesc("o_t", outputOtTensorDesc);
+  (void)op.UpdateOutputDesc("h_t", outputHtTensorDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -391,4 +518,137 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
 INFER_FUNC_REG(BasicRNNCell, BasicRNNCellInferShape);
 VERIFY_FUNC_REG(BasicRNNCell, BasicRNNCellVerify);
 
+IMPLEMT_VERIFIER(DynamicGRU, DynamicGRUVerify) {
+  return GRAPH_SUCCESS;
 }
+
+IMPLEMT_INFERFUNC(DynamicGRU, DynamicGRUInferShape) {
+  ge::TensorDesc x_tensor_desc = op.GetInputDesc("x");
+  ge::TensorDesc w_tensor_desc = op.GetInputDesc("w");
+  ge::TensorDesc cw_tensor_desc = op.GetInputDesc("cw");
+  ge::TensorDesc b_tensor_desc = op.GetInputDesc("b");
+  ge::Shape shape_x = x_tensor_desc.GetShape();
+  ge::Shape shape_w = w_tensor_desc.GetShape();
+  DataType bias_dtype = b_tensor_desc.GetDataType();
+
+  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
+  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
+  TensorDesc r_tensor_desc = op.GetOutputDesc("r");
+  TensorDesc i_tensor_desc = op.GetOutputDesc("i");
+  TensorDesc n_tensor_desc = op.GetOutputDesc("n");
+
+  int64_t dim_num = shape_x.GetDimNum();
+  if (dim_num != 3) {
+    OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3");
+    return GRAPH_FAILED;
+  }
+
+  int64_t num_step = shape_x.GetDims().at(0);
+  int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t hidden_size = shape_w.GetDims().at(1) / 2;
+
+  vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
+
+  y_tensor_desc.SetShape(ge::Shape(output_dims));
+  h_tensor_desc.SetShape(ge::Shape(output_dims));
+  r_tensor_desc.SetShape(ge::Shape(output_dims));
+  i_tensor_desc.SetShape(ge::Shape(output_dims));
+  n_tensor_desc.SetShape(ge::Shape(output_dims));
+
+  y_tensor_desc.SetDataType(bias_dtype);
+  h_tensor_desc.SetDataType(bias_dtype);
+  r_tensor_desc.SetDataType(bias_dtype);
+  i_tensor_desc.SetDataType(bias_dtype);
+  n_tensor_desc.SetDataType(bias_dtype);
+
+  (void)op.UpdateOutputDesc("y", y_tensor_desc);
+  (void)op.UpdateOutputDesc("output_h", h_tensor_desc);
+  (void)op.UpdateOutputDesc("r", r_tensor_desc);
+  (void)op.UpdateOutputDesc("i", i_tensor_desc);
+  (void)op.UpdateOutputDesc("n", n_tensor_desc);
+
+  w_tensor_desc.SetFormat(ge::FORMAT_HWCN);
+  cw_tensor_desc.SetFormat(ge::FORMAT_HWCN);
+  (void)op.UpdateInputDesc("w", w_tensor_desc);
+  (void)op.UpdateInputDesc("cw", cw_tensor_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicGRU, DynamicGRUInferShape);
+VERIFY_FUNC_REG(DynamicGRU, DynamicGRUVerify);
+
+IMPLEMT_VERIFIER(DynamicGRUV2, DynamicGRUV2Verify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
+  TensorDesc x_tensor_desc = op.GetInputDesc("x");
+  TensorDesc w_input_tensor_desc = op.GetInputDesc("weight_input");
+  TensorDesc w_hidden_tensor_desc = op.GetInputDesc("weight_hidden");
+  Shape shape_x = x_tensor_desc.GetShape();
+  Shape shape_w_hidden = w_hidden_tensor_desc.GetShape();
+
+  DataType bias_dtype = DT_FLOAT;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc->MutableInputDesc("bias_input") != nullptr) {
+    bias_dtype = op.GetInputDesc("bias_input").GetDataType();
+  } else if (op_desc->MutableInputDesc("bias_hidden") != nullptr) {
+    bias_dtype = op.GetInputDesc("bias_hidden").GetDataType();
+  } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
+    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+  }
+
+  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
+  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
+  TensorDesc update_tensor_desc = op.GetOutputDesc("update");
+  TensorDesc reset_tensor_desc = op.GetOutputDesc("reset");
+  TensorDesc new_tensor_desc = op.GetOutputDesc("new");
+  TensorDesc hn_tensor_desc = op.GetOutputDesc("hidden_new");
+
+  int64_t dim_num = shape_x.GetDimNum();
+  if (dim_num != 3) {
+    OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3");
+    return GRAPH_FAILED;
+  }
+
+  int64_t num_step = shape_x.GetDims().at(0);
+  int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t hidden_size = shape_w_hidden.GetDims().at(0);
+
+  vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
+
+  y_tensor_desc.SetShape(Shape(output_dims));
+  h_tensor_desc.SetShape(Shape(output_dims));
+  update_tensor_desc.SetShape(Shape(output_dims));
+  reset_tensor_desc.SetShape(Shape(output_dims));
+  new_tensor_desc.SetShape(Shape(output_dims));
+  hn_tensor_desc.SetShape(Shape(output_dims));
+
+  y_tensor_desc.SetDataType(bias_dtype);
+  h_tensor_desc.SetDataType(bias_dtype);
+  update_tensor_desc.SetDataType(bias_dtype);
+  reset_tensor_desc.SetDataType(bias_dtype);
+  new_tensor_desc.SetDataType(bias_dtype);
+  hn_tensor_desc.SetDataType(bias_dtype);
+
+  (void)op.UpdateOutputDesc("y", y_tensor_desc);
+  (void)op.UpdateOutputDesc("output_h", h_tensor_desc);
+  (void)op.UpdateOutputDesc("update", update_tensor_desc);
+  (void)op.UpdateOutputDesc("reset", reset_tensor_desc);
+  (void)op.UpdateOutputDesc("new", new_tensor_desc);
+  (void)op.UpdateOutputDesc("hidden_new", new_tensor_desc);
+
+  w_input_tensor_desc.SetFormat(FORMAT_HWCN);
+  w_hidden_tensor_desc.SetFormat(FORMAT_HWCN);
+  (void)op.UpdateInputDesc("weight_input", w_input_tensor_desc);
+  (void)op.UpdateInputDesc("weight_hidden", w_hidden_tensor_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicGRUV2, DynamicGRUV2InferShape);
+VERIFY_FUNC_REG(DynamicGRUV2, DynamicGRUV2Verify);
+}  // namespace ge

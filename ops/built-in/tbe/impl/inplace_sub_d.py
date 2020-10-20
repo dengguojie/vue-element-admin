@@ -1,32 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-inplace_sub
+inplace_sub_d
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te import platform as tbe_platform
 
 
 # pylint: disable = locally-disabled,invalid-name
 # pylint: disable = too-many-arguments,unused-argument,no-member
-@fusion_manager.register("inplace_sub_d")
+@tbe_platform.fusion_manager.fusion_manager.register("inplace_sub_d")
 def inplace_sub_d_compute(x, v, y, indices, kernel_name="inplace_sub_d"):
     """
     inplace_sub_d compute process
@@ -49,13 +47,14 @@ def inplace_sub_d_compute(x, v, y, indices, kernel_name="inplace_sub_d"):
     output tensor
     """
 
-    res = te.lang.cce.inplace_sub(x, indices, v)
+    res = tbe.inplace_sub(x, indices, v)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
 def inplace_sub_d(x, v, y, indices, kernel_name="inplace_sub_d"):
     """
     algorithm: inplacea_add_d
@@ -82,10 +81,10 @@ def inplace_sub_d(x, v, y, indices, kernel_name="inplace_sub_d"):
     shape_x = x.get("shape")
     shape_v = v.get("shape")
 
-    check_shape(shape_x, param_name="x")
-    check_shape(shape_v, param_name="v")
-    check_dtype(x.get("dtype").lower(), check_tuple, param_name="x")
-    check_dtype(v.get("dtype").lower(), check_tuple, param_name="v")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_v, param_name="v")
+    para_check.check_dtype(x.get("dtype").lower(), check_tuple, param_name="x")
+    para_check.check_dtype(v.get("dtype").lower(), check_tuple, param_name="v")
     indices = list(indices)
 
     if len(shape_x) != len(shape_v):
@@ -114,9 +113,9 @@ def inplace_sub_d(x, v, y, indices, kernel_name="inplace_sub_d"):
                                 indices, kernel_name="inplace_sub_d")
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_x, data_v, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

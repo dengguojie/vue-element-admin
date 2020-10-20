@@ -52,6 +52,7 @@ set(_caffe_plugins
   caffe_warp_perspective_plugin.cc
   caffe_yolov2_detection_output_d_plugin.cc
   caffe_yolov3_detection_output_d_plugin.cc
+  caffe_yolov3_detection_output_v2_d_plugin.cc
   case_plugin.cc
   concat_plugin.cc
   copy_plugin.cc
@@ -99,8 +100,10 @@ add_library(ops_all_caffe_plugin SHARED
 target_include_directories(ops_all_caffe_plugin PRIVATE
   ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/inc
-  ${CANN_ROOT}/inc/external
   ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${_proto_include}
   ${Protobuf_INCLUDE}
 )

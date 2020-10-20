@@ -1,32 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 smooth_l1_loss_grad
 """
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from functools import reduce as functools_reduce
-from te.utils.op_utils import *
 
 
 # pylint: disable=unused-argument,too-many-arguments
-@fusion_manager.register("smooth_l1_loss_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad")
 def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
                                 kernel_name):
     """
@@ -52,31 +51,31 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
     output tensor
     """
     dtype = predict.dtype
-    shape_input_predict = te.lang.cce.util.shape_to_list(predict.shape)
-    shape_input_label = te.lang.cce.util.shape_to_list(label.shape)
+    shape_input_predict = shape_util.shape_to_list(predict.shape)
+    shape_input_label = shape_util.shape_to_list(label.shape)
 
     if list(shape_input_predict) != list(shape_input_label):
         shape_input_predict, shape_input_label, shape = \
-            broadcast_shapes(shape_input_predict, shape_input_label,
+            shape_util.broadcast_shapes(shape_input_predict, shape_input_label,
                              param_name_input1="predict",
                              param_name_input2="label")
-        predict = te.lang.cce.broadcast(predict, shape, dtype)
-        label = te.lang.cce.broadcast(label, shape, dtype)
-    out_sub = te.lang.cce.vsub(predict, label)
+        predict = tbe.broadcast(predict, shape, dtype)
+        label = tbe.broadcast(label, shape, dtype)
+    out_sub = tbe.vsub(predict, label)
     # out = sigma if out_sub > sigma
-    out_sub_one = te.lang.cce.vmins(out_sub, sigma)
+    out_sub_one = tbe.vmins(out_sub, sigma)
     # out = -sigma if out_sub < -sigma
-    out_sub_one_neg_one = te.lang.cce.vmaxs(out_sub_one, -sigma)
-    out_sub_one_neg_one_sigma = te.lang.cce.vmuls(out_sub_one_neg_one,
+    out_sub_one_neg_one = tbe.vmaxs(out_sub_one, -sigma)
+    out_sub_one_neg_one_sigma = tbe.vmuls(out_sub_one_neg_one,
                                                   1 / float(sigma))
-    res = te.lang.cce.vmul(out_sub_one_neg_one_sigma, dout)
+    res = tbe.vmul(out_sub_one_neg_one_sigma, dout)
 
     return res
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def smooth_l1_loss_grad(predict,
                         label,
                         dout,
@@ -118,19 +117,19 @@ def smooth_l1_loss_grad(predict,
     label_dtype = label.get("dtype").lower()
     dout_dtype = dout.get("dtype").lower()
 
-    util.compare_tensor_dict_key(predict, label, "shape")
-    util.compare_tensor_dict_key(predict, dout, "shape")
-    util.compare_tensor_dict_key(predict, label, "dtype")
-    util.compare_tensor_dict_key(predict, dout, "dtype")
+    shape_util.compare_tensor_dict_key(predict, label, "shape")
+    shape_util.compare_tensor_dict_key(predict, dout, "shape")
+    shape_util.compare_tensor_dict_key(predict, label, "dtype")
+    shape_util.compare_tensor_dict_key(predict, dout, "dtype")
     check_list = ("float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="predict")
-    check_dtype(label_dtype, check_list, param_name="label")
-    check_dtype(dout_dtype, check_list, param_name="dout")
+    para_check.check_dtype(input_dtype, check_list, param_name="predict")
+    para_check.check_dtype(label_dtype, check_list, param_name="label")
+    para_check.check_dtype(dout_dtype, check_list, param_name="dout")
 
-    check_shape(predict_shape, param_name="predict")
-    check_shape(label_shape, param_name="label")
-    check_shape(dout_shape, param_name="dout")
-    shape = (functools_reduce(lambda x, y: x * y, predict_shape[:]),)
+    para_check.check_shape(predict_shape, param_name="predict")
+    para_check.check_shape(label_shape, param_name="label")
+    para_check.check_shape(dout_shape, param_name="dout")
+    shape = (functools.reduce(lambda x, y: x * y, predict_shape[:]),)
     predict_input = tvm.placeholder(
         shape, name="predict_input", dtype=input_dtype)
     label_input = tvm.placeholder(
@@ -141,11 +140,11 @@ def smooth_l1_loss_grad(predict,
                                       gradient, sigma, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name": kernel_name,
         "tensor_list": [predict_input, label_input, dout_input, res]
     }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 asinh
 
   Op_description :
@@ -31,21 +31,14 @@ asinh
     [1] All : shape size limit is 2147483648.
 
 """
+import functools
 
-from functools import reduce as functool_reduce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
-from te import platform as tbe_platform
-from te.platform.cce_conf import api_check_support
-from topi import generic
-from topi.cce import util
-from impl.util.util_compute import sign
+from te.utils import para_check
+from te.utils import shape_util
+from impl.util import util_compute
 
 # shape limit
 SHAPE_SIZE_LIMIT = 2147483648
@@ -80,7 +73,7 @@ MIN_FP16 = 2**(-24)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("asinh")
+@tbe_platform.fusion_manager.fusion_manager.register("asinh")
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))
@@ -103,40 +96,38 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     shape = input_x.shape
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec",
-                                                    "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
 
-    input_x1 = te.lang.cce.vabs(input_x)
+    input_x1 = tbe.vabs(input_x)
     # to fix bug for input data is 0.0
-    input_x1 = te.lang.cce.vadds(input_x1, MIN_FP16)
-    data_1_x = te.lang.cce.vrec(input_x1)
-    data_1_x_square = te.lang.cce.vmul(data_1_x, data_1_x)
-    data_1_x_square = te.lang.cce.vadds(data_1_x_square, tvm.const(CONST_ONE,
-                                                                   "float32"))
+    input_x1 = tbe.vadds(input_x1, MIN_FP16)
+    data_1_x = tbe.vrec(input_x1)
+    data_1_x_square = tbe.vmul(data_1_x, data_1_x)
+    data_1_x_square = tbe.vadds(data_1_x_square, tvm.const(CONST_ONE, "float32"))
     data_s_1_sqrt = _newton_sqrt(data_1_x_square, inp_dtype)
-    data_res = te.lang.cce.vmul(data_s_1_sqrt, input_x1)
-    data_res = te.lang.cce.vadd(input_x1, data_res)
+    data_res = tbe.vmul(data_s_1_sqrt, input_x1)
+    data_res = tbe.vadd(input_x1, data_res)
     result = _log_taylor(data_res, shape)
-    res_neg = te.lang.cce.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
+    res_neg = tbe.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
 
-    if input_x.dtype == result.dtype and api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
-        res = te.lang.cce.vcmpsel(
+    if input_x.dtype == result.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
+        res = tbe.vcmpsel(
             input_x,
             tvm.const(CONST_ZERO, input_x.dtype),
             'le',
             res_neg,
             result)
     else:
-        const_zero_tensor = te.lang.cce.broadcast(tvm.const(CONST_ZERO, input_x.dtype), shape)
-        compare_one = te.lang.cce.vcmp(input_x, const_zero_tensor, "le")
-        res = te.lang.cce.vsel(compare_one, res_neg, result)
+        const_zero_tensor = tbe.broadcast(tvm.const(CONST_ZERO, input_x.dtype), shape)
+        compare_one = tbe.vcmp(input_x, const_zero_tensor, "le")
+        res = tbe.vsel(compare_one, res_neg, result)
 
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
     else:
-        res = te.lang.cce.cast_to(res, "float32")
+        res = tbe.cast_to(res, "float32")
 
     return res
 
@@ -162,23 +153,21 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
     inp_dtype = input_x.dtype.lower()
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog",
-                                                    "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
         inp_dtype = "float32"
 
-    data_abs = te.lang.cce.vabs(input_x)
-    data_x_square = te.lang.cce.vmul(data_abs, data_abs)
-    data_add = te.lang.cce.vadds(data_x_square,
-                                 tvm.const(CONST_ONE, inp_dtype))
-    data_s_1_sqrt = te.lang.cce.vsqrt(data_add)
-    data_res = te.lang.cce.vadd(data_s_1_sqrt, data_abs)
-    result = te.lang.cce.vlog(data_res)
-    res = te.lang.cce.vmul(result, sign(input_x))
+    data_abs = tbe.vabs(input_x)
+    data_x_square = tbe.vmul(data_abs, data_abs)
+    data_add = tbe.vadds(data_x_square, tvm.const(CONST_ONE, inp_dtype))
+    data_s_1_sqrt = tbe.vsqrt(data_add)
+    data_res = tbe.vadd(data_s_1_sqrt, data_abs)
+    result = tbe.vlog(data_res)
+    res = tbe.vmul(result, util_compute.sign(input_x))
 
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
@@ -201,11 +190,10 @@ def _newton_iter(data, data_x0, dtype):
 
     """
     # Newton begin:
-    data_newton = te.lang.cce.vrec(data)
-    data_newton = te.lang.cce.vmul(data_x0, data_newton)
-    data_newton = te.lang.cce.vadd(data_newton, data)
-    data_newton = te.lang.cce.vmuls(data_newton,
-                                    tvm.const(CONST_NEWTON_FACTOR, dtype))
+    data_newton = tbe.vrec(data)
+    data_newton = tbe.vmul(data_x0, data_newton)
+    data_newton = tbe.vadd(data_newton, data)
+    data_newton = tbe.vmuls(data_newton, tvm.const(CONST_NEWTON_FACTOR, dtype))
     # Newton end
     return data_newton
 
@@ -225,8 +213,8 @@ def _newton_sqrt(data, dtype):
     data_sqrt : return of sqrt
 
     """
-    data_sqrt = te.lang.cce.vrsqrt(data)
-    data_sqrt = te.lang.cce.vrec(data_sqrt)
+    data_sqrt = tbe.vrsqrt(data)
+    data_sqrt = tbe.vrec(data_sqrt)
     data_sqrt = _newton_iter(data_sqrt, data, dtype)
     data_sqrt = _newton_iter(data_sqrt, data, dtype)
     data_sqrt = _newton_iter(data_sqrt, data, dtype)
@@ -248,83 +236,83 @@ def _log_taylor(data_x, shape):
     res :  return of log
 
     """
-    data = te.lang.cce.vadds(data_x, tvm.const(CONST_NEG_ONE, "float32"))
-    data_1 = te.lang.cce.vadds(
+    data = tbe.vadds(data_x, tvm.const(CONST_NEG_ONE, "float32"))
+    data_1 = tbe.vadds(
         data,
         tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_1, "float32"))
-    if api_check_support("te.lang.cce.vcmpsel", "float32"):
-        data_sel = te.lang.cce.vcmpsel(
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", "float32"):
+        data_sel = tbe.vcmpsel(
             data,
             tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
             'ge',
-            te.lang.cce.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            tbe.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
             data)
-        data_sel = te.lang.cce.cast_to(data_sel, "float32")
-        data_2 = te.lang.cce.vadds(
+        data_sel = tbe.cast_to(data_sel, "float32")
+        data_2 = tbe.vadds(
             data_sel,
             tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_2, "float32"))
-        data_vmuls = te.lang.cce.vmuls(
+        data_vmuls = tbe.vmuls(
             data_2,
             tvm.const(CONST_THREE_FOUR, "float32"))
-        data_sel_1 = te.lang.cce.vcmpsel(
+        data_sel_1 = tbe.vcmpsel(
             data_sel,
             tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
             'ge',
             data_vmuls,
             data_sel)
-        data_sel_1 = te.lang.cce.cast_to(data_sel_1, "float32")
+        data_sel_1 = tbe.cast_to(data_sel_1, "float32")
         taylor = _taylor_compute(data_sel_1)
         # add log(4/3)
-        res = te.lang.cce.vcmpsel(
+        res = tbe.vcmpsel(
             data_sel,
             tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
             'ge',
-            te.lang.cce.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
             taylor)
-        res = te.lang.cce.cast_to(res, "float32")
+        res = tbe.cast_to(res, "float32")
         # add log(5/3)
-        data = te.lang.cce.cast_to(data, "float32")
-        res = te.lang.cce.vcmpsel(
+        data = tbe.cast_to(data, "float32")
+        res = tbe.vcmpsel(
             data,
             tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
             'ge',
-            te.lang.cce.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
             res)
     else:
-        threshold_1 = te.lang.cce.broadcast(
+        threshold_1 = tbe.broadcast(
             tvm.const(CONST_LOG_THRESHOLD_1, "float32"), shape)
-        index_1 = te.lang.cce.vcmp(data, threshold_1, 'ge')
-        data_sel = te.lang.cce.vsel(
+        index_1 = tbe.vcmp(data, threshold_1, 'ge')
+        data_sel = tbe.vsel(
             index_1,
-            te.lang.cce.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            tbe.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
             data)
-        data_sel = te.lang.cce.cast_to(data_sel, "float32")
+        data_sel = tbe.cast_to(data_sel, "float32")
 
-        threshold_2 = te.lang.cce.broadcast(
+        threshold_2 = tbe.broadcast(
             tvm.const(CONST_LOG_THRESHOLD_2, "float32"), shape)
-        index_2 = te.lang.cce.vcmp(data_sel, threshold_2, 'ge')
-        data_2 = te.lang.cce.vadds(
+        index_2 = tbe.vcmp(data_sel, threshold_2, 'ge')
+        data_2 = tbe.vadds(
             data_sel,
             tvm.const(CONST_NEG_ONE*CONST_LOG_THRESHOLD_2, "float32"))
-        data_vmuls = te.lang.cce.vmuls(
+        data_vmuls = tbe.vmuls(
             data_2,
             tvm.const(CONST_THREE_FOUR, "float32"))
-        data_sel = te.lang.cce.vsel(index_2, data_vmuls, data_sel)
-        data_sel = te.lang.cce.cast_to(data_sel, "float32")
+        data_sel = tbe.vsel(index_2, data_vmuls, data_sel)
+        data_sel = tbe.cast_to(data_sel, "float32")
         taylor = _taylor_compute(data_sel)
         # add log(4/3)
-        res = te.lang.cce.vsel(
+        res = tbe.vsel(
             index_2,
-            te.lang.cce.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
             taylor)
-        res = te.lang.cce.cast_to(res, "float32")
+        res = tbe.cast_to(res, "float32")
         # add log(5/3)
-        res = te.lang.cce.vsel(
+        res = tbe.vsel(
             index_1,
-            te.lang.cce.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
             res)
 
-    res = te.lang.cce.cast_to(res, "float32")
+    res = tbe.cast_to(res, "float32")
     # d: vlog:
     res = _log_compute(data_x, res, shape)
 
@@ -345,24 +333,21 @@ def _taylor_compute(data):
 
     """
     # 0.2x - 0.25
-    taylor_five = te.lang.cce.vmuls(data, tvm.const(CONST_ONE_FIVE, "float32"))
-    taylor_four_1 = te.lang.cce.vadds(taylor_five,
-                                      tvm.const(CONST_ONE_FOUR_NEG, "float32"))
+    taylor_five = tbe.vmuls(data, tvm.const(CONST_ONE_FIVE, "float32"))
+    taylor_four_1 = tbe.vadds(taylor_five, tvm.const(CONST_ONE_FOUR_NEG, "float32"))
     # (0.2x - 0.25)x + 0.33333
-    taylor_four_2 = te.lang.cce.vmul(taylor_four_1, data)
-    taylor_three_1 = te.lang.cce.vadds(taylor_four_2,
-                                       tvm.const(CONST_ONE_THREE, "float32"))
+    taylor_four_2 = tbe.vmul(taylor_four_1, data)
+    taylor_three_1 = tbe.vadds(taylor_four_2, tvm.const(CONST_ONE_THREE, "float32"))
     # ((0.2x - 0.25)x + 0.33333)x - 0.5
-    taylor_three_2 = te.lang.cce.vmul(taylor_three_1, data)
-    taylor_two_1 = te.lang.cce.vadds(
+    taylor_three_2 = tbe.vmul(taylor_three_1, data)
+    taylor_two_1 = tbe.vadds(
         taylor_three_2,
         tvm.const(CONST_NEWTON_FACTOR_NEG, "float32"))
     # (((0.2x - 0.25)x + 0.33333)x - 0.5)x+1
-    taylor_two_2 = te.lang.cce.vmul(taylor_two_1, data)
-    taylor_one = te.lang.cce.vadds(taylor_two_2,
-                                   tvm.const(CONST_ONE, "float32"))
+    taylor_two_2 = tbe.vmul(taylor_two_1, data)
+    taylor_one = tbe.vadds(taylor_two_2, tvm.const(CONST_ONE, "float32"))
     # ((((0.2x - 0.25)x + 0.33333)x - 0.5)x + 1)x
-    taylor = te.lang.cce.vmul(taylor_one, data)
+    taylor = tbe.vmul(taylor_one, data)
 
     return taylor
 
@@ -382,40 +367,40 @@ def _log_compute(data_x, res, shape):
 
     """
     # if data > 2, use vlog
-    if data_x.dtype == res.dtype and api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
-        res = te.lang.cce.vcmpsel(
+    if data_x.dtype == res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+        res = tbe.vcmpsel(
             data_x,
             tvm.const(CONST_TWO, data_x.dtype),
             'ge',
-            te.lang.cce.vlog(data_x),
+            tbe.vlog(data_x),
             res)
     else:
-        threshold_3 = te.lang.cce.broadcast(tvm.const(CONST_TWO, "float32"), shape)
-        index_3 = te.lang.cce.vcmp(data_x, threshold_3, 'ge')
-        res = te.lang.cce.vsel(index_3, te.lang.cce.vlog(data_x), res)
+        threshold_3 = tbe.broadcast(tvm.const(CONST_TWO, "float32"), shape)
+        index_3 = tbe.vcmp(data_x, threshold_3, 'ge')
+        res = tbe.vsel(index_3, tbe.vlog(data_x), res)
 
     # if data > 32768, use log(x/2.5)+log(2.5)
-    overflow_value = te.lang.cce.vmuls(data_x, CONST_FIVE_TWO)
-    res_overflow = te.lang.cce.vadds(
-        te.lang.cce.vlog(overflow_value), LOG_FIVE_TWO)
-    if data_x.dtype == res.dtype and api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
-        res = te.lang.cce.vcmpsel(
+    overflow_value = tbe.vmuls(data_x, CONST_FIVE_TWO)
+    res_overflow = tbe.vadds(
+        tbe.vlog(overflow_value), LOG_FIVE_TWO)
+    if data_x.dtype == res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+        res = tbe.vcmpsel(
             data_x,
             tvm.const(FLOAT_16_MAX, data_x.dtype),
             'ge',
             res_overflow,
             res)
     else:
-        float_16_max_tensor = te.lang.cce.broadcast(
+        float_16_max_tensor = tbe.broadcast(
             tvm.const(FLOAT_16_MAX, "float32"), shape)
-        index_4 = te.lang.cce.vcmp(data_x, float_16_max_tensor, 'ge')
-        res = te.lang.cce.vsel(index_4, res_overflow, res)
-    res = te.lang.cce.cast_to(res, "float32")
+        index_4 = tbe.vcmp(data_x, float_16_max_tensor, 'ge')
+        res = tbe.vsel(index_4, res_overflow, res)
+    res = tbe.cast_to(res, "float32")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def asinh(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))
@@ -437,28 +422,26 @@ def asinh(input_x, output_y, kernel_name="asinh"):
     shape_input = input_x.get("shape")
     dtype_input = input_x.get("dtype")
 
-    check_shape(shape_input, param_name="input_x")
-    shape_input, _ = refine_shape_axes(shape_input, [])
+    para_check.check_shape(shape_input, param_name="input_x")
+    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_input, check_list, param_name="input_x")
 
     inp_dtype = dtype_input.lower()
-    shape_input = (functool_reduce(lambda x, y: x * y, shape_input),)
+    shape_input = (functools.reduce(lambda x, y: x * y, shape_input),)
     data_input = tvm.placeholder(shape_input,
                                  dtype=inp_dtype, name="data_input")
 
     with tvm.target.cce():
-        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog",
-                                                   "float32") or not \
-                tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec",
-                                                        "float32"):
+        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32") or not \
+                tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec", "float32"):
             res = asinh_compute_cloud(data_input, output_y, kernel_name)
         else:
             res = asinh_compute_mini(data_input, output_y, kernel_name)
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res],
               "bool_storage_as_1bit": False}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

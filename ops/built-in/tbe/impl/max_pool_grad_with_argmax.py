@@ -1,23 +1,29 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-maxpool_grad_with_argmax
+max_pool_grad_with_argmax
 """
 import math
+
 from te import tik
-from topi.cce import util
-from impl import constant_util as constant
-from impl.max_pool_grad_with_argmax_cut_one_h import MaxpoolGradCustom
+from impl import constant_util
+from te.utils import para_check
+from impl import max_pool_grad_with_argmax_cut_one_h as argmax_cut_one_h
 from impl import max_pool_grad_with_argmax_resnet50 as resnet50
-from te.utils.op_utils import *
+from te.utils import para_check
+
 
 # size of 5HD format
 DIM_5HD = 5
@@ -40,9 +46,12 @@ FP32_MAX = 64
 # max num of fp16 mask handle one time
 MASK_MAX = 8
 
+
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, padding,
                               kernel_name="max_pool_grad_with_argmax"):
     """
@@ -65,13 +74,12 @@ def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, padding,
     check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name)
 
     if resnet50.is_max_pool_grad_with_argmax_param(grad, argmax, x, ksize, strides, padding):
-        return resnet50.max_pool_grad_with_argmax(grad, argmax, x, ksize,
-                                                  strides, padding, kernel_name)
+        return resnet50.max_pool_grad_with_argmax(grad, argmax, x, ksize, strides, padding, kernel_name)
     maxpoolgard = MaxpoolGard(grad, argmax, x, ksize, strides, padding)
     return maxpoolgard.tik_instance_function(kernel_name)
 
 
-class MaxpoolGard(MaxpoolGradCustom):
+class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
     """
     parameter for max_pool_grad_with_pool
     """
@@ -81,9 +89,9 @@ class MaxpoolGard(MaxpoolGradCustom):
         init compare and bit pack parameters
         Parameters
         ----------
-        x: input of maxpool, useless for maxpool gard
         grad: input of maxpoolgard or output of maxpool
         argmax:output of maxpool mask or index
+        input_x: input of maxpool, useless for maxpool gard
         strides: stride , minimum length is 4, just like [1, poolingStrideH, poolingStrideW, 1]
         padding: pad mode, just support "SANME" or "VALID"
         Returns
@@ -134,12 +142,10 @@ class MaxpoolGard(MaxpoolGradCustom):
         mask_one_window = ((dyh * dyw + 15) // 16 + 1) * 16
         mask_stride = (mask_one_window - col2img_dyw) // 16
         if col2img_w * channel * col2img_h * dtype_size > self.ub_limit:
-            raise RuntimeError(
-                "The shape or ksize or stride is too large, please check!")
+            raise RuntimeError("The shape or ksize or stride is too large, please check!")
 
         # fp32 to fp16
-        v_rep_time_col = (2 * col2img_w * channel * col2img_h * \
-                          dtype_size + (ONE_REPEAT - 1)) // ONE_REPEAT
+        v_rep_time_col = (2 * col2img_w * channel * col2img_h * dtype_size + (ONE_REPEAT - 1)) // ONE_REPEAT
         v_rep_cycle_col = v_rep_time_col // V_MAX_REPEAT
         v_rep_last_col = v_rep_time_col % V_MAX_REPEAT
 
@@ -148,8 +154,7 @@ class MaxpoolGard(MaxpoolGradCustom):
         data_mask = self.tik_instance.Tensor("uint16", (batch * channel1 * windowh * windoww * \
                                                         mask_one_window,),
                                              name="data_mask", scope=tik.scope_gm)
-        data_output = self.tik_instance.Tensor(dtype, self.y_shape, name="data_output",
-                                               scope=tik.scope_gm)
+        data_output = self.tik_instance.Tensor(dtype, self.y_shape, name="data_output", scope=tik.scope_gm)
         data_input_origin = self.tik_instance.Tensor(dtype, self.y_shape, name="data_input_origin",
                                                      scope=tik.scope_gm)
 
@@ -171,11 +176,11 @@ class MaxpoolGard(MaxpoolGradCustom):
                                                              scope=tik.scope_ubuf)
                 self.tik_instance.data_move(data_vsel_ub_zero[0],
                                             data_input_origin[0],
-                                            constant.SID,
-                                            constant.DEFAULT_NBURST,
-                                            constant.DEFAULT_BURST_LEN,
-                                            constant.STRIDE_ZERO,
-                                            constant.STRIDE_ZERO)
+                                            constant_util.SID,
+                                            constant_util.DEFAULT_NBURST,
+                                            constant_util.DEFAULT_BURST_LEN,
+                                            constant_util.STRIDE_ZERO,
+                                            constant_util.STRIDE_ZERO)
                 self.clean_fp16_one_repeat(data_vsel_ub_zero, dtype)
                 self.clean_gm(dtype, num_one_block, block_num * num_one_block, data_output)
                 with self.tik_instance.for_range(0, nc1, thread_num=1) as loopc1:
@@ -236,8 +241,8 @@ class MaxpoolGard(MaxpoolGradCustom):
                                                                    channel + loopc1 * dyh * dyw *
                                                                    channel + new_looph * dyw *
                                                                    channel + channel * new_loopw],
-                                                        constant.SID, 1,
-                                                        constant.DEFAULT_BURST_LEN + w_ratio,
+                                                        constant_util.SID, 1,
+                                                        constant_util.DEFAULT_BURST_LEN + w_ratio,
                                                         0, 0)
                             if h_ratio != 0:
                                 self.tik_instance.data_move(data_max_ub,
@@ -247,8 +252,8 @@ class MaxpoolGard(MaxpoolGradCustom):
                                                                        (new_looph + 1) * dyw *
                                                                        channel +
                                                                        channel * new_loopw],
-                                                            constant.SID, 1,
-                                                            constant.DEFAULT_BURST_LEN + w_ratio,
+                                                            constant_util.SID, 1,
+                                                            constant_util.DEFAULT_BURST_LEN + w_ratio,
                                                             0, 0)
                             # mask copy gm to ub
                             self.tik_instance.data_move(data_mask_ub,
@@ -258,9 +263,9 @@ class MaxpoolGard(MaxpoolGradCustom):
                                                                   mask_one_window * windoww *
                                                                   windowh + new_looph * dyw +
                                                                   new_loopw],
-                                                        constant.SID, windowh * windoww,
-                                                        constant.DEFAULT_BURST_LEN,
-                                                        mask_stride, constant.STRIDE_ZERO)
+                                                        constant_util.SID, windowh * windoww,
+                                                        constant_util.DEFAULT_BURST_LEN,
+                                                        mask_stride, constant_util.STRIDE_ZERO)
                             if hoverlap != 0:
                                 self.tik_instance.data_move(data_mask_ub[col2img_dyw *
                                                                          windowh * windoww],
@@ -270,49 +275,49 @@ class MaxpoolGard(MaxpoolGradCustom):
                                                                       mask_one_window * windoww *
                                                                       windowh + (new_looph + 1) *
                                                                       dyw + loopw],
-                                                            constant.SID, windowh * windoww,
-                                                            constant.DEFAULT_BURST_LEN,
-                                                            mask_stride, constant.STRIDE_ZERO)
+                                                            constant_util.SID, windowh * windoww,
+                                                            constant_util.DEFAULT_BURST_LEN,
+                                                            mask_stride, constant_util.STRIDE_ZERO)
                             with self.tik_instance.for_range(0, windowh * windoww) as mask_id:
                                 cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
                                     data_mask_ub[col2img_dyw * mask_id])
-                                self.tik_instance.vsel(constant.MASK128, 0,
+                                self.tik_instance.vsel(constant_util.MASK128, 0,
                                                        data_vsel_ub[0],
                                                        cmpmask,
                                                        data_max_ub[0],
                                                        data_vsel_ub_zero[0],
-                                                       constant.REPEAT_TIME_ONCE,
-                                                       constant.STRIDE_ONE,
-                                                       constant.STRIDE_ONE,
-                                                       constant.STRIDE_ONE,
-                                                       constant.REPEAT_STRIDE_EIGHT,
-                                                       constant.REPEAT_STRIDE_EIGHT,
-                                                       constant.REPEAT_STRIDE_EIGHT)
+                                                       constant_util.REPEAT_TIME_ONCE,
+                                                       constant_util.STRIDE_ONE,
+                                                       constant_util.STRIDE_ONE,
+                                                       constant_util.STRIDE_ONE,
+                                                       constant_util.REPEAT_STRIDE_EIGHT,
+                                                       constant_util.REPEAT_STRIDE_EIGHT,
+                                                       constant_util.REPEAT_STRIDE_EIGHT)
                                 if hoverlap != 0:
                                     cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
                                         data_mask_ub[col2img_dyw * mask_id + \
                                                      col2img_dyw * windowh * windoww])
-                                    self.tik_instance.vsel(constant.MASK128, 0,
+                                    self.tik_instance.vsel(constant_util.MASK128, 0,
                                                            data_vsel_ub[col2img_dyw * channel],
                                                            cmpmask,
                                                            data_max_ub[col2img_dyw * channel],
                                                            data_vsel_ub_zero[0],
-                                                           constant.REPEAT_TIME_ONCE,
-                                                           constant.STRIDE_ONE,
-                                                           constant.STRIDE_ONE,
-                                                           constant.STRIDE_ONE,
-                                                           constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT)
+                                                           constant_util.REPEAT_TIME_ONCE,
+                                                           constant_util.STRIDE_ONE,
+                                                           constant_util.STRIDE_ONE,
+                                                           constant_util.STRIDE_ONE,
+                                                           constant_util.REPEAT_STRIDE_EIGHT,
+                                                           constant_util.REPEAT_STRIDE_EIGHT,
+                                                           constant_util.REPEAT_STRIDE_EIGHT)
 
-                                self.tik_instance.vconv(constant.MASK64, "",
+                                self.tik_instance.vconv(constant_util.MASK64, "",
                                                         data_vsel_ub_fp32[0],
                                                         data_vsel_ub[0],
                                                         h_input * col2img_dyw * channel // FP32_MAX,
-                                                        constant.STRIDE_ONE,
-                                                        constant.STRIDE_ONE,
-                                                        constant.REPEAT_STRIDE_EIGHT,
-                                                        constant.REPEAT_STRIDE_FOUR)
+                                                        constant_util.STRIDE_ONE,
+                                                        constant_util.STRIDE_ONE,
+                                                        constant_util.REPEAT_STRIDE_EIGHT,
+                                                        constant_util.REPEAT_STRIDE_FOUR)
                                 # col2img
                                 fetch_filter_w = mask_id % windoww
                                 fetch_filter_h = mask_id // windoww
@@ -329,27 +334,27 @@ class MaxpoolGard(MaxpoolGradCustom):
                             if v_rep_cycle_col > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_col,
                                                                  thread_num=1) as cycle:
-                                    self.tik_instance.vconv(constant.MASK64, "",
+                                    self.tik_instance.vconv(constant_util.MASK64, "",
                                                             data_vmul_ub_col2img_fp16[
                                                                 cycle * V_MAX_REPEAT * FP32_MAX],
                                                             data_vmul_ub_col2img_fp32[
                                                                 cycle * V_MAX_REPEAT * FP32_MAX],
-                                                            V_MAX_REPEAT, constant.STRIDE_ONE,
-                                                            constant.STRIDE_ONE,
-                                                            constant.REPEAT_STRIDE_FOUR,
-                                                            constant.REPEAT_STRIDE_EIGHT)
+                                                            V_MAX_REPEAT, constant_util.STRIDE_ONE,
+                                                            constant_util.STRIDE_ONE,
+                                                            constant_util.REPEAT_STRIDE_FOUR,
+                                                            constant_util.REPEAT_STRIDE_EIGHT)
                             if v_rep_last_col != 0:
-                                self.tik_instance.vconv(constant.MASK64, "",
+                                self.tik_instance.vconv(constant_util.MASK64, "",
                                                         data_vmul_ub_col2img_fp16[
                                                             v_rep_cycle_col * V_MAX_REPEAT *
                                                             FP32_MAX],
                                                         data_vmul_ub_col2img_fp32[
                                                             v_rep_cycle_col * V_MAX_REPEAT *
                                                             FP32_MAX],
-                                                        v_rep_last_col, constant.STRIDE_ONE,
-                                                        constant.STRIDE_ONE,
-                                                        constant.REPEAT_STRIDE_FOUR,
-                                                        constant.REPEAT_STRIDE_EIGHT)
+                                                        v_rep_last_col, constant_util.STRIDE_ONE,
+                                                        constant_util.STRIDE_ONE,
+                                                        constant_util.REPEAT_STRIDE_FOUR,
+                                                        constant_util.REPEAT_STRIDE_EIGHT)
 
                             nburst = self.tik_instance.Scalar("int32")
                             nburst.set_as(1)
@@ -375,7 +380,7 @@ class MaxpoolGard(MaxpoolGradCustom):
                             # move ub to gm
                             self.tik_instance.data_move(data_output[dst_address],
                                                         data_vmul_ub_col2img_fp16[src_address],
-                                                        constant.SID, nburst,
+                                                        constant_util.SID, nburst,
                                                         burst_len, src_stride, dst_stride)
         self.tik_instance.BuildCCE(kernel_name=kernel_name,
                                    inputs=(data_input_origin, data_input, data_mask),
@@ -475,8 +480,7 @@ class MaxpoolGard(MaxpoolGradCustom):
 
         if windowh > 2 * strideh or windoww > 2 * stridew:
             if col2img_w * col2img_one_h * channel * dtype_size > self.ub_limit:
-                raise RuntimeError(
-                    "The shape or ksize or stride is too large, please check!")
+                raise RuntimeError("The shape or ksize or stride is too large, please check!")
             return self.tik_instance_cut_nc1_cut_one_h(kernel_name)
         if batch * c1 >= self.blocknum or dyh <= self.blocknum:
             if col2img_w * col2img_h * channel * dtype_size > self.ub_limit:
@@ -497,16 +501,12 @@ def check_shape_5hd(shape):
     """
     The common check rule for tensor shape, just for 5hd
     """
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
     if len(shape) != DIM_5HD:
-        raise RuntimeError(
-            "The dim of tensor must be %d"
-            ", actual dim is %d" % (DIM_5HD, len(shape)))
+        raise RuntimeError("The dim of tensor must be %d, actual dim is %d" % (DIM_5HD, len(shape)))
 
     if shape[DIM_5HD - 1] != C0:
-        raise RuntimeError(
-            "The value of C0 must be %d,"
-            " actual input is (%d)" % (C0, shape[DIM_5HD - 1]))
+        raise RuntimeError("The value of C0 must be %d, actual input is (%d)" % (C0, shape[DIM_5HD - 1]))
 
 
 def check_padding(padding, check_list):
@@ -558,10 +558,8 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
     if ksize[1] > input_height or ksize[2] > input_weight:
         raise RuntimeError("can not support global pooling now")
 
-    if dyh != output_height or dyw != output_weight or \
-            input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
-        raise RuntimeError("dimentions of dx dy \
-                padMode window stride is wrong,please check!")
+    if dyh != output_height or dyw != output_weight or input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
+        raise RuntimeError("dimentions of dx dy padMode window stride is wrong,please check!")
 
 
 def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):
@@ -588,18 +586,17 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):
     grad_dtype = grad.get("dtype").lower()
     argmax_shape = argmax.get("shape")
     argmax_dtype = argmax.get("dtype").lower()
-    check_shape(y_shape, param_name="x")
-    check_shape(input_gard_shape, param_name="grad")
-    check_shape(argmax_shape, param_name="argmax")
+    para_check.check_shape(y_shape, param_name="x")
+    para_check.check_shape(input_gard_shape, param_name="grad")
+    para_check.check_shape(argmax_shape, param_name="argmax")
     check_shape_5hd(y_shape)
     check_shape_5hd(input_gard_shape)
-    check_dtype(grad_dtype, ("float16", "float32", "int32"), param_name="grad")
-    check_dtype(argmax_dtype, ("uint16"), param_name="argmax")
-    check_dtype(y_dtype, ("float16", "float32", "int32"), param_name="x")
+    para_check.check_dtype(grad_dtype, ("float16", "float32", "int32"), param_name="grad")
+    para_check.check_dtype(argmax_dtype, ("uint16"), param_name="argmax")
+    para_check.check_dtype(y_dtype, ("float16", "float32", "int32"), param_name="x")
 
     if y_dtype != grad_dtype or y_dtype_arg != y_dtype:
-        raise RuntimeError(
-            "The dtype of tensor must be same")
+        raise RuntimeError("The dtype of tensor must be same")
 
     check_padding(padding, ("SAME", "VALID"))
     check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize, strides)

@@ -1,29 +1,34 @@
 /**
  * Copyright 2020 Huawei Technologies Co., Ltd
-
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
-
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
-
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
+/*!
+ * \file scope_layernorm_pass.cc
+ * \brief
+ */
 #include "scope_layernorm_pass.h"
+
 #include "op_log.h"
-#include "external/register/scope/scope_fusion_pass_register.h"
+#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 namespace {
-const char *const kScopeTypeBatchnorm = "batchnorm";
-const char *const kScopeTypeMoments = "moments";
-const char *const kScopeRltType = "LayerNorm";
-const char *const kOpType = "LayerNorm";
+const char* const kScopeTypeBatchnorm = "batchnorm";
+const char* const kScopeTypeMoments = "moments";
+const char* const kScopeRltType = "LayerNorm";
+const char* const kOpType = "LayerNorm";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormPass::DefinePatterns() {
@@ -37,26 +42,28 @@ std::vector<ScopeFusionPatterns> ScopeLayerNormPass::DefinePatterns() {
   return patterns_list;
 }
 
-std::string ScopeLayerNormPass::PassName() { return std::string("ScopeLayerNormPass"); }
+std::string ScopeLayerNormPass::PassName() {
+  return std::string("ScopeLayerNormPass");
+}
 
 /**
  * @brief LastMatch for multiple scopes
  */
-Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph> &scope_graph,
-                                                 std::vector<ScopesResult> &results) {
+Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph,
+                                                 std::vector<ScopesResult>& results) {
   if (scope_graph == nullptr) {
     OP_LOGE(kOpType, "Input params is nullptr.");
     return domi::PARAM_INVALID;
   }
-  const ScopeTree *scope_tree = scope_graph->GetScopeTree();
+  const ScopeTree* scope_tree = scope_graph->GetScopeTree();
   if (scope_tree == nullptr) {
     OP_LOGE(kOpType, "Scope tree is nullptr.");
     return domi::PARAM_INVALID;
   }
-  std::vector<Scope *> scopes = scope_tree->GetAllScopes();
-  std::vector<Scope *> fusion_scopes_bn;
-  std::vector<Scope *> fusion_scopes_m;
-  for (auto &scope : scopes) {
+  const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
+  std::vector<Scope*> fusion_scopes_bn;
+  std::vector<Scope*> fusion_scopes_m;
+  for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if ((scope->SubType() == kScopeTypeBatchnorm)) {
       fusion_scopes_bn.push_back(scope);
@@ -83,7 +90,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph> &sc
         if (pos_bn != -1 && pos_m != -1 && scope_bn_name.substr(0, pos_bn) == scope_m_name.substr(0, pos_m)) {
           // scope result
           ScopesResult result;
-          std::vector<Scope *> result_scopes;
+          std::vector<Scope*> result_scopes;
           result_scopes.push_back(scope_bn);
           result_scopes.push_back(scope_m);
           result.SetScopes(result_scopes);
@@ -97,14 +104,14 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph> &sc
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   if (fusion_rlt == nullptr) {
     OP_LOGE(kOpType, "Input fusion_rlt is nullptr.");
     return;
   }
 
   int index1 = kFusionDisableIndex;
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     FindInputIndex(scope, index1, "batchnorm/mul_1", "batchnorm");
   }
   if (index1 == 0) {
@@ -117,7 +124,7 @@ void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope *> &scopes
   }
 
   int index = kFusionDisableIndex;
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     FindInputIndex(scope, index, "batchnorm/mul", "batchnorm");
   }
   if (index == 0) {
@@ -134,7 +141,7 @@ void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope *> &scopes
   fusion_rlt->InsertOutputs("moments/mean", {1});                       // output mean
   fusion_rlt->InsertOutputs("batchnorm/Rsqrt", {2});                    // output variance
 
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     // The upper call guarantees that the scope is not empty.
     if (scope->SubType() == kScopeTypeBatchnorm) {
       std::string scope_bn_name = scope->Name();
@@ -153,30 +160,30 @@ void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope *> &scopes
   return;
 }
 
-void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns &patterns) {
+void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns) {
   // match batchnorm
-  std::vector<ScopePattern *> batch;
-  ScopePattern *batch_norm_cell = new (std::nothrow) ScopePattern();
+  std::vector<ScopePattern*> batch;
+  ScopePattern* batch_norm_cell = new (std::nothrow) ScopePattern();
   if (batch_norm_cell == nullptr) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
   batch_norm_cell->SetSubType(kScopeTypeBatchnorm);
 
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));    // Sub num is 1
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));  // Rsqrt num is 1
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));    // Mul num is 3
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));    // Identity num is -1
+  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
+  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
+  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
+  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
   batch_norm_cell->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
 
   batch.push_back(batch_norm_cell);
   patterns.push_back(batch);
 }
 
-void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns &patterns) {
+void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) {
   // match moments
-  std::vector<ScopePattern *> batch;
-  ScopePattern *moments_cell = new (std::nothrow) ScopePattern();
+  std::vector<ScopePattern*> batch;
+  ScopePattern* moments_cell = new (std::nothrow) ScopePattern();
   if (moments_cell == nullptr) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
@@ -192,15 +199,15 @@ void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns &patterns) 
   patterns.push_back(batch);
 }
 
-void ScopeLayerNormPass::FindInputIndex(const Scope *scope, int &index, const std::string &name,
-                                        const std::string &base_name) {
+void ScopeLayerNormPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
+                                        const std::string& base_name) {
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
   std::vector<std::string> mul_input_names;
-  for (auto &it : nodes_map) {
+  for (auto& it : nodes_map) {
     auto node_def = it.second;
     std::string sub_name = (node_def->GetName().length() > name.length())
-                          ? node_def->GetName().substr(node_def->GetName().length() - name.length())
-                          : node_def->GetName();
+                               ? node_def->GetName().substr(node_def->GetName().length() - name.length())
+                               : node_def->GetName();
     if (sub_name == name) {
       for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
         auto input_desc = node_def->GetInputDesc(i);

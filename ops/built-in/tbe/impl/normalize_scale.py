@@ -1,33 +1,30 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 normalize_scale
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-import te.utils.op_utils as op_utils
-
+from te.utils import para_check
+from te.utils import shape_util
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 # pylint: disable=locally-disabled,too-many-arguments,protected-access
 # pylint: disable=locally-disabled,too-many-branches
-@fusion_manager.register("normalize_scale")
+@tbe_platform.fusion_manager.fusion_manager.register("normalize_scale")
 def normalize_scale_compute(x1, x2, x3, y,
                             across_spatial=True, eps=1e-10,
                             kernel_name="normalize_scale"):
@@ -59,7 +56,7 @@ def normalize_scale_compute(x1, x2, x3, y,
     """
 
     # set intermediate dtype
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         # hisi es, cs
         intermediate_dtype = "float16"
@@ -72,66 +69,66 @@ def normalize_scale_compute(x1, x2, x3, y,
         dtype_reverse_cast_mapping = {"float16": "int8",
                                       "float32": "float16"}
 
-    x1_shape = te.lang.cce.util.shape_to_list(x1.shape)
+    x1_shape = shape_util.shape_to_list(x1.shape)
 
     x1_cast = x1
     while x1_cast.dtype in dtype_cast_mapping:
-        x1_cast = te.lang.cce.cast_to(x1_cast,
+        x1_cast = tbe.cast_to(x1_cast,
                                       dtype_cast_mapping[x1_cast.dtype])
     x2_cast = x2
     while x2_cast.dtype in dtype_cast_mapping:
-        x2_cast = te.lang.cce.cast_to(x2_cast,
+        x2_cast = tbe.cast_to(x2_cast,
                                       dtype_cast_mapping[x2_cast.dtype])
 
     x3_cast = x3
     while x3_cast.dtype in dtype_cast_mapping:
-        x3_cast = te.lang.cce.cast_to(x3_cast,
+        x3_cast = tbe.cast_to(x3_cast,
                                       dtype_cast_mapping[x3_cast.dtype])
 
-    x1_sqr_sum = te.lang.cce.vadds(x3_cast,
+    x1_sqr_sum = tbe.vadds(x3_cast,
                                    tvm.const(eps, dtype=intermediate_dtype))
 
-    x2_cast_broadcast = te.lang.cce.broadcast(x2_cast, x1_shape)
+    x2_cast_broadcast = tbe.broadcast(x2_cast, x1_shape)
 
-    x1_scaled = te.lang.cce.vmul(x1_cast, x2_cast_broadcast)
+    x1_scaled = tbe.vmul(x1_cast, x2_cast_broadcast)
 
     if cce_product in ("Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", \
                        "Ascend610", "Ascend710"):
-        x1_sqr_sum_sqrt = te.lang.cce.vsqrt(x1_sqr_sum)
-        x1_sqr_sum_sqrt_broadcast = te.lang.cce.broadcast(x1_sqr_sum_sqrt,
+        x1_sqr_sum_sqrt = tbe.vsqrt(x1_sqr_sum)
+        x1_sqr_sum_sqrt_broadcast = tbe.broadcast(x1_sqr_sum_sqrt,
                                                           x1_shape)
-        x1_normalized = te.lang.cce.vdiv(x1_scaled, x1_sqr_sum_sqrt_broadcast)
+        x1_normalized = tbe.vdiv(x1_scaled, x1_sqr_sum_sqrt_broadcast)
     elif cce_product in ("Ascend310",):
         # customized for mini, using newton
-        x1_sqr_sum_sqrt = te.lang.cce.vsqrt(x1_sqr_sum)
+        x1_sqr_sum_sqrt = tbe.vsqrt(x1_sqr_sum)
 
         for _ in range(1):
-            res = te.lang.cce.vdiv(x1_sqr_sum, x1_sqr_sum_sqrt)
-            res = te.lang.cce.vadd(res, x1_sqr_sum_sqrt)
-            res = te.lang.cce.vmuls(res, tvm.const(0.5, intermediate_dtype))
+            res = tbe.vdiv(x1_sqr_sum, x1_sqr_sum_sqrt)
+            res = tbe.vadd(res, x1_sqr_sum_sqrt)
+            res = tbe.vmuls(res, tvm.const(0.5, intermediate_dtype))
             x1_sqr_sum_sqrt = res
-        x1_sqr_sum_rsqrt = te.lang.cce.vrec(x1_sqr_sum_sqrt)
-        x1_sqr_sum_rsqrt_broadcast = te.lang.cce.broadcast(x1_sqr_sum_rsqrt,
+        x1_sqr_sum_rsqrt = tbe.vrec(x1_sqr_sum_sqrt)
+        x1_sqr_sum_rsqrt_broadcast = tbe.broadcast(x1_sqr_sum_rsqrt,
                                                            x1_shape)
-        x1_normalized = te.lang.cce.vmul(x1_scaled, x1_sqr_sum_rsqrt_broadcast)
+        x1_normalized = tbe.vmul(x1_scaled, x1_sqr_sum_rsqrt_broadcast)
     else:
         # for mini and hisi-es
-        x1_sqr_sum_rsqrt = te.lang.cce.vrsqrt(x1_sqr_sum)
-        x1_sqr_sum_rsqrt_broadcast = te.lang.cce.broadcast(x1_sqr_sum_rsqrt,
+        x1_sqr_sum_rsqrt = tbe.vrsqrt(x1_sqr_sum)
+        x1_sqr_sum_rsqrt_broadcast = tbe.broadcast(x1_sqr_sum_rsqrt,
                                                            x1_shape)
-        x1_normalized = te.lang.cce.vmul(x1_scaled, x1_sqr_sum_rsqrt_broadcast)
+        x1_normalized = tbe.vmul(x1_scaled, x1_sqr_sum_rsqrt_broadcast)
 
     x1_normalized_cast = x1_normalized
     while x1_normalized_cast.dtype != x1.dtype and \
             x1_normalized_cast.dtype in dtype_reverse_cast_mapping:
-        x1_normalized_cast = te.lang.cce.cast_to(x1_normalized_cast,
+        x1_normalized_cast = tbe.cast_to(x1_normalized_cast,
                                                  dtype_reverse_cast_mapping[
                                                      x1_normalized_cast.dtype])
 
     return x1_normalized_cast
 
 
-def check_format(data_format, data_format_3):
+def _check_format(data_format, data_format_3):
     """
     check the format for x1 and x3
 
@@ -148,20 +145,17 @@ def check_format(data_format, data_format_3):
     """
 
     if data_format != data_format_3:
-        error_info = {}
-        error_info['errCode'] = 'E80019'
-        error_info['param_name1'] = 'data_format'
-        error_info['param_name2'] = 'data_format_3'
-        error_info['op_name'] = 'normalize_scale'
+        error_info = {'errCode': 'E80019', 'param_name1': 'data_format', 'param_name2': 'data_format_3',
+                      'op_name': 'normalize_scale'}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
                                        "equal to the parameter[%s][%s]in format."
                            % (error_info['op_name'], error_info['param_name1'],
                               data_format, error_info['param_name2'], data_format_3))
 
-    op_utils.check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
+    para_check.check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
 
 
-def check_dtype(dtype_1, dtype_3):
+def _check_dtype(dtype_1, dtype_3):
     """
     check the dtype for x1, x3
 
@@ -177,17 +171,17 @@ def check_dtype(dtype_1, dtype_3):
     None
     """
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         # hisi es, cs
-        op_utils.check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
-        op_utils.check_dtype(dtype_3, ("int8", "float16",), param_name="x3")
+        para_check.check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
+        para_check.check_dtype(dtype_3, ("int8", "float16",), param_name="x3")
     else:
-        op_utils.check_dtype(dtype_1, ("int8", "float16", "float32",), param_name="x1")
-        op_utils.check_dtype(dtype_3, ("int8", "float16", "float32",), param_name="x3")
+        para_check.check_dtype(dtype_1, ("int8", "float16", "float32",), param_name="x1")
+        para_check.check_dtype(dtype_3, ("int8", "float16", "float32",), param_name="x3")
 
 
-def check_shape_1(shape_1):
+def _check_shape_1(shape_1):
     """
     check the shape for x1
 
@@ -201,11 +195,11 @@ def check_shape_1(shape_1):
     None
     """
 
-    op_utils.check_shape(shape_1, param_name="x1")
-    op_utils.check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
+    para_check.check_shape(shape_1, param_name="x1")
+    para_check.check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
 
 
-def check_shape_2(shape_1, data_format, channel_shared):
+def _check_shape_2(shape_1, data_format, channel_shared):
     """
     check the shape for x2
 
@@ -234,7 +228,7 @@ def check_shape_2(shape_1, data_format, channel_shared):
     return shape_2
 
 
-def check_shape_3(shape_1, shape_3, data_format, across_spatial):
+def _check_shape_3(shape_1, shape_3, data_format, across_spatial):
     """
     check the shape for x3
 
@@ -254,20 +248,15 @@ def check_shape_3(shape_1, shape_3, data_format, across_spatial):
     -------
     None
     """
-    op_utils.check_shape(shape_3, param_name="x3")
-    op_utils.check_shape(shape_3, min_rank=4, max_rank=4, param_name="x3")
+    para_check.check_shape(shape_3, param_name="x3")
+    para_check.check_shape(shape_3, min_rank=4, max_rank=4, param_name="x3")
 
     if across_spatial:
         if not (shape_3[0] == shape_1[0] and shape_3[1] == 1 and
                 shape_3[2] == 1 and shape_3[3] == 1):
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['param_name1'] = 'x3.shape'
-            error_info['param_name2'] = 'x1.shape'
-            error_info['op_name'] = 'normalize_scale'
-            error_info['param1_shape1'] = shape_3
-            error_info['param1_shape2'] = shape_1
-            error_info['expect_shape'] = (shape_1[0], 1, 1, 1)
+            error_info = {'errCode': 'E80017', 'param_name1': 'x3.shape', 'param_name2': 'x1.shape',
+                          'op_name': 'normalize_scale', 'param1_shape1': shape_3, 'param1_shape2': shape_1,
+                          'expect_shape': (shape_1[0], 1, 1, 1)}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
                                            "match with the parameter[%s][%s],it should be [%s]."
                                % (error_info['op_name'], error_info['param_name1'],
@@ -277,14 +266,9 @@ def check_shape_3(shape_1, shape_3, data_format, across_spatial):
     elif data_format == "NCHW":
         if not (shape_3[0] == shape_1[0] and shape_3[1] == 1 and
                 shape_3[2] == shape_1[2] and shape_3[3] == shape_1[3]):
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['param_name1'] = 'x3.shape'
-            error_info['param_name2'] = 'x1.shape'
-            error_info['op_name'] = 'normalize_scale'
-            error_info['param1_shape1'] = shape_3
-            error_info['param1_shape2'] = shape_1
-            error_info['expect_shape'] = (shape_1[0], 1, shape_1[2], shape_1[3])
+            error_info = {'errCode': 'E80017', 'param_name1': 'x3.shape', 'param_name2': 'x1.shape',
+                          'op_name': 'normalize_scale', 'param1_shape1': shape_3, 'param1_shape2': shape_1,
+                          'expect_shape': (shape_1[0], 1, shape_1[2], shape_1[3])}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
                                            "match with the parameter[%s][%s],it should be [%s]."
                                % (error_info['op_name'], error_info['param_name1'],
@@ -294,24 +278,21 @@ def check_shape_3(shape_1, shape_3, data_format, across_spatial):
     elif data_format == "NHWC":
         if not (shape_3[0] == shape_1[0] and shape_3[1] == shape_1[1] and
                 shape_3[2] == shape_1[2] and shape_3[3] == 1):
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['param_name1'] = 'x3.shape'
-            error_info['param_name2'] = 'x1.shape'
-            error_info['op_name'] = 'normalize_scale'
-            error_info['param1_shape1'] = shape_3
-            error_info['param1_shape2'] = shape_1
-            error_info['expect_shape'] = (shape_1[0], shape_1[1], shape_1[2], 1)
+            error_info = {'errCode': 'E80017', 'param_name1': 'x3.shape', 'param_name2': 'x1.shape',
+                          'op_name': 'normalize_scale', 'param1_shape1': shape_3, 'param1_shape2': shape_1,
+                          'expect_shape': (shape_1[0], shape_1[1], shape_1[2], 1)}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not "
                                            "match with the parameter[%s][%s],it should be [%s]."
                                % (error_info['op_name'], error_info['param_name1'],
                                   error_info['param1_shape1'], error_info['param_name2'],\
                                   error_info['param1_shape2'], error_info['expect_shape']))
 
+
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments
 # pylint: disable=locally-disabled,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL, OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, 
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def normalize_scale(x1, x2, x3, y, across_spatial=True,
                     channel_shared=True, eps=1e-10,
                     kernel_name="normalize_scale"):
@@ -354,13 +335,18 @@ def normalize_scale(x1, x2, x3, y, across_spatial=True,
     dtype_3 = x3.get("dtype").lower()
     data_format_3 = x3.get("format")
 
-    check_format(data_format, data_format_3)
-    check_dtype(dtype_1, dtype_3)
-    check_shape_1(shape_1)
-    check_shape_3(shape_1, shape_3, data_format, across_spatial)
+    _check_format(data_format, data_format_3)
+    _check_dtype(dtype_1, dtype_3)
+    if len(list(shape_1)) == 2:
+        if data_format == "NCHW":
+            shape_1 = [shape_1[0], shape_1[1], 1, 1]
+        elif data_format == "NHWC":
+            shape_1 = [shape_1[0], 1, 1, shape_1[1]]
+    _check_shape_1(shape_1)
+    _check_shape_3(shape_1, shape_3, data_format, across_spatial)
 
     # the expand shape for x2, used for placeholder
-    shape_2 = check_shape_2(shape_1, data_format, channel_shared)
+    shape_2 = _check_shape_2(shape_1, data_format, channel_shared)
     dtype_2 = dtype_1
 
     data_x1 = tvm.placeholder(shape_1, name="data_1", dtype=dtype_1)
@@ -371,11 +357,11 @@ def normalize_scale(x1, x2, x3, y, across_spatial=True,
 
     # pylint: disable=no-member
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "need_build": True,
               "name": kernel_name,
               "tensor_list": [data_x1, data_x2, data_x3, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

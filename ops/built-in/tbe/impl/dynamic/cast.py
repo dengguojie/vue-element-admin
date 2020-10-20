@@ -19,12 +19,10 @@ import te.lang.dynamic
 from te import platform as tbe_platform
 from te import tvm
 from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
 from functools import reduce as reduceIns
 from topi import generic
-
-from topi.cce import util as util_cce
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -33,7 +31,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 from te.utils.op_utils import broadcast_shapes
-from impl.util import fusion_util
+from te.utils.error_manager import error_manager_vector
 
 MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
@@ -95,6 +93,9 @@ def _int8_uint8_process(data, dst_type):
     """
     deal with src dtype=int8 and uint8 case
     """
+    check_list_value = ("uint8", "int32", "float16", "float32")
+    check_dtype(dst_type, check_list_value, param_name="from_int8_uint8_to_dsttype")
+
     if dst_type == "float16":
         return te.lang.dynamic.cast_to(data, "float16")
 
@@ -111,17 +112,16 @@ def _int8_uint8_process(data, dst_type):
         abs_fp16 = te.lang.dynamic.vabs(data_fp16)
         return te.lang.dynamic.cast_to(abs_fp16, "uint8")
 
-    raise RuntimeError("The cast_cce_aicore only support int8/uint8"
-                       "cast to float16,float32,int32,uint8.")
-
 
 def _int32_process(data, dst_type):
     """
     deal with src dtype=int32 case
     """
+    check_list_value = ("bool", "int8", "uint8", "float16", "float32")
+    check_dtype(dst_type, check_list_value, param_name="from_int32_to_dsttype")
     if dst_type == "bool":
         const_one = tvm.const(1.0, "float16")
-        shape_data = util.shape_to_list(data.shape)
+        shape_data = te.lang.dynamic.shape_to_list(data.shape)
         const_broad = te.lang.dynamic.broadcast(const_one, shape_data)
 
         data = te.lang.dynamic.cast_to(data, "float16", True)
@@ -154,28 +154,25 @@ def _int32_process(data, dst_type):
     if dst_type == "float16":
         return te.lang.dynamic.cast_to(data, "float16")
 
-    raise RuntimeError("The cast_cce_aicore only support int32"
-                       "cast to bool,int8,uint8,float32,float16.")
-
 
 def _float32_process(data, dst_type):
     """
     deal with src dtype=float32 case
     """
+    check_list_value = ("int32", "float16")
+    check_dtype(dst_type, check_list_value, param_name="from_fp32_to_dsttype")
     if dst_type == "int32":
         return te.lang.dynamic.cast_to(data, "int32")
-
     if dst_type == "float16":
         return te.lang.dynamic.cast_to(data, "float16")
-
-    raise RuntimeError("The cast_cce_aicore only support float32"
-                       "cast to int32,float16.")
 
 
 def _float16_process(data, dst_type):
     """
     deal with src dtype=float16 case
     """
+    check_list_value = ("uint8", "int32", "float32")
+    check_dtype(dst_type, check_list_value, param_name="from_fp16_to_dsttype")
     if dst_type == "float32":
         return te.lang.dynamic.cast_to(data, "float32")
 
@@ -183,8 +180,8 @@ def _float16_process(data, dst_type):
         return te.lang.dynamic.cast_to(data, "int32")
 
     if dst_type == "uint8":
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in \
-                ("Ascend310", "Hi3796CV300ES"):
+        if not tbe_platform.cce_conf.api_check_support("te.lang.dynamic.cast_to", "s322f16") and \
+            tbe_platform.cce_conf.api_check_support("te.lang.dynamic.vmod", "float16"):
             return te.lang.dynamic.cast_to(data, "uint8", True)
         data_int32 = te.lang.dynamic.cast_to(data, "int32")
         data_fp16 = te.lang.dynamic.cast_to(data_int32, "float16")
@@ -193,9 +190,6 @@ def _float16_process(data, dst_type):
         result = te.lang.dynamic.vmod(data_fp16, tensor_256)
         result = te.lang.dynamic.cast_to(result, "float16")
         return te.lang.dynamic.cast_to(result, "uint8", True)
-
-    raise RuntimeError("The cast_cce_aicore only support float16"
-                       "cast to float32,int32,uint8.")
 
 
 def _cast_dsttype_conversion(dst_type):
@@ -241,16 +235,14 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
         check_list = ["bool", "uint8", "int8", "float32", "float16"]
 
     src_shape = input_x.get("shape")
-    if len(src_shape) == 1 and src_shape[0] == 1:
-        if src_type == "int64":
-            check_list = ["int32", "float32"]
+    shape_size = reduceIns(lambda x, y: x * y, src_shape)
+    if shape_size == 1 and src_type == "int64":
+        check_list = ["int32", "float32"]
 
     if dst_type in check_list:
         check_result = True
 
-    if check_result:
-        return True
-    return False
+    return check_result
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -306,8 +298,6 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     if src_data_type == "int32":
         return _int32_process(data, dst_type)
 
-    raise RuntimeError("The cast_cce_aicore don't support this situation")
-
 
 @te.op.register_operator("Cast")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
@@ -357,7 +347,7 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
     if src_type == "bool":
         src_type = "int8"
 
-    schedules = []
+    schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
     for (input_x,) in ins:
         with te.op.compute():
@@ -380,6 +370,7 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
                     tvm.build(schedule, tensor_list, "cce", name=kernel_name)
             else:
                 res = cast_compute(data, output_y, dst_type, kernel_name)
+                tensors.append([data, res])
         if src_type != "int64":
             with tvm.target.cce():
                 sch = generic.auto_schedule(res)
@@ -388,6 +379,6 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
     config = {
         "print_ir": False,
         "name": kernel_name,
-        "tensor_list": [data, res]
+        "tensor_list": tensors
     }
     te.lang.dynamic.build(sch, config)

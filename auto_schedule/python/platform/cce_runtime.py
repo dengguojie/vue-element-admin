@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Runtime function related hooks
 """
 from __future__ import absolute_import as _abs
@@ -22,54 +22,59 @@ import json
 import os
 import stat
 
-from te import tvm
-from te.platform import cce_conf as cceconf
+from te.platform import cce_conf
+from te.platform import cce_params
+
 from te.tvm.contrib import ccec
 from te.tvm.contrib import util
+from te.tvm._ffi.function import register_func
+from te.tvm.intrin import call_pure_intrin
+from te.tvm.intrin import call_extern
 
-from . import cce_params as cce
 
 # def the pipe line dict
-PIPELINES = {10: "PIPE_ALL",9: "PIPE_V2", 8:'PIPE_MTE5', 7:'PIPE_MTE4', 6: "PIPE_MTE3", 5: "PIPE_MTE2", 4: "PIPE_MTE1", 3: "PIPE_M",
+PIPELINES = {10: "PIPE_ALL", 9: "PIPE_V2", 8: 'PIPE_MTE5', 7: 'PIPE_MTE4',
+             6: "PIPE_MTE3", 5: "PIPE_MTE2", 4: "PIPE_MTE1", 3: "PIPE_M",
              2: "PIPE_V", 1: "PIPE_S"}
 EVENTS = ["EVENT_ID0", "EVENT_ID1", "EVENT_ID2", "EVENT_ID3"]
 
 
-@tvm.register_func("tvm.intrin.rule.cce.cce.coproc_sync")
+@register_func("tvm.intrin.rule.cce.cce.coproc_sync")
 def coproc_sync(tvm_cce_op):
     """
     coproc sync
     """
-    pipe = "PIPE_ALL" if not tvm_cce_op.args  else  PIPELINES[tvm_cce_op.args[0].value]
-    cce_print_params = tvm.call_pure_intrin("int32", "tvm_cce_string_print", pipe)
-    return tvm.call_extern(
-        "int32", "pipe_barrier", cce_print_params)
+    pipe = "PIPE_ALL" if not tvm_cce_op.args else PIPELINES[tvm_cce_op.args[0].value]
+    cce_print_params = call_pure_intrin("int32", "tvm_cce_string_print", pipe)
+    return call_extern("int32", "pipe_barrier", cce_print_params)
 
 
-@tvm.register_func("tvm.intrin.rule.cce.cce.coproc_dep_push")
+@register_func("tvm.intrin.rule.cce.cce.coproc_dep_push")
 def coproc_dep_push(tvm_cce_op):
     """
     coproc deep push
     """
     args = [i.value for i in tvm_cce_op.args]
-    cce_print_params = tvm.call_pure_intrin("int32", "tvm_cce_string_print",
-                                            PIPELINES[args[0]], PIPELINES[args[1]], EVENTS[args[2]])
-    return tvm.call_extern("int32", "set_flag", cce_print_params)
+    cce_print_params = call_pure_intrin("int32", "tvm_cce_string_print",
+                                        PIPELINES[args[0]],
+                                        PIPELINES[args[1]], EVENTS[args[2]])
+    return call_extern("int32", "set_flag", cce_print_params)
 
 
-@tvm.register_func("tvm.intrin.rule.cce.cce.coproc_dep_pop")
+@register_func("tvm.intrin.rule.cce.cce.coproc_dep_pop")
 def coproc_dep_pop(tvm_cce_op):
     """
     coproc deep pop
     """
     args = [i.value for i in tvm_cce_op.args]
-    cce_print_params = tvm.call_pure_intrin("int32", "tvm_cce_string_print",
-                                            PIPELINES[args[0]], PIPELINES[args[1]], EVENTS[args[2]])
-    return tvm.call_extern(
-        "int32", "wait_flag", cce_print_params)
+    cce_print_params = call_pure_intrin("int32", "tvm_cce_string_print",
+                                        PIPELINES[args[0]],
+                                        PIPELINES[args[1]], EVENTS[args[2]])
+    return call_extern("int32", "wait_flag", cce_print_params)
+
 
 # pylint: disable=no-member
-@tvm.register_func
+@register_func
 def tvm_callback_create_tmp_dir():
     """
     create tmp dir
@@ -93,51 +98,55 @@ def remove_temp_dir(dirpath):
         util.rm_tmpdir(dirpath + "/")
 
 
-@tvm.register_func
+@register_func
 def tvm_callback_remove_tmp_dir(dirpath):
     """
     remove tmp dir
     """
     remove_temp_dir(dirpath)
 
+
 class CceFlag(object):
+    """CceFlag"""
     BatchBindOnly = False
 
-@tvm.register_func
+
+@register_func
 def tvm_callback_get_cce_output_dir():
     """
     get cce output directory
     """
-    path = os.path.join(os.getcwd(), cce.OUTPUT_PATH_CLASS.output_path)
+    path = os.path.join(os.getcwd(), cce_params.OUTPUT_PATH_CLASS.output_path)
     if path[-1] != '/':
         path += '/'
     return path
 
-@tvm.register_func
-def tvm_callback_create_dir_if_not_exist(dir_path):
+
+@register_func
+def tvm_callback_mkdir(dir_path):
     """
     create directory if not exist
     """
     if os.path.exists(dir_path) and not os.path.isdir(dir_path):
-        raise RuntimeError("The output directory specified "
-                           "should be a directory, "
-                           "but now is a file")
+        raise RuntimeError(
+            "The output directory specified should be a directory, "
+            "but now is a file")
 
     if dir_path[-1] != '/':
         dir_path += '/'
     if not os.path.exists(dir_path):
         try:
-            os.makedirs(dir_path,
-                        stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
+            os.makedirs(dir_path, stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
         except OSError as err:
             raise err
 
-@tvm.register_func
-def tvm_callback_cce_compile(target, kernel_name, dirpath, json_info={}):
+
+@register_func
+def tvm_callback_cce_compile(target, kernel_name, dirpath, json_info=None):
     """
     cce compile
     """
-    output_dir = cce.OUTPUT_PATH_CLASS.output_path
+    output_dir = cce_params.OUTPUT_PATH_CLASS.output_path
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir, stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
@@ -164,22 +173,22 @@ def tvm_callback_cce_compile(target, kernel_name, dirpath, json_info={}):
 
     bin_file_prefix = ""
     bin_file_suffix = ".o"
-    cce_product_params = cceconf.CceProductParams()
+    cce_product_params = cce_conf.CceProductParams()
     aicpu_support_os = cce_product_params.getParams("Compiler_aicpu_support_os")
     if is_aicpu and aicpu_support_os:
         bin_file_prefix = "lib"
         bin_file_suffix = ".so"
 
-    for key, va in json_info.items():
+    json_info = json_info or {}
+    for key, val in json_info.items():
         if key.name == "batchBindOnly":
             CceFlag.BatchBindOnly = True
 
     try:
-        ccebin = ccec.compile_cce(dirpath, kernel_name, target,
-                                  path_target=os.path.join(
-                                      output_dir,
-                                      bin_file_prefix + kernel_name +
-                                      bin_file_suffix))
+        ccebin = ccec.compile_cce(
+            dirpath, kernel_name, target,
+            path_target=os.path.join(
+                output_dir, bin_file_prefix + kernel_name + bin_file_suffix))
     except Exception as errs:
         remove_temp_dir(dirpath)
         raise RuntimeError("compile cce error : ", errs)
@@ -198,34 +207,53 @@ def write_code(js_dict, fname):
             with open(fname, "w") as nwe_file:
                 # Only the owner and group have rights
                 os.chmod(fname, stat.S_IRUSR + stat.S_IWUSR + stat.S_IRGRP)
-                json.dump(js_dict, nwe_file,
-                          sort_keys=True, indent=4, separators=(',', ':'))
+                json.dump(js_dict, nwe_file, sort_keys=True, indent=4,
+                          separators=(',', ':'))
         except Exception as err:
             raise RuntimeError("open file error, reason:", err)
 
 
 def add_json_info(title_dict, json_info, json_info_tuple):
-    for key, va in json_info.items():
-        title_dict[key.name] = va.value
+    """add json info"""
+    json_info = json_info or {}
+    json_info_tuple = json_info_tuple or {}
+    for key, val in json_info.items():
+        title_dict[key.name] = val.value
         if key.name == "batchBindOnly":
             CceFlag.BatchBindOnly = True
-    for key, va in json_info_tuple.items():
+    for key, val in json_info_tuple.items():
         list_value = []
-        for args in va:
+        for args in val:
             list_value.append(int(args))
         title_dict[key.name] = list_value
     return title_dict
 
+
+def _add_kernel_magic(soc_version, aicore_type):
+    if soc_version == "Ascend615" and aicore_type == "VectorCore":
+        title_dict = {"magic": "RT_DEV_BINARY_MAGIC_ELF_AIVEC"}
+    else:
+        title_dict = {"magic": "RT_DEV_BINARY_MAGIC_ELF"}
+    return title_dict
+
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 # blockdim: cpu num,default value is 1.
-@tvm.register_func
-def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, args_size=0, atomic_args="", json_info={}, json_info_tuple={}):
+@register_func
+def tvm_callback_cce_postproc(target,
+                              kernel_name,
+                              blockdim=1,
+                              args_size=0,
+                              atomic_args="",
+                              json_info=None,
+                              json_info_tuple=None):
     """
     cce postproc
     """
     is_aicpu = False
     if target == "cce_core":
-        title_dict = {"magic": "RT_DEV_BINARY_MAGIC_ELF"}
+        soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+        aicore_type = cce_conf.get_soc_spec("AICORE_TYPE")
+        title_dict = _add_kernel_magic(soc_version, aicore_type)
     elif target == "cce_cpu":
         title_dict = {"magic": "RT_DEV_BINARY_MAGIC_ELF_AICPU"}
         is_aicpu = True
@@ -239,7 +267,7 @@ def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, args_size=0, atom
         raise ValueError("Unknown architecture, does not support now")
 
     # get the instance of CcePructParams
-    cce_product_params = cceconf.CceProductParams()
+    cce_product_params = cce_conf.CceProductParams()
     # for aicpu supports os only
     aicpu_support_os = cce_product_params.getParams("Compiler_aicpu_support_os")
 
@@ -253,7 +281,8 @@ def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, args_size=0, atom
 
     # compute the sha256 of a given tvm_cce_op file used by domi
     sha256_hash = ""
-    bin_file_path = os.path.join(cce.OUTPUT_PATH_CLASS.output_path, bin_file_name + bin_file_suffix)
+    bin_file_path = os.path.join(cce_params.OUTPUT_PATH_CLASS.output_path,
+                                 bin_file_name + bin_file_suffix)
     try:
         with open(bin_file_path, 'rb') as nwe_file:
             # Only the owner and group have rights
@@ -273,30 +302,31 @@ def tvm_callback_cce_postproc(target, kernel_name, blockdim=1, args_size=0, atom
     title_dict["binFileName"] = bin_file_name
     title_dict["sha256"] = sha256_hash
     # pylint: disable=len-as-condition
-    if hasattr(cce.TIK_WORKSPACE_SIZE_LIST, "local_list") and \
-            len(cce.TIK_WORKSPACE_SIZE_LIST.local_list) > 0:
-        title_dict["workspace"] = {"num": len(cce.TIK_WORKSPACE_SIZE_LIST.
-                                              local_list),
-                                   "size": cce.
-                                           TIK_WORKSPACE_SIZE_LIST.local_list}
+    if hasattr(cce_params.TIK_WORKSPACE_SIZE_LIST, "local_list") and \
+            len(cce_params.TIK_WORKSPACE_SIZE_LIST.local_list) > 0:
+        title_dict["workspace"] = {
+            "num": len(cce_params.TIK_WORKSPACE_SIZE_LIST.local_list),
+            "size": cce_params. TIK_WORKSPACE_SIZE_LIST.local_list}
     list_value = []
     # pylint: disable=len-as-condition
     for args in atomic_args:
         list_value.append(int(args))
     title_dict["parameters"] = list_value
 
-    if hasattr(cce.TIK_ATOMIC_ADD_LIST, "local_list") and \
-            len(cce.TIK_ATOMIC_ADD_LIST.local_list) > 0:
-        title_dict["parameters"] = cce.TIK_ATOMIC_ADD_LIST.local_list
+    if hasattr(cce_params.TIK_ATOMIC_ADD_LIST, "local_list") and \
+            len(cce_params.TIK_ATOMIC_ADD_LIST.local_list) > 0:
+        title_dict["parameters"] = cce_params.TIK_ATOMIC_ADD_LIST.local_list
 
     # the tvm_cce_op json file used by domi
     # kernel_name has been checked, it only contains letters, numbers and underscores
-    file_name = os.path.join(cce.OUTPUT_PATH_CLASS.output_path, kernel_name + ".json")
+    file_name = os.path.join(cce_params.OUTPUT_PATH_CLASS.output_path,
+                             kernel_name + ".json")
 
-    if not os.path.exists(cce.OUTPUT_PATH_CLASS.output_path):
+    if not os.path.exists(cce_params.OUTPUT_PATH_CLASS.output_path):
         try:
-            os.mkdir(cce.OUTPUT_PATH_CLASS.output_path)
-            os.chmod(cce.OUTPUT_PATH_CLASS.output_path, stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
+            os.mkdir(cce_params.OUTPUT_PATH_CLASS.output_path)
+            os.chmod(cce_params.OUTPUT_PATH_CLASS.output_path,
+                     stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
         except OSError as err:
             # 17, OSError: [Errno 17] File exists
             if err.errno == 17:

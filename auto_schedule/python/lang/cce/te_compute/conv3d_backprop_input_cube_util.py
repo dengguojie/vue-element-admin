@@ -1,20 +1,31 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
 cube util.
 """
-
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
+from te.utils.error_manager import error_manager_util
 from te import tvm
-from te.utils.error_manager import error_manager_util as err_mana
 
 
-def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
-                     tensor_a,
-                     kernel_w,
-                     padding,
-                     stride,
-                     compute_dtype,
-                     tag=''):
+def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
+                      tensor_a,
+                      kernel_w,
+                      padding,
+                      stride,
+                      compute_dtype,
+                      tag=''):
     """
     calculate im2col_row_major tensor
     Parameters
@@ -57,12 +68,10 @@ def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
         Returns : im2col_row_major tensor
         """
         _, _, _, a_height, a_width, _ = tensor_a.shape
-        n_index, deep_index, hw_index,\
-        c1_index, kh_index, kw_index, c0_index = indices
+        n_index, deep_index, hw_index, c1_index, kh_index, kw_index, c0_index = indices
         stride_h, stride_w = stride
         padding_up, _, padding_left, padding_right = padding
-        width_out = (a_width.value + padding_left + padding_right - kernel_w) \
-                    // stride_w + 1
+        width_out = (a_width.value + padding_left + padding_right - kernel_w) // stride_w + 1
 
         h_index = (hw_index // width_out) * stride_h + kh_index
         w_index = (hw_index % width_out) * stride_w + kw_index
@@ -87,7 +96,7 @@ def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
                        attrs={'padding': padding})
 
 
-def im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
+def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
     """
     calculate im2col_fractal tensor
     Parameters
@@ -116,8 +125,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
         Returns : im2col_fractal tvm lambda function
         """
         _, _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
-        _, _, a_row_major_hw, _, kernel_h, kernel_w, _ =\
-            tensor_a_row_major.shape
+        _, _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
         n_index, deep_index, m1_index, k1_index, m0_index, k0_index = indices
 
         hw_index = m1_index*a_col_m0 + m0_index
@@ -128,8 +136,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
         kh_index = (((k1_index*a_col_k0 + k0_index) // a_col_k0) //
                     kernel_w.value) % kernel_h.value
 
-        kw_index = ((k1_index*a_col_k0
-                     + k0_index) // a_col_k0) % kernel_w.value
+        kw_index = ((k1_index*a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
 
         c0_index = (k1_index*a_col_k0 + k0_index) % a_col_k0
 
@@ -151,7 +158,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
                        tag=tag+'im2col_fractal')
 
 
-class CubeDslPattern:
+class CubeDslPattern(object):
     """
     class of cube mmad calculation
 
@@ -186,26 +193,25 @@ class CubeDslPattern:
         ----------
         type_c : data type of tensor c
         """
-        cal_hash = lambda tp_a, tp_b, tp_bias: \
-            hash(str(tp_a) + str(tp_b) + str(tp_bias))
+        def _cal_hash(tp_a, tp_b, tp_bias): return hash(str(tp_a) + str(tp_b) + str(tp_bias))
 
         if CubeDslPattern.type_c_map == {}:
             CubeDslPattern.type_c_map[
-                cal_hash("uint8", "uint8", None)] = "int32"
-            CubeDslPattern.type_c_map[cal_hash("int8", "int8", None)] = "int32"
+                _cal_hash("uint8", "uint8", None)] = "int32"
+            CubeDslPattern.type_c_map[_cal_hash("int8", "int8", None)] = "int32"
             CubeDslPattern.type_c_map[
-                cal_hash("float16", "float16", None)] = "float16"
+                _cal_hash("float16", "float16", None)] = "float16"
             CubeDslPattern.type_c_map[
-                cal_hash("float16", "float16", "float32")] = "float32"
+                _cal_hash("float16", "float16", "float32")] = "float32"
             CubeDslPattern.type_c_map[
-                cal_hash("float16", "float16", "float16")] = "float16"
+                _cal_hash("float16", "float16", "float16")] = "float16"
 
-        type_c_key = cal_hash(type_a, type_b, type_bias)
+        type_c_key = _cal_hash(type_a, type_b, type_bias)
         type_c = CubeDslPattern.type_c_map.get(type_c_key)
 
         return type_c
 
-    def generate_c(self, # pylint: disable=R0914
+    def generate_c(self,  # pylint: disable=R0914
                    tensor_a, tensor_b, c_type=None):
         """
         calculate the mad result tensor
@@ -222,7 +228,7 @@ class CubeDslPattern:
         ----------
         tensor_c : mad result tensor
         """
-        def __mad_condition(indices, # pylint: disable=R0914,R0913
+        def __mad_condition(indices,  # pylint: disable=R0914,R0913
                             axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
             n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
@@ -240,7 +246,7 @@ class CubeDslPattern:
                 tvm.const(0.0, type_c))
             return tensor_c
 
-        def __mad_condition_stride1(indices, # pylint: disable=R0914,R0913
+        def __mad_condition_stride1(indices,  # pylint: disable=R0914,R0913
                                     axis_kd, axis_k1,
                                     axis_k0, tensor_a, tensor_b):
             n_index, deep_index, co1_index, m_index, co0_index = indices
@@ -255,7 +261,7 @@ class CubeDslPattern:
                 tvm.const(0.0, type_c))
             return tensor_c
 
-        def __mad_condition_noverlap(indices, # pylint: disable=R0914,R0913
+        def __mad_condition_noverlap(indices,  # pylint: disable=R0914,R0913
                                      axis_k1,
                                      axis_k0, tensor_a, tensor_b):
             n_index, deep_index, co1_index, m_index, co0_index = indices
@@ -265,8 +271,8 @@ class CubeDslPattern:
                 tensor_a(n_index, (deep_index + pad_head)//stride_d,
                          m_index // a_m0, axis_k1, m_index % a_m0,
                          axis_k0).astype(type_c) *
-                tensor_b((deep_index + pad_head) % stride_d, axis_k1,
-                         co1_index, co0_index, axis_k0).astype(type_c),
+                    tensor_b((deep_index + pad_head) % stride_d, axis_k1,
+                             co1_index, co0_index, axis_k0).astype(type_c),
                 tvm.const(0.0, type_c))
             return tensor_c
 
@@ -292,17 +298,15 @@ class CubeDslPattern:
                                axis=[axis_k1, axis_k0])
             return tensor_c
 
-        a_batch, a_deep, a_m1, a_k1, a_m0, a_k0 = \
-            list(i.value for i in tensor_a.shape)
+        a_batch, a_deep, a_m1, a_k1, a_m0, a_k0 = list(i.value for i in tensor_a.shape)
         axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
         axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
         b_kd, _, b_n1, b_n0, _ = list(i.value for i in tensor_b.shape)
         axis_kd = tvm.reduce_axis([0, b_kd], name='axis_kd')
-        pad_head, pad_tail = \
-            self._pad_head, self._pad_tail # pylint: disable=E1101
-        stride_d = self._stride_d # pylint: disable=E1101
-        output_depth = self.output_shape[1] # pylint: disable=E1101
-        kernel_d = self._kernel_d # pylint: disable=E1101
+        pad_head, pad_tail = self._pad_head, self._pad_tail  # pylint: disable=E1101
+        stride_d = self._stride_d  # pylint: disable=E1101
+        output_depth = self.output_shape[1]  # pylint: disable=E1101
+        kernel_d = self._kernel_d  # pylint: disable=E1101
         shape_c = (a_batch, output_depth, b_n1, a_m1*a_m0, b_n0)
         type_c = c_type if c_type is not None else CubeDslPattern.get_type_c(
             tensor_a.dtype, tensor_b.dtype)
@@ -345,7 +349,8 @@ class CubeDslPattern:
                 tag="mad")
         return tensor_c
 
-class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
+
+class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     """
     class of convolution
 
@@ -369,11 +374,10 @@ class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
         self._kernel_h = kernel_h
         self._kernel_w = kernel_w
         self._stride_d, self._stride_h, self._stride_w = stride
-        self._pad_head, self._pad_tail, self._pad_up, self._pad_down,\
-        self._pad_left, self._pad_right = pad
+        self._pad_head, self._pad_tail, self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
         self._m0 = 16
 
-    def cal_howo(self, height_in, width_in):
+    def _cal_howo(self, height_in, width_in):
         """
         calculate the height and width of convolution output tensor
 
@@ -405,7 +409,7 @@ class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
                 stride))
         return height_out, width_out
 
-    def generate_a(self, feature_map): # pylint: disable=R0914
+    def generate_a(self, feature_map):  # pylint: disable=R0914
         """
         calculate im2col_fractal tensor
 
@@ -417,15 +421,14 @@ class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
         -------
         a_col : a_im2col_fractal tensor
         """
-        a_batch, a_deep, a_c1, a_h, a_w, a_c0 =\
-            list(i.value for i in feature_map.shape)
+        a_batch, a_deep, a_c1, a_h, a_w, a_c0 = list(i.value for i in feature_map.shape)
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
         new_pad = [self._pad_up, self._pad_down,
                    self._pad_left, self._pad_right]
         stride = [self._stride_h, self._stride_w]
 
-        height_out, width_out = self.cal_howo(a_h, a_w)
+        height_out, width_out = self._cal_howo(a_h, a_w)
 
         a_im2col_row_major_shape = (a_batch,
                                     a_deep,
@@ -434,23 +437,23 @@ class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
                                     kernel_h,
                                     kernel_w,
                                     a_c0)
-        a_row_major = im2col_row_major(a_im2col_row_major_shape,
-                                       feature_map,
-                                       kernel_w,
-                                       padding=new_pad,
-                                       stride=stride,
-                                       compute_dtype=feature_map.dtype)
+        a_row_major = _im2col_row_major(a_im2col_row_major_shape,
+                                        feature_map,
+                                        kernel_w,
+                                        padding=new_pad,
+                                        stride=stride,
+                                        compute_dtype=feature_map.dtype)
         a_im2col_fractal_shape = (a_batch,
                                   a_deep,
-                                  (height_out*width_out + self._m0 - 1) \
+                                  (height_out*width_out + self._m0 - 1)
                                   // self._m0,
                                   a_c1 * kernel_h * kernel_w,
                                   self._m0,
                                   a_c0)
-        a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major)
+        a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major)
         return a_col
 
-    def generate_c(self, tensor_a, tensor_b): # pylint: disable=W0221
+    def generate_c(self, tensor_a, tensor_b):  # pylint: disable=W0221
         """
         calculate convolution output tensor
 
@@ -477,5 +480,5 @@ class ConvDslPattern(CubeDslPattern): # pylint: disable=R0902
                 'value': str(ho_wo)
             }
             raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
         return tensor_c

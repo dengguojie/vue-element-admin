@@ -1,35 +1,39 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Runtime function related hooks
 """
 # pylint: disable=import-error
 from __future__ import absolute_import as _abs
 import math
-import os
-from functools import reduce
+from functools import reduce as _reduce
 from functools import cmp_to_key
-from te import tvm
-from . import cce_conf
-from . import cce_emitinsn_params
-from . import cce_params as cce
-from . import cce_util
-from . import conv_buffer_ex
-from .cce_conf import CceProductParams as pver
+
+from te.platform import cce_conf
+from te.platform import cce_emitinsn_params
+from te.platform import cce_params
+from te.platform import cce_util
+
+from te.tvm._ffi.function import register_func
+from te.tvm.ir_builder import create as _create
+from te.tvm.intrin import call_extern
+from te.tvm import ir_pass
+from te.tvm import api as tvm
+from te.tvm import expr as _expr
+from te.tvm import stmt as _stmt
+from te.tvm import make as _make
 
 
 # max repeat time
@@ -39,17 +43,13 @@ MAX_CAL_TIMES = 254
 # the number was tested by experiment
 MAX_BRACKET_DEPTH = 250
 
-BITSIZE_OF_FP16 = 1
-BITSIZE_OF_FP32 = 2
-
 # Alignment requirement
 ALIGNMENT_BYTES = 32
 
 CALL_TYPE = "handle"
 
-# pylint: too-many-return-statements,too-few-public-methods,too-many-arguments,no-member
-# pylint: too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches
-@tvm.register_func("tvm.intrin.cce.inplace_add")
+
+@register_func("tvm.intrin.cce.inplace_add")
 def inplace_add(stmt_op):
     """
     inplace_add
@@ -59,7 +59,7 @@ def inplace_add(stmt_op):
     return vec_inplace(stmt_op, "inplace_add")
 
 
-@tvm.register_func("tvm.intrin.cce.inplace_sub")
+@register_func("tvm.intrin.cce.inplace_sub")
 def inplace_sub(stmt_op):
     """
     inplace_sub
@@ -69,7 +69,7 @@ def inplace_sub(stmt_op):
     return vec_inplace(stmt_op, "inplace_sub")
 
 
-@tvm.register_func("tvm.intrin.cce.inplace_update")
+@register_func("tvm.intrin.cce.inplace_update")
 def inplace_update(stmt_op):
     """
     inplace_update
@@ -92,17 +92,17 @@ def vec_inplace(stmt_op, intrinsic_cmd):
     size = cce_util.get_op_lenth(stmt_op)
     inplace_ids = cce_util.get_inplace_ids(stmt_op)
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     # 1.Tensor vs Scalar: tvm.select((i0.outer == 0), (dataA.local.UB[0]+6.296875h),
     #   dataA.local.UB[0])
     if len(outs[0].shape) == 1 and scalar_const is not None:
-        scalar_buf = cce_util.apply_for_new_alloc(ir_builder, outs[0].dtype, (1,), \
-                                                  scope=cce.scope_ubuf)
-        vec_broadcast(ir_builder, op_cmd="vector_dup", dst_buffers=[scalar_buf], \
+        scalar_buf = cce_util.apply_for_new_alloc(ir_builder, outs[0].dtype, (1,),
+                                                  scope=cce_params.scope_ubuf)
+        vec_broadcast(ir_builder, op_cmd="vector_dup", dst_buffers=[scalar_buf],
                       op_length=1, reset_mask=1, extern_args=[scalar_const])
         with ir_builder.if_scope(outer_axis_var == inplace_ids[0]):
-            inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], scalar_buf, outs[0], \
+            inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], scalar_buf, outs[0],
                                    size, intrinsic_cmd)
         with ir_builder.else_scope():
             inplace_ub2ub_ib_emit(ir_builder, outs[0], ins[0], size)
@@ -118,7 +118,7 @@ def vec_inplace(stmt_op, intrinsic_cmd):
     elif (inplace_ids is None) and (len(ins) >= 2):
         inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], ins[1], outs[0], size, intrinsic_cmd)
         for loops in range(2, len(ins)):
-            inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[loops], outs[0], \
+            inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[loops], outs[0],
                                    size, intrinsic_cmd)
 
     # After IR PASS, it have tvm.select
@@ -134,12 +134,12 @@ def vec_inplace(stmt_op, intrinsic_cmd):
             with ir_builder.if_scope(outer_axis_var == inplace_ids[idx]):
                 rhs_idx = inplace_ids_all.index(inplace_ids[idx])
                 inplace_ids_all[rhs_idx] = -1
-                inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], ins[rhs_idx+1], outs[0], \
+                inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], ins[rhs_idx+1], outs[0],
                                        size, intrinsic_cmd)
                 for _ in range(inplace_ids_all.count(inplace_ids[idx])):
                     rhs_idx = inplace_ids_all.index(inplace_ids[idx])
                     inplace_ids_all[rhs_idx] = -1
-                    inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[rhs_idx+1], outs[0], \
+                    inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[rhs_idx+1], outs[0],
                                            size, intrinsic_cmd)
             with ir_builder.else_scope():
                 recurisive_inplace_ib_gen(idx+1)
@@ -153,12 +153,12 @@ def vec_inplace(stmt_op, intrinsic_cmd):
                 with ir_builder.if_scope(outer_axis_var == inplace_ids[idx]):
                     rhs_idx = inplace_ids_all.index(inplace_ids[idx])
                     inplace_ids_all[rhs_idx] = -1
-                    inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], ins[rhs_idx+1], outs[0], \
+                    inplace_intrin_ib_emit(ir_builder, stmt_op, ins[0], ins[rhs_idx+1], outs[0],
                                            size, intrinsic_cmd)
                     for _ in range(inplace_ids_all.count(inplace_ids[idx])):
                         rhs_idx = inplace_ids_all.index(inplace_ids[idx])
                         inplace_ids_all[rhs_idx] = -1
-                        inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[rhs_idx+1], \
+                        inplace_intrin_ib_emit(ir_builder, stmt_op, outs[0], ins[rhs_idx+1],
                                                outs[0], size, intrinsic_cmd)
 
         # the limit of the nesting depth in the generated CCE,
@@ -179,7 +179,7 @@ def inplace_ub2ub_ib_emit(ir_builder, dst, src, size):
     align_factor = cce_util.get_data_alignment(dst.dtype)
     len_burst = (size+align_factor - 1)//align_factor
     # copy 2048KB max once, larger than UB 256KB
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, "copy_ubuf_to_ubuf",
         dst.access_ptr("rw"),
         src.access_ptr("r"),
@@ -189,6 +189,7 @@ def inplace_ub2ub_ib_emit(ir_builder, dst, src, size):
         0,  # src_stride
         0  # dst_stride
     ))
+
 
 # pylint: disable=unused-argument
 def inplace_intrin_ib_emit(ir_builder, stmt_op, src0, src1, dst, size, intrinsic_cmd):
@@ -209,7 +210,7 @@ def inplace_intrin_ib_emit(ir_builder, stmt_op, src0, src1, dst, size, intrinsic
                 tmp_repeat_times = min(local_repeat_times, MAX_CAL_TIMES)
 
                 # compute 63.5KB max once, need repeat compute
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dst.dtype, cmd_str,
                     dst.access_ptr('w', offset=repeat_offset),
                     src0.access_ptr('r', offset=repeat_offset),
@@ -223,7 +224,7 @@ def inplace_intrin_ib_emit(ir_builder, stmt_op, src0, src1, dst, size, intrinsic
         if last_one_length > 0:
             # set mask
             reset_mask_insn(ir_builder, dst.dtype, bits=last_one_length)
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst.dtype, cmd_str,
                 dst.access_ptr('w', offset=repeat_times*block_ele_num),
                 src0.access_ptr('r', offset=repeat_times*block_ele_num),
@@ -241,7 +242,7 @@ def inplace_intrin_ib_emit(ir_builder, stmt_op, src0, src1, dst, size, intrinsic
         align_factor = cce_util.get_data_alignment(dst.dtype)
         len_burst = (size+align_factor - 1)//align_factor
         # copy 2048KB max once, larger than UB 256KB
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dst.dtype, "copy_ubuf_to_ubuf",
             dst.access_ptr("rw"),
             src1.access_ptr("r"),
@@ -252,20 +253,21 @@ def inplace_intrin_ib_emit(ir_builder, stmt_op, src0, src1, dst, size, intrinsic
             0  # dst_stride
         ))
     else:
-        raise RuntimeError("not support intrinsic_cmd: %s"%intrinsic_cmd)
+        raise RuntimeError("not support intrinsic_cmd: %s" % intrinsic_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.dma_copy")
+@register_func("tvm.intrin.cce.dma_copy")
 def dma_copy(stmt_op):
     """
     dma_copy
     """
     ins, outs, if_var, sel_var = cce_util.get_dma_buffer(stmt_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     def _gen_sel(ib_in, input_local, vars_local):
         if vars_local:
-            with ir_builder.if_scope(tvm.ir_pass.Simplify(vars_local[0].condition)):
+            with ir_builder.if_scope(
+                    ir_pass.Simplify(vars_local[0].condition)):
                 if len(vars_local) > 1:
                     _gen_sel(ib_in, input_local[:len(input_local) - 1], vars_local[1:])
                 else:
@@ -276,7 +278,8 @@ def dma_copy(stmt_op):
     if if_var != []:
         def _gen_if(ib_in, vars_local):
             if vars_local:
-                with ir_builder.if_scope(tvm.ir_pass.Simplify(vars_local[0].condition)):
+                with ir_builder.if_scope(
+                        ir_pass.Simplify(vars_local[0].condition)):
                     if len(vars_local) == 1:
                         if sel_var != []:
                             _gen_sel(ib_in, ins, sel_var)
@@ -294,13 +297,13 @@ def dma_copy(stmt_op):
 
 
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.elewise_binary_phony")
+@register_func("tvm.intrin.cce.elewise_binary_phony")
 def elewise_binary_phony(stmt_op):
     """
     elewise_binary_phony which will eliminate its second input tensor
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(stmt_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     def new_alloc(ir_builder, dtype, shape, name, scope):
         """
@@ -322,7 +325,7 @@ def elewise_binary_phony(stmt_op):
     total_block = int(total_element) // int(_block_unit_size)
     remain = int(total_element % _block_unit_size)
     if total_block > 0:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             ins[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw"),
             ins[0].access_ptr("r"),
@@ -339,14 +342,14 @@ def elewise_binary_phony(stmt_op):
                         ins[0].dtype,
                         (_block_unit_size,),
                         "copy_part",
-                        scope=cce.scope_ubuf)
+                        scope=cce_params.scope_ubuf)
         # reg_mov src data
         with ir_builder.for_range(0, _block_unit_size, name="reg_idx") as reg_idx:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 ins[0].dtype, "reg_mov",
                 reg.access_ptr("rw", offset=reg_idx),
                 ins[0].access_ptr("r", offset=total_block*_block_unit_size-roll_back_size+reg_idx)))
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             ins[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw", offset=total_block*_block_unit_size-roll_back_size),
             reg.access_ptr("r"),
@@ -356,7 +359,7 @@ def elewise_binary_phony(stmt_op):
             0,
             0))
     if remain > 0 and total_block == 0:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             ins[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw", offset=0),
             ins[0].access_ptr("r", offset=0),
@@ -370,8 +373,8 @@ def elewise_binary_phony(stmt_op):
                              ins[1].dtype,
                              (8,),
                              "elewise_binary_phony_buffer",
-                             cce.scope_ubuf)
-    ir_builder.emit(tvm.call_extern(
+                             cce_params.scope_ubuf)
+    ir_builder.emit(call_extern(
         ins[1].dtype, "copy_gm_to_ubuf",
         phony_buffer.access_ptr("rw"),
         ins[1].access_ptr("r"),
@@ -383,7 +386,7 @@ def elewise_binary_phony(stmt_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.group_gm_to_ub")
+@register_func("tvm.intrin.cce.group_gm_to_ub")
 def group_gm_to_ub(stmt_op):
     """
     this fuction can replace such this ir to intric:
@@ -407,12 +410,12 @@ def group_gm_to_ub(stmt_op):
         raise RuntimeError("the dma ir is wrong")
 
     size = cce_util.get_op_lenth(stmt_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     for i, _ in enumerate(ins):
         align_factor = cce_util.get_data_alignment(outs[i].dtype)
         len_burst = (size+align_factor - 1)//align_factor
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[i].dtype, "copy_ubuf_to_gm",
             outs[i].access_ptr("rw"),
             ins[i].access_ptr("r"),
@@ -425,7 +428,7 @@ def group_gm_to_ub(stmt_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_abs")
+@register_func("tvm.intrin.cce.elewise_single_abs")
 def elewise_single_abs(stmt_op):
     """
     :param stmt_op: the stmt of for with abs
@@ -434,7 +437,7 @@ def elewise_single_abs(stmt_op):
     return vec_single_elewise(stmt_op, "vabs")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_log")
+@register_func("tvm.intrin.cce.elewise_single_log")
 def elewise_single_log(stmt_op):
     """
      :param stmt_op: the stmt of for with log
@@ -443,7 +446,7 @@ def elewise_single_log(stmt_op):
     return vec_single_elewise(stmt_op, "vln")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_exp")
+@register_func("tvm.intrin.cce.elewise_single_exp")
 def elewise_single_exp(stmt_op):
     """
         :param stmt_op: the stmt of for with exp
@@ -452,7 +455,7 @@ def elewise_single_exp(stmt_op):
     return vec_single_elewise(stmt_op, "vexp")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_relu")
+@register_func("tvm.intrin.cce.elewise_single_relu")
 def elewise_single_relu(stmt_op):
     """
         :param stmt_op: the stmt of for with relu
@@ -461,7 +464,7 @@ def elewise_single_relu(stmt_op):
     return vec_single_elewise(stmt_op, "vrelu")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_not")
+@register_func("tvm.intrin.cce.elewise_single_not")
 def elewise_single_not(stmt_op):
     """
         :param stmt_op: the stmt of for with relu
@@ -470,7 +473,7 @@ def elewise_single_not(stmt_op):
     return vec_single_elewise(stmt_op, "vnot")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_rec")
+@register_func("tvm.intrin.cce.elewise_single_rec")
 def elewise_single_rec(stmt_op):
     """
         :param stmt_op: the stmt of for with rec
@@ -479,7 +482,7 @@ def elewise_single_rec(stmt_op):
     return vec_single_elewise(stmt_op, "vrec")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_sqrt")
+@register_func("tvm.intrin.cce.elewise_single_sqrt")
 def elewise_single_sqrt(stmt_op):
     """
         :param stmt_op: the stmt of for with rec
@@ -488,7 +491,7 @@ def elewise_single_sqrt(stmt_op):
     return vec_single_elewise(stmt_op, "vsqrt")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_rsqrt")
+@register_func("tvm.intrin.cce.elewise_single_rsqrt")
 def elewise_single_rsqrt(stmt_op):
     """
         :param stmt_op: the stmt of for with rec
@@ -497,7 +500,7 @@ def elewise_single_rsqrt(stmt_op):
     return vec_single_elewise(stmt_op, "vrsqrt")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_round")
+@register_func("tvm.intrin.cce.elewise_single_round")
 def elewise_single_round(stmt_op):
     """
         :param stmt_op: the stmt of for with round
@@ -518,7 +521,7 @@ def elewise_single_round(stmt_op):
     return vec_single_elewise(stmt_op, intrinsic_cmd, args, repeat_cal_dtype)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_floor")
+@register_func("tvm.intrin.cce.elewise_single_floor")
 def elewise_single_floor(tensor_op):
     """
         :param tensor_op: the stmt of for with floor
@@ -538,7 +541,7 @@ def elewise_single_floor(tensor_op):
     return vec_single_elewise(tensor_op, intrinsic_cmd, args, repeat_cal_dtype)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_ceil")
+@register_func("tvm.intrin.cce.elewise_single_ceil")
 def elewise_single_ceil(tensor_op):
     """
         :param tensor_op: the stmt of for with ceil
@@ -558,7 +561,7 @@ def elewise_single_ceil(tensor_op):
     return vec_single_elewise(tensor_op, intrinsic_cmd, args, repeat_cal_dtype)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_trunc")
+@register_func("tvm.intrin.cce.elewise_single_trunc")
 def elewise_single_trunc(tensor_op):
     """
          :param tensor_op: the stmt of for with trunc
@@ -578,7 +581,7 @@ def elewise_single_trunc(tensor_op):
     return vec_single_elewise(tensor_op, intrinsic_cmd, args, repeat_cal_dtype)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_cast_s322fp16")
+@register_func("tvm.intrin.cce.elewise_single_cast_s322fp16")
 def elewise_single_cast_s322fp16(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -587,7 +590,7 @@ def elewise_single_cast_s322fp16(tensor_op):
     return elewise_single_cast(tensor_op)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_cast")
+@register_func("tvm.intrin.cce.elewise_single_cast")
 def elewise_single_cast(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -623,13 +626,13 @@ def copy_ubuf_to_ubuf_case(tensor_op):
           :return: the intric stmt what we want
     """
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     dtype = ins[0].dtype
 
     lens = cce_util.get_op_lenth(tensor_op)
     align_factor = cce_util.get_align_of(dtype)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         outs[0].dtype, "copy_ubuf_to_ubuf",
         outs[0].access_ptr("rw"),
         ins[0].access_ptr("r"),
@@ -642,7 +645,7 @@ def copy_ubuf_to_ubuf_case(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_scalar_axpy")
+@register_func("tvm.intrin.cce.elewise_binary_scalar_axpy")
 def elewise_binary_scalar_axpy(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -655,7 +658,7 @@ def elewise_binary_scalar_axpy(tensor_op):
                                 cce_util.get_binary_scalar_axpy_extern_args(tensor_op))
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_mul")
+@register_func("tvm.intrin.cce.elewise_single_VS_mul")
 def elewise_single_VS_mul(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -665,11 +668,11 @@ def elewise_single_VS_mul(tensor_op):
     ins, _ = cce_util.get_buffer(tensor_op)
     if not ins:
         return broadcast(tensor_op)
-    return vec_VSsingle_elewise(tensor_op, "vmuls", \
+    return vec_VSsingle_elewise(tensor_op, "vmuls",
                                 cce_util.get_elewise_single_vs_extern_args(tensor_op))
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg_in_quant")
+@register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg_in_quant")
 def elewise_single_VS_mul_with_reg_in_quant(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -680,11 +683,12 @@ def elewise_single_VS_mul_with_reg_in_quant(tensor_op):
     if not ins:
         return broadcast(tensor_op)
 
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vmuls", scope=cce.scope_reg)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vmuls",
+                              scope=cce_params.scope_reg)
+    ir_builder.emit(call_extern(
         outs[0].dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[0]),
+        call_extern(reg.dtype, "reg", reg[0]),
         ins[1].access_ptr("rw"),
     ))
     ir_builder.emit(vec_VSsingle_elewise(tensor_op, "vmuls", [reg[0]]))
@@ -692,7 +696,7 @@ def elewise_single_VS_mul_with_reg_in_quant(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_adds_with_reg")
+@register_func("tvm.intrin.cce.elewise_single_VS_adds_with_reg")
 def elewise_single_VS_adds_with_reg(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -703,11 +707,12 @@ def elewise_single_VS_adds_with_reg(tensor_op):
     if not ins:
         return broadcast(tensor_op)
 
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vadds", scope=cce.scope_reg)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vadds",
+                              scope=cce_params.scope_reg)
+    ir_builder.emit(call_extern(
         outs[0].dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[0]),
+        call_extern(reg.dtype, "reg", reg[0]),
         ins[1].access_ptr("rw"),
     ))
     ir_builder.emit(vec_VSsingle_elewise(tensor_op, "vadds", [reg[0]]))
@@ -715,7 +720,7 @@ def elewise_single_VS_adds_with_reg(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg_sqrt_in_quant")
+@register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg_sqrt_in_quant")
 def elewise_single_VS_mul_with_reg_sqrt_in_quant(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -726,40 +731,43 @@ def elewise_single_VS_mul_with_reg_sqrt_in_quant(tensor_op):
     if not ins:
         return broadcast(tensor_op)
 
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vmuls_sqrt", scope=cce.scope_reg)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf_vmuls_sqrt",
+                              scope=cce_params.scope_reg)
+    ir_builder.emit(call_extern(
         outs[0].dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[0]),
+        call_extern(reg.dtype, "reg", reg[0]),
         ins[1].access_ptr("r"),
     ))
     # get the load
     load = []
 
     def _post_order_load(tensor_op):
-        if isinstance(tensor_op, tvm.expr.Load):
+        if isinstance(tensor_op, _expr.Load):
             load.append(tensor_op)
             return None
         return None
 
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_load, ["Load"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order_load, ["Load"])
 
     # Transform the op A = B*C to B = B*C
     # Then we get the vmuls(B, B, reg[0]... ) stmt
     def _post_order_store(_op):
-        if isinstance(_op, tvm.stmt.Store):
-            new_load = tvm.stmt.Store(ins[0].data, _op.value, load[0].index, tvm.const(3, "uint1"))
+        if isinstance(_op, _stmt.Store):
+            new_load = _stmt.Store(ins[0].data, _op.value, load[0].index,
+                                   tvm.const(3, "uint1"))
             return new_load
         return None
 
-    new_op = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_store, ["Store", "Load"])
+    new_op = ir_pass.IRTransform(
+        tensor_op, None, _post_order_store, ["Store", "Load"])
     ir_builder.emit(vec_VSsingle_elewise(new_op, "vmuls", [reg[0]]))
     ir_builder.emit(vec_VSsingle_elewise(tensor_op, "vmuls", [reg[0]]))
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg")
+@register_func("tvm.intrin.cce.elewise_single_VS_mul_with_reg")
 def elewise_single_VS_mul_with_reg(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -772,15 +780,15 @@ def elewise_single_VS_mul_with_reg(tensor_op):
     args = []
 
     def _post_order(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.Store):
+        if isinstance(tensor_op, _stmt.Store):
             args.append(tensor_op.value.b)
 
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
 
     return vec_VSsingle_elewise(tensor_op, "vmuls", [args[0]])
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_add_with_reg")
+@register_func("tvm.intrin.cce.elewise_single_VS_add_with_reg")
 def elewise_single_VS_add_with_reg(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -793,15 +801,16 @@ def elewise_single_VS_add_with_reg(tensor_op):
     args = []
 
     def _post_order(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.Store):
+        if isinstance(stmt_op, _stmt.Store):
             args.append(stmt_op.value.b)
 
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
 
     return vec_VSsingle_elewise(tensor_op, "vadds", [args[0]])
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.elewise_single_diagonal")
+@register_func("tvm.intrin.cce.elewise_single_diagonal")
 def elewise_single_diagonal(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -810,10 +819,10 @@ def elewise_single_diagonal(tensor_op):
     body = tensor_op
 
     def _gen_stmt_in(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.AttrStmt):
+        if isinstance(stmt_op, _stmt.AttrStmt):
             stmt_op = stmt_op.body
             stmt_op = _gen_stmt_in(stmt_op)
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             return stmt_op
         return None
 
@@ -823,7 +832,7 @@ def elewise_single_diagonal(tensor_op):
     out_0 = outs[0]
     if not ins:
         return broadcast(body)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     mask1 = 1
     dst_stridem0 = 1
     src_stridem0 = 1
@@ -836,15 +845,15 @@ def elewise_single_diagonal(tensor_op):
     select_var = []
 
     def _post_order_select(stmt_op):
-        if isinstance(stmt_op, tvm.expr.Select):
+        if isinstance(stmt_op, _expr.Select):
             select_var.append(stmt_op.condition.a)
 
     def _post_order_for(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             for_var.append(stmt_op.extent.value)
 
-    _ = tvm.ir_pass.IRTransform(body, None, _post_order_for, ["For"])
-    _ = tvm.ir_pass.IRTransform(body, None, _post_order_select, ["Select"])
+    _ = ir_pass.IRTransform(body, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(body, None, _post_order_select, ["Select"])
     if not select_var:
         raise RuntimeError("elewise_single_diagonal select_var is empty ")
     if not for_var:
@@ -854,15 +863,18 @@ def elewise_single_diagonal(tensor_op):
     else:
         repeat = for_var[1]
     mask1 = tvm.const(mask1, "uint64")
-    s_l = tvm.expr.Call(mask1.dtype, "shift_left", [mask0, select_var[0]], tvm.expr.Call.Intrinsic,
-                        None, 0)
-    b_n = tvm.expr.Call(mask1.dtype, "bitwise_not", [s_l], tvm.expr.Call.Intrinsic, None, 0)
-    b_a = tvm.expr.Call(mask1.dtype, "bitwise_and", [init_mask, b_n], tvm.expr.Call.Intrinsic, None,
-                        0)
-    ir_builder.emit(tvm.call_extern(
+    s_l = _expr.Call(
+        mask1.dtype, "shift_left", [mask0, select_var[0]],
+        _expr.Call.Intrinsic, None, 0)
+    b_n = _expr.Call(
+        mask1.dtype, "bitwise_not", [s_l], _expr.Call.Intrinsic, None, 0)
+    b_a = _expr.Call(
+        mask1.dtype, "bitwise_and", [init_mask, b_n], _expr.Call.Intrinsic,
+        None, 0)
+    ir_builder.emit(call_extern(
         outs[0].dtype, "set_vector_mask", b_a,
         b_a))
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         out_0.dtype, 'vector_dup',
         out_0.access_ptr('rw', offset=0),
         tvm.const(0, out_0.dtype),
@@ -875,7 +887,7 @@ def elewise_single_diagonal(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_single_VS_add")
+@register_func("tvm.intrin.cce.elewise_single_VS_add")
 def elewise_single_VS_add(tensor_op):
     # pylint: disable=invalid-name
     """
@@ -889,22 +901,22 @@ def elewise_single_VS_add(tensor_op):
         raise RuntimeError("elewise_single_VS_add only support ONE src buffer and ONE dst buffer ")
 
     def _post_order(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.Store):
+        if isinstance(tensor_op, _stmt.Store):
             if hasattr(tensor_op.value, 'b') and cce_util.is_const(tensor_op.value.b):
                 return tensor_op
-            tensor_op = tvm.make.Store(tensor_op.buffer_var,
-                                       tensor_op.value+tvm.const(0, tensor_op.value.dtype),
-                                       tensor_op.index,
-                                       tensor_op.predicate)
+            tensor_op = _make.Store(tensor_op.buffer_var,
+                                    tensor_op.value+tvm.const(0, tensor_op.value.dtype),
+                                    tensor_op.index,
+                                    tensor_op.predicate)
         return tensor_op
 
     # For stmt like A=B+0 or A=B*1, simplify() will optimize it to A=B.
     # Before emit intrinsics of `vadds`, remember transform it back to A=B+0.
-    new_op = tvm.ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
+    new_op = ir_pass.IRTransform(tensor_op, None, _post_order, ["Store"])
     return vec_VSsingle_elewise(new_op, "vadds", cce_util.get_elewise_single_vs_extern_args(new_op))
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_add")
+@register_func("tvm.intrin.cce.elewise_binary_add")
 def elewise_binary_add(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -913,7 +925,7 @@ def elewise_binary_add(tensor_op):
     return vec_binary_elewise(tensor_op, "vadd")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_sub")
+@register_func("tvm.intrin.cce.elewise_binary_sub")
 def elewise_binary_sub(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -922,7 +934,7 @@ def elewise_binary_sub(tensor_op):
     return vec_binary_elewise(tensor_op, "vsub")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_mul")
+@register_func("tvm.intrin.cce.elewise_binary_mul")
 def elewise_binary_mul(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -930,7 +942,8 @@ def elewise_binary_mul(tensor_op):
     """
     return vec_binary_elewise(tensor_op, "vmul")
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_min")
+
+@register_func("tvm.intrin.cce.elewise_binary_min")
 def elewise_binary_min(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -939,7 +952,7 @@ def elewise_binary_min(tensor_op):
     return vec_binary_elewise(tensor_op, "vmin")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_max")
+@register_func("tvm.intrin.cce.elewise_binary_max")
 def elewise_binary_max(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -948,7 +961,7 @@ def elewise_binary_max(tensor_op):
     return vec_binary_elewise(tensor_op, "vmax")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_or")
+@register_func("tvm.intrin.cce.elewise_binary_or")
 def elewise_binary_or(tensro_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -960,7 +973,7 @@ def elewise_binary_or(tensro_op):
     return vec_binary_elewise(tensro_op, "vor")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_and")
+@register_func("tvm.intrin.cce.elewise_binary_and")
 def elewise_binary_and(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -972,7 +985,7 @@ def elewise_binary_and(tensor_op):
     return vec_binary_elewise(tensor_op, "vand")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_cmp")
+@register_func("tvm.intrin.cce.elewise_binary_cmp")
 def elewise_binary_cmp(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -981,7 +994,7 @@ def elewise_binary_cmp(tensor_op):
     return vec_binary_cmp(tensor_op)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_multiple_mla")
+@register_func("tvm.intrin.cce.elewise_multiple_mla")
 def elewise_multiple_mla(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -990,7 +1003,7 @@ def elewise_multiple_mla(tensor_op):
     return vec_multiple_elewise(tensor_op, "vmla")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_multiple_madd")
+@register_func("tvm.intrin.cce.elewise_multiple_madd")
 def elewise_multiple_madd(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -999,7 +1012,7 @@ def elewise_multiple_madd(tensor_op):
     return vec_multiple_elewise(tensor_op, "vmadd")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_multiple_maddrelu")
+@register_func("tvm.intrin.cce.elewise_multiple_maddrelu")
 def elewise_multiple_maddrelu(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1008,7 +1021,7 @@ def elewise_multiple_maddrelu(tensor_op):
     return vec_multiple_elewise(tensor_op, "vmaddrelu")
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_multiple_sel")
+@register_func("tvm.intrin.cce.elewise_multiple_sel")
 def elewise_multiple_sel(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1017,7 +1030,7 @@ def elewise_multiple_sel(tensor_op):
     return vec_multiple_sel(tensor_op)
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_max")
+@register_func("tvm.intrin.cce.reduce_last_axis_reduce_max")
 def reduce_max_last_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1026,7 +1039,7 @@ def reduce_max_last_axis(tensor_op):
     return vec_reduce_last_axis(tensor_op, "vmax")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_min")
+@register_func("tvm.intrin.cce.reduce_last_axis_reduce_min")
 def reduce_min_last_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1035,7 +1048,7 @@ def reduce_min_last_axis(tensor_op):
     return vec_reduce_last_axis(tensor_op, "vmin")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_sum")
+@register_func("tvm.intrin.cce.reduce_last_axis_reduce_sum")
 def reduce_sum_last_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1044,7 +1057,7 @@ def reduce_sum_last_axis(tensor_op):
     return vec_reduce_last_axis(tensor_op, "vsum")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_prod")
+@register_func("tvm.intrin.cce.reduce_last_axis_reduce_prod")
 def reduce_prod_last_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1053,7 +1066,7 @@ def reduce_prod_last_axis(tensor_op):
     return vec_reduce_last_axis(tensor_op, "vmul")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_max")
+@register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_max")
 def reduce_max_nlst_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1062,7 +1075,7 @@ def reduce_max_nlst_axis(tensor_op):
     return vec_reduce_nlst_axis(tensor_op, "vmax")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_min")
+@register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_min")
 def reduce_min_nlst_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1071,7 +1084,7 @@ def reduce_min_nlst_axis(tensor_op):
     return vec_reduce_nlst_axis(tensor_op, "vmin")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_sum")
+@register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_sum")
 def reduce_sum_nlst_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1080,7 +1093,7 @@ def reduce_sum_nlst_axis(tensor_op):
     return vec_reduce_nlst_axis(tensor_op, "vadd")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_prod")
+@register_func("tvm.intrin.cce.reduce_nlst_axis_reduce_prod")
 def reduce_prod_nlst_axis(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1089,7 +1102,7 @@ def reduce_prod_nlst_axis(tensor_op):
     return vec_reduce_nlst_axis(tensor_op, "vmul")
 
 
-@tvm.register_func("tvm.intrin.cce.arg_reduce_last_axis_argmax")
+@register_func("tvm.intrin.cce.arg_reduce_last_axis_argmax")
 def arg_reduce_last_axis_argmax(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1098,7 +1111,7 @@ def arg_reduce_last_axis_argmax(tensor_op):
     return vec_arg_reduce_last_axis(tensor_op, "argmax")
 
 
-@tvm.register_func("tvm.intrin.cce.arg_reduce_last_axis_argmin")
+@register_func("tvm.intrin.cce.arg_reduce_last_axis_argmin")
 def arg_reduce_last_axis_argmin(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1107,7 +1120,7 @@ def arg_reduce_last_axis_argmin(tensor_op):
     return vec_arg_reduce_last_axis(tensor_op, "argmin")
 
 
-@tvm.register_func("tvm.intrin.cce.arg_reduce_nlst_axis_argmax")
+@register_func("tvm.intrin.cce.arg_reduce_nlst_axis_argmax")
 def arg_reduce_nlst_axis_argmax(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1116,7 +1129,7 @@ def arg_reduce_nlst_axis_argmax(tensor_op):
     return vec_arg_reduce_nlst_axis(tensor_op, "argmax")
 
 
-@tvm.register_func("tvm.intrin.cce.arg_reduce_nlst_axis_argmin")
+@register_func("tvm.intrin.cce.arg_reduce_nlst_axis_argmin")
 def arg_reduce_nlst_axis_argmin(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1125,23 +1138,25 @@ def arg_reduce_nlst_axis_argmin(tensor_op):
     return vec_arg_reduce_nlst_axis(tensor_op, "argmin")
 
 
-@tvm.register_func("tvm.intrin.cce.set_padding_ex")
+@register_func("tvm.intrin.cce.set_padding_ex")
 def set_padding_ex(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
           :return: the intric stmt what we want
     """
-    block_size_in_b8 = cce.CUBE_MKN["uint8"]["mac"][1]
-    offset_pad_left_shift_8bit = cce.CUBE_MKN["uint8"]["mac"][0]*cce.CUBE_MKN["uint8"]["mac"][2]
+    block_size_in_b8 = cce_params.CUBE_MKN["uint8"]["mac"][1]
+    offset_pad_left_shift_8bit =\
+        cce_params.CUBE_MKN["uint8"]["mac"][0] * \
+        cce_params.CUBE_MKN["uint8"]["mac"][2]
 
-    def emit_dma_gm_to_ubuf(ir_builder, src, dst, sid=0, n_burst=1, len_burst=0, \
+    def emit_dma_gm_to_ubuf(ir_builder, src, dst, sid=0, n_burst=1, len_burst=0,
                             src_stride=0, dst_stride=0):
         """
         emit_dma_gm_to_ubuf
         """
         sid = cce_util.get_dma_sid("Sid_copy_gm_to_ubuf")
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dst.dtype, "copy_gm_to_ubuf",
             dst,  # dst buffer
             src,  # src buffer
@@ -1161,23 +1176,25 @@ def set_padding_ex(tensor_op):
 
         return new_buffer
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     offset_pad_ubuf = new_alloc(ir_builder, "uint8", (block_size_in_b8,), 'OffsetPad_ubuf',
-                                scope=cce.scope_ubuf)
+                                scope=cce_params.scope_ubuf)
 
-    src_buf = list(conv_buffer_ex.offsetPad.items())
+    src_buf = list(cce_params.conv_buffer_ex.offsetPad.items())
     src = src_buf[0][1].access_ptr('r')
     dst = offset_pad_ubuf.access_ptr('w')
     # DataFlow: move OffsetPad OUT -> UB
     emit_dma_gm_to_ubuf(ir_builder, src, dst, len_burst=1)
 
-    reg = ir_builder.allocate("uint8", (1,), name="reg_buf_padding", scope=cce.scope_reg)
-    ir_builder.emit(tvm.call_extern("uint8", "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[0]),
-                                    offset_pad_ubuf.access_ptr("r")))
+    reg = ir_builder.allocate("uint8", (1,), name="reg_buf_padding",
+                              scope=cce_params.scope_reg)
+    ir_builder.emit(call_extern("uint8", "reg_mov",
+                                call_extern(reg.dtype, "reg", reg[0]),
+                                offset_pad_ubuf.access_ptr("r")))
     # let higher 8bit is same with lower 8bit
     padding = reg[0]*offset_pad_left_shift_8bit+reg[0]
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         "float16", "set_padding",
         padding
     ))
@@ -1185,12 +1202,12 @@ def set_padding_ex(tensor_op):
     # reset pad
     offset_pad_rst = 0
     padding = offset_pad_rst
-    ibe = tvm.ir_builder.create()
-    ibe.emit(tvm.call_extern("uint8", "set_padding", padding))
-    return tvm.make.Block(tvm.make.Block(ir_builder.get(), tensor_op), ibe.get())
+    ibe = _create()
+    ibe.emit(call_extern("uint8", "set_padding", padding))
+    return _make.Block(_make.Block(ir_builder.get(), tensor_op), ibe.get())
 
 
-@tvm.register_func("tvm.intrin.cce.padding_end")
+@register_func("tvm.intrin.cce.padding_end")
 def padding_end(tensor_op):
     """Insert Set Padding reset stmt
 
@@ -1204,18 +1221,18 @@ def padding_end(tensor_op):
                |-set_padding(0)
 
     """
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     ir_builder.emit(tensor_op)
 
     # The return value is useless.
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         "float16", "set_padding",
         0,
     ))
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.segment_max")
+@register_func("tvm.intrin.cce.segment_max")
 def segment_max(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1224,7 +1241,7 @@ def segment_max(tensor_op):
     return vec_segment(tensor_op, "segment_max")
 
 
-@tvm.register_func("tvm.intrin.cce.segment_min")
+@register_func("tvm.intrin.cce.segment_min")
 def segment_min(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1233,7 +1250,7 @@ def segment_min(tensor_op):
     return vec_segment(tensor_op, "segment_min")
 
 
-@tvm.register_func("tvm.intrin.cce.segment_sum")
+@register_func("tvm.intrin.cce.segment_sum")
 def segment_sum(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1242,7 +1259,7 @@ def segment_sum(tensor_op):
     return vec_segment(tensor_op, "segment_sum")
 
 
-@tvm.register_func("tvm.intrin.cce.segment_mean")
+@register_func("tvm.intrin.cce.segment_mean")
 def segment_mean(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1251,7 +1268,7 @@ def segment_mean(tensor_op):
     return vec_segment(tensor_op, "segment_mean")
 
 
-@tvm.register_func("tvm.intrin.cce.segment_prod")
+@register_func("tvm.intrin.cce.segment_prod")
 def segment_prod(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1260,22 +1277,22 @@ def segment_prod(tensor_op):
     return vec_segment(tensor_op, "segment_prod")
 
 
-@tvm.register_func("tvm.intrin.cce.reg_mov")
+@register_func("tvm.intrin.cce.reg_mov")
 def reg_mov(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
           :return: the intric stmt what we want
     """
     op_length = cce_util.get_op_lenth(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     is_for_init, init_val = cce_util.get_init_val(tensor_op)
     if op_length == 1:
         ins, outs = cce_util.get_buffer(tensor_op)
         out = outs[0]
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             out.dtype, "reg_mov",
             out.access_ptr('w'),
-            tvm.call_extern(out.dtype, "reg", init_val[0])
+            call_extern(out.dtype, "reg", init_val[0])
         ))
     else:
         op_length = cce_util.get_align_oplength(tensor_op)
@@ -1284,12 +1301,12 @@ def reg_mov(tensor_op):
             raise RuntimeError("reg_mov must is init stmt")
         args = [1, 1, 8, 8]
         reset_mask = []
-        vec_cmd_factory(ir_builder, "vector_dup", ins, outs, op_length, \
+        vec_cmd_factory(ir_builder, "vector_dup", ins, outs, op_length,
                         reset_mask, [init_val[0]], args)
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.broadcast_for_tensor")
+@register_func("tvm.intrin.cce.broadcast_for_tensor")
 def broadcast_for_tensor(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1297,28 +1314,30 @@ def broadcast_for_tensor(tensor_op):
     """
     intrinsic_cmd = "vector_dup"
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf", scope=cce.scope_reg)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf",
+                              scope=cce_params.scope_reg)
+    ir_builder.emit(call_extern(
         outs[0].dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[0]),
+        call_extern(reg.dtype, "reg", reg[0]),
         ins[0].access_ptr("rw"), ))
     reset_mask = 1
 
     op_length = cce_util.get_op_lenth(tensor_op)
     align_factor = cce_util.get_data_alignment(outs[0].dtype)
 
-    if op_length%align_factor != 0 and not isinstance(ins[0].elem_offset, tvm.expr.IntImm):
+    if op_length % align_factor != 0 and \
+            not isinstance(ins[0].elem_offset, _expr.IntImm):
         vec_broadcast_for_no_align(ir_builder, outs[0], op_length, [reg[0]])
         return ir_builder.get()
 
-    vec_broadcast(ir_builder, intrinsic_cmd, outs, cce_util.get_op_lenth(tensor_op), \
+    vec_broadcast(ir_builder, intrinsic_cmd, outs, cce_util.get_op_lenth(tensor_op),
                   reset_mask, [reg[0]])
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.broadcast")
+@register_func("tvm.intrin.cce.broadcast")
 def broadcast(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -1326,19 +1345,19 @@ def broadcast(tensor_op):
     """
     intrinsic_cmd = "vector_dup"
     _, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     reset_mask = 1
     is_for_init, init_val = cce_util.get_init_val(tensor_op)
     if not is_for_init:
         raise RuntimeError("reg_mov must is init stmt")
 
-    vec_broadcast(ir_builder, intrinsic_cmd, outs, cce_util.get_op_lenth(tensor_op), \
+    vec_broadcast(ir_builder, intrinsic_cmd, outs, cce_util.get_op_lenth(tensor_op),
                   reset_mask, [init_val[0]])
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.mov_backup")
+@register_func("tvm.intrin.cce.mov_backup")
 def mov_backup(tensor_op):
     """This mov is helpful to procss non-aligned data.
 
@@ -1351,7 +1370,7 @@ def mov_backup(tensor_op):
         ret : tvm.Tensor
     """
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     align_factor = cce_util.get_data_alignment(outs[0].dtype)
 
     size = cce_util.get_op_lenth(tensor_op)
@@ -1359,9 +1378,9 @@ def mov_backup(tensor_op):
     # else we should backup for the old result in gm.
     # so we copy the old result form gm to ub for backup.then copy the new result from ub to gm.
     # at last we copy the old result form ub to gm for recovery
-    if size%align_factor == 0:
+    if size % align_factor == 0:
         len_burst = size//align_factor
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw"),
             ins[0].access_ptr("r"),
@@ -1376,7 +1395,7 @@ def mov_backup(tensor_op):
         len_burst = (size+(align_factor - 1))//align_factor
         tmp_buffer = apply_for_new_alloc(ir_builder, ins[0].dtype, (align_factor,))
         sid = cce_util.get_dma_sid("Sid_copy_gm_to_ubuf")
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "copy_gm_to_ubuf",
             tmp_buffer.access_ptr("w"),
             outs[0].access_ptr("rw", offset=size),
@@ -1385,7 +1404,7 @@ def mov_backup(tensor_op):
             1,
             0,
             0))
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw"),
             ins[0].access_ptr("r"),
@@ -1394,7 +1413,7 @@ def mov_backup(tensor_op):
             len_burst,
             0,
             0))
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "copy_ubuf_to_gm",
             outs[0].access_ptr("rw", offset=size),
             tmp_buffer.access_ptr("r"),
@@ -1444,9 +1463,10 @@ def reset_mask_insn(ir_builder, type_, bits=128, mask_func=None, ref=None):
     else:
         mask1, mask2 = cce_util.set_mask(bits)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         type_, "set_vector_mask", tvm.const(mask1, dtype="uint64"),
         tvm.const(mask2, dtype="uint64")))
+
 
 def reset_mask_insn_inverted(ir_builder, type_, bits, ref=None, mask_func=None):
     """
@@ -1467,7 +1487,7 @@ def reset_mask_insn_inverted(ir_builder, type_, bits, ref=None, mask_func=None):
         mask1_, mask2_ = cce_util.set_mask(bits)
         mask1, mask2 = (mask1 - mask1_, mask2 - mask2_)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         type_, "set_vector_mask", tvm.const(mask1, dtype="uint64"),
         tvm.const(mask2, dtype="uint64")))
 
@@ -1499,7 +1519,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
         # Things changed when keeping for(1) in scheduleOps.
         # There may be for(i1.c, 0, 1) loops around.
         # Just return 64 for ((i1.c*2)+64), 0 for (i1.c*2).
-        while isinstance(elem_offset, tvm.expr.Add):
+        while isinstance(elem_offset, _expr.Add):
             if cce_util.is_const(elem_offset.a):
                 elem_offset = elem_offset.a
                 break
@@ -1520,7 +1540,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                                    data=outs[0].data,
                                    offset_factor=1,
                                    data_alignment=16,
-                                   scope=cce.scope_ubuf,
+                                   scope=cce_params.scope_ubuf,
                                    elem_offset=0)
     else:
         shape = (len(ins), ins[0].shape[0])
@@ -1529,7 +1549,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                                    data=ins[0].data,
                                    offset_factor=1,
                                    data_alignment=16,
-                                   scope=cce.scope_ubuf,
+                                   scope=cce_params.scope_ubuf,
                                    elem_offset=0)
 
     out_0 = outs[0]
@@ -1565,7 +1585,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
     elif cmd_str == 'max':
         v_cmd = 'vmax'
     else:
-        raise RuntimeError("operation %s not support yet"%tensor_op)
+        raise RuntimeError("operation %s not support yet" % tensor_op)
 
     def segment_ib_emit(ir_builder, i_dim):
         """
@@ -1611,7 +1631,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                         else:
                             tmp_repeat_times = local_repeat_times
 
-                        ir_builder.emit(tvm.call_extern(
+                        ir_builder.emit(call_extern(
                             out_0.dtype, v_cmd,
                             out_0.access_ptr('w', offset=repeat_offset),
                             buffer_0.access_ptr('r', offset=offset0),
@@ -1636,7 +1656,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                             """
                             insn_reduce
                             """
-                            return tvm.call_extern(
+                            return call_extern(
                                 out_0.dtype, v_cmd,
                                 out_0.access_ptr('rw', offset=dst_roffset),
                                 out_0.access_ptr('rw', offset=dst_roffset),
@@ -1669,7 +1689,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                             """
                             insn_avg
                             """
-                            return tvm.call_extern(
+                            return call_extern(
                                 out_0.dtype, 'vmuls',
                                 out_0.access_ptr('w', offset=dst_roffset),
                                 out_0.access_ptr('w', offset=dst_roffset),
@@ -1681,7 +1701,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                                 src_stridem1
                             )
 
-                        split_op(ir_builder, repeat_times, block_ele_num, \
+                        split_op(ir_builder, repeat_times, block_ele_num,
                                  block_ele_num, 0, insn_avg)
 
                 # if the remain of size after repet time
@@ -1693,7 +1713,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                     new_segment_id[idx1] = -1
 
                     reset_mask_insn(ir_builder, out_0.dtype, bits=last_one_length)
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         out_0.dtype, v_cmd,
                         out_0.access_ptr('w', offset=repeat_times*block_ele_num),
                         buffer_0.access_ptr('r',
@@ -1714,7 +1734,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                             idx = new_segment_id.index(i_dim)
                             new_segment_id[idx] = -1
 
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 out_0.dtype, v_cmd,
                                 out_0.access_ptr('rw', offset=repeat_times*block_ele_num),
                                 out_0.access_ptr('rw', offset=repeat_times*block_ele_num),
@@ -1737,7 +1757,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                         dst_stridem1 = 8
                         src_stridem1 = 8
 
-                        ir_builder.emit(tvm.call_extern(
+                        ir_builder.emit(call_extern(
                             out_0.dtype, 'vmuls',
                             out_0.access_ptr('w', offset=repeat_times*block_ele_num),
                             out_0.access_ptr('w', offset=repeat_times*block_ele_num),
@@ -1755,7 +1775,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
             else:
                 idx = segment_ids.index(i_dim)
                 len_burst = align_vector//align_factor
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     out_0.dtype, 'copy_ubuf_to_ubuf',
                     out_0.access_ptr('w'),
                     buffer_0.access_ptr('r', offset=idx*align_vector),
@@ -1779,7 +1799,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                     """
                     insn_vector_dup
                     """
-                    return (tvm.call_extern(
+                    return (call_extern(
                         out_0.dtype, 'vector_dup',
                         out_0.access_ptr('w', offset=dst_roffset),
                         tvm.const(init_value, out_0.dtype),
@@ -1790,11 +1810,11 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
                         src_stridem1
                     ))
 
-                split_op(ir_builder, repeat_times, block_ele_num, block_ele_num, 0, \
+                split_op(ir_builder, repeat_times, block_ele_num, block_ele_num, 0,
                          insn_vector_dup)
             if last_one_length > 0:
                 reset_mask_insn(ir_builder, out_0.dtype, bits=last_one_length)
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     out_0.dtype, 'vector_dup',
                     out_0.access_ptr('w', offset=repeat_times*block_ele_num),
                     tvm.const(init_value, out_0.dtype),
@@ -1848,7 +1868,7 @@ def segment_intrin(ir_builder, ins, outs, size, segment_ids, num_segments,
     segment_ib_gen(ir_builder, num_segments)
 
 
-def apply_for_new_alloc(ir_builder, dtype, shape, scope=cce.scope_ubuf):
+def apply_for_new_alloc(ir_builder, dtype, shape, scope=cce_params.scope_ubuf):
     """
     :descripe: apply an scope buffer block,thie block size is decided by dtype and shape
     :param ir_builder: ir builder
@@ -1860,7 +1880,7 @@ def apply_for_new_alloc(ir_builder, dtype, shape, scope=cce.scope_ubuf):
     buf_var = ir_builder.allocate(dtype, shape, name="tmp_buf", scope=scope)
     tmp_buffer = tvm.decl_buffer(shape, buf_var.dtype,
                                  name="tmp_buf",
-                                 scope=cce.scope_ubuf,
+                                 scope=cce_params.scope_ubuf,
                                  data=buf_var)
     return tmp_buffer
 
@@ -1876,20 +1896,21 @@ def vec_single_elewise(tensor_op, intrinsic_cmd, args=None, repeat_cal_dtype=Non
     """
     iter_var = None
     pad = None
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
 
     op_len = cce_util.get_op_lenth(tensor_op)
 
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     if args is None:
         args = [1, 1, 8, 8]
     reset_mask = 1
 
     if intrinsic_cmd == "vconv_deq":
-        ir_builder.emit(tvm.call_extern("float16", "set_deqscale", tvm.const(1, dtype="float16")))
+        ir_builder.emit(call_extern("float16", "set_deqscale",
+                                    tvm.const(1, dtype="float16")))
 
     vec_cmd_factory(ir_builder, intrinsic_cmd, [ins[0]], [outs[0]], op_len,
                     reset_mask, [], args, iter_var, pad, repeat_cal_dtype)
@@ -1908,7 +1929,7 @@ def vec_multiple_elewise(tensor_op, intrinsic_cmd, args=None):
 
     iter_var = None
     pad = None
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
 
     # get the data size
@@ -1921,15 +1942,17 @@ def vec_multiple_elewise(tensor_op, intrinsic_cmd, args=None):
     if args is None:
         args = [1, 1, 1, 8, 8, 8]
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     reset_mask = 1
 
     vec_cmd_factory(ir_builder, intrinsic_cmd, [ins[0], ins[1]], [ins[2]], op_len,
                     reset_mask, [], args, iter_var, pad)
     # for storage rewrite reuse,outs[0] and ins[1] is the same buffer
-    ir_builder.emit(tvm.call_extern(outs[0].dtype, "rewrite_inplace", outs[0].access_ptr("w"),
-                                    ins[2].access_ptr("r")))
+    ir_builder.emit(call_extern(
+        outs[0].dtype, "rewrite_inplace", outs[0].access_ptr("w"),
+        ins[2].access_ptr("r")))
     return ir_builder.get()
+
 
 # pylint: disable=too-many-locals, invalid-name
 def vec_VSsingle_elewise(tensor_op, intrinsic_cmd, extern_args, args=None):
@@ -1939,12 +1962,12 @@ def vec_VSsingle_elewise(tensor_op, intrinsic_cmd, extern_args, args=None):
     """
     iter_var = None
     pad = None
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
 
     op_len = cce_util.get_op_lenth(tensor_op)
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     _, _, coef = cce_util.get_opshape_tilesize(tensor_op)
 
@@ -1972,9 +1995,11 @@ def vec_VSsingle_elewise(tensor_op, intrinsic_cmd, extern_args, args=None):
     reset_mask = 1
     # vmuls and vadds need default value, in case of scalar operand is simplified
     if intrinsic_cmd == "vmuls" and isinstance(extern_args, type(None)):
-        extern_args = [tvm.const(cce.DEFAULT_MUL_VALUE, dtype=ins[0].dtype)]
+        extern_args = [tvm.const(cce_params.DEFAULT_MUL_VALUE,
+                                 dtype=ins[0].dtype)]
     if intrinsic_cmd == "vadds" and isinstance(extern_args, type(None)):
-        extern_args = [tvm.const(cce.DEFAULT_ADD_VALUE, dtype=ins[0].dtype)]
+        extern_args = [tvm.const(cce_params.DEFAULT_ADD_VALUE,
+                                 dtype=ins[0].dtype)]
 
     if intrinsic_cmd != "vaxpy":
         vec_cmd_factory(ir_builder, intrinsic_cmd, [ins[0]], [outs[0]], op_len, reset_mask,
@@ -1986,8 +2011,9 @@ def vec_VSsingle_elewise(tensor_op, intrinsic_cmd, extern_args, args=None):
                         extern_args, args, iter_var, pad)
 
         # for storage rewrite reuse,outs[0] and ins[1] is the same buffer
-        ir_builder.emit(tvm.call_extern(outs[0].dtype, "rewrite_inplace", outs[0].access_ptr("w"),
-                                        ins[1].access_ptr("r")))
+        ir_builder.emit(call_extern(
+            outs[0].dtype, "rewrite_inplace", outs[0].access_ptr("w"),
+            ins[1].access_ptr("r")))
 
     return ir_builder.get()
 
@@ -1999,7 +2025,7 @@ def vec_binary_elewise(tensor_op, intrinsic_cmd, args=None):
     """
     iter_var = None
     pad = None
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
 
     shape, tile_size, _ = cce_util.get_opshape_tilesize(tensor_op)
@@ -2013,7 +2039,7 @@ def vec_binary_elewise(tensor_op, intrinsic_cmd, args=None):
     if args is None:
         args = [1, 1, 1, 8, 8, 8]
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     reset_mask = 1
 
     if shape[1] == shape[2]:
@@ -2033,7 +2059,7 @@ def vec_binary_elewise_with_ext(tensor_op, intrinsic_cmd, extern_args, args=None
     """
     iter_var = None
     pad = None
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
 
     shape, tile_size, _ = cce_util.get_opshape_tilesize(tensor_op)
@@ -2047,7 +2073,7 @@ def vec_binary_elewise_with_ext(tensor_op, intrinsic_cmd, extern_args, args=None
     if args is None:
         args = [1, 1, 1, 8, 8, 8]
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     reset_mask = 1
 
     if shape[1] == shape[2]:
@@ -2075,12 +2101,12 @@ def vec_reduce_nlst_axis(tensor_op, intrinsic_cmd, args=None):
         args = [1, 1, 1, 8, 8, 8]
 
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     reset_mask = []
 
     if intrinsic_cmd == "vector_dup":
-        vec_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, op_len, \
+        vec_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, op_len,
                         reset_mask, [init_val[0]], args)
     else:
         vec_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, op_len, reset_mask, [], args)
@@ -2093,7 +2119,7 @@ def vec_reduce_last_axis(tensor_op, intrinsic_cmd):
     """
     init_op = cce_util.get_init_op(tensor_op)
     reduce_op = cce_util.get_reduce_op(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     if init_op is not None:
         _, init_val = cce_util.get_init_val(init_op)
@@ -2105,18 +2131,18 @@ def vec_reduce_last_axis(tensor_op, intrinsic_cmd):
     if reduce_op is not None:
         iter_var = None
         pad = None
-        if isinstance(tensor_op, tvm.stmt.AttrStmt):
+        if isinstance(tensor_op, _stmt.AttrStmt):
             iter_var, pad, tensor_op = cce_util.get_pad_info(tensor_op)
         op_len = cce_util.get_op_lenth(reduce_op)
 
         ins, outs = cce_util.get_buffer(reduce_op)
         for i, _ in enumerate(ins):
-            if tvm.ir_pass.Equal(ins[i].data, outs[0].data) and \
-                    tvm.ir_pass.Equal(ins[i].elem_offset, outs[0].elem_offset):
+            if ir_pass.Equal(ins[i].data, outs[0].data) and \
+                    ir_pass.Equal(ins[i].elem_offset, outs[0].elem_offset):
                 del ins[i]
                 break
 
-        reduce_last_axis(ir_builder, intrinsic_cmd, ins, outs, (op_len,), \
+        reduce_last_axis(ir_builder, intrinsic_cmd, ins, outs, (op_len,),
                          outs[0].dtype, iter_var, pad)
     return ir_builder.get()
 
@@ -2127,10 +2153,10 @@ def vec_broadcast_for_no_align(ir_builder, dst_buffer, op_length, extern_args):
     """
     # when the dst_buffer is not 32B aligned, use scalar operation to vector dup data.
     with ir_builder.for_range(0, op_length, name="idx") as idx:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dst_buffer.dtype, "reg_mov",
             dst_buffer.access_ptr("rw", offset=idx),
-            tvm.call_extern(dst_buffer.dtype, "reg", extern_args[0])
+            call_extern(dst_buffer.dtype, "reg", extern_args[0])
         ))
 
 
@@ -2163,7 +2189,7 @@ def vec_segment(tensor_op, intrinsic_cmd):
     init_value = cce_emitinsn_params.cceEmitParamsIns.get_param("segment_init_value")
     num_segments = cce_emitinsn_params.cceEmitParamsIns.get_param("num_segments")
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     segment_intrin(ir_builder, ins, outs, cce_util.get_op_lenth(tensor_op), segment_ids,
                    num_segments, init_value, intrinsic_cmd, outer_axis_var)
 
@@ -2184,8 +2210,8 @@ def arg_get_unique_ins(ins, outs):
         is input in outlist
         """
         for elem in outlist:
-            if tvm.ir_pass.Equal(input_local.data, elem.data) and \
-                    tvm.ir_pass.Equal(input_local.elem_offset, elem.elem_offset):
+            if ir_pass.Equal(input_local.data, elem.data) and \
+                    ir_pass.Equal(input_local.elem_offset, elem.elem_offset):
                 return True
         return False
 
@@ -2198,7 +2224,7 @@ def arg_get_unique_ins(ins, outs):
         # Things changed when keeping for(1) in scheduleOps.
         # There may be for(i1.c, 0, 1) loops around.
         # Just return 64 for ((i1.c*2)+64), 0 for (i1.c*2).
-        while isinstance(elem_offset, tvm.expr.Add):
+        while isinstance(elem_offset, _expr.Add):
             if cce_util.is_const(elem_offset.a):
                 elem_offset = elem_offset.a
                 break
@@ -2220,6 +2246,7 @@ def arg_get_unique_ins(ins, outs):
 
     return ins
 
+
 # pylint: disable=too-many-locals
 def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
     """
@@ -2230,7 +2257,7 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
     split_out_axis_var = None
     pad = None
     # represent we has add pad in realize pass
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         split_out_axis, pad, tensor_op = cce_util.get_pad_info(tensor_op)
         if split_out_axis is not None:
             split_out_axis_var = split_out_axis.var
@@ -2255,11 +2282,11 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
     src0_stride = 1
     src1_stride = 8
 
-    def vccmd_cal(ir_builder, src_buffer, tmp_buffer, src_address_offset, \
+    def vccmd_cal(ir_builder, src_buffer, tmp_buffer, src_address_offset,
                   dst_address_offset, total_len, is_for_first_stage):
-        '''
+        """
         compute the max/min value and index of the batch data
-        '''
+        """
         local_total_len = total_len
         # argmin/argmax has his own set_mask func
         if is_for_first_stage:
@@ -2282,7 +2309,7 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
                 """
                 insn_arg
                 """
-                return tvm.call_extern(
+                return call_extern(
                     tmp_buffer.dtype, intrin_cmd,
                     tmp_buffer.access_ptr("rw", offset=dst_address_offset+dst_roffset),
                     src_buffer.access_ptr("r", offset=src_address_offset+src_roffset),
@@ -2297,7 +2324,7 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
         # process reamin datas
         if remain_len > 0:
             reset_mask_insn(ir_builder, tmp_buffer.dtype, remain_len, mask_func)
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 tmp_buffer.dtype, intrin_cmd,
                 tmp_buffer.access_ptr("rw", offset=dst_address_offset+2*repeat_times),
                 src_buffer.access_ptr("r", offset=src_address_offset+repeat_times*128),
@@ -2307,9 +2334,9 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
                 src1_stride))
 
     def update_(local_length, dst_offset_last):
-        '''
+        """
         update offset infomation
-        '''
+        """
         dst_offset = dst_offset_last
         src_offset = dst_offset
         dst_offset += (local_length+7)//8*16
@@ -2320,31 +2347,32 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
         return tmp_data
 
     def cal_index(ir_builder, record_data, buffer_local):
-        '''
+        """
         compute the real index.
         the index after calling vccmd_cal is uint8 which is the index in 128 elements.
         so we need to restore the index to real index in the batch and all input data.
-        '''
-        reg = ir_builder.allocate("uint64", (2,), name="reg_buf", scope=cce.scope_reg)
+        """
+        reg = ir_builder.allocate("uint64", (2,), name="reg_buf",
+                                  scope=cce_params.scope_reg)
         reg[1] = tvm.const(0, "uint64")
         for data in record_data[::-1][:-1]:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 "uint8", "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                call_extern(reg.dtype, "reg", reg[0]),
                 buffer_local.access_ptr("rw",
                                         offset=tvm.const(data["src_offset"]+1,
                                                          "uint64")+reg[1])))
 
             reg[1] = reg[1]*tvm.const(64, "uint64")+reg[0]
         data = record_data[0]
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "uint8", "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[0]),
+            call_extern(reg.dtype, "reg", reg[0]),
             buffer_local.access_ptr("rw",
                                     offset=tvm.const(data["src_offset"]+1,
                                                      "uint64")+reg[1])))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "float16", "reg_mov",
             buffer_local.access_ptr("rw"),
             buffer_local.access_ptr("rw",
@@ -2361,26 +2389,26 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
 
     # update current value of min/max number
     def cache_val_and_idx(ir_builder, reg_res, tmp_val_buffer, offset):
-        '''
+        """
         cache the max/min value and index of one batch data
         for first times, the value write to (tmp_buffer+0), the index write to (tmp_buffer+2)
         for other times, the value write to (tmp_buffer+1), the index write to (tmp_buffer+4)
         note: tmp_buffer is float16*
-        '''
+        """
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "float16", "reg_mov",
             tmp_val_buffer.access_ptr("rw", offset=offset),
             tmp_val_buffer.access_ptr("rw")))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "int32", "reg_mov",
             tmp_val_buffer.access_ptr("rw", offset=2+2*offset),
-            tvm.call_extern(reg_res.dtype, "reg", reg_res)))
+            call_extern(reg_res.dtype, "reg", reg_res)))
 
     # update current index of min/max number
     def renew_idx(ir_builder, tmp_buffer, idx_buffer, val_buffer):
-        '''
+        """
         from batch 2,compare the value of this batch with the value of previous batch
         the loaction of data is:
         address:  | buffer+0  | buffer+1 | buffer+2 | buffer+3 | buffer+4 | buffer+5 |
@@ -2394,24 +2422,25 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
         compore two value, and the result max/min value in (buffer+0) and
         the result index is in (buffer+1)(uint8) that value is 0 or 1.
         get the index in buffer+1 and decide the final index is index_0 or index_1
-        '''
-        reg = ir_builder.allocate("uint64", (1,), name="reg_buf", scope=cce.scope_reg)
+        """
+        reg = ir_builder.allocate("uint64", (1,), name="reg_buf",
+                                  scope=cce_params.scope_reg)
 
         # get the max/min value of previous batch from val_buffer and write to tmp_buffer
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "float16", "reg_mov",
             tmp_buffer.access_ptr("rw"),
             val_buffer.access_ptr("r"), ))
 
         # get the max/min index of previous batch from idx_buffer and write to tmp_buffer
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "int32", "reg_mov",
             tmp_buffer.access_ptr("rw", offset=2),
             idx_buffer.access_ptr("r")))
 
         # set mask to 11, make 2 value compare
         reset_mask_insn(ir_builder, tmp_buffer.dtype, bits=2)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             tmp_buffer.dtype, intrin_cmd,
             tmp_buffer.access_ptr("rw"),
             tmp_buffer.access_ptr("r"),
@@ -2421,14 +2450,14 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
             src1_stride))
 
         # compare 2 value(the max/min value of previous batch and the max/min value of this batch)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "uint8", "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[0]),
+            call_extern(reg.dtype, "reg", reg[0]),
             tmp_buffer.access_ptr("rw", offset=1)))
 
         # get the max/min index of two values in ((*float16)tmp_buffer+1)
         # and write to reg[0], reg[0] = 0 or 1
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "int32", "reg_mov",
             tmp_buffer.access_ptr("rw", offset=2),
             tmp_buffer.access_ptr("rw", offset=2+reg[0]*2)))
@@ -2436,21 +2465,21 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
     # get the final index of two indexes in ((*float16)tmp_buffer+2+2*reg[0])
     # and write to ((*float16)tmp_buffer+2)
     def write_res(ir_builder, idx_buffer, val_buffer, tmp_buffer):
-        '''
+        """
         after getting the max/min value and index of each batch,
         write the value and index to val_vuffer and idx_buffer
-        '''
+        """
         # get the max/min value of all already computed data from tmp_buffer
         # and write it to val_buffer
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             val_buffer.dtype, "reg_mov",
             val_buffer.access_ptr("rw"),
             tmp_buffer.access_ptr("r")))
 
         # get the max/min index of all already computed data from tmp_buffer
         # and write it to val_buffer
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             idx_buffer.dtype, "reg_mov",
             idx_buffer.access_ptr("rw"),
             tmp_buffer.access_ptr("r", offset=2)))
@@ -2459,7 +2488,7 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
     idx_b = outs[0]
     val_b = outs[1]
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     def instr(flag, pad=None):
         """
@@ -2482,7 +2511,8 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
             total_size = (total_size + 63) // 64
             tmp_shape[-1] += (total_size + 7) // 8 * 16
         tmp_buffer = apply_for_new_alloc(ir_builder, ins_0.dtype, tmp_shape)
-        ir_builder.allocate("uint64", (1,), name="reg_buf", scope=cce.scope_reg)
+        ir_builder.allocate("uint64", (1,), name="reg_buf",
+                            scope=cce_params.scope_reg)
         # stage1: split the data to many gropus,every group include 128 elements,
         # compute the max/min value and index in each group
         vccmd_cal(ir_builder, ins_0, tmp_buffer, src_offset, dst_offeset, local_length,
@@ -2534,6 +2564,7 @@ def vec_arg_reduce_last_axis(tensor_op, intrinsic_cmd):
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
 def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
     """
@@ -2541,7 +2572,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
     :param intrinsic_cmd: arg_max or arg_min
     :return:
     """
-    if isinstance(tensor_op, tvm.stmt.AttrStmt):
+    if isinstance(tensor_op, _stmt.AttrStmt):
         _, _, tensor_op = cce_util.get_pad_info(tensor_op)
 
     length = cce_util.get_op_lenth(tensor_op)
@@ -2572,7 +2603,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
         local_total_len = total_len
         if is_for_init:
             burst = (length+buist_length - 1)//buist_length
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst_val_buffer.dtype, "copy_ubuf_to_ubuf",
                 dst_val_buffer.access_ptr("rw"),
                 src_val_buffer.access_ptr("r"),
@@ -2590,7 +2621,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
                             False, [], args)
 
     # update the index of the current index of max/min value
-    def update_idx(ir_builder, src_val_buffer, dst_val_buffer, dst_idx_buffer, \
+    def update_idx(ir_builder, src_val_buffer, dst_val_buffer, dst_idx_buffer,
                    idx_var, is_for_init):
         """
         update_idx
@@ -2605,18 +2636,18 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
             idx_cal
             """
             if template_mask != 0:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     "uint64", "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[0]),
+                    call_extern(reg.dtype, "reg", reg[0]),
                     mask_buffer.access_ptr("rw", offset=offset_mask)))
 
                 if template_mask != default_template_mask:
                     reg[0] = reg[0] & tvm.const(template_mask, "uint64")
                 with ir_builder.if_scope(reg[0] != 0):
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         dst_idx_buffer.dtype, "set_vector_mask", tvm.const(0, dtype="uint64"),
                         reg[0]))
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         dst_idx_buffer.dtype, "vector_dup",
                         dst_idx_buffer.access_ptr("rw", offset=offset_idx),
                         idx_var,
@@ -2639,7 +2670,8 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
                           if_reset_mask, extern_args)
         # update the index and value of the min/max
         else:
-            reg = ir_builder.allocate("uint64", (1,), name="reg_buf", scope=cce.scope_reg)
+            reg = ir_builder.allocate("uint64", (1,), name="reg_buf",
+                                      scope=cce_params.scope_reg)
             tmp_buffer = apply_for_new_alloc(ir_builder, "uint64", (2,))  # 128 bit length
             block_ele_num_idx = 64
             block_ele_num_cmp = 128
@@ -2647,7 +2679,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
             last_one_length = length - repeat_times_cmp*block_ele_num_cmp
             if repeat_times_cmp > 0:
                 with ir_builder.for_range(0, repeat_times_cmp, name="i_inner") as i_inner:
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         dst_val_buffer.dtype, vcmp_intrin,
                         src_val_buffer.access_ptr("r", offset=i_inner*block_ele_num_cmp),
                         dst_val_buffer.access_ptr("r", offset=i_inner*block_ele_num_cmp),
@@ -2659,7 +2691,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
                         stride_outside,  # src0 stridem1
                         stride_outside  # src1 stridem1
                     ))
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         tmp_buffer.dtype, "get_cmpmask",
                         tmp_buffer.access_ptr("wr")))
 
@@ -2671,7 +2703,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
 
             if last_one_length > 0:
                 reset_mask_insn(ir_builder, dst_val_buffer.dtype, bits=last_one_length)
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dst_val_buffer.dtype, vcmp_intrin,
                     src_val_buffer.access_ptr("r", offset=repeat_times_cmp*block_ele_num_cmp),
                     dst_val_buffer.access_ptr("r", offset=repeat_times_cmp*block_ele_num_cmp),
@@ -2683,7 +2715,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
                     stride_outside,  # src0 stridem1
                     stride_outside  # src1 stridem1
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     tmp_buffer.dtype, "get_cmpmask",
                     tmp_buffer.access_ptr("wr")))
 
@@ -2695,7 +2727,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
                         1, repeat_times_cmp*block_ele_num_cmp+block_ele_num_idx,
                         template_mask=mask1)
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     if is_for_init:
         return ir_builder.get()
@@ -2727,6 +2759,7 @@ def vec_arg_reduce_nlst_axis(tensor_op, intrinsic_cmd):
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
 def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total_len, cal_once_len,
                        reset_mask, extern_args, args):
@@ -2738,7 +2771,8 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
     remain_len = local_total_len - repeat_times*cal_once_len
     reduce_factor = 1
 
-    def __apply_for_new_alloc(ir_builder, dtype, shape, scope=cce.scope_ubuf):
+    def __apply_for_new_alloc(ir_builder, dtype, shape,
+                              scope=cce_params.scope_ubuf):
         buf_var = ir_builder.allocate(dtype, shape, name="tmp_buf", scope=scope)
         tmp_buffer = tvm.decl_buffer(shape, buf_var.dtype,
                                      name="tmp_buf",
@@ -2750,47 +2784,48 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
         dup_repeat_times = local_total_len//cal_once_len
         scalar_buf = cce_util.apply_for_new_alloc(ir_builder, dst_dtype,
                                                   src_buffers[0].shape,
-                                                  scope=cce.scope_ubuf)
-        ir_builder.emit(tvm.call_extern(dst_dtype, "vector_dup",
-                                        scalar_buf.access_ptr("rw"),
-                                        extern_args[0],
-                                        dup_repeat_times if (dup_repeat_times != 0) else 1,
-                                        1, 1, 8, 8))
+                                                  scope=cce_params.scope_ubuf)
+        ir_builder.emit(call_extern(dst_dtype, "vector_dup",
+                                    scalar_buf.access_ptr("rw"),
+                                    extern_args[0],
+                                    dup_repeat_times if (dup_repeat_times != 0) else 1,
+                                    1, 1, 8, 8))
         bias_buf = cce_util.apply_for_new_alloc(ir_builder, dst_dtype,
                                                 src_buffers[0].shape,
-                                                scope=cce.scope_ubuf)
-        ir_builder.emit(tvm.call_extern(dst_dtype, "vector_dup",
-                                        bias_buf.access_ptr("rw"),
-                                        tvm.const(0, dtype=dst_dtype),
-                                        dup_repeat_times if (dup_repeat_times != 0) else 1,
-                                        1, 1, 8, 8))
+                                                scope=cce_params.scope_ubuf)
+        ir_builder.emit(call_extern(dst_dtype, "vector_dup",
+                                    bias_buf.access_ptr("rw"),
+                                    tvm.const(0, dtype=dst_dtype),
+                                    dup_repeat_times if (dup_repeat_times != 0) else 1,
+                                    1, 1, 8, 8))
     elif op_cmd == 'vcond':
         temp_thredhold = tvm.const(float(extern_args[1]), dst_dtype)
         temp_bias = tvm.const(float(extern_args[2]), dst_dtype)
-        thred_buf = __apply_for_new_alloc(ir_builder, dst_dtype,
-                                          (cal_once_len,), scope=cce.scope_ubuf)
-        ir_builder.emit(tvm.call_extern(
+        thred_buf = __apply_for_new_alloc(
+            ir_builder, dst_dtype, (cal_once_len,),
+            scope=cce_params.scope_ubuf)
+        ir_builder.emit(call_extern(
             dst_dtype, "vector_dup",
             thred_buf.access_ptr("rw"),
             temp_thredhold, 1, 1, 1, 8, 8))
 
         bias_buf = __apply_for_new_alloc(ir_builder, dst_dtype, (cal_once_len,),
-                                         scope=cce.scope_ubuf)
-        ir_builder.emit(tvm.call_extern(
+                                         scope=cce_params.scope_ubuf)
+        ir_builder.emit(call_extern(
             dst_dtype, "vector_dup",
             bias_buf.access_ptr("rw"),
             temp_bias, 1, 1, 1, 8, 8))
     elif op_cmd == 'vlogic':
         temp_a0 = __apply_for_new_alloc(ir_builder, "float16",
                                         src_buffers[0].shape,
-                                        scope=cce.scope_ubuf)
+                                        scope=cce_params.scope_ubuf)
         temp_a1 = __apply_for_new_alloc(ir_builder, "float16",
                                         src_buffers[0].shape,
-                                        scope=cce.scope_ubuf)
+                                        scope=cce_params.scope_ubuf)
         if extern_args[0] == 'or' or extern_args[0] == 'not':
             thred_buf = __apply_for_new_alloc(ir_builder, "float16",
                                               src_buffers[0].shape,
-                                              scope=cce.scope_ubuf)
+                                              scope=cce_params.scope_ubuf)
             vec_cmd_factory(ir_builder, "vector_dup", [], [thred_buf],
                             local_total_len, 1,
                             [tvm.const(0.0, "float16")],
@@ -2798,7 +2833,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
 
             bias_buf = __apply_for_new_alloc(ir_builder, "float16",
                                              src_buffers[0].shape,
-                                             scope=cce.scope_ubuf)
+                                             scope=cce_params.scope_ubuf)
             vec_cmd_factory(ir_builder, "vector_dup", [], [bias_buf],
                             local_total_len, 1,
                             [tvm.const(1.0, "float16")],
@@ -2806,30 +2841,30 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
             reset_mask_insn(ir_builder, dst_dtype)
             temp_andor_out = __apply_for_new_alloc(ir_builder, "float16",
                                                    src_buffers[0].shape,
-                                                   scope=cce.scope_ubuf)
+                                                   scope=cce_params.scope_ubuf)
         temp_out = __apply_for_new_alloc(ir_builder, "float16",
                                          src_buffers[0].shape,
-                                         scope=cce.scope_ubuf)
+                                         scope=cce_params.scope_ubuf)
     if repeat_times > 0:
         if op_cmd.find("vcmp_") != -1:
             with ir_builder.for_range(0, repeat_times,
                                       name="cmp_index") as cmp_index:
                 repeat_offset = cal_once_len*cmp_index
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                op_cmd,
-                                                src_buffers[0].access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                scalar_buf.access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                "vsel",
-                                                dst_buffers[0].access_ptr(
-                                                    "rw", offset=repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                bias_buf.access_ptr("r"),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            op_cmd,
+                                            src_buffers[0].access_ptr(
+                                                "r", offset=repeat_offset),
+                                            scalar_buf.access_ptr(
+                                                "r", offset=repeat_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            "vsel",
+                                            dst_buffers[0].access_ptr(
+                                                "rw", offset=repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r", offset=repeat_offset),
+                                            bias_buf.access_ptr("r"),
+                                            1, 1, 1, 1, 8, 8, 8))
         else:
             def insn_concat_args(src_roffset, dst_roffset, tmp_repeat_times,
                                  idx):
@@ -2842,7 +2877,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                                 src_roffset, dst_roffset,
                                                 tmp_repeat_times,
                                                 extern_args, args)
-                return tvm.call_extern(dst_dtype, op_cmd, *tmp_args)
+                return call_extern(dst_dtype, op_cmd, *tmp_args)
 
             if op_cmd in ('vcond', 'vcmpsel', 'vlogic'):
                 local_repeat_times = repeat_times
@@ -2861,13 +2896,13 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                                   name="cmp_index") as cmp_index:
                             tmp_src_repeat_offset = cal_once_len*cmp_index
                             tmp_dst_repeat_offset = (cal_once_len//reduce_factor)*cmp_index
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 dst_dtype, "vcmp_"+extern_args[0],
                                 src_buffers[0].access_ptr(
                                     "r", offset=tmp_src_repeat_offset),
                                 thred_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
 
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 dst_dtype, "vsel",
                                 dst_buffers[0].access_ptr(
                                     "rw", offset=tmp_dst_repeat_offset),
@@ -2881,7 +2916,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                                   name="cmp_index") as cmp_index:
                             tmp_src_repeat_offset = cal_once_len*cmp_index
                             tmp_dst_repeat_offset = (cal_once_len//reduce_factor)*cmp_index
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 dst_dtype, "vcmp_"+extern_args[0],
                                 src_buffers[0].access_ptr(
                                     "r",
@@ -2891,7 +2926,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                     offset=tmp_src_repeat_offset),
                                 1, 1, 1, 1, 8, 8, 8))
 
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 dst_dtype, "vsel",
                                 dst_buffers[0].access_ptr(
                                     "rw",
@@ -2904,7 +2939,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                     offset=tmp_src_repeat_offset),
                                 1, 1, 1, 1, 8, 8, 8))
                     elif op_cmd == 'vlogic':
-                        ir_builder.emit(tvm.call_extern(
+                        ir_builder.emit(call_extern(
                             "float16", "vconv_s82f16",
                             temp_a0.access_ptr("w", offset=repeat_src_offset),
                             src_buffers[0].access_ptr(
@@ -2912,7 +2947,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                 offset=repeat_src_offset),
                             tmp_repeat_times, 1, 1, 8, 4))
                         if extern_args[0] != 'not':
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 "float16", "vconv_s82f16",
                                 temp_a1.access_ptr(
                                     "w",
@@ -2923,7 +2958,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                 tmp_repeat_times, 1, 1, 8, 4))
 
                         if extern_args[0] == 'and':
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 "float16", "vmul",
                                 temp_out.access_ptr("rw",
                                                     offset=repeat_dst_offset),
@@ -2935,7 +2970,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                         elif extern_args[0] == 'or' or extern_args[0] == 'not':
                             if extern_args[0] == 'or':
                                 ir_builder.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         "float16", "vadd",
                                         temp_andor_out.access_ptr(
                                             "rw",
@@ -2949,7 +2984,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                         tmp_repeat_times, 1, 1, 1, 8, 8, 8))
                             elif extern_args[0] == 'not':
                                 ir_builder.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         "float16", "vsub",
                                         temp_andor_out.access_ptr(
                                             "rw",
@@ -2965,7 +3000,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                     name="cmp_index") as cmp_index:
                                 tmp_src_repeat_offset = cal_once_len*cmp_index
                                 tmp_dst_repeat_offset = (cal_once_len//reduce_factor)*cmp_index
-                                ir_builder.emit(tvm.call_extern(
+                                ir_builder.emit(call_extern(
                                     "float16", "vcmp_eq",
                                     temp_andor_out.access_ptr(
                                         "r",
@@ -2973,7 +3008,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                     thred_buf.access_ptr("r"),
                                     1, 1, 1, 1, 8, 8, 8))
 
-                                ir_builder.emit(tvm.call_extern(
+                                ir_builder.emit(call_extern(
                                     "float16", "vsel",
                                     temp_out.access_ptr(
                                         "rw",
@@ -2984,7 +3019,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                     bias_buf.access_ptr("r"),
                                     1, 1, 1, 1, 8, 8, 8))
 
-                        ir_builder.emit(tvm.call_extern(
+                        ir_builder.emit(call_extern(
                             "float16", "vconv_f162s8",
                             dst_buffers[0].access_ptr(
                                 "rw", offset=repeat_dst_offset),
@@ -3003,74 +3038,74 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
         repeat_src_offset = repeat_times*cal_once_len*args[1]
         repeat_dst_offset = repeat_times*cal_once_len*args[0]
         if op_cmd.find("vcmp_") != -1:
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            op_cmd,
-                                            src_buffers[0].access_ptr(
-                                                "r",
-                                                offset=repeat_src_offset),
-                                            scalar_buf.access_ptr("r"),
-                                            1, 1, 1, 1, 8, 8, 8))
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vsel",
-                                            dst_buffers[0].access_ptr(
-                                                "rw",
-                                                offset=repeat_dst_offset),
-                                            src_buffers[1].access_ptr(
-                                                "r",
-                                                offset=repeat_src_offset),
-                                            bias_buf.access_ptr("r"),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        op_cmd,
+                                        src_buffers[0].access_ptr(
+                                            "r",
+                                            offset=repeat_src_offset),
+                                        scalar_buf.access_ptr("r"),
+                                        1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        "vsel",
+                                        dst_buffers[0].access_ptr(
+                                            "rw",
+                                            offset=repeat_dst_offset),
+                                        src_buffers[1].access_ptr(
+                                            "r",
+                                            offset=repeat_src_offset),
+                                        bias_buf.access_ptr("r"),
+                                        1, 1, 1, 1, 8, 8, 8))
         elif op_cmd == 'vcond':
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst_dtype, "vcmp_"+extern_args[0],
                 src_buffers[0].access_ptr("r", offset=repeat_src_offset),
                 thred_buf.access_ptr("r"), 1, 1, 1, 1, 8, 8, 8))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst_dtype, "vsel",
                 dst_buffers[0].access_ptr("rw", offset=repeat_dst_offset),
                 src_buffers[0].access_ptr("r", offset=repeat_src_offset),
                 bias_buf.access_ptr("r"),
                 1, 1, 1, 1, 8, 8, 8))
         elif op_cmd == 'vcmpsel':
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst_dtype, "vcmp_"+extern_args[0],
                 src_buffers[0].access_ptr("r", offset=repeat_src_offset),
                 src_buffers[1].access_ptr("r", offset=repeat_src_offset),
                 1, 1, 1, 1, 8, 8, 8))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst_dtype, "vsel",
                 dst_buffers[0].access_ptr("rw", offset=repeat_dst_offset),
                 src_buffers[0].access_ptr("r", offset=repeat_src_offset),
                 src_buffers[1].access_ptr("r", offset=repeat_src_offset),
                 1, 1, 1, 1, 8, 8, 8))
         elif op_cmd == 'vlogic':
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 "float16", "vconv_s82f16",
                 temp_a0.access_ptr("rw", offset=repeat_src_offset),
                 src_buffers[0].access_ptr("r", offset=repeat_src_offset),
                 1, 1, 1, 8, 4))
             if extern_args[0] != 'not':
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     "float16", "vconv_s82f16",
                     temp_a1.access_ptr("rw", offset=repeat_src_offset),
                     src_buffers[1].access_ptr("r", offset=repeat_src_offset),
                     1, 1, 1, 8, 4))
 
             if extern_args[0] == 'and':
-                ir_builder.emit(tvm.call_extern("float16", "vmul",
-                                                temp_out.access_ptr(
-                                                    "rw",
-                                                    offset=repeat_dst_offset),
-                                                temp_a0.access_ptr(
-                                                    "r",
-                                                    offset=repeat_src_offset),
-                                                temp_a1.access_ptr(
-                                                    "r",
-                                                    offset=repeat_src_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern("float16", "vmul",
+                                            temp_out.access_ptr(
+                                                "rw",
+                                                offset=repeat_dst_offset),
+                                            temp_a0.access_ptr(
+                                                "r",
+                                                offset=repeat_src_offset),
+                                            temp_a1.access_ptr(
+                                                "r",
+                                                offset=repeat_src_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
             elif extern_args[0] == 'or' or extern_args[0] == 'not':
                 if extern_args[0] == 'or':
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         "float16", "vadd",
                         temp_andor_out.access_ptr(
                             "rw",
@@ -3083,7 +3118,7 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                             offset=repeat_src_offset),
                         1, 1, 1, 1, 8, 8, 8))
                 elif extern_args[0] == 'not':
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         "float16", "vsub",
                         temp_andor_out.access_ptr(
                             "rw",
@@ -3093,20 +3128,20 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                             offset=repeat_src_offset),
                         bias_buf.access_ptr("r"),
                         1, 1, 1, 1, 8, 8, 8))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     "float16", "vcmp_eq",
                     temp_andor_out.access_ptr("r", offset=repeat_src_offset),
                     thred_buf.access_ptr("r"),
                     1, 1, 1, 1, 8, 8, 8))
 
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     "float16", "vsel",
                     temp_out.access_ptr("rw", offset=repeat_src_offset),
                     temp_andor_out.access_ptr("r", offset=repeat_src_offset),
                     bias_buf.access_ptr("r"),
                     1, 1, 1, 1, 8, 8, 8))
 
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 "float16", "vconv_f162s8",
                 dst_buffers[0].access_ptr("rw", offset=repeat_dst_offset),
                 temp_out.access_ptr("r", offset=repeat_dst_offset),
@@ -3116,9 +3151,10 @@ def vec_repeat_elewise(ir_builder, op_cmd, src_buffers, dst_buffers, local_total
                                             repeat_src_offset,
                                             repeat_dst_offset, 1, extern_args,
                                             args)
-            ir_builder.emit(tvm.call_extern(dst_dtype, op_cmd, *tmp_args))
+            ir_builder.emit(call_extern(dst_dtype, op_cmd, *tmp_args))
         if reset_mask is not None:
             reset_mask_insn(ir_builder, dst_dtype)
+
 
 # pylint: disable=too-many-locals
 def vec_cmd_factory(ir_builder, op_cmd, src_buffers, dst_buffers, op_length,
@@ -3198,6 +3234,7 @@ def vec_cmd_factory(ir_builder, op_cmd, src_buffers, dst_buffers, op_length,
                            reset_mask,
                            extern_args, args)
 
+
 # pylint: disable=unused-argument, too-many-locals
 def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
                                  shape, vector_tile_size, reset_mask, args):
@@ -3244,12 +3281,14 @@ def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
     if element_bitwidth != 16:
         raise RuntimeError("element bitwidth for fp16 should be 16, curr is [%d]."
                            % element_bitwidth)
-    if cce.VECTOR_INST_BLOCK_WIDTH % element_bitwidth != 0:
+    if cce_params.VECTOR_INST_BLOCK_WIDTH % element_bitwidth != 0:
         raise RuntimeError("vector block width[%d] should be multi 16 times."
-                           % cce.VECTOR_INST_BLOCK_WIDTH)
+                           % cce_params.VECTOR_INST_BLOCK_WIDTH)
 
-    element_num_in_one_block = cce.VECTOR_INST_BLOCK_WIDTH//element_bitwidth
-    element_num_in_one_repeat = element_num_in_one_block*cce.VECTOR_INST_BLOCK_NUM
+    element_num_in_one_block = \
+        cce_params.VECTOR_INST_BLOCK_WIDTH // element_bitwidth
+    element_num_in_one_repeat = \
+        element_num_in_one_block * cce_params.VECTOR_INST_BLOCK_NUM
 
     repeat_who = (shape[1] < shape[2])
 
@@ -3267,9 +3306,9 @@ def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
     reset_mask_insn(ir_builder, dst_dtype, bits=128)
 
     def emit_brc_vector(local_broadcast_number, offset_index):
-        '''
+        """
         emit_brc_vector
-        '''
+        """
         # pylint: disable=too-many-locals
         src0_stride_m0 = 0  # data element stride of 1 means repeat-used data
         src1_stride_m0 = 1  # data element stride of 1 means continuous data
@@ -3288,9 +3327,9 @@ def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
 
         def insn_concat_args(src0_roffset, src1_roffset, dst_roffset,
                              tmp_repeat_times):
-            '''
+            """
             insn_concat_args
-            '''
+            """
             tmp_args = []
             for i in dst_buffers:
                 tmp_args.append(i.access_ptr("wr", offset=dst_roffset))
@@ -3300,7 +3339,7 @@ def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
             tmp_args.append(tmp_repeat_times)
             tmp_args += args
 
-            return tvm.call_extern(dst_dtype, op_cmd, *tmp_args)
+            return call_extern(dst_dtype, op_cmd, *tmp_args)
 
         if vector_ins_number > 0:
             with ir_builder.for_range(0, vector_ins_number,
@@ -3308,44 +3347,50 @@ def bias_accmulate_on_ub_factory(ir_builder, op_cmd, src_buffers, dst_buffers,
                 src0_roffset = base_src0_roffset+i_inner*element_num_in_one_block
 
                 aligned_broadcast_number = broadcast_number
-                if broadcast_number%16 != 0:
+                if broadcast_number % 16 != 0:
                     aligned_broadcast_number = (broadcast_number//16+1)*16
-                src1_roffset = base_src1_roffset+i_inner*\
-                               element_num_in_one_block*aligned_broadcast_number
-                dst_roffset = base_dst_roffset+i_inner*\
-                              element_num_in_one_block*broadcast_number
+                src1_roffset = base_src1_roffset+i_inner *\
+                    element_num_in_one_block*aligned_broadcast_number
+                dst_roffset = base_dst_roffset+i_inner *\
+                    element_num_in_one_block*broadcast_number
 
                 ir_builder.emit(insn_concat_args(src0_roffset, src1_roffset,
                                                  dst_roffset,
                                                  local_broadcast_number))
 
-    outer_for_range = broadcast_number//(cce.VECTOR_INST_BLOCK_NUM*\
-                                           cce.VECTOR_INST_MAX_REPEAT_TIMES)
+    outer_for_range = \
+        broadcast_number//(cce_params.VECTOR_INST_BLOCK_NUM *
+                           cce_params.VECTOR_INST_MAX_REPEAT_TIMES)
     with ir_builder.for_range(0, outer_for_range, name="i_outer") as i_outer:
-        emit_brc_vector(cce.VECTOR_INST_MAX_REPEAT_TIMES, i_outer*cce.VECTOR_INST_MAX_REPEAT_TIMES)
+        emit_brc_vector(cce_params.VECTOR_INST_MAX_REPEAT_TIMES,
+                        i_outer * cce_params.VECTOR_INST_MAX_REPEAT_TIMES)
 
-    remain_broadcast_number = broadcast_number%\
-                              (cce.VECTOR_INST_BLOCK_NUM*cce.VECTOR_INST_MAX_REPEAT_TIMES)
+    remain_broadcast_number = broadcast_number %\
+        (cce_params.VECTOR_INST_BLOCK_NUM *
+         cce_params.VECTOR_INST_MAX_REPEAT_TIMES)
     if remain_broadcast_number != 0:
         # ratio part
-        ratio = remain_broadcast_number//cce.VECTOR_INST_BLOCK_NUM
-        emit_brc_vector(ratio, outer_for_range*cce.VECTOR_INST_MAX_REPEAT_TIMES)
+        ratio = remain_broadcast_number//cce_params.VECTOR_INST_BLOCK_NUM
+        emit_brc_vector(ratio, outer_for_range *
+                        cce_params.VECTOR_INST_MAX_REPEAT_TIMES)
         # remain part
-        remain = remain_broadcast_number%cce.VECTOR_INST_BLOCK_NUM
+        remain = remain_broadcast_number % cce_params.VECTOR_INST_BLOCK_NUM
         if remain != 0:
             reset_mask_insn(ir_builder, dst_dtype, bits=(remain*element_num_in_one_block))
-            emit_brc_vector(1, outer_for_range*cce.VECTOR_INST_MAX_REPEAT_TIMES+ratio)
+            emit_brc_vector(1, outer_for_range *
+                            cce_params.VECTOR_INST_MAX_REPEAT_TIMES + ratio)
 
     if reset_mask is not None:
         reset_mask_insn(ir_builder, dst_dtype, bits=128)
+
 
 # pylint: disable=too-many-locals
 def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
                             operator_b, total_len, cross_element, dtype):
     # pylint: disable=unused-argument
-    '''
+    """
     insn_concat_args
-    '''
+    """
     src0_stride_m0 = 1
     src1_stride_m0 = 1
     dst_stride_m0 = 1
@@ -3362,18 +3407,18 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
 
     local_total_len = total_len
     max_temp_buffer = new_alloc(ir_builder, operator_b.dtype, (total_len // 2,),
-                                'max_temp_buffer', scope=cce.scope_ubuf)
+                                'max_temp_buffer', scope=cce_params.scope_ubuf)
 
     operator_src = operator_a
     operator_dst = max_temp_buffer
 
     while local_total_len > cross_element:
-        repeat_times = local_total_len //2// cross_element
+        repeat_times = local_total_len // 2 // cross_element
         remain_len = local_total_len-repeat_times*cross_element*2
 
         reset_mask_insn(ir_builder, operator_b.dtype, bits=cross_element)
         if repeat_times != 0:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_b.dtype, emit_cmd,
                 operator_dst.access_ptr("rw", offset=0),
                 operator_src.access_ptr("r", offset=0),
@@ -3389,7 +3434,7 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
                 remain_left_times = remain_len//cross_element
                 remain_left_len = remain_len - remain_left_times*cross_element
                 if remain_left_times != 0:
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         operator_b.dtype, emit_cmd,
                         operator_dst.access_ptr("rw", offset=0),
                         operator_dst.access_ptr("r", offset=0),
@@ -3403,7 +3448,7 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
                         src1_stride_m1))
                 if remain_left_len != 0:
                     reset_mask_insn(ir_builder, operator_b.dtype, bits=remain_left_len)
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         operator_b.dtype, emit_cmd,
                         operator_dst.access_ptr("rw", offset=0),
                         operator_dst.access_ptr("r", offset=0),
@@ -3422,7 +3467,7 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
             remain_left_len = remain_len - remain_left_times*cross_element
             reset_mask_insn(ir_builder, operator_b.dtype, bits=remain_left_len)
             if remain_left_times != 0:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     operator_b.dtype, emit_cmd,
                     operator_src.access_ptr("rw", offset=0),
                     operator_src.access_ptr("r", offset=0),
@@ -3436,17 +3481,17 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
                     src1_stride_m1))
             local_total_len = remain_left_times * cross_element
             break
-        ##swap the src addr and dst addr
+        # swap the src addr and dst addr
         operator_dst, operator_src = operator_src, operator_dst
 
         local_total_len = repeat_times * cross_element
-    #here must be 64 element left,
+    # here must be 64 element left,
     # we know that ths ub address is 32B aligned,for fp32 the min element num is 8
-    if local_total_len%8 == 0:
+    if local_total_len % 8 == 0:
         while local_total_len > 8:
-            remain_len = local_total_len //2
+            remain_len = local_total_len // 2
             reset_mask_insn(ir_builder, operator_b.dtype, bits=remain_len)
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_b.dtype, emit_cmd,
                 operator_dst.access_ptr("rw", offset=0),
                 operator_src.access_ptr("r", offset=0),
@@ -3462,14 +3507,14 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
             operator_dst, operator_src = operator_src, operator_dst
 
             local_total_len = remain_len
-    #here use reg_mov
-    with ir_builder.for_range(0, local_total_len -1, name="idx") as idx:
-        ir_builder.emit(tvm.call_extern(
+    # here use reg_mov
+    with ir_builder.for_range(0, local_total_len - 1, name="idx") as idx:
+        ir_builder.emit(call_extern(
             operator_b.dtype, "reg_mov",
             operator_dst.access_ptr("rw"),
-            operator_src.access_ptr("r",offset=idx+1)))
+            operator_src.access_ptr("r", offset=idx+1)))
         reset_mask_insn(ir_builder, operator_b.dtype, bits=1)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             operator_b.dtype, emit_cmd,
             operator_src.access_ptr("rw", offset=0),
             operator_dst.access_ptr("r", offset=0),
@@ -3481,41 +3526,42 @@ def vec_repeat_reduce_bisec(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
             dst_stride_m1,
             src0_stride_m1,
             src1_stride_m1))
-    ##this for that there will be out loop, like 251*3868,every 3868 we get the max value,but after
-    #251 loop ,we should get the the max value in the 251 num,as follows:
+    # this for that there will be out loop, like 251*3868,every 3868 we get the max value,but after
+    # 251 loop ,we should get the the max value in the 251 num,as follows:
     v_cmd_mask = 2
     reset_mask_insn(ir_builder, operator_b.dtype, v_cmd_mask)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, "reg_mov",
         operator_dst.access_ptr("rw",),
         operator_b.access_ptr("r")))
-    ir_builder.emit(tvm.call_extern(
-            operator_b.dtype, emit_cmd,
-            operator_src.access_ptr("rw", offset=0),
-            operator_dst.access_ptr("r", offset=0),
-            operator_src.access_ptr("r", offset=0),
-            1,
-            dst_stride_m0,
-            src0_stride_m0,
-            src1_stride_m0,
-            dst_stride_m1,
-            src0_stride_m1,
-            src1_stride_m1))
+    ir_builder.emit(call_extern(
+        operator_b.dtype, emit_cmd,
+        operator_src.access_ptr("rw", offset=0),
+        operator_dst.access_ptr("r", offset=0),
+        operator_src.access_ptr("r", offset=0),
+        1,
+        dst_stride_m0,
+        src0_stride_m0,
+        src1_stride_m0,
+        dst_stride_m1,
+        src0_stride_m1,
+        src1_stride_m1))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, "reg_mov",
         operator_b.access_ptr("rw"),
         operator_src.access_ptr("r")))
     reset_mask_insn(ir_builder, operator_b.dtype)
 
+
 # pylint: disable=too-many-locals
 def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
                       operator_b, total_len, cross_element, dtype):
     # pylint: disable=unused-argument
-    '''
+    """
     insn_concat_args
-    '''
+    """
     # for pylint, unused args
     src0_stride = 1
     src1_stride = 8
@@ -3530,12 +3576,12 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
 
     def insn_reduce(src_roffset, dst_roffset, tmp_repeat_times, idx):
         # pylint: disable=unused-argument
-        '''
+        """
         insn_reduce
-        '''
+        """
         # for pylint, reserve unified entry
 
-        return tvm.call_extern(
+        return call_extern(
             operator_b.dtype, emit_cmd,
             operator_a.access_ptr("rw", offset=dst_roffset),
             operator_a.access_ptr("r", offset=src_roffset),
@@ -3552,7 +3598,7 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
             split_op(ir_builder, repeat_times, cross_element, res_block_size, 0, insn_reduce)
         if remain_len > 0:
             reset_mask_insn(ir_builder, operator_b.dtype, bits=remain_len)
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_b.dtype, emit_cmd,
                 operator_a.access_ptr("rw", offset=repeat_times*res_block_size),
                 operator_a.access_ptr("r", offset=repeat_times*cross_element),
@@ -3581,7 +3627,7 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
 
     if local_total_len > 1:
         reset_mask_insn(ir_builder, operator_b.dtype, bits=local_total_len)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             operator_b.dtype, vc_cmd,
             operator_a.access_ptr("rw"),
             operator_a.access_ptr("r"),
@@ -3594,12 +3640,12 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
 
     reset_mask_insn(ir_builder, operator_b.dtype, v_cmd_mask)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, "reg_mov",
         operator_a.access_ptr("rw", offset=1),
         operator_b.access_ptr("r")))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, vc_cmd,
         operator_a.access_ptr("rw"),
         operator_a.access_ptr("r"),
@@ -3608,7 +3654,7 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
         src0_stride,
         src1_stride))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, "reg_mov",
         operator_b.access_ptr("rw"),
         operator_a.access_ptr("r")))
@@ -3617,9 +3663,9 @@ def vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, operator_a,
 
 
 def compute_prod_segmentation(ir_builder, total_len, operator_a, operator_c):
-    '''
+    """
     compute_prod_segmentation
-    '''
+    """
     dst_stride_m0 = 1
     src0_stride_m0 = 1
     src1_stride_m0 = 1
@@ -3637,7 +3683,7 @@ def compute_prod_segmentation(ir_builder, total_len, operator_a, operator_c):
             else:
                 tmp_repeat_times = local_repeat_times
             with ir_builder.new_scope():
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     operator_c.dtype, "vmul",
                     operator_c.access_ptr("rw"),
                     operator_a.access_ptr("r", offset=src_offset),
@@ -3651,7 +3697,7 @@ def compute_prod_segmentation(ir_builder, total_len, operator_a, operator_c):
         reset_mask_insn(ir_builder, operator_c.dtype, bits=remain_len)
 
         with ir_builder.new_scope():
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_c.dtype, "vmul",
                 operator_c.access_ptr("rw"),
                 operator_a.access_ptr("r", offset=src_offset),
@@ -3664,9 +3710,9 @@ def compute_prod_segmentation(ir_builder, total_len, operator_a, operator_c):
 
 
 def compute_last_128_numbers(ir_builder, operator_c, d_buf):
-    '''
+    """
     compute_last_128_numbers
-    '''
+    """
     dst_stride_m0 = 1
     src0_stride_m0 = 1
     src1_stride_m0 = 1
@@ -3675,14 +3721,14 @@ def compute_last_128_numbers(ir_builder, operator_c, d_buf):
     src1_stride_m1 = 8
 
     def fold_mul_1(num):
-        '''
+        """
         fold mul of 128 data.
         The data split two parts. Then, the two half data mul by vmul after setting mask.
-        '''
+        """
         reset_mask_insn(ir_builder, operator_c.dtype, bits=num)
 
         with ir_builder.new_scope():
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_c.dtype, "vmul",
                 operator_c.access_ptr("rw"),
                 operator_c.access_ptr("r"),
@@ -3700,29 +3746,31 @@ def compute_last_128_numbers(ir_builder, operator_c, d_buf):
     fold_mul_1(16)
 
     # last 16 numbers
-    reg = ir_builder.allocate(operator_c.dtype, (2,), name="reg_buf", scope=cce.scope_reg)
+    reg = ir_builder.allocate(operator_c.dtype, (2,), name="reg_buf",
+                              scope=cce_params.scope_reg)
 
     def fold_mul_2(num):
-        '''
+        """
         fold mul of last 16 data.
         Because of alignment constraints,the remanent data must split to two parts.
         The front half stay at source address,and the back half move to buffer address.
         Then, the two half data mul by vmul after setting mask.
-        '''
+        """
         with ir_builder.for_range(0, num, name="irb_i") as irb_i:
-            ir_builder.emit(tvm.call_extern(operator_c.dtype, "reg_mov",
-                                            tvm.call_extern(reg.dtype, "reg", reg[0]),
-                                            operator_c.access_ptr("rw", offset=(irb_i+num))))
+            ir_builder.emit(call_extern(
+                operator_c.dtype, "reg_mov",
+                call_extern(reg.dtype, "reg", reg[0]),
+                operator_c.access_ptr("rw", offset=(irb_i+num))))
 
             with ir_builder.new_scope():
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     reg.dtype, "reg_mov",
                     d_buf.access_ptr("rw", offset=irb_i),
-                    tvm.call_extern(reg.dtype, "reg", reg[0])))
+                    call_extern(reg.dtype, "reg", reg[0])))
 
         reset_mask_insn(ir_builder, operator_c.dtype, bits=num)
         with ir_builder.new_scope():
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 operator_c.dtype, "vmul",
                 operator_c.access_ptr("rw"),
                 operator_c.access_ptr("r"),
@@ -3742,11 +3790,12 @@ def compute_last_128_numbers(ir_builder, operator_c, d_buf):
 
     reset_mask_insn(ir_builder, operator_c.dtype, bits=128)
 
+
 # pylint: disable=too-many-locals
 def vec_repeat_reduce_prod(ir_builder, operator_a, operator_b, total_len, dtype):
-    '''
+    """
     vec_repeat_reduce_prod
-    '''
+    """
     dst_stride_m0 = 1  # dst stridem0
     src0_stride_m0 = 1  # src0 stridem0
     src1_stride_m0 = 1  # src1 stridem0
@@ -3762,7 +3811,7 @@ def vec_repeat_reduce_prod(ir_builder, operator_a, operator_b, total_len, dtype)
     d_buf_var = ir_builder.allocate(dtype, (128,), "d_buf", scope="local.UB")
     d_buf = tvm.decl_buffer((128,), dtype, "d_buf", scope="local.UB", data=d_buf_var)
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         c_buf.dtype, "vector_dup",
         c_buf.access_ptr("rw", offset=0),
         tvm.const(1.0, dtype=dtype),
@@ -3775,16 +3824,14 @@ def vec_repeat_reduce_prod(ir_builder, operator_a, operator_b, total_len, dtype)
     # Compute the product of the last 128 numbers
     compute_last_128_numbers(ir_builder, c_buf, d_buf)
 
-    # reset_mask_insn(ib, B.dtype, bits=16)
-
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         d_buf.dtype, "reg_mov",
         d_buf.access_ptr("rw", offset=0),
         operator_b.access_ptr("r")))
 
     reset_mask_insn(ir_builder, operator_b.dtype, bits=1)
     with ir_builder.new_scope():
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             d_buf.dtype, "vmul",
             d_buf.access_ptr("rw"),
             d_buf.access_ptr("r"),
@@ -3793,12 +3840,13 @@ def vec_repeat_reduce_prod(ir_builder, operator_a, operator_b, total_len, dtype)
             dst_stride_m0, src0_stride_m0, src1_stride_m0,
             dst_stride_m1, src0_stride_m1, src1_stride_m1))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         operator_b.dtype, "reg_mov",
         operator_b.access_ptr("rw"),
         d_buf.access_ptr("r")))
 
     reset_mask_insn(ir_builder, operator_b.dtype, bits=128)
+
 
 # pylint: disable=too-many-locals
 def reduce_last_axis(ir_builder, op_cmd, src_buffers, dst_buffers, data_shape, dtype, iter_var=None,
@@ -3843,17 +3891,17 @@ def reduce_last_axis(ir_builder, op_cmd, src_buffers, dst_buffers, data_shape, d
 
     op_attr = op_dict.get(op_cmd)
     if not op_attr:
-        raise RuntimeError("op %s not support yet"%op_cmd)
+        raise RuntimeError("op %s not support yet" % op_cmd)
 
     _, cmd = op_attr
 
     if cmd in ("add", "max", "min", "mul"):
         if dtype not in ('float16', 'float32'):
             raise ValueError(
-                "reduce_last_axis only support float16 and float32 while dtype is %s"%dtype)
+                "reduce_last_axis only support float16 and float32 while dtype is %s" % dtype)
     else:
         if dtype != "float16":
-            raise ValueError("reduce_last_axis only support float16 while dtype is %s"%dtype)
+            raise ValueError("reduce_last_axis only support float16 while dtype is %s" % dtype)
 
     vcg_cmd = "vcg"+cmd
     v_cmd = "v"+cmd
@@ -3866,9 +3914,8 @@ def reduce_last_axis(ir_builder, op_cmd, src_buffers, dst_buffers, data_shape, d
     if cmd in ("add", "max", "min") and dtype == "float32":
         cross_element = 64
 
-
-    # in reduce last axis case , we add pad for speel_num so that
-    # speel_num = iter_var*op_length
+    # in reduce last axis case,
+    # we add pad for speel_num so that speel_num = iter_var * op_length
     # if iter_var != None, and pad is not zero,
     # we should sub the pad when caculating in the last forloop
     if iter_var is not None and pad is not None and int(pad.value) != 0:
@@ -3903,9 +3950,10 @@ def reduce_last_axis(ir_builder, op_cmd, src_buffers, dst_buffers, data_shape, d
             vec_repeat_reduce(ir_builder, vcg_cmd, v_cmd, vc_cmd, buffer_a,
                               buffer_b, total_len, cross_element, dtype)
 
+
 # pylint: disable=too-many-locals
 # intrin for psroialign begin
-@tvm.register_func("tvm.intrin.cce.dma_copy_res_for_batch_core")
+@register_func("tvm.intrin.cce.dma_copy_res_for_batch_core")
 def dma_copy_res_for_batch_core(tensor_op):
     """
     psroialign dma copy res for multi core
@@ -3917,19 +3965,19 @@ def dma_copy_res_for_batch_core(tensor_op):
     cur_batch = get_emitinsn_params("thread_block")
     c0_times = get_emitinsn_params("c0_times")
 
-    dst_offset = c0_times*cur_batch*roi_num_per_batch*cce.C0_SIZE*\
-                 get_emitinsn_params("loop_num_out")
+    dst_offset = c0_times*cur_batch*roi_num_per_batch*cce_params.C0_SIZE *\
+        get_emitinsn_params("loop_num_out")
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     elem_width = cce_util.get_type_bits(dst.dtype)
-    elem_bytes = cce.GLB_ELEM_BYTES
+    elem_bytes = cce_params.GLB_ELEM_BYTES
     _, _, nburst, burst, src_stride, dst_stride = cce_util.get_mov_pattern(
         src, elem_width, elem_bytes, dst, allow_fold=True)
     cce_util.dma_dependency_scope(src, dst, ir_builder)
 
     sid = 0
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, "copy_ubuf_to_gm",
         dst.access_ptr("w", offset=dst_offset),  # dst buffer
         src.access_ptr("r"),  # src buffer
@@ -3942,7 +3990,8 @@ def dma_copy_res_for_batch_core(tensor_op):
 
     return ir_builder.get()
 
-@tvm.register_func("tvm.intrin.cce.dma_copy_for_non_32_align")
+
+@register_func("tvm.intrin.cce.dma_copy_for_non_32_align")
 def dma_copy_for_non_32_align(tensor_op):
     """
     psroialign dma copy res for multi core
@@ -3954,12 +4003,12 @@ def dma_copy_for_non_32_align(tensor_op):
     shape = []
 
     def _get_shape(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             shape.append(stmt_op.extent)
-            if isinstance(stmt_op.body, tvm.stmt.For):
+            if isinstance(stmt_op.body, _stmt.For):
                 _get_shape(stmt_op.body)
 
-    while tensor_op is not None and isinstance(tensor_op, tvm.stmt.AttrStmt):
+    while tensor_op is not None and isinstance(tensor_op, _stmt.AttrStmt):
         tensor_op = tensor_op.body
 
     _get_shape(tensor_op)
@@ -3970,7 +4019,7 @@ def dma_copy_for_non_32_align(tensor_op):
     def _shape_mul(shape):
         if not shape:
             return 1
-        return reduce(lambda x, y: x*y, shape)
+        return _reduce(lambda x, y: x*y, shape)
 
     reg_idx_out_len = int(_shape_mul(shape[:len(shape)-1]))
     reg_idx_in_len = int(shape[-1])
@@ -3986,13 +4035,13 @@ def dma_copy_for_non_32_align(tensor_op):
 
     align_factor = get_align_factor(dst.dtype)
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     repeat = (reg_idx_out_len * reg_idx_in_len - align_factor) // reg_idx_in_len + 1
     if reg_idx_out_len * reg_idx_in_len - align_factor <= 0:
         repeat = 0
     if repeat != 0:
         with ir_builder.for_range(0, repeat, name="repeat_index") as repeat_index:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst.dtype, "copy_ubuf_to_gm",
                 dst.access_ptr("w", offset=repeat_index*reg_idx_in_len),
                 src.access_ptr("r", offset=repeat_index*align_factor),
@@ -4012,7 +4061,8 @@ def dma_copy_for_non_32_align(tensor_op):
 
     buf_var = ir_builder.allocate(src.dtype, (align_factor,), "c_buf", scope="local.UB")
     c_buf = tvm.decl_buffer((align_factor,), src.dtype, "c_buf", scope="local.UB", data=buf_var)
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg", scope=cce.scope_reg)
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg",
+                              scope=cce_params.scope_reg)
     remain_cout_remain = align_factor % reg_idx_in_len
     remain_cout_cout = align_factor // reg_idx_in_len
     if remain_cout_remain != 0:
@@ -4020,15 +4070,15 @@ def dma_copy_for_non_32_align(tensor_op):
                 remain_cout_remain_index:
             repeat_temp = get_repeat_temp(repeat)
             offset = repeat_temp * align_factor + (reg_idx_in_len - remain_cout_remain) + \
-                     remain_cout_remain_index
-            ir_builder.emit(tvm.call_extern(
+                remain_cout_remain_index
+            ir_builder.emit(call_extern(
                 dst.dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                call_extern(reg.dtype, "reg", reg[0]),
                 src.access_ptr("r", offset=offset)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dst.dtype, "reg_mov",
                 c_buf.access_ptr("rw", offset=remain_cout_remain_index),
-                tvm.call_extern(reg.dtype, "reg", reg[0])))
+                call_extern(reg.dtype, "reg", reg[0])))
     if remain_cout_cout != 0:
         start_index = 0
         if repeat > 0:
@@ -4041,18 +4091,18 @@ def dma_copy_for_non_32_align(tensor_op):
             with ir_builder.for_range(0, reg_idx_in_len, name="reg_idx_in_index") as \
                     reg_idx_in_index:
                 offset_in = (start_index + remain_cout_cout_index) * align_factor + reg_idx_in_index
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dst.dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[0]),
+                    call_extern(reg.dtype, "reg", reg[0]),
                     src.access_ptr("r", offset=offset_in)))
                 offset_out = remain_cout_remain + remain_cout_cout_index * reg_idx_in_len + \
-                             reg_idx_in_index
-                ir_builder.emit(tvm.call_extern(
+                    reg_idx_in_index
+                ir_builder.emit(call_extern(
                     dst.dtype, "reg_mov",
                     c_buf.access_ptr("rw", offset=offset_out),
-                    tvm.call_extern(reg.dtype, "reg", reg[0])))
+                    call_extern(reg.dtype, "reg", reg[0])))
     dst_offset = reg_idx_out_len * reg_idx_in_len - align_factor
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, "copy_ubuf_to_gm",
         dst.access_ptr("w", offset=dst_offset),
         c_buf.access_ptr("r"),
@@ -4065,6 +4115,7 @@ def dma_copy_for_non_32_align(tensor_op):
 
     return ir_builder.get()
 
+
 def get_emitinsn_params(name):
     """
     :param name:  the key want to get param from dsl
@@ -4072,8 +4123,9 @@ def get_emitinsn_params(name):
     """
     return cce_emitinsn_params.cceEmitParamsIns.get_param(name)
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.psalign_four_2_five")
+@register_func("tvm.intrin.cce.psalign_four_2_five")
 def psalign_four_2_five(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
@@ -4120,7 +4172,7 @@ def psalign_four_2_five(tensor_op):
     cc_block_per_repeat = 8
     block_num = 8
 
-    input_c1 = (c_dim+cce.C0_SIZE - 1)//cce.C0_SIZE
+    input_c1 = (c_dim+cce_params.C0_SIZE - 1)//cce_params.C0_SIZE
 
     src = ins[0]
     gm_buffer = tvm.decl_buffer([], "float16",
@@ -4139,12 +4191,12 @@ def psalign_four_2_five(tensor_op):
                                  scope=cce_util.get_buf_scope(dst.name),
                                  elem_offset=0)
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     # thread_block is roi in single batch, or batch in multi batch
     thread_block = get_emitinsn_params("thread_block")
     device_core_num = cce_conf.get_soc_spec("CORE_NUM")
-    fm_out_thread_offset = (thread_block%device_core_num)*fm_num_per_batch_out
+    fm_out_thread_offset = (thread_block % device_core_num)*fm_num_per_batch_out
     fm_in_thread_offset = 0
     if batch_size == 1:
         # just use 2 cores for single batch
@@ -4165,14 +4217,14 @@ def psalign_four_2_five(tensor_op):
 
     reg_num = 9 if input_c1 < 2 else 10
     reg = ir_builder.allocate("uint64", (reg_num,), name="reg",
-                              scope=cce.scope_reg)
+                              scope=cce_params.scope_reg)
 
     with ir_builder.for_range(0, loop_num_out, name="n") as loop_var_n:
         reg[0] = tvm.const(0, "uint64")
         reg[1] = tvm.const(0, "uint64")
 
         with ir_builder.for_range(0, loop_num, name="c") as loop_var_c:
-            with ir_builder.if_scope(((loop_var_c+1)%inner_loop_times) == 0):
+            with ir_builder.if_scope(((loop_var_c+1) % inner_loop_times) == 0):
                 reg[2] = tvm.const(gm_to_ub_burst_length_l, "uint64")
                 reg[3] = tvm.const(ub_addr_stride_l, "uint64")
                 reg[4] = tvm.const(src_addr_stride_l, "uint64")
@@ -4204,7 +4256,7 @@ def psalign_four_2_five(tensor_op):
                 c0_times = c_dim
                 with ir_builder.for_range(0, c0_times, name="c0") as loop_var_c0:
                     intrin_name = "copy_gm_to_ubuf"
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         out_buf.dtype, intrin_name,
                         out_buf.access_ptr("rw", offset=loop_var_c0*reg[3]),
                         in_buf.access_ptr(
@@ -4216,13 +4268,14 @@ def psalign_four_2_five(tensor_op):
                 # last copy time is c_dim%16
                 with ir_builder.if_scope(
                         loop_var_c < (input_c1 - 1)*inner_loop_times):
-                    reg[9] = tvm.const(cce.C0_SIZE, "uint64")
+                    reg[9] = tvm.const(cce_params.C0_SIZE, "uint64")
                 with ir_builder.else_scope():
-                    reg[9] = tvm.const(c_dim - (input_c1 - 1)*cce.C0_SIZE,
-                                       "uint64")
+                    reg[9] = \
+                        tvm.const(c_dim - (input_c1 - 1)*cce_params.C0_SIZE,
+                                  "uint64")
                 with ir_builder.for_range(0, reg[9], name="c0") as loop_var_c0:
                     intrin_name = "copy_gm_to_ubuf"
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         out_buf.dtype, intrin_name,
                         out_buf.access_ptr("rw", offset=loop_var_c0*reg[3]),
                         in_buf.access_ptr(
@@ -4234,95 +4287,95 @@ def psalign_four_2_five(tensor_op):
                 reg[0] = reg[0]+reg[4]
                 if loop_num > 1:
                     with ir_builder.if_scope(
-                            ((loop_var_c+1)%inner_loop_times) == 0):
+                            ((loop_var_c+1) % inner_loop_times) == 0):
                         reg[0] = reg[0]+tvm.const(c0_addr_offset, "uint64")
 
             # use scatter_vnchwconv_b16 do 4D->5D
             addr_array = ir_builder.allocate("uint64", (32,),
                                              name="addr_array2",
-                                             scope=cce.scope_reg)
+                                             scope=cce_params.scope_reg)
             addr_array_buf = tvm.decl_buffer((32,), dtype="uint64_t",
                                              name="addr_array_buf",
-                                             scope=cce.scope_reg,
+                                             scope=cce_params.scope_reg,
                                              data=addr_array)
             src0_offset = 8*0
             src1_offset = 8*1
             dst0_offset = 8*2
             dst1_offset = 8*3
             with ir_builder.for_range(0, 8, name="i") as i:
-                ir_builder.emit(tvm.call_extern("uint64", "reg_mov",
-                                                tvm.call_extern(
-                                                    addr_array.dtype,
-                                                    "reg",
-                                                    addr_array[
-                                                        src0_offset+i]),
-                                                i*reg[5]
-                                                ))
-                ir_builder.emit(tvm.call_extern("uint64", "reg_mov",
-                                                tvm.call_extern(
-                                                    addr_array.dtype,
-                                                    "reg", addr_array[
-                                                        src1_offset+i]),
-                                                (i+8)*reg[5]
-                                                ))
-                ir_builder.emit(tvm.call_extern("uint64", "reg_mov",
-                                                tvm.call_extern(
-                                                    addr_array.dtype,
-                                                    "reg", addr_array[
-                                                        dst0_offset+i]),
-                                                ub_one_buffer_size +
-                                                i*cc_block_size
-                                                ))
-                ir_builder.emit(tvm.call_extern("uint64", "reg_mov",
-                                                tvm.call_extern(
-                                                    addr_array.dtype,
-                                                    "reg", addr_array[
-                                                        dst1_offset+i]),
-                                                ub_one_buffer_size +
-                                                (i+cc_block_per_repeat) *
-                                                cc_block_size
-                                                ))
-            ir_builder.emit(tvm.call_extern("int32",
-                                            "set_va_reg_sb",
-                                            "VA0",
-                                            addr_array_buf.access_ptr(
-                                                "rw",
-                                                offset=src0_offset)
+                ir_builder.emit(call_extern("uint64", "reg_mov",
+                                            call_extern(
+                                                addr_array.dtype,
+                                                "reg",
+                                                addr_array[
+                                                    src0_offset+i]),
+                                            i*reg[5]
                                             ))
-            ir_builder.emit(tvm.call_extern("int32",
-                                            "set_va_reg_sb",
-                                            "VA1",
-                                            addr_array_buf.access_ptr(
-                                                "rw",
-                                                offset=src1_offset)
+                ir_builder.emit(call_extern("uint64", "reg_mov",
+                                            call_extern(
+                                                addr_array.dtype,
+                                                "reg", addr_array[
+                                                    src1_offset+i]),
+                                            (i+8)*reg[5]
                                             ))
-            ir_builder.emit(tvm.call_extern("int32",
-                                            "set_va_reg_sb",
-                                            "VA2",
-                                            addr_array_buf.access_ptr(
-                                                "rw",
-                                                offset=dst0_offset)
+                ir_builder.emit(call_extern("uint64", "reg_mov",
+                                            call_extern(
+                                                addr_array.dtype,
+                                                "reg", addr_array[
+                                                    dst0_offset+i]),
+                                            ub_one_buffer_size +
+                                            i*cc_block_size
                                             ))
-            ir_builder.emit(tvm.call_extern("int32",
-                                            "set_va_reg_sb",
-                                            "VA3",
-                                            addr_array_buf.access_ptr(
-                                                "rw",
-                                                offset=dst1_offset)
+                ir_builder.emit(call_extern("uint64", "reg_mov",
+                                            call_extern(
+                                                addr_array.dtype,
+                                                "reg", addr_array[
+                                                    dst1_offset+i]),
+                                            ub_one_buffer_size +
+                                            (i+cc_block_per_repeat) *
+                                            cc_block_size
                                             ))
-            ir_builder.emit(tvm.call_extern("int32",
-                                            "scatter_vnchwconv_b16",
-                                            "VA2",
-                                            "VA0",
-                                            reg[6],
-                                            2*block_num,
-                                            1))
+            ir_builder.emit(call_extern("int32",
+                                        "set_va_reg_sb",
+                                        "VA0",
+                                        addr_array_buf.access_ptr(
+                                            "rw",
+                                            offset=src0_offset)
+                                        ))
+            ir_builder.emit(call_extern("int32",
+                                        "set_va_reg_sb",
+                                        "VA1",
+                                        addr_array_buf.access_ptr(
+                                            "rw",
+                                            offset=src1_offset)
+                                        ))
+            ir_builder.emit(call_extern("int32",
+                                        "set_va_reg_sb",
+                                        "VA2",
+                                        addr_array_buf.access_ptr(
+                                            "rw",
+                                            offset=dst0_offset)
+                                        ))
+            ir_builder.emit(call_extern("int32",
+                                        "set_va_reg_sb",
+                                        "VA3",
+                                        addr_array_buf.access_ptr(
+                                            "rw",
+                                            offset=dst1_offset)
+                                        ))
+            ir_builder.emit(call_extern("int32",
+                                        "scatter_vnchwconv_b16",
+                                        "VA2",
+                                        "VA0",
+                                        reg[6],
+                                        2*block_num,
+                                        1))
 
             # copy 5D res to gm
             out_buf = dst_buffer
             in_buf = dst
             intrin_name = "copy_ubuf_to_gm"
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 out_buf.dtype, intrin_name,
                 out_buf.access_ptr("rw",
                                    offset=((fm_out_thread_offset +
@@ -4334,50 +4387,50 @@ def psalign_four_2_five(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_construct_seq")
+@register_func("tvm.intrin.cce.psalign_construct_seq")
 def psalign_construct_seq(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     _, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     roi_delta_buf = outs[0]
 
     reg_int32 = ir_builder.allocate("int32", (1,), name="reg",
-                                    scope=cce.scope_reg)
+                                    scope=cce_params.scope_reg)
     with ir_builder.for_range(0, 128, name="idx") as idx:
         with ir_builder.new_scope():
             reg_int32[0] = idx
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             roi_delta_buf.dtype, "reg_mov",
             roi_delta_buf.access_ptr("rw", offset=idx),
-            tvm.call_extern(reg_int32.dtype, "reg", reg_int32[0])
+            call_extern(reg_int32.dtype, "reg", reg_int32[0])
         ))
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.phony_insn")
+@register_func("tvm.intrin.cce.phony_insn")
 def phony_insn(tensor_op):
     # pylint: disable=unused-argument
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_roi_transform_vtrans")
+@register_func("tvm.intrin.cce.psalign_roi_transform_vtrans")
 def psalign_roi_transform_vtrans(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
-    if isinstance(tensor_op.body.extent, tvm.expr.IntImm):
+    ir_builder = _create()
+    if isinstance(tensor_op.body.extent, _expr.IntImm):
         roi_num_aligned = tensor_op.body.extent.value
 
     repeat_times = roi_num_aligned//128
@@ -4400,7 +4453,7 @@ def psalign_roi_transform_vtrans(tensor_op):
                               elem_offset=dst.elem_offset)
 
     with ir_builder.for_range(0, 8*repeat_times, name="roi_index") as roi_index:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dst_buf.dtype, "vtranspose",
             dst_buf.access_ptr("rw", offset=256*roi_index),  # dst buffer
             src_buf.access_ptr("r", offset=256*roi_index)  # src buffer
@@ -4409,18 +4462,18 @@ def psalign_roi_transform_vtrans(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_roi_transform_vadd")
+@register_func("tvm.intrin.cce.psalign_roi_transform_vadd")
 def psalign_roi_transform_vadd(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     roi_vtrans = ins[0]
     zero_ub = ins[1]
     roi_128_index = outs[0]
-    if isinstance(tensor_op.extent, tvm.expr.IntImm):
+    if isinstance(tensor_op.extent, _expr.IntImm):
         roi_num_aligned = tensor_op.extent.value
 
     repeat_times = roi_num_aligned//128
@@ -4431,7 +4484,7 @@ def psalign_roi_transform_vadd(tensor_op):
         dst_strid_m1 = 8
         src0_strid_m1 = 128
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         roi_128_index.dtype, 'vadd',
         roi_128_index.access_ptr('w'),
         roi_vtrans.access_ptr('r'),
@@ -4443,22 +4496,22 @@ def psalign_roi_transform_vadd(tensor_op):
 
 
 # tvm.select(A xx B, C, D) -> vcmp(A, B) then vsel(dst, C, D)
-@tvm.register_func("tvm.intrin.cce.vector_vcmp")
+@register_func("tvm.intrin.cce.vector_vcmp")
 def vector_vcmp(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, _, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     src0 = ins[0]
     src1 = ins[1]
-    if isinstance(tensor_op.body.value.condition, tvm.expr.LT):
+    if isinstance(tensor_op.body.value.condition, _expr.LT):
         cmd = 'vcmp_lt'
-    elif isinstance(tensor_op.body.value.condition, tvm.expr.GT):
+    elif isinstance(tensor_op.body.value.condition, _expr.GT):
         cmd = 'vcmp_gt'
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         src0.dtype, cmd,
         src0.access_ptr('r'),
         src1.access_ptr('r'),
@@ -4467,19 +4520,19 @@ def vector_vcmp(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.vector_vsel")
+@register_func("tvm.intrin.cce.vector_vsel")
 def vector_vsel(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     dst = outs[0]
     src0 = ins[2]
     src1 = ins[3]
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, 'vsel',
         dst.access_ptr('w'),
         src0.access_ptr('r'),
@@ -4488,28 +4541,28 @@ def vector_vsel(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.vector_vsel_dummy")
+@register_func("tvm.intrin.cce.vector_vsel_dummy")
 def vector_vsel_dummy(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     dst = outs[0]
     src0 = ins[2]
     src1 = ins[3]
 
     # this instrinc is dummy for adding pipe_barrier(PIPE_V);
     # between vcmp and vsel
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         src0.dtype, 'vadds',
         src0.access_ptr('w'),
         src0.access_ptr('r'),
         tvm.const(0, dtype=src0.dtype),
         1, 1, 1, 8, 8))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, 'vsel',
         dst.access_ptr('rw'),
         src0.access_ptr('r'),
@@ -4518,21 +4571,21 @@ def vector_vsel_dummy(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_xypos_scale_with_reg")
+@register_func("tvm.intrin.cce.psalign_xypos_scale_with_reg")
 def psalign_xypos_scale_with_reg(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
     :return: the intric stmt what we want
     """
     ins, outs, _, _ = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     index_arr_fp32_buf = ins[0]  # indexArr
     roi_grid_wh_fp32_buf = ins[1]  # deltaW/H
     x_y_start_end_fp32_buf = ins[2]  # x/yStartFp32
     x_ypos_fp32_buf = outs[0]
     reg_fp32 = ir_builder.allocate("float32", (1,), name="reg",
-                                   scope=cce.scope_reg)
+                                   scope=cce_params.scope_reg)
     cur_roi_offset = get_emitinsn_params("roi_loop_axis")
     cur_batch = get_emitinsn_params("thread_block")
     batch_size = get_emitinsn_params("batch_size")
@@ -4542,30 +4595,30 @@ def psalign_xypos_scale_with_reg(tensor_op):
     else:
         roi_batch_offset = 0
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         roi_grid_wh_fp32_buf.dtype, "reg_mov",
-        tvm.call_extern(reg_fp32.dtype, "reg", reg_fp32[0]),
+        call_extern(reg_fp32.dtype, "reg", reg_fp32[0]),
         roi_grid_wh_fp32_buf.access_ptr(
             "r",
             offset=cur_roi_offset+roi_batch_offset)
     ))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         x_ypos_fp32_buf.dtype, 'vmuls',
         x_ypos_fp32_buf.access_ptr('rw'),
         index_arr_fp32_buf.access_ptr('r'),
         reg_fp32[0],
         2, 1, 1, 8, 8))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         x_y_start_end_fp32_buf.dtype, "reg_mov",
-        tvm.call_extern(reg_fp32.dtype, "reg", reg_fp32[0]),
+        call_extern(reg_fp32.dtype, "reg", reg_fp32[0]),
         x_y_start_end_fp32_buf.access_ptr(
             "r",
             offset=cur_roi_offset+roi_batch_offset)
     ))
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         x_ypos_fp32_buf.dtype, 'vadds',
         x_ypos_fp32_buf.access_ptr('rw'),
         x_ypos_fp32_buf.access_ptr('r'),
@@ -4574,8 +4627,9 @@ def psalign_xypos_scale_with_reg(tensor_op):
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.psalign_roi_pooling_reg_mov")
+@register_func("tvm.intrin.cce.psalign_roi_pooling_reg_mov")
 def psalign_roi_pooling_reg_mov(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
@@ -4595,15 +4649,16 @@ def psalign_roi_pooling_reg_mov(tensor_op):
     # thread_block is roi in single batch, or batch in multi batch
     thread_block = get_emitinsn_params("thread_block")
 
-    per_c0_size = fm_w*fm_h*cce.C0_SIZE
+    per_c0_size = fm_w*fm_h*cce_params.C0_SIZE
 
     # four2five out result of feature map need offset for multi core
     device_core_num = cce_conf.get_soc_spec("CORE_NUM")
-    fm_out_thread_offset = (thread_block%device_core_num)*fm_num_per_batch_out
+    fm_out_thread_offset = (thread_block % device_core_num)*fm_num_per_batch_out
     # the max space that one bin can be occupied
-    max_bin_size = ((fm_w*fm_h+group_size ** 2 - 1)//(group_size ** 2))*cce.C0_SIZE
+    max_bin_size = \
+        ((fm_w*fm_h+group_size ** 2 - 1)//(group_size ** 2))*cce_params.C0_SIZE
 
-    min_bin_ub_size = cce.ELEMENTS_VECTOR_OP_FP16*cce.C0_SIZE
+    min_bin_ub_size = cce_params.ELEMENTS_VECTOR_OP_FP16*cce_params.C0_SIZE
 
     # when fm_h/w is too small, the max_bin_size will be small
     # this could lead to the bin buf is reused
@@ -4617,7 +4672,7 @@ def psalign_roi_pooling_reg_mov(tensor_op):
     else:
         cur_c0_offset = 0
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     # input tensor
     fm_gm = ins[0]  # feature map
     lx_buf = ins[1]
@@ -4636,7 +4691,8 @@ def psalign_roi_pooling_reg_mov(tensor_op):
 
     res_addr_buf = outs[0]
 
-    reg = ir_builder.allocate("uint64", (12,), name="reg", scope=cce.scope_reg)
+    reg = ir_builder.allocate("uint64", (12,), name="reg",
+                              scope=cce_params.scope_reg)
     reset_mask_insn(ir_builder, res_addr_buf.dtype, bits=16)
 
     with ir_builder.for_range(0, group_size, name='ph') as loop_var_ph:
@@ -4644,15 +4700,15 @@ def psalign_roi_pooling_reg_mov(tensor_op):
         # offset for ylowInt, yhighInt, ly, hy
         offset_ph = loop_var_ph*sample_height
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             y_start_int32_buf.dtype, "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[1]),
+            call_extern(reg.dtype, "reg", reg[1]),
             y_start_int32_buf.access_ptr("r", offset=loop_var_ph),
         ))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             roi_grid_h_int32_buf.dtype, "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[3]),
+            call_extern(reg.dtype, "reg", reg[3]),
             roi_grid_h_int32_buf.access_ptr("r", offset=loop_var_ph),
         ))
 
@@ -4661,46 +4717,48 @@ def psalign_roi_pooling_reg_mov(tensor_op):
             # reg[1]      roiYStart
             # reg[2]      roiBinWidthInt
             # reg[3]      roiBinHeightInt
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 x_start_int32_buf.dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                call_extern(reg.dtype, "reg", reg[0]),
                 x_start_int32_buf.access_ptr("r", offset=loop_var_pw),
             ))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 roi_grid_w_int32_buf.dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[2]),
+                call_extern(reg.dtype, "reg", reg[2]),
                 roi_grid_w_int32_buf.access_ptr("r", offset=loop_var_pw),
             ))
 
             dest_offset = 128 - 16  # for vmax dst addr
             dest_addr_buffer = apply_for_new_alloc(ir_builder, "float16_t",
                                                    (max_bin_size+dest_offset,),
-                                                   cce.scope_ubuf)
+                                                   cce_params.scope_ubuf)
 
             ele_offset_per_c0_block = \
-                (loop_var_ph*group_size+loop_var_pw)*fm_h*fm_w*cce.C0_SIZE*c0_times
+                (loop_var_ph*group_size+loop_var_pw) * fm_h * fm_w * \
+                cce_params.C0_SIZE * c0_times
             with ir_builder.for_range(0, reg[3], name="h") as loop_var_h:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "copy_gm_to_ubuf",
                     dest_addr_buffer.access_ptr(
                         "w",
-                        offset=loop_var_h*reg[2]*cce.C0_SIZE+dest_offset),
+                        offset=loop_var_h*reg[2] * cce_params.C0_SIZE +
+                        dest_offset),
                     fm_gm.access_ptr(
                         "r",
                         offset=fm_out_thread_offset +
                         ele_offset_per_c0_block +
-                        reg[1]*fm_w*cce.C0_SIZE +
-                        reg[0]*cce.C0_SIZE +
-                        loop_var_h*fm_w*cce.C0_SIZE +
+                        reg[1]*fm_w*cce_params.C0_SIZE +
+                        reg[0]*cce_params.C0_SIZE +
+                        loop_var_h*fm_w*cce_params.C0_SIZE +
                         cur_c0_offset),
-                    0, 1, reg[2]*cce.C0_SIZE//16, 0, 0))
+                    0, 1, reg[2]*cce_params.C0_SIZE//16, 0, 0))
             # skip pooledW which has been computed ,
             # offset for xlowInt, xhighInt, lx, hx
             offset_pw = loop_var_pw*sample_width
 
             reg_half = ir_builder.allocate("float16", (4,),
                                            name="reg_half",
-                                           scope=cce.scope_reg)
+                                           scope=cce_params.scope_reg)
             reg_half[0] = tvm.const(0, dtype="float16")
             reg_half[1] = tvm.const(0, dtype="float16")
             reg_half[2] = tvm.const(0, dtype="float16")
@@ -4723,40 +4781,41 @@ def psalign_roi_pooling_reg_mov(tensor_op):
             len_c3 = 3*len_c1
             grid_h = sample_height
             grid_w = sample_width
-            res_ub_offset = (loop_var_ph*group_size+loop_var_pw)*cce.C0_SIZE
+            res_ub_offset = \
+                (loop_var_ph*group_size+loop_var_pw)*cce_params.C0_SIZE
 
             # vector_dup all compute result
             # dump minimum fp16 to compare with result
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 res_addr_buf.dtype, 'vector_dup',
                 res_addr_buf.access_ptr('w', offset=res_ub_offset),
                 tvm.const(-65503.0, dtype="float16"),
                 1, 1, 1, 8, 8))
 
             with ir_builder.for_range(0, grid_h, name="grid_h") as loop_var_gh:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     ylow_int_buf.dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[6]),
+                    call_extern(reg.dtype, "reg", reg[6]),
                     ylow_int_buf.access_ptr("r", offset=offset_ph+loop_var_gh),
                 ))
                 # curYHigh euqals to yhighInt0 plus gh;
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     yhigh_int_buf.dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[7]),
+                    call_extern(reg.dtype, "reg", reg[7]),
                     yhigh_int_buf.access_ptr("r", offset=offset_ph+loop_var_gh),
                 ))
 
                 # lyCur equals to ly0 plus gh;
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     ly_buf.dtype, "reg_mov",
-                    tvm.call_extern(reg_half.dtype, "reg", reg_half[1]),
+                    call_extern(reg_half.dtype, "reg", reg_half[1]),
                     ly_buf.access_ptr("r", offset=offset_ph+loop_var_gh),
                 ))
 
                 # hyCur equals to hy0 plus gh;
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     hy_buf.dtype, "reg_mov",
-                    tvm.call_extern(reg_half.dtype, "reg", reg_half[3]),
+                    call_extern(reg_half.dtype, "reg", reg_half[3]),
                     hy_buf.access_ptr("r", offset=offset_ph+loop_var_gh),
                 ))
 
@@ -4767,47 +4826,48 @@ def psalign_roi_pooling_reg_mov(tensor_op):
                                           name="grid_w") as loop_var_gw:
                     out_addr_buf = apply_for_new_alloc(ir_builder, "float16_t",
                                                        (128,),
-                                                       cce.scope_ubuf)
-                    ir_builder.emit(tvm.call_extern(
+                                                       cce_params.scope_ubuf)
+                    ir_builder.emit(call_extern(
                         out_addr_buf.dtype, 'vector_dup',
                         out_addr_buf.access_ptr('w'),
                         tvm.const(0.0, dtype="float16"),
                         1, 1, 1, 8, 8))
 
-                    temp_addr_buf = apply_for_new_alloc(ir_builder, "float16_t",
-                                                        (4, 128), cce.scope_ubuf)
-                    ir_builder.emit(tvm.call_extern(
+                    temp_addr_buf = apply_for_new_alloc(
+                        ir_builder, "float16_t", (4, 128),
+                        cce_params.scope_ubuf)
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vector_dup',
                         temp_addr_buf.access_ptr('w'),
                         tvm.const(0.0, dtype="float16"),
                         1, 1, 1, 8, 8))
                     # reg[4]     curXLow         uint64
                     # reg[5]     curXHigh        uint64
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         xlow_int_buf.dtype, "reg_mov",
-                        tvm.call_extern(reg.dtype, "reg", reg[4]),
+                        call_extern(reg.dtype, "reg", reg[4]),
                         xlow_int_buf.access_ptr("r",
                                                 offset=offset_pw+loop_var_gw),
                     ))
 
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         xhigh_int_buf.dtype, "reg_mov",
-                        tvm.call_extern(reg.dtype, "reg", reg[5]),
+                        call_extern(reg.dtype, "reg", reg[5]),
                         xhigh_int_buf.access_ptr("r",
                                                  offset=offset_pw+loop_var_gw),
                     ))
 
                     # lxCur
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         lx_buf.dtype, "reg_mov",
-                        tvm.call_extern(reg_half.dtype, "reg", reg_half[0]),
+                        call_extern(reg_half.dtype, "reg", reg_half[0]),
                         lx_buf.access_ptr("r", offset=offset_pw+loop_var_gw),
                     ))
 
                     # hxCur
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         hx_buf.dtype, "reg_mov",
-                        tvm.call_extern(reg_half.dtype, "reg", reg_half[2]),
+                        call_extern(reg_half.dtype, "reg", reg_half[2]),
                         hx_buf.access_ptr("r", offset=offset_pw+loop_var_gw),
                     ))
 
@@ -4831,14 +4891,14 @@ def psalign_roi_pooling_reg_mov(tensor_op):
                     # reg[6]     curYLow         uint64
                     # reg[7]     curYHigh        uint64
 
-                    reg[8] = (reg[6]*reg[2] + reg[4])*\
-                             tvm.const(cce.C0_SIZE, dtype="uint64")
-                    reg[9] = (reg[6]*reg[2] + reg[5])*\
-                             tvm.const(cce.C0_SIZE, dtype="uint64")
-                    reg[10] = (reg[7]*reg[2] + reg[4])*\
-                              tvm.const(cce.C0_SIZE, dtype="uint64")
-                    reg[11] = (reg[7]*reg[2] + reg[5])*\
-                              tvm.const(cce.C0_SIZE, dtype="uint64")
+                    reg[8] = (reg[6]*reg[2] + reg[4]) *\
+                        tvm.const(cce_params.C0_SIZE, dtype="uint64")
+                    reg[9] = (reg[6]*reg[2] + reg[5]) *\
+                        tvm.const(cce_params.C0_SIZE, dtype="uint64")
+                    reg[10] = (reg[7]*reg[2] + reg[4]) *\
+                        tvm.const(cce_params.C0_SIZE, dtype="uint64")
+                    reg[11] = (reg[7]*reg[2] + reg[5]) *\
+                        tvm.const(cce_params.C0_SIZE, dtype="uint64")
 
                     # align_value
                     # equals to m1*hx*hy+m2*lx*hy+m3*hx*ly+m4*lx*ly
@@ -4851,8 +4911,8 @@ def psalign_roi_pooling_reg_mov(tensor_op):
                     # reg_half[2]     hx
                     # reg_half[3]     hy
 
-                    # m1*hx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m1*hx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w'),
                         dest_addr_buffer.access_ptr('r',
@@ -4860,56 +4920,56 @@ def psalign_roi_pooling_reg_mov(tensor_op):
                         reg_half[2],
                         1, 1, 1, 8, 8))
 
-                    # m2*lx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m2*lx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w', offset=len_c1),
                         dest_addr_buffer.access_ptr('r',
                                                     offset=reg[9]+dest_offset),
                         reg_half[0], 1, 1, 1, 8, 8))
 
-                    # m3*hx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m3*hx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w', offset=len_c2),
                         dest_addr_buffer.access_ptr('r',
                                                     offset=reg[10]+dest_offset),
                         reg_half[2], 1, 1, 1, 8, 8))
 
-                    # m4*lx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m4*lx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w', offset=len_c3),
                         dest_addr_buffer.access_ptr('r',
                                                     offset=reg[11]+dest_offset),
                         reg_half[0], 1, 1, 1, 8, 8))
 
-                    # m1*hx+m2*lx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m1*hx+m2*lx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vadd',
                         temp_addr_buf.access_ptr('w'),
                         temp_addr_buf.access_ptr('r'),
                         temp_addr_buf.access_ptr('r', offset=len_c1),
                         1, 1, 1, 1, 8, 8, 8))
 
-                    # m3*hx+m4*lx
-                    ir_builder.emit(tvm.call_extern(
+                    # `m3*hx+m4*lx`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vadd',
                         temp_addr_buf.access_ptr('w', offset=len_c2),
                         temp_addr_buf.access_ptr('r', offset=len_c2),
                         temp_addr_buf.access_ptr('r', offset=len_c3),
                         1, 1, 1, 1, 8, 8, 8))
 
-                    # (m1*hx+m2*lx)*hy
-                    ir_builder.emit(tvm.call_extern(
+                    # `(m1*hx+m2*lx)*hy`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w'),
                         temp_addr_buf.access_ptr('r'),
                         reg_half[3],
                         1, 1, 1, 8, 8))
 
-                    # (m3*hx+m4*lx)*ly
-                    ir_builder.emit(tvm.call_extern(
+                    # `(m3*hx+m4*lx)*ly`
+                    ir_builder.emit(call_extern(
                         temp_addr_buf.dtype, 'vmuls',
                         temp_addr_buf.access_ptr('w', offset=len_c2),
                         temp_addr_buf.access_ptr('r', offset=len_c2),
@@ -4919,21 +4979,21 @@ def psalign_roi_pooling_reg_mov(tensor_op):
                     # add (m1*hx+m2*lx)*hy to out
                     # add (m3*hx+m4*lx)*ly to out
 
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         out_addr_buf.dtype, 'vadd',
                         out_addr_buf.access_ptr('w'),
                         out_addr_buf.access_ptr('r'),
                         temp_addr_buf.access_ptr('r'),
                         1, 1, 1, 1, 8, 8, 8))
 
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         out_addr_buf.dtype, 'vadd',
                         out_addr_buf.access_ptr('w'),
                         out_addr_buf.access_ptr('r'),
                         temp_addr_buf.access_ptr('r', offset=len_c2),
                         1, 1, 1, 1, 8, 8, 8))
 
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         res_addr_buf.dtype, 'vmax',
                         res_addr_buf.access_ptr('w', offset=res_ub_offset),
                         res_addr_buf.access_ptr('r', offset=res_ub_offset),
@@ -4943,8 +5003,9 @@ def psalign_roi_pooling_reg_mov(tensor_op):
     reset_mask_insn(ir_builder, res_addr_buf.dtype, bits=128)
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.psalign_roi_valid")
+@register_func("tvm.intrin.cce.psalign_roi_valid")
 def psalign_roi_valid(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
@@ -4954,13 +5015,13 @@ def psalign_roi_valid(tensor_op):
     src_buf = ins[0]
     dst_buf = ins[1]
     # src_buf and dst_buf's sequence is uncertain
-    if isinstance(tensor_op.body.value.condition, tvm.expr.GT):
+    if isinstance(tensor_op.body.value.condition, _expr.GT):
         cmd = "vcmpv_gt"
         src_strid_m0 = 1
         src_strid_m1 = 8
         dst_strid_m0 = 0
         dst_strid_m1 = 0
-    elif isinstance(tensor_op.body.value.condition, tvm.expr.LT):
+    elif isinstance(tensor_op.body.value.condition, _expr.LT):
         cmd = "vcmpv_lt"
         src_strid_m0 = 0
         src_strid_m1 = 0
@@ -4980,23 +5041,23 @@ def psalign_roi_valid(tensor_op):
 
     vcmpv_repeat = (roi_num_per_core+7)//8  # compare 8 rois per repeat
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     psalign_valid_roi_reg = ir_builder.allocate("uint64", (batch_size,),
                                                 name="psalign_valid_roi_reg",
-                                                scope=cce.scope_reg)
+                                                scope=cce_params.scope_reg)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("psalign_valid_roi_reg",
                                                       psalign_valid_roi_reg)
 
     reg_type = "uint16"
     flag_reg = ir_builder.allocate(reg_type, (2,), name="flag_reg",
-                                   scope=cce.scope_reg)
+                                   scope=cce_params.scope_reg)
     flag_reg[0] = tvm.const(-1, reg_type)
     flag_reg[1] = tvm.const(0, reg_type)
     cmp_res_buf = apply_for_new_alloc(ir_builder, "uint8", [roi_num_per_core*2, ],
-                                      scope=cce.scope_ubuf)
+                                      scope=cce_params.scope_ubuf)
     skip_tsh = 32  # skip one block threshold
     psalign_valid_roi_reg[valide_roi_reg_idx] = tvm.const(0, "uint64")
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         "uint8", cmd,
         cmp_res_buf.access_ptr("w", offset=skip_tsh),
         src_buf.access_ptr("r",
@@ -5010,21 +5071,19 @@ def psalign_roi_valid(tensor_op):
     # so when find the first invlaid roi, break,
     # the roi after this roi all invalid roi
     with ir_builder.for_range(0, roi_num_loop, name="roi_index") as roi_index:
-        ir_builder.emit(tvm.call_extern(reg_type, "reg_mov",
-                                        tvm.call_extern(flag_reg.dtype, "reg",
-                                                        flag_reg[1]),
-                                        cmp_res_buf.access_ptr(
-                                            "r",
-                                            offset=skip_tsh+roi_index*2)))
+        ir_builder.emit(call_extern(
+            reg_type, "reg_mov",
+            call_extern(flag_reg.dtype, "reg", flag_reg[1]),
+            cmp_res_buf.access_ptr("r", offset=skip_tsh+roi_index*2)))
         with ir_builder.if_scope((flag_reg[0] &
                                   flag_reg[1]) == tvm.const(0, dtype=reg_type)):
-            ir_builder.emit(tvm.call_extern("uint64", "break"))
+            ir_builder.emit(call_extern("uint64", "break"))
         psalign_valid_roi_reg[valide_roi_reg_idx] += tvm.const(1, "uint64")
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_break_invalid_roi")
+@register_func("tvm.intrin.cce.psalign_break_invalid_roi")
 def psalign_break_invalid_roi(tensor_op):
     # pylint: disable=unused-argument
     """
@@ -5034,7 +5093,7 @@ def psalign_break_invalid_roi(tensor_op):
     thread_block = get_emitinsn_params("thread_block")
     cur_roi = get_emitinsn_params("roi_loop_axis")
     batch_size = get_emitinsn_params("batch_size")
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     psalign_valid_roi_reg = get_emitinsn_params("psalign_valid_roi_reg")
     roi_pad_num = get_emitinsn_params("roi_pad_num")
 
@@ -5046,15 +5105,16 @@ def psalign_break_invalid_roi(tensor_op):
 
     if roi_pad_num == 1:
         with ir_builder.if_scope(psalign_roi_num_reg[thread_block] <= cur_roi):
-            ir_builder.emit(tvm.call_extern("uint64", "break"))
+            ir_builder.emit(call_extern("uint64", "break"))
 
     with ir_builder.if_scope(valid_roi_num <= cur_roi):
-        ir_builder.emit(tvm.call_extern("uint64", "break"))
+        ir_builder.emit(call_extern("uint64", "break"))
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.psalign_dma_copy_invalid_roi")
+@register_func("tvm.intrin.cce.psalign_dma_copy_invalid_roi")
 def psalign_dma_copy_invalid_roi(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
@@ -5083,7 +5143,7 @@ def psalign_dma_copy_invalid_roi(tensor_op):
         roi_num_loop = roi_num_per_core
         valid_roi_num = psalign_valid_roi_reg[thread_block]
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     dst_buf = tvm.decl_buffer(shape=out_buf.shape,
                               dtype=out_buf.dtype,
                               name=out_buf.name,
@@ -5095,26 +5155,26 @@ def psalign_dma_copy_invalid_roi(tensor_op):
     invalid_roi_num = roi_num_loop - valid_roi_num
     dup_0_repeat = ((pooled_area*16 - 1)//128)+1
     dup_0_buf = apply_for_new_alloc(ir_builder, "float16", (dup_0_repeat*128,),
-                                    scope=cce.scope_ubuf)
+                                    scope=cce_params.scope_ubuf)
 
     dup_0_repeat_time = dup_0_repeat//255
-    dup_0_repeat_tail = dup_0_repeat%255
+    dup_0_repeat_tail = dup_0_repeat % 255
     if dup_0_repeat_time > 0:
         for i in range(dup_0_repeat_time):
-            ir_builder.emit(tvm.call_extern("float16", "vector_dup",
-                                            dup_0_buf.access_ptr(
-                                                "w",
-                                                offset=32640*i),
-                                            tvm.const(0, dtype="float16"),
-                                            255, 1, 1, 8, 8))
-
-    if dup_0_repeat_tail > 0:
-        ir_builder.emit(tvm.call_extern("float16", "vector_dup",
+            ir_builder.emit(call_extern("float16", "vector_dup",
                                         dup_0_buf.access_ptr(
                                             "w",
-                                            offset=32640*dup_0_repeat_time),
+                                            offset=32640*i),
                                         tvm.const(0, dtype="float16"),
-                                        dup_0_repeat_tail, 1, 1, 8, 8))
+                                        255, 1, 1, 8, 8))
+
+    if dup_0_repeat_tail > 0:
+        ir_builder.emit(call_extern("float16", "vector_dup",
+                                    dup_0_buf.access_ptr(
+                                        "w",
+                                        offset=32640*dup_0_repeat_time),
+                                    tvm.const(0, dtype="float16"),
+                                    dup_0_repeat_tail, 1, 1, 8, 8))
 
     sid = 0
     n_burst = 1
@@ -5125,9 +5185,10 @@ def psalign_dma_copy_invalid_roi(tensor_op):
     intrin_cmd = "copy_ubuf_to_gm"
     with ir_builder.for_range(0, invalid_roi_num, name="roi_index") as roi_index:
         with ir_builder.for_range(0, c0_times, name="c0_index") as c0_index:
-            dst_offset = (roi_copy_thread_offset+valid_roi_num*c0_times +
-                          roi_index*c0_times+c0_index)*pooled_area*cce.C0_SIZE
-            ir_builder.emit(tvm.call_extern(
+            dst_offset = \
+                (roi_copy_thread_offset+valid_roi_num*c0_times +
+                 roi_index*c0_times+c0_index)*pooled_area*cce_params.C0_SIZE
+            ir_builder.emit(call_extern(
                 dst_buf.dtype, intrin_cmd,
                 dst_buf.access_ptr("w", offset=dst_offset),
                 dup_0_buf.access_ptr("r", offset=src_offset),
@@ -5135,7 +5196,7 @@ def psalign_dma_copy_invalid_roi(tensor_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.psalign_roi_cmplt_sel")
+@register_func("tvm.intrin.cce.psalign_roi_cmplt_sel")
 def psalign_roi_cmplt_sel(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign
@@ -5146,18 +5207,18 @@ def psalign_roi_cmplt_sel(tensor_op):
     roi_start_add_one_buf = ins[1]
     roi_end_buf = outs[0]
     roi_aligned_num = roi_start_buf.shape[0]
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     # vsel only can process 128 numbers, so when roi_aligned_num big than 128,
     # we split multi times use vsel
     for i in range(roi_aligned_num.value//128):
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             roi_start_buf.dtype, "vcmp_lt",
             roi_start_buf.access_ptr("r", offset=i*128),
             roi_start_add_one_buf.access_ptr("r", offset=i*128),
             1, 1, 1, 1, 8, 8, 8))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             roi_end_buf.dtype, "vsel",
             roi_end_buf.access_ptr("w", offset=i*128),
             roi_start_add_one_buf.access_ptr("r", offset=i*128),
@@ -5165,8 +5226,9 @@ def psalign_roi_cmplt_sel(tensor_op):
             1, 1, 1, 1, 8, 8, 8))
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.dma_copy_for_roi_multi_core")
+@register_func("tvm.intrin.cce.dma_copy_for_roi_multi_core")
 def dma_copy_for_roi_multi_core(tensor_op):
     """
     :param tensor_op: the stmt of for with psroialign, just for roi multi core template
@@ -5182,11 +5244,11 @@ def dma_copy_for_roi_multi_core(tensor_op):
     thread_block = get_emitinsn_params("thread_block").var
     roi_copy_thread_offset = thread_block*roi_num_per_core*16
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     psalign_roi_num_reg = ir_builder.allocate("uint64", (3,),
                                               name="psalign_roi_num_reg",
-                                              scope=cce.scope_reg)
+                                              scope=cce_params.scope_reg)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("psalign_roi_num_reg",
                                                       psalign_roi_num_reg)
     psalign_roi_num_reg[0] = tvm.const(roi_num_per_core, dtype='uint64')
@@ -5200,7 +5262,7 @@ def dma_copy_for_roi_multi_core(tensor_op):
     src_stride = 0
     dst_stride = 0
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         dst.dtype, "copy_gm_to_ubuf",
         dst.access_ptr("w"),  # dst buffer
         src.access_ptr("r", offset=roi_copy_thread_offset),  # src buffer
@@ -5215,24 +5277,24 @@ def dma_copy_for_roi_multi_core(tensor_op):
 
 
 # intrin for psroialign end
-@tvm.register_func("tvm.intrin.cce.dma_padding")
+@register_func("tvm.intrin.cce.dma_padding")
 def dma_padding(tensor_op):
-    '''
+    """
     dma_padding
-    '''
+    """
     ins, outs, _, sel_var = cce_util.get_dma_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     obuf = tvm.decl_buffer(outs[0].shape, outs[0].dtype,
                            name=outs[0].name+'.Local.UB',
                            data=outs[0].data,
                            offset_factor=outs[0].offset_factor,
                            data_alignment=outs[0].data_alignment,
-                           scope=cce.scope_ubuf,
+                           scope=cce_params.scope_ubuf,
                            strides=outs[0].strides,
                            elem_offset=outs[0].elem_offset)
     if sel_var != []:
-        with ir_builder.if_scope(tvm.ir_pass.Simplify(sel_var[0].condition)):
+        with ir_builder.if_scope(ir_pass.Simplify(sel_var[0].condition)):
             if cce_util.is_const(sel_var[0].true_value):
                 vec_broadcast(ir_builder, "vector_dup", [obuf],
                               cce_util.get_op_lenth(tensor_op), 1, [0])
@@ -5249,12 +5311,13 @@ def dma_padding(tensor_op):
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
 def vec_binary_cmpsel(tensor_op, extern_args, args=None):
     # pylint: disable=unused-argument
-    '''
+    """
     vec_binary_cmpsel
-    '''
+    """
     # for pylint
     ins, outs = cce_util.get_buffer(tensor_op)
 
@@ -5268,7 +5331,7 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
     block_len = 256
     src_dtype = ins[0].dtype
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     repeat_cal_dtype = src_dtype
     cal_bit_len = cce_util.get_bits_of(repeat_cal_dtype)
@@ -5281,9 +5344,9 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
     is_scalar_flag_list = [False, False, False, False]
     for i in range(1, len(extern_args)):
         if extern_args[i] is not None:
-            scalar_buffer = cce_util.apply_for_new_alloc(ir_builder, src_dtype,
-                                                         (128,), cce.scope_ubuf,
-                                                         "scalar"+str(i))
+            scalar_buffer = cce_util.apply_for_new_alloc(
+                ir_builder, src_dtype, (128,), cce_params.scope_ubuf,
+                "scalar"+str(i))
             vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer],
                             cal_once_len, 1,
                             [tvm.const(extern_args[i], dtype=src_dtype)],
@@ -5300,39 +5363,7 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
                 if is_scalar_flag_list[i] is True:
                     repeat_offset_list[i] = 0
             # cmp the input1 and input2
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vcmp_"+extern_args[0],
-                                            ins[0].access_ptr(
-                                                "r",
-                                                offset=repeat_offset_list[0]),
-                                            ins[1].access_ptr(
-                                                "r",
-                                                offset=repeat_offset_list[1]),
-                                            1, 1, 1, 1, 8, 8, 8))
-            # sel the input3 and input4
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vsel",
-                                            outs[0].access_ptr(
-                                                "rw",
-                                                offset=repeat_offset),
-                                            ins[2].access_ptr(
-                                                "r",
-                                                offset=repeat_offset_list[2]),
-                                            ins[3].access_ptr(
-                                                "r",
-                                                offset=repeat_offset_list[3]),
-                                            1, 1, 1, 1, 8, 8, 8))
-
-    if remain_len > 0:
-        repeat_offset = repeat_times*cal_once_len
-        repeat_offset_list = [repeat_offset, repeat_offset, repeat_offset,
-                              repeat_offset]
-        for i, _ in enumerate(is_scalar_flag_list):
-            if is_scalar_flag_list[i] is True:
-                repeat_offset_list[i] = 0
-        # cmp the input1 and input2
-        reset_mask_insn(ir_builder, dst_dtype, bits=remain_len)
-        ir_builder.emit(tvm.call_extern(dst_dtype,
+            ir_builder.emit(call_extern(dst_dtype,
                                         "vcmp_"+extern_args[0],
                                         ins[0].access_ptr(
                                             "r",
@@ -5341,8 +5372,8 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
                                             "r",
                                             offset=repeat_offset_list[1]),
                                         1, 1, 1, 1, 8, 8, 8))
-        # sel the input3 and input4
-        ir_builder.emit(tvm.call_extern(dst_dtype,
+            # sel the input3 and input4
+            ir_builder.emit(call_extern(dst_dtype,
                                         "vsel",
                                         outs[0].access_ptr(
                                             "rw",
@@ -5355,29 +5386,62 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
                                             offset=repeat_offset_list[3]),
                                         1, 1, 1, 1, 8, 8, 8))
 
+    if remain_len > 0:
+        repeat_offset = repeat_times*cal_once_len
+        repeat_offset_list = [repeat_offset, repeat_offset, repeat_offset,
+                              repeat_offset]
+        for i, _ in enumerate(is_scalar_flag_list):
+            if is_scalar_flag_list[i] is True:
+                repeat_offset_list[i] = 0
+        # cmp the input1 and input2
+        reset_mask_insn(ir_builder, dst_dtype, bits=remain_len)
+        ir_builder.emit(call_extern(dst_dtype,
+                                    "vcmp_"+extern_args[0],
+                                    ins[0].access_ptr(
+                                        "r",
+                                        offset=repeat_offset_list[0]),
+                                    ins[1].access_ptr(
+                                        "r",
+                                        offset=repeat_offset_list[1]),
+                                    1, 1, 1, 1, 8, 8, 8))
+        # sel the input3 and input4
+        ir_builder.emit(call_extern(dst_dtype,
+                                    "vsel",
+                                    outs[0].access_ptr(
+                                        "rw",
+                                        offset=repeat_offset),
+                                    ins[2].access_ptr(
+                                        "r",
+                                        offset=repeat_offset_list[2]),
+                                    ins[3].access_ptr(
+                                        "r",
+                                        offset=repeat_offset_list[3]),
+                                    1, 1, 1, 1, 8, 8, 8))
+
     reset_mask_insn(ir_builder, dst_dtype)
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.vector_cmpsel")
+@register_func("tvm.intrin.cce.vector_cmpsel")
 def elewise_binary_cmpsel(tensor_op):
-    '''
+    """
     elewise_binary_cmpsel
-    '''
+    """
     args = cce_util.get_cmp_sel_args(tensor_op)
     return vec_binary_cmpsel(tensor_op, args)
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_logic")
+@register_func("tvm.intrin.cce.elewise_binary_logic")
 def elewise_binary_logic(tensor_op):
-    '''
+    """
     elewise_binary_logic
-    '''
+    """
     args = cce_util.get_logic_args(tensor_op)
     if args[0] == 'not':
         return vec_VSsingle_elewise(tensor_op, "vlogic", args)
     return vec_binary_elewise_with_ext(tensor_op, "vlogic", args)
+
 
 def _get_decl_buffer(buffer_tensors):
     """
@@ -5396,11 +5460,12 @@ def _get_decl_buffer(buffer_tensors):
 
     return ten_tmp
 
+
 # pylint: disable=too-many-locals
 def vec_binary_cmp(tensor_op):
-    '''
+    """
     vec_binary_cmp
-    '''
+    """
     args = cce_util.get_cmp_args(tensor_op)
     if args[1] == 'bool':
         src_buffers, dst_buffers = cce_util.get_buffer(tensor_op, True)
@@ -5418,7 +5483,7 @@ def vec_binary_cmp(tensor_op):
 
     size = cce_util.get_op_lenth(tensor_op)
     op_cmd = "vcmp_"+args[0]
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     block_len = 256
 
@@ -5433,29 +5498,28 @@ def vec_binary_cmp(tensor_op):
     remain_len = size - repeat_times*cal_once_len
 
     if args[2] is not None:
-        scalar_buffer = cce_util.apply_for_new_alloc(ir_builder, src_dtype, (128,),
-                                                     cce.scope_ubuf, "scalar")
+        scalar_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer], cal_once_len, 1,
                         [tvm.const(args[2], dtype=src_dtype)], [1, 1, 8, 8])
         src_buffers.insert(0, scalar_buffer)
     if args[3] is not None:
-        scalar_buffer = cce_util.apply_for_new_alloc(ir_builder, src_dtype, (128,),
-                                                     cce.scope_ubuf, "scalar")
+        scalar_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer], cal_once_len, 1,
                         [tvm.const(args[3], dtype=src_dtype)], [1, 1, 8, 8])
         src_buffers.insert(1, scalar_buffer)
 
     if args[1] == 'bool':
-        ones_buffer = cce_util.apply_for_new_alloc(ir_builder, "float16", (128,),
-                                                   name="ones",
-                                                   scope=cce.scope_ubuf)
-        zeros_buffer = cce_util.apply_for_new_alloc(ir_builder, "float16", (128,),
-                                                    name="zeros",
-                                                    scope=cce.scope_ubuf)
-        fp16_res_buffer = cce_util.apply_for_new_alloc(ir_builder, "float16",
-                                                       dst_buffers[0].shape,
-                                                       name="fp16_res",
-                                                       scope=cce.scope_ubuf)
+        ones_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, "float16", (128,), name="ones",
+            scope=cce_params.scope_ubuf)
+        zeros_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, "float16", (128,), name="zeros",
+            scope=cce_params.scope_ubuf)
+        fp16_res_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, "float16", dst_buffers[0].shape, name="fp16_res",
+            scope=cce_params.scope_ubuf)
         vec_cmd_factory(ir_builder, "vector_dup", [], [ones_buffer], 128, 1,
                         [tvm.const(1.0, "float16")],
                         [1, 1, 8, 8])
@@ -5472,25 +5536,25 @@ def vec_binary_cmp(tensor_op):
                 if args[3] is not None:
                     second_src_repeat_offset = 0
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                op_cmd,
-                                                src_buffers[0].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            op_cmd,
+                                            src_buffers[0].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
 
                 reset_mask_insn(ir_builder, "float16", bits=cal_once_len)
-                ir_builder.emit(tvm.call_extern("float16",
-                                                "vsel",
-                                                fp16_res_buffer.access_ptr(
-                                                    "rw",
-                                                    offset=repeat_offset),
-                                                ones_buffer.access_ptr("r"),
-                                                zeros_buffer.access_ptr("r"),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern("float16",
+                                            "vsel",
+                                            fp16_res_buffer.access_ptr(
+                                                "rw",
+                                                offset=repeat_offset),
+                                            ones_buffer.access_ptr("r"),
+                                            zeros_buffer.access_ptr("r"),
+                                            1, 1, 1, 1, 8, 8, 8))
                 reset_mask_insn(ir_builder, "float16")
 
         if remain_len > 0:
@@ -5504,23 +5568,23 @@ def vec_binary_cmp(tensor_op):
             if args[3] is not None:
                 second_src_repeat_offset = 0
             # cmp the input1 and input2
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            op_cmd,
-                                            src_buffers[0].access_ptr(
-                                                "r",
-                                                offset=first_src_repeat_offset),
-                                            src_buffers[1].access_ptr(
-                                                "r",
-                                                offset=second_src_repeat_offset),
-                                            1, 1, 1, 1, 8, 8, 8))
-            ir_builder.emit(tvm.call_extern("float16",
-                                            "vsel",
-                                            fp16_res_buffer.access_ptr(
-                                                "rw",
-                                                offset=repeat_dst_offset),
-                                            ones_buffer.access_ptr("r"),
-                                            zeros_buffer.access_ptr("r"),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        op_cmd,
+                                        src_buffers[0].access_ptr(
+                                            "r",
+                                            offset=first_src_repeat_offset),
+                                        src_buffers[1].access_ptr(
+                                            "r",
+                                            offset=second_src_repeat_offset),
+                                        1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern("float16",
+                                        "vsel",
+                                        fp16_res_buffer.access_ptr(
+                                            "rw",
+                                            offset=repeat_dst_offset),
+                                        ones_buffer.access_ptr("r"),
+                                        zeros_buffer.access_ptr("r"),
+                                        1, 1, 1, 1, 8, 8, 8))
 
         reset_mask_insn(ir_builder, "float16")
         vec_cmd_factory(ir_builder, 'vconv_f162s8', [fp16_res_buffer],
@@ -5555,18 +5619,18 @@ def vec_binary_cmp(tensor_op):
                         second_src_repeat_offset = 0
                         vcmpv_repeat_stride = (1, 1, 1, 8, 8, 0)
                     # cmp the input1 and input2
-                    ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                    op_cmd,
-                                                    dst_buffers[0].access_ptr(
-                                                        "wr",
-                                                        offset=dst_repeat_offset),
-                                                    src_buffers[0].access_ptr(
-                                                        "r",
-                                                        offset=first_src_repeat_offset),
-                                                    src_buffers[1].access_ptr(
-                                                        "r",
-                                                        offset=second_src_repeat_offset),
-                                                    max_repeat_times, *vcmpv_repeat_stride))
+                    ir_builder.emit(call_extern(dst_dtype,
+                                                op_cmd,
+                                                dst_buffers[0].access_ptr(
+                                                    "wr",
+                                                    offset=dst_repeat_offset),
+                                                src_buffers[0].access_ptr(
+                                                    "r",
+                                                    offset=first_src_repeat_offset),
+                                                src_buffers[1].access_ptr(
+                                                    "r",
+                                                    offset=second_src_repeat_offset),
+                                                max_repeat_times, *vcmpv_repeat_stride))
                 repeat_times = repeat_times % max_repeat_times
 
             if repeat_times > 0:
@@ -5582,18 +5646,18 @@ def vec_binary_cmp(tensor_op):
                     second_src_repeat_offset = 0
                     vcmpv_repeat_stride = (1, 1, 1, 8, 8, 0)
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                op_cmd,
-                                                dst_buffers[0].access_ptr(
-                                                    "wr",
-                                                    offset=dst_repeat_offset),
-                                                src_buffers[0].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                repeat_times, *vcmpv_repeat_stride))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            op_cmd,
+                                            dst_buffers[0].access_ptr(
+                                                "wr",
+                                                offset=dst_repeat_offset),
+                                            src_buffers[0].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            repeat_times, *vcmpv_repeat_stride))
 
             if remain_len > 0:
                 reset_mask_insn(ir_builder, src_dtype, bits=remain_len)
@@ -5609,18 +5673,18 @@ def vec_binary_cmp(tensor_op):
                     second_src_repeat_offset = 0
                     vcmpv_repeat_stride = (1, 1, 1, 8, 8, 0)
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                op_cmd,
-                                                dst_buffers[0].access_ptr(
-                                                    "wr",
-                                                    offset=repeat_dst_offset),
-                                                src_buffers[0].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                1, *vcmpv_repeat_stride))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            op_cmd,
+                                            dst_buffers[0].access_ptr(
+                                                "wr",
+                                                offset=repeat_dst_offset),
+                                            src_buffers[0].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            1, *vcmpv_repeat_stride))
 
             reset_mask_insn(ir_builder, src_dtype)
         else:
@@ -5635,17 +5699,17 @@ def vec_binary_cmp(tensor_op):
                     if args[3] is not None:
                         second_src_repeat_offset = 0
                     # cmp the input1 and input2
-                    ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                    op_cmd,
-                                                    src_buffers[0].access_ptr(
-                                                        "r",
-                                                        offset=first_src_repeat_offset),
-                                                    src_buffers[1].access_ptr(
-                                                        "r",
-                                                        offset=second_src_repeat_offset),
-                                                    1, 1, 1, 1, 8, 8, 8))
+                    ir_builder.emit(call_extern(dst_dtype,
+                                                op_cmd,
+                                                src_buffers[0].access_ptr(
+                                                    "r",
+                                                    offset=first_src_repeat_offset),
+                                                src_buffers[1].access_ptr(
+                                                    "r",
+                                                    offset=second_src_repeat_offset),
+                                                1, 1, 1, 1, 8, 8, 8))
                     # get 16 uint8 cmp result from cmp_mask
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         dst_buffers[0].dtype, "get_cmpmask",
                         dst_buffers[0].access_ptr(
                             "wr",
@@ -5662,17 +5726,17 @@ def vec_binary_cmp(tensor_op):
                 if args[3] is not None:
                     second_src_repeat_offset = 0
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                op_cmd,
-                                                src_buffers[0].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            op_cmd,
+                                            src_buffers[0].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
                 # get 16 uint8 cmp result from cmp_mask and
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dst_buffers[0].dtype, "get_cmpmask",
                     dst_buffers[0].access_ptr("wr", offset=repeat_dst_offset)))
 
@@ -5680,11 +5744,12 @@ def vec_binary_cmp(tensor_op):
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
 def vec_multiple_sel(tensor_op):
-    '''
+    """
     vec_multiple_sel
-    '''
+    """
     src_buffers, dst_buffers = cce_util.get_buffer(tensor_op, True)
     if not src_buffers:
         raise RuntimeError("vec_multiple_sel at least has one src")
@@ -5697,7 +5762,7 @@ def vec_multiple_sel(tensor_op):
 
     size = cce_util.get_op_lenth(tensor_op)
     condition = src_buffers[0]
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     block_len = 256
     if len(src_buffers) > 1:
@@ -5716,36 +5781,30 @@ def vec_multiple_sel(tensor_op):
     # tensor_to_tensor tensor_to_scalar scalar_to_tensor scalar_to_scalar
     sel_type, scalar_value = cce_util.get_sel_type(tensor_op)
     if sel_type == 'tensor_to_scalar':
-        scalar_buffer = cce_util.apply_for_new_alloc(ir_builder, src_dtype,
-                                                     (128,),
-                                                     cce.scope_ubuf, "scalar")
+        scalar_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer],
                         cal_once_len, 1,
                         [scalar_value[0]],
                         [1, 1, 8, 8])
         src_buffers.append(scalar_buffer)
     elif sel_type == 'scalar_to_tensor':
-        scalar_buffer = cce_util.apply_for_new_alloc(ir_builder, src_dtype,
-                                                     (128,),
-                                                     cce.scope_ubuf, "scalar")
+        scalar_buffer = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer],
                         cal_once_len, 1,
                         [scalar_value[0]],
                         [1, 1, 8, 8])
         src_buffers.insert(1, scalar_buffer)
     elif sel_type == 'scalar_to_scalar':
-        scalar_buffer0 = cce_util.apply_for_new_alloc(ir_builder, src_dtype,
-                                                      (128,),
-                                                      cce.scope_ubuf,
-                                                      "scalar0")
+        scalar_buffer0 = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar0")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer0],
                         cal_once_len, 1,
                         [scalar_value[0]],
                         [1, 1, 8, 8])
-        scalar_buffer1 = cce_util.apply_for_new_alloc(ir_builder, src_dtype,
-                                                      (128,),
-                                                      cce.scope_ubuf,
-                                                      "scalar1")
+        scalar_buffer1 = cce_util.apply_for_new_alloc(
+            ir_builder, src_dtype, (128,), cce_params.scope_ubuf, "scalar1")
         vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer1],
                         cal_once_len, 1,
                         [scalar_value[1]],
@@ -5769,23 +5828,23 @@ def vec_multiple_sel(tensor_op):
                     first_src_repeat_offset = 0
                     second_src_repeat_offset = 0
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern("uint8",
-                                                "set_cmpmask",
-                                                condition.access_ptr(
-                                                    "r",
-                                                    offset=repeat_condition_offset)))
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                "vsel",
-                                                dst_buffers[0].access_ptr(
-                                                    "rw",
-                                                    offset=repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[2].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern("uint8",
+                                            "set_cmpmask",
+                                            condition.access_ptr(
+                                                "r",
+                                                offset=repeat_condition_offset)))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            "vsel",
+                                            dst_buffers[0].access_ptr(
+                                                "rw",
+                                                offset=repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[2].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
         if remain_len > 0:
             reset_mask_insn(ir_builder, src_dtype, bits=remain_len)
             repeat_condition_offset = repeat_times*cal_once_len//8
@@ -5800,29 +5859,29 @@ def vec_multiple_sel(tensor_op):
             elif sel_type == 'scalar_to_scalar':
                 first_src_repeat_offset = 0
                 second_src_repeat_offset = 0
-            ir_builder.emit(tvm.call_extern("uint8",
-                                            "set_cmpmask",
-                                            condition.access_ptr(
-                                                "r",
-                                                offset=repeat_condition_offset)))
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vsel",
-                                            dst_buffers[0].access_ptr(
-                                                "rw",
-                                                offset=repeat_dst_offset),
-                                            src_buffers[1].access_ptr(
-                                                "r",
-                                                offset=first_src_repeat_offset),
-                                            src_buffers[2].access_ptr(
-                                                "r",
-                                                offset=second_src_repeat_offset),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern("uint8",
+                                        "set_cmpmask",
+                                        condition.access_ptr(
+                                            "r",
+                                            offset=repeat_condition_offset)))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        "vsel",
+                                        dst_buffers[0].access_ptr(
+                                            "rw",
+                                            offset=repeat_dst_offset),
+                                        src_buffers[1].access_ptr(
+                                            "r",
+                                            offset=first_src_repeat_offset),
+                                        src_buffers[2].access_ptr(
+                                            "r",
+                                            offset=second_src_repeat_offset),
+                                        1, 1, 1, 1, 8, 8, 8))
     # bool mode
     else:
         # condition is int8, convert to float16
         fp16_cond_buffer = cce_util.apply_for_new_alloc(ir_builder, "float16",
                                                         condition.shape,
-                                                        cce.scope_ubuf,
+                                                        cce_params.scope_ubuf,
                                                         "fp16_cond_buffer")
         vec_cmd_factory(ir_builder, 'vconv_s82f16', [condition],
                         [fp16_cond_buffer],
@@ -5831,8 +5890,9 @@ def vec_multiple_sel(tensor_op):
                         repeat_cal_dtype='fp16')
 
         # allocate zeros buffer
-        zeros_buffer = cce_util.apply_for_new_alloc(ir_builder, "float16", (128,),
-                                                    cce.scope_ubuf, "zeros")
+        zeros_buffer = \
+            cce_util.apply_for_new_alloc(ir_builder, "float16", (128,),
+                                         cce_params.scope_ubuf, "zeros")
         vec_cmd_factory(ir_builder, "vector_dup", [], [zeros_buffer], 128, [],
                         [tvm.const(0.0, "float16")],
                         [1, 1, 8, 8])
@@ -5851,26 +5911,26 @@ def vec_multiple_sel(tensor_op):
                     first_src_repeat_offset = 0
                     second_src_repeat_offset = 0
                 # cmp the input1 and input2
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                "vcmp_gt",
-                                                fp16_cond_buffer.access_ptr(
-                                                    "r",
-                                                    offset=repeat_offset),
-                                                zeros_buffer.access_ptr("r"),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            "vcmp_gt",
+                                            fp16_cond_buffer.access_ptr(
+                                                "r",
+                                                offset=repeat_offset),
+                                            zeros_buffer.access_ptr("r"),
+                                            1, 1, 1, 1, 8, 8, 8))
 
-                ir_builder.emit(tvm.call_extern(dst_dtype,
-                                                "vsel",
-                                                dst_buffers[0].access_ptr(
-                                                    "rw",
-                                                    offset=repeat_offset),
-                                                src_buffers[1].access_ptr(
-                                                    "r",
-                                                    offset=first_src_repeat_offset),
-                                                src_buffers[2].access_ptr(
-                                                    "r",
-                                                    offset=second_src_repeat_offset),
-                                                1, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dst_dtype,
+                                            "vsel",
+                                            dst_buffers[0].access_ptr(
+                                                "rw",
+                                                offset=repeat_offset),
+                                            src_buffers[1].access_ptr(
+                                                "r",
+                                                offset=first_src_repeat_offset),
+                                            src_buffers[2].access_ptr(
+                                                "r",
+                                                offset=second_src_repeat_offset),
+                                            1, 1, 1, 1, 8, 8, 8))
 
         if remain_len > 0:
             repeat_src_offset = repeat_times*cal_once_len
@@ -5886,34 +5946,35 @@ def vec_multiple_sel(tensor_op):
                 second_src_repeat_offset = 0
             # cmp the input1 and input2
             reset_mask_insn(ir_builder, dst_dtype, bits=remain_len)
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vcmp_gt",
-                                            fp16_cond_buffer.access_ptr(
-                                                "r",
-                                                offset=repeat_src_offset),
-                                            zeros_buffer.access_ptr("r"),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        "vcmp_gt",
+                                        fp16_cond_buffer.access_ptr(
+                                            "r",
+                                            offset=repeat_src_offset),
+                                        zeros_buffer.access_ptr("r"),
+                                        1, 1, 1, 1, 8, 8, 8))
 
-            ir_builder.emit(tvm.call_extern(dst_dtype,
-                                            "vsel",
-                                            dst_buffers[0].access_ptr(
-                                                "rw",
-                                                offset=repeat_dst_offset),
-                                            src_buffers[1].access_ptr(
-                                                "r",
-                                                offset=first_src_repeat_offset),
-                                            src_buffers[2].access_ptr(
-                                                "r",
-                                                offset=second_src_repeat_offset),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dst_dtype,
+                                        "vsel",
+                                        dst_buffers[0].access_ptr(
+                                            "rw",
+                                            offset=repeat_dst_offset),
+                                        src_buffers[1].access_ptr(
+                                            "r",
+                                            offset=first_src_repeat_offset),
+                                        src_buffers[2].access_ptr(
+                                            "r",
+                                            offset=second_src_repeat_offset),
+                                        1, 1, 1, 1, 8, 8, 8))
 
     reset_mask_insn(ir_builder, dst_dtype)
 
     return ir_builder.get()
 
+
 # pylint: disable=too-many-locals
 # intrin for pooling2d start
-@tvm.register_func("tvm.intrin.cce.pooling2d_process")
+@register_func("tvm.intrin.cce.pooling2d_process")
 def pooling2d_process(op_expr):
     """
     :param op_expr: the stmt of for with pooling2d_process(max/sum)
@@ -5941,7 +6002,7 @@ def pooling2d_process(op_expr):
 
     fmap_img2col_cuth = l1_cut_to_ub_factor*16
 
-    ib_expr = tvm.ir_builder.create()
+    ib_expr = _create()
 
     if len(ins) <= 1:
         stmt = ib_expr.get()
@@ -5972,12 +6033,13 @@ def pooling2d_process(op_expr):
 
     c1_range = 1
     loop_extent = []
+
     def _post_order(stmt_in):
-        if isinstance(stmt_in, tvm.stmt.For):
+        if isinstance(stmt_in, _stmt.For):
             if stmt_in.loop_var.name == "k":
                 loop_extent.append(stmt_in.extent.value)
 
-    _ = tvm.ir_pass.IRTransform(op_expr, None, _post_order, ["For"])
+    _ = ir_pass.IRTransform(op_expr, None, _post_order, ["For"])
     if loop_extent:
         c1_range = loop_extent[0]
 
@@ -5991,11 +6053,11 @@ def pooling2d_process(op_expr):
     is_tile = bool(op_expr.extent.value < l1_cut_to_ub_factor)
     if is_tile:
         if is_cut_l1_to_ub:
-            remained_tile_size = ((out_size_h*out_size_w + 15)//16*16%
+            remained_tile_size = ((out_size_h*out_size_w + 15)//16*16 %
                                   (fmap_img2col_setps_cuth*out_size_w))
 
             elem_offset = (remained_tile_size//c_block_size//l1_cut_to_ub_factor) \
-                         *c_block_size*l1_cut_to_ub_factor*c_block_size*c1_range
+                * c_block_size*l1_cut_to_ub_factor*c_block_size*c1_range
             repeat = (remained_tile_size*c_block_size*c1_range - elem_offset)//128
         else:
             burst_len_pre = res_cut_factor*(cuth_loop - 1)
@@ -6011,32 +6073,31 @@ def pooling2d_process(op_expr):
                                      scope=cce_util.get_buf_scope(dst_buffer.name),
                                      elem_offset=elem_offset)
 
-    # if not is_tile:
     dst_addr = dst_buffer.access_ptr('w', offset=0)
 
     if 0 < repeat <= 255:
-        ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup', dst_addr,
-                                     dump_value, repeat, dst_stride_m0,
-                                     src_stride_m0, dst_stride_m1,
-                                     src_stride_m1))
+        ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup', dst_addr,
+                                 dump_value, repeat, dst_stride_m0,
+                                 src_stride_m0, dst_stride_m1,
+                                 src_stride_m1))
     elif repeat > 255:
         repeat_loop_dump = repeat//255
         repeat_loop_count = 255
-        repeat_left_count = repeat%255
+        repeat_left_count = repeat % 255
 
         for i in range(repeat_loop_dump):
             dst_addr_loop = dst_buffer.access_ptr('w', offset=i*255*128)
             ib_expr.emit(
-                tvm.call_extern(dst_buffer.dtype, 'vector_dup', dst_addr_loop,
-                                dump_value, repeat_loop_count, dst_stride_m0, src_stride_m0,
-                                dst_stride_m1, src_stride_m1))
+                call_extern(dst_buffer.dtype, 'vector_dup', dst_addr_loop,
+                            dump_value, repeat_loop_count, dst_stride_m0, src_stride_m0,
+                            dst_stride_m1, src_stride_m1))
 
         dst_addr_left = dst_buffer.access_ptr('w',
                                               offset=repeat_loop_dump*255*128)
         ib_expr.emit(
-            tvm.call_extern(dst_buffer.dtype, 'vector_dup', dst_addr_left,
-                            dump_value, repeat_left_count, dst_stride_m0, src_stride_m0,
-                            dst_stride_m1, src_stride_m1))
+            call_extern(dst_buffer.dtype, 'vector_dup', dst_addr_left,
+                        dump_value, repeat_left_count, dst_stride_m0, src_stride_m0,
+                        dst_stride_m1, src_stride_m1))
 
     else:
         raise RuntimeError("invalid repeat params, it must be >= 1")
@@ -6076,10 +6137,10 @@ def pooling2d_process(op_expr):
 
                 # emit vmax/vadd for the first half 128 fp16 data of each fracZ
                 ib_expr.emit(
-                    tvm.call_extern(dst_buffer.dtype, pooling_intrin, dst_addr,
-                                    src0_addr, src1_addr, repeat, dst_stride_m0,
-                                    src0_stride_m0, src1_stride_m0, dst_stride_m1,
-                                    src0_stride_m1, src1_stride_m1))
+                    call_extern(dst_buffer.dtype, pooling_intrin, dst_addr,
+                                src0_addr, src1_addr, repeat, dst_stride_m0,
+                                src0_stride_m0, src1_stride_m0, dst_stride_m1,
+                                src0_stride_m1, src1_stride_m1))
 
                 # emit vmax/vadd for the second half 128 data of each fracZ
                 dst_addr = dst_buffer.access_ptr('w', offset=fracz_size//2)
@@ -6087,10 +6148,10 @@ def pooling2d_process(op_expr):
                 src1_addr = src_buffer.access_ptr('r',
                                                   offset=offset_src1+fracz_size//2)
                 ib_expr.emit(
-                    tvm.call_extern(dst_buffer.dtype, pooling_intrin, dst_addr,
-                                    src0_addr, src1_addr, repeat, dst_stride_m0,
-                                    src0_stride_m0, src1_stride_m0, dst_stride_m1,
-                                    src0_stride_m1, src1_stride_m1))
+                    call_extern(dst_buffer.dtype, pooling_intrin, dst_addr,
+                                src0_addr, src1_addr, repeat, dst_stride_m0,
+                                src0_stride_m0, src1_stride_m0, dst_stride_m1,
+                                src0_stride_m1, src1_stride_m1))
             else:
                 dst_stride_m0 = 1
                 src0_stride_m0 = 1
@@ -6110,8 +6171,8 @@ def pooling2d_process(op_expr):
                 for ci_item in range(c1_range):
                     for hi_item in range(h_factor):
                         offset_src1 = hi_item*c1_range*fracz_size*loop_inner_w \
-                                     +ci_item*fracz_size*loop_inner_w \
-                                     +fracz_size*_loop_inner_w
+                            + ci_item*fracz_size*loop_inner_w \
+                            + fracz_size*_loop_inner_w
                         offset_dst = hi_item*c1_range*fracz_size+ci_item*fracz_size
                         offset_src0 = offset_dst
                         dst_addr = dst_buffer.access_ptr('w', offset=offset_dst)
@@ -6121,17 +6182,18 @@ def pooling2d_process(op_expr):
                                                           offset=offset_src1)
                         # emit vmax for the first half 128 fp16 data of each fracZ
                         ib_expr.emit(
-                            tvm.call_extern(dst_buffer.dtype, pooling_intrin,
-                                            dst_addr, src0_addr, src1_addr, repeat,
-                                            dst_stride_m0, src0_stride_m0, src1_stride_m0,
-                                            dst_stride_m1, src0_stride_m1, src1_stride_m1))
+                            call_extern(dst_buffer.dtype, pooling_intrin,
+                                        dst_addr, src0_addr, src1_addr, repeat,
+                                        dst_stride_m0, src0_stride_m0, src1_stride_m0,
+                                        dst_stride_m1, src0_stride_m1, src1_stride_m1))
 
     stmt = ib_expr.get()
 
     return stmt
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.pooling2d_avg_mul_factor")
+@register_func("tvm.intrin.cce.pooling2d_avg_mul_factor")
 def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
     """
     :param op_expr: the stmt of for with pooling2d_avg_mul_factor
@@ -6144,7 +6206,7 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
     is_cut_l1_to_ub = get_emitinsn_params("is_cut_l1_to_ub")
     ins, outs, _, _ = cce_util.get_dma_buffer(op_expr)
 
-    ib_expr = tvm.ir_builder.create()
+    ib_expr = _create()
 
     if not ins:
         stmt = ib_expr.get()
@@ -6185,17 +6247,17 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
     base_var = 0
 
     # get out loop var and offset
-    if isinstance(op_expr, tvm.stmt.AttrStmt):
-        if isinstance(op_expr.value, tvm.expr.Var):
+    if isinstance(op_expr, _stmt.AttrStmt):
+        if isinstance(op_expr.value, _expr.Var):
             out_var = op_expr.value
-        elif isinstance(op_expr.value, tvm.expr.IntImm):
+        elif isinstance(op_expr.value, _expr.IntImm):
             base_var = op_expr.value.value
             out_var = op_expr.value.value
-        elif isinstance(op_expr.value, tvm.expr.Add):
-            if isinstance(op_expr.value.a, tvm.expr.Var):
+        elif isinstance(op_expr.value, _expr.Add):
+            if isinstance(op_expr.value.a, _expr.Var):
                 out_var = op_expr.value.a
                 base_var = op_expr.value.b.value
-            elif isinstance(op_expr.value.b, tvm.expr.Var):
+            elif isinstance(op_expr.value.b, _expr.Var):
                 out_var = op_expr.value.b
                 base_var = op_expr.value.a.value
         else:
@@ -6231,14 +6293,14 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
     avg_factor_shape = (
         ((res_cut_factor*c_block_size*c_block_size+128 - 1)//128)*128+128,)
     avg_factor_ub = apply_for_new_alloc(ib_expr, dst.dtype, avg_factor_shape,
-                                        scope=cce.scope_ubuf)
+                                        scope=cce_params.scope_ubuf)
 
     def pooling_ib_emit(ib_expr, index):
         """
         descripe:the function to dump avg factor
         """
-        start_index = current_offset+index*current_length
-        end_index = start_index+current_length
+        start_index = current_offset + index * current_length
+        end_index = start_index + current_length
         # pylint: disable=unsubscriptable-object
         values = AvgPoolingParam.factor_vector[start_index: end_index]
         value, count, offset = get_vector_count_and_offset(values)
@@ -6284,7 +6346,7 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
 
         recursive_pooling_ib_gen(ib_expr, start_idx+1, out_var_range)
 
-    if isinstance(out_var, tvm.expr.Var):
+    if isinstance(out_var, _expr.Var):
         if is_cut_l1_to_ub:
             dump_factor_map = {}
             for i in range(loop_extent):
@@ -6301,11 +6363,6 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
                 dump_factor_map[key].append(i)
 
             if len(dump_factor_map) == 1:
-                # values = AvgPoolingParam.factor_vector[current_offset:
-                # current_offset+current_length]
-                # value, count, offset = get_vector_count_and_offset(values)
-                # pooling_avg_factor_vector_dump(ib_expr, value, count, offset,
-                # avg_factor_ub, c_block_size)
                 pooling_ib_emit(ib_expr, 0)
             else:
                 index_len_0_key_list = []
@@ -6334,17 +6391,12 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
                     pooling_ib_gen(ib_expr, i*MAX_BRACKET_DEPTH,
                                    (i+1)*MAX_BRACKET_DEPTH)
 
-                if loop_extent%MAX_BRACKET_DEPTH != 0:
+                if loop_extent % MAX_BRACKET_DEPTH != 0:
                     pooling_ib_gen(ib_expr, factor_dump_times*MAX_BRACKET_DEPTH,
                                    loop_extent)
             else:
                 pooling_ib_gen(ib_expr, 0, loop_extent)
     else:
-        # values = AvgPoolingParam.factor_vector[current_offset :
-        # current_offset+current_length]
-        # value, count, offset = get_vector_count_and_offset(values)
-        # pooling_avg_factor_vector_dump(ib_expr, value, count, offset,
-        # avg_factor_ub, c_block_size)
         pooling_ib_emit(ib_expr, 0)
 
     # params for vmul of pooling2d_avg_mul_factor
@@ -6355,11 +6407,11 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
     loop_extent = []
 
     def _post_order(stmt_in):
-        if isinstance(stmt_in, tvm.stmt.For):
+        if isinstance(stmt_in, _stmt.For):
             if stmt_in.loop_var.name == "i2":
                 loop_extent.append(stmt_in.extent.value)
 
-    _ = tvm.ir_pass.IRTransform(op_expr, None, _post_order, ["For"])
+    _ = ir_pass.IRTransform(op_expr, None, _post_order, ["For"])
 
     if loop_extent:
         loop_outer_w = loop_extent[0]
@@ -6376,9 +6428,9 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
                 with ib_expr.for_range(0, loop_outer_w,
                                        name="loop_avg_Ci") as _loop_avg_ci:
                     src0_offset = _loop_avg_h*loop_outer_w*fracz_size \
-                                 +_loop_avg_ci*fracz_size
+                        + _loop_avg_ci*fracz_size
                     dst_offset = _loop_avg_h*loop_outer_w*fracz_size \
-                                +_loop_avg_ci*fracz_size
+                        + _loop_avg_ci*fracz_size
                     src0_addr = src_buffer.access_ptr('r', offset=src0_offset)
                     dst_addr = dst_buffer.access_ptr('w', offset=dst_offset)
 
@@ -6396,10 +6448,10 @@ def pooling2d_avg_mul_factor(op_expr, times, loop_extent):
                     src1_stride_m1 = 8
 
                     ib_expr.emit(
-                        tvm.call_extern(dst.dtype, 'vmul', dst_addr, src0_addr,
-                                        src1_addr, repeat, dst_stride_m0, src0_stride_m0,
-                                        src1_stride_m0, dst_stride_m1, src0_stride_m1,
-                                        src1_stride_m1))
+                        call_extern(dst.dtype, 'vmul', dst_addr, src0_addr,
+                                    src1_addr, repeat, dst_stride_m0, src0_stride_m0,
+                                    src1_stride_m0, dst_stride_m1, src0_stride_m1,
+                                    src1_stride_m1))
 
     stmt = ib_expr.get()
     return stmt
@@ -6455,6 +6507,7 @@ class AvgPoolingParam():
         pass
 
     factor_vector = None
+
 
 # pylint: disable=too-many-locals
 def get_mean_factor_vector():
@@ -6569,33 +6622,33 @@ def pooling_avg_factor_vector_dump(ib_expr, value, count, offset, avg_factor_ub,
 
         if 0 < repeat <= 255:
             ib_expr.emit(
-                tvm.call_extern("float16", 'vector_dup', dst_addr, avg_scalar,
-                                repeat, 1, 1, 8, 8))
+                call_extern("float16", 'vector_dup', dst_addr, avg_scalar,
+                            repeat, 1, 1, 8, 8))
         elif repeat > 255:
             avg_factor_dump_loop = repeat//255
             repeat_loop = 255
-            repeat_res = repeat%255
+            repeat_res = repeat % 255
 
             for idx in range(avg_factor_dump_loop):
                 dst_addr_loop = avg_factor_ub.access_ptr('w',
                                                          offset=dst_offset+idx*255*128)
                 ib_expr.emit(
-                    tvm.call_extern("float16", 'vector_dup', dst_addr_loop,
-                                    avg_scalar, repeat_loop, 1, 1, 8, 8))
+                    call_extern("float16", 'vector_dup', dst_addr_loop,
+                                avg_scalar, repeat_loop, 1, 1, 8, 8))
 
             dst_addr_loop_res = avg_factor_ub.access_ptr('w',
-                                                         offset=dst_offset \
-                                                               +avg_factor_dump_loop*255*128)
+                                                         offset=dst_offset
+                                                         + avg_factor_dump_loop*255*128)
             ib_expr.emit(
-                tvm.call_extern("float16", 'vector_dup', dst_addr_loop_res,
-                                avg_scalar, repeat_res, 1, 1, 8, 8))
+                call_extern("float16", 'vector_dup', dst_addr_loop_res,
+                            avg_scalar, repeat_res, 1, 1, 8, 8))
 
         else:
             raise RuntimeError("invalid repeat params, it must be >= 1")
 
 
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.pooling2d_global_process")
+@register_func("tvm.intrin.cce.pooling2d_global_process")
 def pooling2d_global_process(op_expr):
     """
     :param op_expr: the stmt of for with pooling2d_global_process(max/sum)
@@ -6613,7 +6666,7 @@ def pooling2d_global_process(op_expr):
     cut_flag = get_emitinsn_params("cut_flag")
     impl_mode = get_emitinsn_params("impl_mode")
 
-    ib_expr = tvm.ir_builder.create()
+    ib_expr = _create()
 
     # Get vadd vmul vconv ability
     vconv_ability = cce_conf.intrinsic_check_support("Intrinsic_vconv",
@@ -6622,12 +6675,12 @@ def pooling2d_global_process(op_expr):
                                                     "float32")
     vmul_ability = cce_conf.intrinsic_check_support("Intrinsic_vmul",
                                                     "float32")
-    use_fp16 = pver().is_mini_version() and \
-               (impl_mode == "high_performance")
+    use_fp16 = cce_conf.CceProductParams().is_mini_version() and \
+        (impl_mode == "high_performance")
     fp32_ability = vconv_ability and\
-                   vadd_ability and\
-                   vmul_ability and \
-                   (not use_fp16)
+        vadd_ability and\
+        vmul_ability and \
+        (not use_fp16)
     if ins:
         src = ins[1]
         src_buffer = tvm.decl_buffer(src.shape, src.dtype, name=src.name,
@@ -6648,13 +6701,13 @@ def pooling2d_global_process(op_expr):
     is_reg_mov = []
 
     def _post_order(op_expr):
-        if isinstance(op_expr,
-                      tvm.stmt.AttrStmt) and op_expr.attr_key == "pragma_emit_insn":
+        if isinstance(op_expr, _stmt.AttrStmt) and \
+                op_expr.attr_key == "pragma_emit_insn":
             is_reg_mov.append(op_expr.value)
             return op_expr.body
         return None
 
-    _ = tvm.ir_pass.IRTransform(op_expr, None, _post_order, ["AttrStmt"])
+    _ = ir_pass.IRTransform(op_expr, None, _post_order, ["AttrStmt"])
 
     # get repeat data size of each compute loop
     # get extent value of each compute loop that for rq copy ub to gm
@@ -6662,11 +6715,11 @@ def pooling2d_global_process(op_expr):
     var_extent_mul = [1]
 
     def _post_order_for(op_expr):
-        if isinstance(op_expr, tvm.stmt.For):
+        if isinstance(op_expr, _stmt.For):
             var_extent_mul[0] = var_extent_mul[0]*op_expr.extent.value
             var_extent_list.append(op_expr.extent.value)
 
-    op_expr = tvm.ir_pass.IRTransform(op_expr, None, _post_order_for, ["For"])
+    op_expr = ir_pass.IRTransform(op_expr, None, _post_order_for, ["For"])
 
     # check whether real_cutci_current_loop is 1, get real_cutci_current_loop
     if len(var_extent_list) == 1 or c1_value == 1 or cut_ci_factor == 1:
@@ -6685,12 +6738,12 @@ def pooling2d_global_process(op_expr):
         dump_value = tvm.const(0.0, dtype="float16")
         pooling_intrin = 'vadd'
 
-    is_mini_or_lhisi = (pver().is_mini_version() or \
-                        pver().is_lhisi_version())
+    is_mini_or_lhisi = (cce_conf.CceProductParams().is_mini_version() or
+                        cce_conf.CceProductParams().is_lhisi_version())
 
     if is_reg_mov:
-        if isinstance(is_reg_mov[0], tvm.expr.StringImm) and\
-            is_reg_mov[0].value == "reg_mov":
+        if isinstance(is_reg_mov[0], _expr.StringImm) and\
+                is_reg_mov[0].value == "reg_mov":
             # instead reg_mov to be vector_dup here.
             dst_stride_m0 = 1
             src_stride_m0 = 1
@@ -6704,7 +6757,7 @@ def pooling2d_global_process(op_expr):
                 instruction_max = 64
             data_size = real_cutci_current_loop*c_block_size
             repeat = (data_size+instruction_max - 1)//instruction_max
-            tail_dump_size = data_size%instruction_max
+            tail_dump_size = data_size % instruction_max
 
             if tail_dump_size != 0:
                 dump_bits = tail_dump_size
@@ -6718,91 +6771,91 @@ def pooling2d_global_process(op_expr):
             if repeat == 1:
                 reset_mask_insn(ib_expr, dst.dtype, bits=dump_bits)
                 ib_expr.emit(
-                    tvm.call_extern(dst_buffer.dtype, 'vector_dup', dst_addr,
-                                    dump_value, repeat,
-                                    dst_stride_m0, src_stride_m0,
-                                    dst_stride_m1, src_stride_m1))
+                    call_extern(dst_buffer.dtype, 'vector_dup', dst_addr,
+                                dump_value, repeat,
+                                dst_stride_m0, src_stride_m0,
+                                dst_stride_m1, src_stride_m1))
 
             elif 1 < repeat <= 255:
                 # no tail, loop repeat times, each repeat is 128 fp16 numbers.
                 if tail_dump_size == 0:
                     reset_mask_insn(ib_expr, dst.dtype, bits=instruction_max)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr, dump_value,
-                                                 repeat, dst_stride_m0,
-                                                 src_stride_m0,
-                                                 dst_stride_m1, src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr, dump_value,
+                                             repeat, dst_stride_m0,
+                                             src_stride_m0,
+                                             dst_stride_m1, src_stride_m1))
                 else:
                     # main dump size, loop (repeat - 1) times,
                     # each repeat is 128 fp16 numbers.
                     repeat_main = repeat - 1
                     reset_mask_insn(ib_expr, dst.dtype, bits=instruction_max)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr, dump_value,
-                                                 repeat_main, dst_stride_m0,
-                                                 src_stride_m0,
-                                                 dst_stride_m1, src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr, dump_value,
+                                             repeat_main, dst_stride_m0,
+                                             src_stride_m0,
+                                             dst_stride_m1, src_stride_m1))
 
                     # tail dump size, only repeat = 1 for tail bits.
                     dst_offset = (repeat - 1)*instruction_max
                     dst_addr = dst_buffer.access_ptr('w', offset=dst_offset)
                     repeat_tail = 1
                     reset_mask_insn(ib_expr, dst.dtype, bits=dump_bits)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr, dump_value,
-                                                 repeat_tail, dst_stride_m0,
-                                                 src_stride_m0,
-                                                 dst_stride_m1, src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr, dump_value,
+                                             repeat_tail, dst_stride_m0,
+                                             src_stride_m0,
+                                             dst_stride_m1, src_stride_m1))
 
             elif repeat > 255:
                 repeat_loop_dump = repeat//255
                 repeat_loop_count = 255
-                repeat_left_count = repeat%255
+                repeat_left_count = repeat % 255
 
                 reset_mask_insn(ib_expr, dst.dtype, bits=instruction_max)
                 for i in range(repeat_loop_dump):
                     dst_addr_loop = \
                         dst_buffer.access_ptr(
                             'w', offset=i*255*instruction_max)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr_loop, dump_value,
-                                                 repeat_loop_count,
-                                                 dst_stride_m0,
-                                                 src_stride_m0, dst_stride_m1,
-                                                 src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr_loop, dump_value,
+                                             repeat_loop_count,
+                                             dst_stride_m0,
+                                             src_stride_m0, dst_stride_m1,
+                                             src_stride_m1))
 
                 if tail_dump_size == 0:
                     dst_addr_left = dst_buffer.access_ptr(
                         'w', offset=repeat_loop_dump*255*instruction_max)
                     reset_mask_insn(ib_expr, dst.dtype, bits=instruction_max)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr_left, dump_value,
-                                                 repeat_left_count,
-                                                 dst_stride_m0,
-                                                 src_stride_m0, dst_stride_m1,
-                                                 src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr_left, dump_value,
+                                             repeat_left_count,
+                                             dst_stride_m0,
+                                             src_stride_m0, dst_stride_m1,
+                                             src_stride_m1))
                 else:
                     dst_addr_left = dst_buffer.access_ptr(
                         'w', offset=repeat_loop_dump*255*instruction_max)
                     reset_mask_insn(ib_expr, dst.dtype, bits=instruction_max)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr_left, dump_value,
-                                                 repeat_left_count - 1,
-                                                 dst_stride_m0,
-                                                 src_stride_m0, dst_stride_m1,
-                                                 src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr_left, dump_value,
+                                             repeat_left_count - 1,
+                                             dst_stride_m0,
+                                             src_stride_m0, dst_stride_m1,
+                                             src_stride_m1))
 
                     dst_addr_left = \
                         dst_buffer.access_ptr(
                             'w', offset=(repeat - 1)*instruction_max)
                     repeat_tail = 1
                     reset_mask_insn(ib_expr, dst.dtype, bits=dump_bits)
-                    ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                                 dst_addr_left, dump_value,
-                                                 repeat_tail,
-                                                 dst_stride_m0,
-                                                 src_stride_m0,
-                                                 dst_stride_m1, src_stride_m1))
+                    ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                             dst_addr_left, dump_value,
+                                             repeat_tail,
+                                             dst_stride_m0,
+                                             src_stride_m0,
+                                             dst_stride_m1, src_stride_m1))
     else:
         with ib_expr.new_scope():
             with ib_expr.for_range(0, real_cutci_current_loop,
@@ -6814,9 +6867,9 @@ def pooling2d_global_process(op_expr):
                 else:
                     num_per_repeat = 128
                     process_shape = (num_per_repeat,)
-                process_tensor = apply_for_new_alloc(ib_expr, src.dtype,
-                                                     process_shape,
-                                                     scope=cce.scope_ubuf)
+                process_tensor = apply_for_new_alloc(
+                    ib_expr, src.dtype, process_shape,
+                    scope=cce_params.scope_ubuf)
 
                 dst_stride_m0 = 1
                 src_stride_m0 = 1
@@ -6829,11 +6882,11 @@ def pooling2d_global_process(op_expr):
                 # reset mask for vadd or vmax to -1 and
                 # vector_dup 128 fp16 area.
                 reset_mask_insn(ib_expr, dst.dtype, bits=num_per_repeat)
-                ib_expr.emit(tvm.call_extern(dst_buffer.dtype, 'vector_dup',
-                                             dst_addr, dump_value,
-                                             repeat, dst_stride_m0,
-                                             src_stride_m0,
-                                             dst_stride_m1, src_stride_m1))
+                ib_expr.emit(call_extern(dst_buffer.dtype, 'vector_dup',
+                                         dst_addr, dump_value,
+                                         repeat, dst_stride_m0,
+                                         src_stride_m0,
+                                         dst_stride_m1, src_stride_m1))
 
                 # vmax or vadd with process_tensor and tensor_in_ub, result of
                 # vmax or vadd save in process_tensor, Ci > 1
@@ -6843,7 +6896,7 @@ def pooling2d_global_process(op_expr):
                 dst_addr = process_tensor.access_ptr('w', offset=dst_offset)
 
                 src0_offset = _loop_cut_ci * cut_hi_factor *\
-                              cut_wi_factor * c_block_size
+                    cut_wi_factor * c_block_size
                 src0_addr = src_buffer.access_ptr('r', offset=src0_offset)
 
                 src1_offset = 0
@@ -6856,15 +6909,14 @@ def pooling2d_global_process(op_expr):
                     num_per_repeat = 64
 
                 repeat_data_size = cut_hi_factor *\
-                                   cut_wi_factor * c_block_size
+                    cut_wi_factor * c_block_size
 
                 if cut_flag == "cutCiHiWi":
                     repeat_data_size = var_extent_mul[0]
 
                 repeat = (repeat_data_size + num_per_repeat - 1) \
-                         // num_per_repeat
+                    // num_per_repeat
                 tail_repeat_data = repeat_data_size % num_per_repeat
-
 
                 if tail_repeat_data != 0:
                     process_bits = tail_repeat_data
@@ -6888,12 +6940,12 @@ def pooling2d_global_process(op_expr):
                     # two scenarios included data_size < 128 or = 128
                     reset_mask_insn(ib_expr, dst.dtype, bits=process_bits)
                     ib_expr.emit(
-                        tvm.call_extern(dst_buffer.dtype, pooling_intrin,
-                                        dst_addr, src0_addr, src1_addr, repeat,
-                                        dst_stride_m0, src0_stride_m0,
-                                        src1_stride_m0,
-                                        dst_stride_m1, src0_stride_m1,
-                                        src1_stride_m1))
+                        call_extern(dst_buffer.dtype, pooling_intrin,
+                                    dst_addr, src0_addr, src1_addr, repeat,
+                                    dst_stride_m0, src0_stride_m0,
+                                    src1_stride_m0,
+                                    dst_stride_m1, src0_stride_m1,
+                                    src1_stride_m1))
 
                 elif 1 < repeat <= 255:
                     if tail_repeat_data == 0:
@@ -6912,10 +6964,10 @@ def pooling2d_global_process(op_expr):
                                 src0_addr = src_buffer.access_ptr(
                                     'r',
                                     offset=src0_offset +
-                                    _block_loop_process_tensor *\
+                                    _block_loop_process_tensor *
                                     num_per_repeat)
                                 ib_expr.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         dst_buffer.dtype,
                                         pooling_intrin,
                                         dst_addr,
@@ -6930,7 +6982,7 @@ def pooling2d_global_process(op_expr):
                                         src1_stride_m1))
                         else:
                             ib_expr.emit(
-                                tvm.call_extern(
+                                call_extern(
                                     dst_buffer.dtype,
                                     pooling_intrin,
                                     dst_addr, src0_addr,
@@ -6953,10 +7005,10 @@ def pooling2d_global_process(op_expr):
                                 src0_addr = src_buffer.access_ptr(
                                     'r',
                                     offset=src0_offset +
-                                    _block_loop_process_tensor *\
+                                    _block_loop_process_tensor *
                                     num_per_repeat)
                                 ib_expr.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         dst_buffer.dtype,
                                         pooling_intrin,
                                         dst_addr,
@@ -6971,7 +7023,7 @@ def pooling2d_global_process(op_expr):
                                         src1_stride_m1))
                         else:
                             ib_expr.emit(
-                                tvm.call_extern(
+                                call_extern(
                                     dst_buffer.dtype,
                                     pooling_intrin,
                                     dst_addr, src0_addr,
@@ -6986,14 +7038,14 @@ def pooling2d_global_process(op_expr):
 
                         # reset mask for vadd or vmax to process_bits
                         src0_offset = _loop_cut_ci * cut_hi_factor *\
-                                      cut_wi_factor * c_block_size \
-                                      + (repeat - 1) * num_per_repeat
+                            cut_wi_factor * c_block_size \
+                            + (repeat - 1) * num_per_repeat
                         src0_addr = src_buffer.access_ptr('r',
                                                           offset=src0_offset)
                         repeat_tail = 1
                         reset_mask_insn(ib_expr, dst.dtype, bits=process_bits)
                         ib_expr.emit(
-                            tvm.call_extern(
+                            call_extern(
                                 dst_buffer.dtype,
                                 pooling_intrin,
                                 dst_addr, src0_addr,
@@ -7021,10 +7073,10 @@ def pooling2d_global_process(op_expr):
                                     'r',
                                     offset=src0_offset +
                                     i * 255 * num_per_repeat +
-                                    _block_loop_process_tensor *\
+                                    _block_loop_process_tensor *
                                     num_per_repeat)
                                 ib_expr.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         dst_buffer.dtype,
                                         pooling_intrin,
                                         dst_addr,
@@ -7042,7 +7094,7 @@ def pooling2d_global_process(op_expr):
                                 'r',
                                 offset=src0_offset + i * 255 * num_per_repeat)
                             ib_expr.emit(
-                                tvm.call_extern(
+                                call_extern(
                                     dst_buffer.dtype,
                                     pooling_intrin,
                                     dst_addr, src0_addr,
@@ -7068,7 +7120,7 @@ def pooling2d_global_process(op_expr):
                                     repeat_loop_process*255*num_per_repeat +
                                     _block_loop_process_tensor*num_per_repeat)
                                 ib_expr.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         dst_buffer.dtype,
                                         pooling_intrin,
                                         dst_addr,
@@ -7087,7 +7139,7 @@ def pooling2d_global_process(op_expr):
                                 offset=src0_offset +
                                 repeat_loop_process * 255 * num_per_repeat)
                             ib_expr.emit(
-                                tvm.call_extern(
+                                call_extern(
                                     dst_buffer.dtype,
                                     pooling_intrin,
                                     dst_addr, src0_addr,
@@ -7110,12 +7162,12 @@ def pooling2d_global_process(op_expr):
                                     src0_addr = src_buffer.access_ptr(
                                         'r',
                                         offset=src0_offset +
-                                        repeat_loop_process * 255 *\
+                                        repeat_loop_process * 255 *
                                         num_per_repeat +
-                                        _block_loop_process_tensor *\
+                                        _block_loop_process_tensor *
                                         num_per_repeat)
                                     ib_expr.emit(
-                                        tvm.call_extern(
+                                        call_extern(
                                             dst_buffer.dtype,
                                             pooling_intrin,
                                             dst_addr, src0_addr,
@@ -7133,7 +7185,7 @@ def pooling2d_global_process(op_expr):
                                     offset=src0_offset +
                                     repeat_loop_process*255*num_per_repeat)
                                 ib_expr.emit(
-                                    tvm.call_extern(
+                                    call_extern(
                                         dst_buffer.dtype,
                                         pooling_intrin,
                                         dst_addr,
@@ -7157,7 +7209,7 @@ def pooling2d_global_process(op_expr):
                         reset_mask_insn(ib_expr, dst.dtype,
                                         bits=process_bits)
                         ib_expr.emit(
-                            tvm.call_extern(
+                            call_extern(
                                 dst_buffer.dtype,
                                 pooling_intrin,
                                 dst_addr, src0_addr,
@@ -7187,7 +7239,7 @@ def pooling2d_global_process(op_expr):
                                                          offset=dst_offset)
 
                     src0_offset = _block_loop_process_tensor *\
-                                  c_block_size + c_block_size
+                        c_block_size + c_block_size
                     src0_addr = process_tensor.access_ptr('r',
                                                           offset=src0_offset)
 
@@ -7209,7 +7261,7 @@ def pooling2d_global_process(op_expr):
                     repeat = 1
 
                     ib_expr.emit(
-                        tvm.call_extern(
+                        call_extern(
                             dst_buffer.dtype,
                             pooling_intrin,
                             dst_addr, src0_addr, src1_addr, repeat,
@@ -7246,12 +7298,12 @@ def pooling2d_global_process(op_expr):
                 repeat = 1
 
                 ib_expr.emit(
-                    tvm.call_extern(dst_buffer.dtype, pooling_intrin,
-                                    dst_addr, src0_addr, src1_addr, repeat,
-                                    dst_stride_m0, src0_stride_m0,
-                                    src1_stride_m0,
-                                    dst_stride_m1, src0_stride_m1,
-                                    src1_stride_m1))
+                    call_extern(dst_buffer.dtype, pooling_intrin,
+                                dst_addr, src0_addr, src1_addr, repeat,
+                                dst_stride_m0, src0_stride_m0,
+                                src1_stride_m0,
+                                dst_stride_m1, src0_stride_m1,
+                                src1_stride_m1))
 
         # reset mask to -1 when compute finish
         # make sure do not influent other computes
@@ -7267,7 +7319,7 @@ OUT_OFFSET_RECORD = {}
 # intrin for pooling2d end
 
 
-@tvm.register_func("tvm.intrin.cce.broadcast_with_transpose")
+@register_func("tvm.intrin.cce.broadcast_with_transpose")
 def broadcast_with_transpose(stmt_op):
     """support broadcast with transpose method"""
     return broadcast_with_transpose_proc(stmt_op)
@@ -7277,11 +7329,11 @@ def broadcast_with_transpose_proc(stmt_op):
     """broadcast with transpose process"""
     # Get input and output buffers
     for_extents = []
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extents.append(int(_stmt.extent.value))
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extents.append(int(statement.extent.value))
 
     def new_alloc(ir_builder, dtype, shape, name, scope):
         """
@@ -7307,7 +7359,7 @@ def broadcast_with_transpose_proc(stmt_op):
         transform_tuple = tuple(transform_list)
         return transform_tuple
 
-    tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     input_size = 1
 
     for axis_size in for_extents:
@@ -7319,82 +7371,82 @@ def broadcast_with_transpose_proc(stmt_op):
 
     _param_valid_check(for_extents, in_buffer)
 
-    vtranspose_unit_size_fp32 = cce.VECTOR_INST_BLOCK_WIDTH
-    repeat_times = input_size * 2 // cce.VECTOR_INST_BLOCK_WIDTH
+    vtranspose_unit_size_fp32 = cce_params.VECTOR_INST_BLOCK_WIDTH
+    repeat_times = input_size * 2 // cce_params.VECTOR_INST_BLOCK_WIDTH
 
     # for transpose, date type * size equal 1024, 2 time vtranspose size
     conv_buffer = new_alloc(ir_builder,
                             out_buffer.dtype,
                             (vtranspose_unit_size_fp32,),
                             name="conv_buffer",
-                            scope=cce.scope_ubuf)
+                            scope=cce_params.scope_ubuf)
     # for data reorder
     mid_buffer = new_alloc(ir_builder,
                            out_buffer.dtype,
                            (vtranspose_unit_size_fp32,),
                            name="mid_buffer",
-                           scope=cce.scope_ubuf)
+                           scope=cce_params.scope_ubuf)
 
     tran_in_buffer_shape = _transform_buffer_shape(in_buffer.shape)
     transpose_in_buf = tvm.decl_buffer(tran_in_buffer_shape,
                                        "uint16_t",
-                                       scope=cce.scope_ubuf,
+                                       scope=cce_params.scope_ubuf,
                                        data=in_buffer.data)
 
     tran_out_buffer_shape = _transform_buffer_shape(out_buffer.shape)
     out_buf = tvm.decl_buffer(tran_out_buffer_shape,
                               "uint16_t",
-                              scope=cce.scope_ubuf,
+                              scope=cce_params.scope_ubuf,
                               data=out_buffer.data)
 
     tran_mid_buffer_shape = _transform_buffer_shape(mid_buffer.shape)
     transpose_mid_buf = tvm.decl_buffer(tran_mid_buffer_shape,
                                         "uint16_t",
-                                        scope=cce.scope_ubuf,
+                                        scope=cce_params.scope_ubuf,
                                         data=mid_buffer.data)
 
     tran_conv_buffer_shape = _transform_buffer_shape(conv_buffer.shape)
     tranpose_buffer = tvm.decl_buffer(tran_conv_buffer_shape,
                                       "uint16_t",
-                                      scope=cce.scope_ubuf,
+                                      scope=cce_params.scope_ubuf,
                                       data=conv_buffer.data)
 
     with ir_builder.for_range(0, repeat_times, name="vtranspose_index") as vt_index:
         frist_transpose_offset = vt_index * 256
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "uint16_t",
             "vtranspose",
             tranpose_buffer.access_ptr("rw", offset=0),
             transpose_in_buf.access_ptr("r", offset=frist_transpose_offset)))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             in_buffer.dtype,
             "copy_ubuf_to_ubuf",
             transpose_mid_buf.access_ptr("rw", offset=0),
             tranpose_buffer.access_ptr("r", offset=0),
             0, 8, 2, 0, 2))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             in_buffer.dtype,
             "copy_ubuf_to_ubuf",
             transpose_mid_buf.access_ptr("rw", offset=32),
             tranpose_buffer.access_ptr("r", offset=0),
             0, 8, 2, 0, 2))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "uint16_t",
             "vtranspose",
             tranpose_buffer.access_ptr("rw", offset=0),
             transpose_mid_buf.access_ptr("r", offset=0)))
 
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             "uint16_t",
             "vtranspose",
             tranpose_buffer.access_ptr("rw", offset=256),
             transpose_mid_buf.access_ptr("r", offset=256)))
 
         second_reorder_offset = vt_index * 256 * 2
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             in_buffer.dtype,
             "copy_ubuf_to_ubuf",
             out_buf.access_ptr("rw", offset=second_reorder_offset),
@@ -7402,7 +7454,7 @@ def broadcast_with_transpose_proc(stmt_op):
             0, 16, 1, 0, 1))
 
         third_reorder_offset = vt_index * 256 * 2 + 16
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             in_buffer.dtype,
             "copy_ubuf_to_ubuf",
             out_buf.access_ptr("rw", offset=third_reorder_offset),
@@ -7411,21 +7463,23 @@ def broadcast_with_transpose_proc(stmt_op):
 
     return ir_builder.get()
 
-@tvm.register_func("tvm.intrin.cce.broadcast_for_tensor_opt")
+
+@register_func("tvm.intrin.cce.broadcast_for_tensor_opt")
 def broadcast_for_tensor_opt(tensor_op):
     """
     broadcast_for_tensor_opt
     """
     return broadcast_last_axis_for_tensor(tensor_op)
 
-@tvm.register_func("tvm.intrin.cce.vector_broadcast_transpose")
+
+@register_func("tvm.intrin.cce.vector_broadcast_transpose")
 def vector_broadcast_transpose(tensor_op):
     """
     :param tensor_op: tvm IR stmt in
     :return: tvm IR stmt out
     """
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             for_extent_vals.append(tensor_op.extent.value)
             for_vars.append(tensor_op.loop_var)
 
@@ -7437,26 +7491,25 @@ def vector_broadcast_transpose(tensor_op):
     ins, outs = cce_util.get_buffer(tensor_op)
     dst_buffer_ori = outs[0]
     src_buffer_ori = ins[0]
-    tvm_ib = tvm.ir_builder.create()
+    tvm_ib = _create()
 
     for_extent_vals = []
     for_vars = []
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
 
     error_message = "pragma vector_broadcast_transpose don't support this pattern. \n"\
                     + str(tensor_op)
     if dst_buffer_ori.dtype != dtype_ori or for_extent_vals != [16, 16]:
         raise RuntimeError(error_message)
-    tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[0],
-                                dst_buffer_ori.access_ptr("w", offset=0),
-                                src_buffer_ori.access_ptr("r", offset=0),
-                                src_buffer_ori.access_ptr("r", offset=0),
-                                2, 1, 0, 0, 8, 0, 0))
-    tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[1],
-                                dst_buffer.access_ptr("w", offset=0),
-                                dst_buffer.access_ptr("r", offset=0)))
+    tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[0],
+                            dst_buffer_ori.access_ptr("w", offset=0),
+                            src_buffer_ori.access_ptr("r", offset=0),
+                            src_buffer_ori.access_ptr("r", offset=0),
+                            2, 1, 0, 0, 8, 0, 0))
+    tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[1],
+                            dst_buffer.access_ptr("w", offset=0),
+                            dst_buffer.access_ptr("r", offset=0)))
     return tvm_ib.get()
-
 
 
 def get_broadcast_axis(outs):
@@ -7476,6 +7529,7 @@ def get_broadcast_axis(outs):
         broadcast_max_axis_offset = broadcast_max_axis_offset_list
     return broadcast_max_axis_offset
 
+
 def broadcast_last_axis_for_tensor(tensor_op):
     """
     broadcast_last_axis_for_tensor
@@ -7483,10 +7537,10 @@ def broadcast_last_axis_for_tensor(tensor_op):
     buffer_var = []
 
     def _post_order_for(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             buffer_var.append(stmt_op.extent.value)
 
-    tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
     _, outs = cce_util.get_buffer(tensor_op)
 
     broadcast_max_axis_offset = get_broadcast_axis(outs)
@@ -7520,10 +7574,10 @@ def broadcast_last_axis_align_for_tensor(tensor_op):
     buffer_var = []
 
     def _post_order_for(stmt_op):
-        if isinstance(stmt_op, tvm.stmt.For):
+        if isinstance(stmt_op, _stmt.For):
             buffer_var.append(stmt_op.extent.value)
 
-    tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
     ins, outs = cce_util.get_buffer(tensor_op)
 
     broadcast_max_axis_offset = get_broadcast_axis(outs)
@@ -7539,13 +7593,14 @@ def broadcast_last_axis_align_for_tensor(tensor_op):
             loop_count *= buffer_var[i]
 
     intrinsic_cmd = "vector_dup"
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf", scope=cce.scope_reg)
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg_buf",
+                              scope=cce_params.scope_reg)
     reset_mask = 1
     with ir_builder.for_range(0, loop_count, name="idx") as idx:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[0]),
+            call_extern(reg.dtype, "reg", reg[0]),
             ins[0].access_ptr("rw", offset=idx), ))
 
         vec_broadcast_opt(ir_builder, intrinsic_cmd, outs, broadcast_len, reset_mask, [reg[0]], idx)
@@ -7577,6 +7632,7 @@ def vec_broadcast_opt(ir_builder, op_cmd, dst_buffers, op_length, reset_mask,
     vec_repeat_elewise_broadcast(ir_builder, op_cmd, [], dst_buffers, local_total_len, cal_once_len,
                                  reset_mask, extern_args, args, loop_index)
 
+
 # pylint: disable=too-many-locals
 def vec_repeat_elewise_broadcast(ir_builder, op_cmd, src_buffers, dst_buffers, local_total_len,
                                  cal_once_len, reset_mask, extern_args, args, loop_index):
@@ -7601,7 +7657,7 @@ def vec_repeat_elewise_broadcast(ir_builder, op_cmd, src_buffers, dst_buffers, l
                                              src_roffset, dst_roffset,
                                              tmp_repeat_times, extern_args,
                                              args, loop_index, local_total_len)
-            ir_builder.emit(tvm.call_extern(dst_dtype, op_cmd, *tmp_args))
+            ir_builder.emit(call_extern(dst_dtype, op_cmd, *tmp_args))
 
             local_repeat_times -= MAX_CAL_TIMES
             src_roffset += cal_once_len*tmp_repeat_times
@@ -7617,14 +7673,14 @@ def vec_repeat_elewise_broadcast(ir_builder, op_cmd, src_buffers, dst_buffers, l
                                          repeat_dst_offset,
                                          1, extern_args,
                                          args, loop_index, local_total_len)
-        ir_builder.emit(tvm.call_extern(dst_dtype, op_cmd, *tmp_args))
+        ir_builder.emit(call_extern(dst_dtype, op_cmd, *tmp_args))
 
         if reset_mask is not None:
             reset_mask_insn(ir_builder, dst_dtype)
 
 
-def concat_args_broadcast(src_buffers, dst_buffers, repeat_src_offset, \
-                          repeat_dst_offset, repeat_times, extern_args, \
+def concat_args_broadcast(src_buffers, dst_buffers, repeat_src_offset,
+                          repeat_dst_offset, repeat_times, extern_args,
                           args, idx, local_total_len):
     """
     concat_args_broadcast
@@ -7640,6 +7696,7 @@ def concat_args_broadcast(src_buffers, dst_buffers, repeat_src_offset, \
     res_args += args
     return res_args
 
+
 # pylint: disable=too-many-locals
 def broadcast_last_axis_no_align_for_tensor(tensor_op):
     """
@@ -7648,10 +7705,10 @@ def broadcast_last_axis_no_align_for_tensor(tensor_op):
     buffer_var = []
 
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             buffer_var.append(tensor_op.extent.value)
 
-    tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
     ins, outs = cce_util.get_buffer(tensor_op)
 
     broadcast_max_axis_offset = get_broadcast_axis(outs)
@@ -7679,84 +7736,85 @@ def broadcast_last_axis_no_align_for_tensor(tensor_op):
     else:
         reg_num = 8
 
-    ir_builder = tvm.ir_builder.create()
-    reg = ir_builder.allocate(outs[0].dtype, (reg_num,), name="reg_buf", scope=cce.scope_reg)
+    ir_builder = _create()
+    reg = ir_builder.allocate(outs[0].dtype, (reg_num,), name="reg_buf",
+                              scope=cce_params.scope_reg)
 
     if loop_number:
         with ir_builder.for_range(0, loop_number, name="loop_idx") as loop_idx:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                call_extern(reg.dtype, "reg", reg[0]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+0)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[1]),
+                call_extern(reg.dtype, "reg", reg[1]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+1)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[2]),
+                call_extern(reg.dtype, "reg", reg[2]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+2)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[3]),
+                call_extern(reg.dtype, "reg", reg[3]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+3)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[4]),
+                call_extern(reg.dtype, "reg", reg[4]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+4)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[5]),
+                call_extern(reg.dtype, "reg", reg[5]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+5)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[6]),
+                call_extern(reg.dtype, "reg", reg[6]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+6)))
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 outs[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[7]),
+                call_extern(reg.dtype, "reg", reg[7]),
                 ins[0].access_ptr("rw", offset=loop_idx*8+7)))
 
             with ir_builder.for_range(0, broadcast_len, name="idx") as idx:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+0)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[0])
+                    call_extern(outs[0].dtype, "reg", reg[0])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+1)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[1])
+                    call_extern(outs[0].dtype, "reg", reg[1])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+2)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[2])
+                    call_extern(outs[0].dtype, "reg", reg[2])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+3)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[3])
+                    call_extern(outs[0].dtype, "reg", reg[3])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+4)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[4])
+                    call_extern(outs[0].dtype, "reg", reg[4])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+5)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[5])
+                    call_extern(outs[0].dtype, "reg", reg[5])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+6)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[6])
+                    call_extern(outs[0].dtype, "reg", reg[6])
                 ))
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
                     outs[0].access_ptr("rw", offset=idx+(loop_idx*8+7)*broadcast_len),
-                    tvm.call_extern(outs[0].dtype, "reg", reg[7])
+                    call_extern(outs[0].dtype, "reg", reg[7])
                 ))
 
     source_offset = loop_number*8
@@ -7770,18 +7828,22 @@ def broadcast_last_axis_no_align_for_tensor(tensor_op):
     if remain_loop_number:
         with ir_builder.for_range(0, 1, name="loop_idx") as loop_idx:
             with ir_builder.for_range(0, reamin_reg_num, name="reg_idx") as reg_idx:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     outs[0].dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[reg_idx]),
+                    call_extern(reg.dtype, "reg", reg[reg_idx]),
                     ins[0].access_ptr("rw", offset=source_offset+loop_idx*8+reg_idx)))
                 with ir_builder.for_range(0, broadcast_len, name="idx") as idx:
-                    ir_builder.emit(tvm.call_extern(outs[0].dtype, "reg_mov", outs[0].access_ptr(
-                        "rw", offset=dest_offset+idx+(loop_idx*8+reg_idx)*broadcast_len),
-                                                    tvm.call_extern(outs[0].dtype,
-                                                                    "reg", reg[reg_idx])))
-
+                    ir_builder.emit(
+                        call_extern(
+                            outs[0].dtype,
+                            "reg_mov",
+                            outs[0].access_ptr(
+                                "rw",
+                                offset=dest_offset+idx+(loop_idx*8+reg_idx)*broadcast_len),
+                            call_extern(outs[0].dtype, "reg", reg[reg_idx])))
 
     return ir_builder.get()
+
 
 def broadcast_last_axis_no_align_for_tensor_enhance(tensor_op):
     """
@@ -7790,13 +7852,13 @@ def broadcast_last_axis_no_align_for_tensor_enhance(tensor_op):
     buffer_var = []
 
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             buffer_var.append(tensor_op.extent.value)
 
     # Initialize buffer and ir_builder
-    tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
     ins, outs = cce_util.get_buffer(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     # Dtype
     dtype = ins[0].dtype
@@ -7810,8 +7872,8 @@ def broadcast_last_axis_no_align_for_tensor_enhance(tensor_op):
     broadcast_max_axis_offset = get_broadcast_axis(outs)
     broadcast_len_loop = min(broadcast_max_axis_offset, len(buffer_var))
     # number of elements processed per vector op
-    vector_inst_one_repeat_size = cce.VECTOR_INST_BLOCK_WIDTH \
-                                  // cce_util.get_align_factor(dtype)[1]
+    vector_inst_one_repeat_size = cce_params.VECTOR_INST_BLOCK_WIDTH \
+        // cce_util.get_align_factor(dtype)[1]
 
     for i in range(0, broadcast_len_loop):
         broadcast_len *= buffer_var[i]
@@ -7836,22 +7898,22 @@ def broadcast_last_axis_no_align_for_tensor_enhance(tensor_op):
         pattern = find_pattern(num_index_dict)
         if pattern is None:
             for num_index in num_indexes:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     ins[0].dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[i]),
+                    call_extern(reg.dtype, "reg", reg[i]),
                     ins[0].access_ptr("r", offset=num_index)))
                 i += 1
         elif len(num_indexes) == 1:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 ins[0].dtype, "reg_mov",
-                tvm.call_extern(reg.dtype, "reg", reg[0]),
+                call_extern(reg.dtype, "reg", reg[0]),
                 ins[0].access_ptr("r", offset=num_indexes[0])))
         else:
             with ir_builder.for_range(0, len(num_indexes), name="loop_regidx") as loop_idx:
                 first_reg = num_indexes[0]
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     ins[0].dtype, "reg_mov",
-                    tvm.call_extern(reg.dtype, "reg", reg[loop_idx]),
+                    call_extern(reg.dtype, "reg", reg[loop_idx]),
                     ins[0].access_ptr("r", offset=first_reg + loop_idx * pattern[0])))
         if current_reg_buf:
             current_buf_indexes.clear()
@@ -7886,8 +7948,7 @@ def broadcast_last_axis_no_align_for_tensor_enhance(tensor_op):
                     last_addrs = addrs[line_index]
                     last_index = line_index
                     continue
-                else:
-                    return None
+                return None
         return distance, index_stride
 
     # Generally, each line needs two instr, broadcast me and remain for next
@@ -7992,7 +8053,7 @@ def broadcast_last_axis_no_align_enhance_pre_emit_insn(*args):
     reg_buffer = ir_builder.allocate(ins[0].dtype,
                                      (needed_reg,),
                                      name="reg_buf",
-                                     scope=cce.scope_reg)
+                                     scope=cce_params.scope_reg)
     current_reg_buf.append(reg_buffer)
     for mask, addrs in mask2insn.items():
         mask_insn = reset_mask_insn
@@ -8021,19 +8082,19 @@ def broadcast_last_axis_no_align_enhance_pre_emit_insn(*args):
 def broadcast_for_tensor_unaligned_emit_insn(inputs):
     """Emit Insn for the previous function"""
     addr_index_in_mask, addrs, dtype, ir_builder, \
-    mask_insn, outs, pattern, reg, remain, rpt, \
-    unit_per_block = inputs
+        mask_insn, outs, pattern, reg, remain, rpt, \
+        unit_per_block = inputs
     if pattern is None:
         for _, addr in addrs.items():
             if rpt > 0:
-                ir_builder.emit(tvm.call_extern
+                ir_builder.emit(call_extern
                                 (dtype,
                                  'vector_dup',
                                  outs[0].access_ptr("rw", offset=addr),
                                  reg[addr_index_in_mask], rpt, 1, 1, 8, 8))
             if remain > 0:
                 mask_insn(ir_builder, dtype, bits=remain, ref=unit_per_block)
-                ir_builder.emit(tvm.call_extern
+                ir_builder.emit(call_extern
                                 (dtype,
                                  'vector_dup',
                                  outs[0].access_ptr("rw", offset=addr),
@@ -8044,14 +8105,14 @@ def broadcast_for_tensor_unaligned_emit_insn(inputs):
         first_addr = addrs[first_line]
         addr_offset = first_addr
         if rpt > 0:
-            ir_builder.emit(tvm.call_extern
+            ir_builder.emit(call_extern
                             (dtype,
                              'vector_dup',
                              outs[0].access_ptr("rw", offset=addr_offset),
                              reg[0], rpt, 1, 1, 8, 8))
         if remain > 0:
             mask_insn(ir_builder, dtype, bits=remain, ref=unit_per_block)
-            ir_builder.emit(tvm.call_extern
+            ir_builder.emit(call_extern
                             (dtype,
                              'vector_dup',
                              outs[0].access_ptr("rw", offset=addr_offset),
@@ -8062,87 +8123,91 @@ def broadcast_for_tensor_unaligned_emit_insn(inputs):
             first_addr = addrs[first_line]
             addr_offset = first_addr + loop_idx * pattern[0]
             if rpt > 0:
-                ir_builder.emit(tvm.call_extern
+                ir_builder.emit(call_extern
                                 (dtype,
                                  'vector_dup',
                                  outs[0].access_ptr("rw", offset=addr_offset),
                                  reg[loop_idx], rpt, 1, 1, 8, 8))
             if remain > 0:
                 mask_insn(ir_builder, dtype, bits=remain, ref=unit_per_block)
-                ir_builder.emit(tvm.call_extern
+                ir_builder.emit(call_extern
                                 (dtype,
                                  'vector_dup',
                                  outs[0].access_ptr("rw", offset=addr_offset),
                                  reg[loop_idx], 1, 1, 1, 8, 8))
 
 
-@tvm.register_func("tvm.intrin.cce.vector_sub_with_broadcast_enhance")
+@register_func("tvm.intrin.cce.vector_sub_with_broadcast_enhance")
 def vector_sub_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vsub"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.vector_add_with_broadcast_enhance")
+@register_func("tvm.intrin.cce.vector_add_with_broadcast_enhance")
 def vector_add_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vadd"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_mul_with_broadcast_enhance")
+@register_func("tvm.intrin.cce.vector_mul_with_broadcast_enhance")
 def vector_mul_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vmul"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_div_with_broadcast_enhance")
+@register_func("tvm.intrin.cce.vector_div_with_broadcast_enhance")
 def vector_div_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vdiv"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
-@tvm.register_func("tvm.intrin.cce.vector_min_with_broadcast_enhance")
+
+@register_func("tvm.intrin.cce.vector_min_with_broadcast_enhance")
 def vector_min_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vmin"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
-@tvm.register_func("tvm.intrin.cce.vector_max_with_broadcast_enhance")
+
+@register_func("tvm.intrin.cce.vector_max_with_broadcast_enhance")
 def vector_max_with_broadcast_enhance(stmt):
-    '''
+    """
     vector instric replace for max operation with broadcast
-    '''
+    """
     instr_cmd = "vmax"
     return vector_instr_with_broadcast_enhance(stmt, instr_cmd)
 
+
 def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
-    '''
+    """
     vector instric for stmt with broadcast vector operation
-    '''
+    """
     ins, outs = cce_util.get_buffer(stmt)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     for_extent_vals = []
     for_vars = []
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extent_vals.append(_stmt.extent.value)
-            for_vars.append(_stmt.loop_var)
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extent_vals.append(statement.extent.value)
+            for_vars.append(statement.loop_var)
 
-    _ = tvm.ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
     op_size = 1
     _broadcast_buffer_saving_threshold = 16
     _broadcast_buffer_eco = 'ECONOMIC'
@@ -8163,10 +8228,10 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
     if small_buf_index == len(ins):
         reset_mask_insn(ir_builder, dtype, bits=last_number)
         ir_builder.emit(
-            tvm.call_extern(dtype, instr_cmd,
-                            dst_buffer.access_ptr("rw", offset=0),
-                            ins[0].access_ptr("r", offset=0),
-                            ins[1].access_ptr("r", offset=0), 1, 1, 1, 1, 8, 8, 8))
+            call_extern(dtype, instr_cmd,
+                        dst_buffer.access_ptr("rw", offset=0),
+                        ins[0].access_ptr("r", offset=0),
+                        ins[1].access_ptr("r", offset=0), 1, 1, 1, 1, 8, 8, 8))
         return ir_builder.get()
 
     src_buf_bc = ins[small_buf_index]
@@ -8180,7 +8245,7 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
 
         return new_buffer
 
-    vector_inst_one_repeat_size = cce.VECTOR_INST_BLOCK_WIDTH\
+    vector_inst_one_repeat_size = cce_params.VECTOR_INST_BLOCK_WIDTH\
         // cce_util.get_align_factor(dtype)[1]
 
     # It is impossible to let last_number be greater than one_repeat size
@@ -8194,7 +8259,7 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
         result = ''
         for repeat_unit in range(vector_inst_one_repeat_size):
             expect_mask_unit_index = (repeat_index * tail_in_each_repeat + repeat_unit) % \
-                                     mask_unit_size
+                mask_unit_size
             if expect_mask_unit_index == loop_index:
                 result = '1' + result
             else:
@@ -8270,23 +8335,23 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
     # Allocate buffer needed for broadcasting final result
     tmp_buffer = new_alloc(ir_builder, dtype,
                            (vector_inst_one_repeat_size *
-                           (repeat_for_broadcast + 1)),
-                           'tmp_buffer', scope=cce.scope_ubuf)
+                            (repeat_for_broadcast + 1)),
+                           'tmp_buffer', scope=cce_params.scope_ubuf)
 
     # Zerorize the buffer
     reset_mask_insn(ir_builder, dtype, bits=vector_inst_one_repeat_size)
-    ir_builder.emit(tvm.call_extern
+    ir_builder.emit(call_extern
                     (dtype, 'vector_dup', tmp_buffer.access_ptr("rw", offset=0),
                      tvm.const(0, dtype=dtype), repeat_for_broadcast, 1, 1, 8, 8))
 
     # Allocate reg buffer needed for holding src data
     reg = ir_builder.allocate(outs[0].dtype, (last_number,), name="reg_buf",
-                              scope=cce.scope_reg)
+                              scope=cce_params.scope_reg)
     # reg_mov src data
     with ir_builder.for_range(0, last_number, name="reg_idx") as reg_idx:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             outs[0].dtype, "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[reg_idx]),
+            call_extern(reg.dtype, "reg", reg[reg_idx]),
             src_buf_bc.access_ptr("rw", offset=reg_idx)))
 
     # do Broadcast
@@ -8314,7 +8379,7 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
             rep = reploop[0]
             if mode == _broadcast_buffer_eco and rep > repeat_for_broadcast:
                 continue
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dtype, "vector_dup",
                 tmp_buffer.access_ptr("rw",
                                       offset=rep * vector_inst_one_repeat_size),
@@ -8334,7 +8399,7 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
         max_repeat_times = repeat_for_broadcast // 2
     if tail_in_each_repeat == 0:
         repeat_stride = 0
-        max_repeat_times = cce.VECTOR_INST_MAX_REPEAT_TIMES
+        max_repeat_times = cce_params.VECTOR_INST_MAX_REPEAT_TIMES
     count = repeat_times // max_repeat_times
     if count > 0:
         for loop in range(0, count):
@@ -8352,18 +8417,18 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
 
             if small_buf_index == 1:
                 ir_builder.emit(
-                    tvm.call_extern(dtype, instr_cmd,
-                                    dst_buffer.access_ptr("rw",
-                                                          offset=offset_value),
-                                    src_1, src_0,
-                                    max_repeat_times, 1, 1, 1, 8, 8, repeat_stride))
+                    call_extern(dtype, instr_cmd,
+                                dst_buffer.access_ptr("rw",
+                                                      offset=offset_value),
+                                src_1, src_0,
+                                max_repeat_times, 1, 1, 1, 8, 8, repeat_stride))
             else:
                 ir_builder.emit(
-                    tvm.call_extern(dtype, instr_cmd,
-                                    dst_buffer.access_ptr("rw",
-                                                          offset=offset_value),
-                                    src_0, src_1,
-                                    max_repeat_times, 1, 1, 1, 8, repeat_stride, 8))
+                    call_extern(dtype, instr_cmd,
+                                dst_buffer.access_ptr("rw",
+                                                      offset=offset_value),
+                                src_0, src_1,
+                                max_repeat_times, 1, 1, 1, 8, repeat_stride, 8))
 
         repeat_times = repeat_times % max_repeat_times
     # Tail repeat
@@ -8380,16 +8445,16 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
         src_1 = src_buffer.access_ptr("r", offset=offset_value)
         if small_buf_index == 1:
             ir_builder.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                dst_buffer.access_ptr("rw",
-                                                      offset=offset_value),
-                                src_1, src_0, repeat_times, 1, 1, 1, 8, 8, repeat_stride))
+                call_extern(dtype, instr_cmd,
+                            dst_buffer.access_ptr("rw",
+                                                  offset=offset_value),
+                            src_1, src_0, repeat_times, 1, 1, 1, 8, 8, repeat_stride))
         else:
             ir_builder.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                dst_buffer.access_ptr("rw",
-                                                      offset=offset_value),
-                                src_0, src_1, repeat_times, 1, 1, 1, 8, repeat_stride, 8))
+                call_extern(dtype, instr_cmd,
+                            dst_buffer.access_ptr("rw",
+                                                  offset=offset_value),
+                            src_0, src_1, repeat_times, 1, 1, 1, 8, repeat_stride, 8))
     # Real tail
     broadcast_src_offset = vector_inst_one_repeat_size * (repeat_times % last_number)
     if not dyn_offset:
@@ -8411,64 +8476,62 @@ def vector_instr_with_broadcast_enhance(stmt, instr_cmd):
 
         if small_buf_index == 1:
             ir_builder.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                dst_buffer.access_ptr("rw",
-                                                      offset=offset_value),
-                                src_1, src_0, 1, 1, 1, 1, 8, 8, repeat_stride))
+                call_extern(dtype, instr_cmd,
+                            dst_buffer.access_ptr("rw",
+                                                  offset=offset_value),
+                            src_1, src_0, 1, 1, 1, 1, 8, 8, repeat_stride))
         else:
             ir_builder.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                dst_buffer.access_ptr("rw",
-                                                      offset=offset_value),
-                                src_0, src_1, 1, 1, 1, 1, 8, repeat_stride, 8))
+                call_extern(dtype, instr_cmd,
+                            dst_buffer.access_ptr("rw",
+                                                  offset=offset_value),
+                            src_0, src_1, 1, 1, 1, 1, 8, repeat_stride, 8))
 
     reset_mask_insn(ir_builder, res_buffer.dtype)
 
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.vector_add_with_broadcast_non_32align")
+@register_func("tvm.intrin.cce.vector_add_with_broadcast_non_32align")
 def vector_add_with_broadcast_enhance_enhance(stmt):
-    '''
+    """
     vector_add_with_broadcast_enhance_enhance
-    '''
+    """
     instr_cmd = "vadd"
     return vector_instr_with_broadcast_non_32align(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_sub_with_broadcast_non_32align")
+@register_func("tvm.intrin.cce.vector_sub_with_broadcast_non_32align")
 def vector_sub_with_broadcast_enhance_enhance(stmt):
-    '''
+    """
     vector_add_with_broadcast_enhance_enhance
-    '''
+    """
     instr_cmd = "vsub"
     return vector_instr_with_broadcast_non_32align(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_mul_with_broadcast_non_32align")
+@register_func("tvm.intrin.cce.vector_mul_with_broadcast_non_32align")
 def vector_mul_with_broadcast_enhance_enhance(stmt):
-    '''
+    """
     vector_add_with_broadcast_enhance_enhance
-    '''
+    """
     instr_cmd = "vmul"
     return vector_instr_with_broadcast_non_32align(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_div_with_broadcast_non_32align")
+@register_func("tvm.intrin.cce.vector_div_with_broadcast_non_32align")
 def vector_div_with_broadcast_enhance_enhance(stmt):
-    '''
+    """
     vector_add_with_broadcast_enhance_enhance
-    '''
+    """
     instr_cmd = "vdiv"
     return vector_instr_with_broadcast_non_32align(stmt, instr_cmd)
 
 
 def vector_instr_with_broadcast_non_32align(stmt, instr_cmd):
-    '''
+    """
     vector_instr_with_broadcast_non_32align operation
-    '''
-    # pylint: too-many-statements
-    # pylint: too-many-branches
+    """
     input_shape = []
     cce_util.get_input_shape_from_stmt(input_shape, stmt)
 
@@ -8483,17 +8546,17 @@ def vector_instr_with_broadcast_non_32align(stmt, instr_cmd):
             return vec_binary_elewise(stmt, instr_cmd)
 
     ins, outs = cce_util.get_buffer(stmt)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     for_extent_vals = []
     for_vars = []
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extent_vals.append(_stmt.extent.value)
-            for_vars.append(_stmt.loop_var)
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extent_vals.append(statement.extent.value)
+            for_vars.append(statement.loop_var)
 
-    _ = tvm.ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
     op_size = 1
     for i in for_extent_vals:
         op_size = op_size * i
@@ -8538,7 +8601,7 @@ def vector_instr_with_broadcast_non_32align(stmt, instr_cmd):
     def __shape_mul(shape):
         if not shape:
             return 1
-        return reduce(lambda x, y: x * y, shape)
+        return _reduce(lambda x, y: x * y, shape)
 
     def __get_loop_cout():
         loop_count = 1
@@ -8563,23 +8626,23 @@ def vector_instr_with_broadcast_non_32align(stmt, instr_cmd):
 
     with ir_builder.for_range(0, loop_count_out, name="reg_idx_out_out") as loop_count_out_index:
         reg = ir_builder.allocate(outs[0].dtype, (1,), name="reg",
-                                  scope=cce.scope_reg)
+                                  scope=cce_params.scope_reg)
         with ir_builder.for_range(0, loop_count, name="reg_idx_out") as reg_idx_out:
             with ir_builder.for_range(0, mid_count, name="reg_idx_mid") as reg_idx_mid:
                 with ir_builder.for_range(0, last_number, name="reg_idx_in") as reg_idx_in:
                     reg_in_offset = loop_count_out_index * loop_count * last_number + \
-                                    reg_idx_out * last_number + reg_idx_in
+                        reg_idx_out * last_number + reg_idx_in
                     reg_out_offset = loop_count_out_index * loop_count * op_size + \
-                                     reg_idx_out * mid_count * last_number + \
-                                     reg_idx_mid * last_number + reg_idx_in
-                    ir_builder.emit(tvm.call_extern(
+                        reg_idx_out * mid_count * last_number + \
+                        reg_idx_mid * last_number + reg_idx_in
+                    ir_builder.emit(call_extern(
                         outs[0].dtype, "reg_mov",
-                        tvm.call_extern(reg.dtype, "reg", reg[0]),
+                        call_extern(reg.dtype, "reg", reg[0]),
                         src_buf_bc.access_ptr("r", offset=reg_in_offset)))
-                    ir_builder.emit(tvm.call_extern(
+                    ir_builder.emit(call_extern(
                         outs[0].dtype, "reg_mov",
                         outs[0].access_ptr("rw", offset=reg_out_offset),
-                        tvm.call_extern(reg.dtype, "reg", reg[0])))
+                        call_extern(reg.dtype, "reg", reg[0])))
         block_len = 256
         cal_bit_len = cce_util.get_bits_of(dtype)
         cal_once_len = block_len*8//cal_bit_len
@@ -8616,79 +8679,79 @@ def vector_instr_with_broadcast_non_32align_emit_insn(*args):
                 loop_count_out_index * loop_count * op_size + \
                 cal_once_len * add_index
             if src_buffer == ins[0]:
-                ir_builder.emit(tvm.call_extern(dtype,
-                                                instr_cmd,
-                                                res_buffer.access_ptr(
-                                                    "wr", offset=repeat_offset),
-                                                src_buffer.access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                res_buffer.access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                max_repeat_times, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dtype,
+                                            instr_cmd,
+                                            res_buffer.access_ptr(
+                                                "wr", offset=repeat_offset),
+                                            src_buffer.access_ptr(
+                                                "r", offset=repeat_offset),
+                                            res_buffer.access_ptr(
+                                                "r", offset=repeat_offset),
+                                            max_repeat_times, 1, 1, 1, 8, 8, 8))
             else:
-                ir_builder.emit(tvm.call_extern(dtype,
-                                                instr_cmd,
-                                                res_buffer.access_ptr(
-                                                    "wr", offset=repeat_offset),
-                                                res_buffer.access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                src_buffer.access_ptr(
-                                                    "r", offset=repeat_offset),
-                                                max_repeat_times, 1, 1, 1, 8, 8, 8))
+                ir_builder.emit(call_extern(dtype,
+                                            instr_cmd,
+                                            res_buffer.access_ptr(
+                                                "wr", offset=repeat_offset),
+                                            res_buffer.access_ptr(
+                                                "r", offset=repeat_offset),
+                                            src_buffer.access_ptr(
+                                                "r", offset=repeat_offset),
+                                            max_repeat_times, 1, 1, 1, 8, 8, 8))
         repeat_times = repeat_times % max_repeat_times
     if repeat_times > 0:
         repeat_offset = \
             loop_count_out_index * loop_count * op_size + \
             cal_once_len * (count * max_repeat_times)
         if src_buffer == ins[0]:
-            ir_builder.emit(tvm.call_extern(dtype,
-                                            instr_cmd,
-                                            res_buffer.access_ptr(
-                                                "wr", offset=repeat_offset),
-                                            src_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            res_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            repeat_times, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dtype,
+                                        instr_cmd,
+                                        res_buffer.access_ptr(
+                                            "wr", offset=repeat_offset),
+                                        src_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        res_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        repeat_times, 1, 1, 1, 8, 8, 8))
         else:
-            ir_builder.emit(tvm.call_extern(dtype,
-                                            instr_cmd,
-                                            res_buffer.access_ptr(
-                                                "wr", offset=repeat_offset),
-                                            res_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            src_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            repeat_times, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dtype,
+                                        instr_cmd,
+                                        res_buffer.access_ptr(
+                                            "wr", offset=repeat_offset),
+                                        res_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        src_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        repeat_times, 1, 1, 1, 8, 8, 8))
     if remain_len > 0:
         reset_mask_insn(ir_builder, dtype, bits=remain_len)
         repeat_offset = \
             loop_count_out_index * loop_count * op_size + \
             (count * max_repeat_times + repeat_times) * cal_once_len
         if src_buffer == ins[0]:
-            ir_builder.emit(tvm.call_extern(dtype,
-                                            instr_cmd,
-                                            res_buffer.access_ptr(
-                                                "wr", offset=repeat_offset),
-                                            src_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            res_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dtype,
+                                        instr_cmd,
+                                        res_buffer.access_ptr(
+                                            "wr", offset=repeat_offset),
+                                        src_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        res_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        1, 1, 1, 1, 8, 8, 8))
         else:
-            ir_builder.emit(tvm.call_extern(dtype,
-                                            instr_cmd,
-                                            res_buffer.access_ptr(
-                                                "wr", offset=repeat_offset),
-                                            res_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            src_buffer.access_ptr(
-                                                "r", offset=repeat_offset),
-                                            1, 1, 1, 1, 8, 8, 8))
+            ir_builder.emit(call_extern(dtype,
+                                        instr_cmd,
+                                        res_buffer.access_ptr(
+                                            "wr", offset=repeat_offset),
+                                        res_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        src_buffer.access_ptr(
+                                            "r", offset=repeat_offset),
+                                        1, 1, 1, 1, 8, 8, 8))
     reset_mask_insn(ir_builder, res_buffer.dtype)
 
 
-@tvm.register_func("tvm.intrin.cce.broadcast_for_tensor_opt_mid_le32")
+@register_func("tvm.intrin.cce.broadcast_for_tensor_opt_mid_le32")
 def broadcast_for_tensor_opt_mid_le32(stmt):
     """
     fp32 only, coverage strictly limited
@@ -8696,7 +8759,7 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
     :return: ir_builder.get()
     """
     ins, outs = cce_util.get_buffer(stmt)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     def new_alloc(ir_build, dtype, shape, name, scope):
         buf_var = ir_build.allocate(dtype, shape, name=name, scope=scope)
@@ -8712,25 +8775,25 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
                               ins[0].dtype,
                               zeroed_shape,
                               "broadcast_zeroed_buf",
-                              cce.scope_ubuf)
+                              cce_params.scope_ubuf)
     ir_builder.emit(
-        tvm.call_extern(ins[0].dtype,
-                        'vector_dup',
-                        zeroed_buffer.access_ptr("rw", offset=0),
-                        tvm.const(0,
-                                  dtype=ins[0].dtype),
-                        ins[0].shape[0]//16, 1, 1, 8, 8))
+        call_extern(ins[0].dtype,
+                    'vector_dup',
+                    zeroed_buffer.access_ptr("rw", offset=0),
+                    tvm.const(0,
+                              dtype=ins[0].dtype),
+                    ins[0].shape[0]//16, 1, 1, 8, 8))
     # Allocate extra buffer for vadd
     filler_buffer = new_alloc(ir_builder,
                               ins[0].dtype,
                               ins[0].shape[:],
                               "broadcast_filling_buf",
-                              cce.scope_ubuf)
+                              cce_params.scope_ubuf)
     # Set mask for vadd and perform the transformation
     upper_mask = int('0b0000000000000000000000000000000000000000000000000000000000000000', 2)
     lower_mask = int('0b0000111100001111000011110000111100001111000011110000111100001111', 2)
     reset_multi_broaddcast_mask_insn(ir_builder, ins[0].dtype, upper_mask, lower_mask)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         ins[0].dtype, "vadd",
         filler_buffer.access_ptr("rw", offset=0),
         ins[0].access_ptr("r", offset=0),
@@ -8738,7 +8801,7 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
         ins[0].shape[0] // 16, 2, 1, 1, 16, 8, 8))
     lower_mask = int('0b1111000011110000111100001111000011110000111100001111000011110000', 2)
     reset_multi_broaddcast_mask_insn(ir_builder, ins[0].dtype, upper_mask, lower_mask)
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         ins[0].dtype, "vadd",
         filler_buffer.access_ptr("rw", offset=4 * 2),
         ins[0].access_ptr("r", offset=0),
@@ -8755,7 +8818,7 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
         lower_mask_bstr = '0b' + lower_mask_bstr.zfill(64)
         lower_mask = int(lower_mask_bstr, 2)
         reset_multi_broaddcast_mask_insn(ir_builder, ins[0].dtype, upper_mask, lower_mask)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             ins[0].dtype, "vadd",
             filler_buffer.access_ptr("rw", offset=ins[0].shape[0] // 16 * 128),
             ins[0].access_ptr("r", offset=ins[0].shape[0] // 16 * 64),
@@ -8770,7 +8833,7 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
         lower_mask_bstr = '0b' + lower_mask_bstr.zfill(64)
         lower_mask = int(lower_mask_bstr, 2)
         reset_multi_broaddcast_mask_insn(ir_builder, ins[0].dtype, upper_mask, lower_mask)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             ins[0].dtype, "vadd",
             filler_buffer.access_ptr("rw", offset=ins[0].shape[0] // 16 * 128 + 4 * 2),
             ins[0].access_ptr("r", offset=ins[0].shape[0] // 16 * 64),
@@ -8778,13 +8841,13 @@ def broadcast_for_tensor_opt_mid_le32(stmt):
             1, 2, 1, 1, 16, 8, 8))
     # Move out to UB
     ir_builder.emit(
-        tvm.call_extern(ins[0].dtype, "copy_ubuf_to_gm",
-                        outs[0].access_ptr("rw", offset=0), filler_buffer.access_ptr("r", offset=0),
-                        0, 1, ins[0].shape[0], 0, 0))
+        call_extern(ins[0].dtype, "copy_ubuf_to_gm",
+                    outs[0].access_ptr("rw", offset=0), filler_buffer.access_ptr("r", offset=0),
+                    0, 1, ins[0].shape[0], 0, 0))
     ir_builder.emit(
-        tvm.call_extern(ins[0].dtype, "copy_ubuf_to_gm",
-                        outs[0].access_ptr("rw", offset=4), ins[0].access_ptr("r", offset=0),
-                        0, ins[0].shape[0] // 2, 1, 0, 1))
+        call_extern(ins[0].dtype, "copy_ubuf_to_gm",
+                    outs[0].access_ptr("rw", offset=4), ins[0].access_ptr("r", offset=0),
+                    0, ins[0].shape[0] // 2, 1, 0, 1))
     return ir_builder.get()
 
 
@@ -8795,42 +8858,44 @@ def reset_multi_broaddcast_mask_insn(ir_builder, type_, mask1, mask2):
     :param type_: the type of mask dst
     """
 
-    ir_builder.emit(tvm.call_extern(
+    ir_builder.emit(call_extern(
         type_, "set_vector_mask", tvm.const(mask1, dtype="uint64"),
         tvm.const(mask2, dtype="uint64")))
 
-@tvm.register_func("tvm.intrin.cce.vector_add_with_broadcast")
+
+@register_func("tvm.intrin.cce.vector_add_with_broadcast")
 def vector_add_with_broadcast(stmt):
-    '''
+    """
     vector instric replace for add operation with broadcast
-    '''
+    """
     instr_cmd = "vadd"
     return vector_instr_with_broadcast(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_mul_with_broadcast")
+@register_func("tvm.intrin.cce.vector_mul_with_broadcast")
 def vector_mul_with_broadcast(stmt):
-    '''
+    """
     vector instric replace for mul operation with broadcast
-    '''
+    """
     instr_cmd = "vmul"
     return vector_instr_with_broadcast(stmt, instr_cmd)
 
 
-@tvm.register_func("tvm.intrin.cce.vector_sub_with_broadcast")
+@register_func("tvm.intrin.cce.vector_sub_with_broadcast")
 def vector_sub_with_broadcast(stmt):
-    '''
+    """
     vector instric replace for sub operation with broadcast
-    '''
+    """
     instr_cmd = "vsub"
     return vector_instr_with_broadcast(stmt, instr_cmd)
 
+
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.vector_div_with_broadcast")
+@register_func("tvm.intrin.cce.vector_div_with_broadcast")
 def vector_div_with_broadcast(stmt):
-    '''
+    """
     vector instric replace for div operation with broadcast
-    '''
+    """
     instr_cmd = "vdiv"
     return vector_instr_with_broadcast(stmt, instr_cmd)
 
@@ -8850,20 +8915,20 @@ def get_op_small_tensor_index(stmt_in):
     for_var = []
 
     def _post_order_for(stmt):
-        if isinstance(stmt, tvm.stmt.For):
+        if isinstance(stmt, _stmt.For):
             if stmt.extent.value != 1:
                 for_var.append(stmt.loop_var)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
 
     loads = []
 
     def _post_order(stmt):
-        if isinstance(stmt, tvm.expr.Load):
+        if isinstance(stmt, _expr.Load):
             loads.append(stmt)
 
     # get the all load
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load"])
 
     index = 0
     for load in loads:
@@ -8871,13 +8936,13 @@ def get_op_small_tensor_index(stmt_in):
 
         def get_var(stmt):
             # pylint: disable=cell-var-from-loop
-            if isinstance(stmt, tvm.expr.Add):
+            if isinstance(stmt, _expr.Add):
                 get_var(stmt.a)
                 get_var(stmt.b)
-            elif isinstance(stmt, tvm.expr.Mul):
+            elif isinstance(stmt, _expr.Mul):
                 get_var(stmt.a)
                 get_var(stmt.b)
-            elif isinstance(stmt, tvm.expr.Var):
+            elif isinstance(stmt, _expr.Var):
                 var_list.append(stmt)
 
         get_var(load.index)
@@ -8893,6 +8958,7 @@ def get_op_small_tensor_index(stmt_in):
 
     return index
 
+
 def get_op_tensor_var(stmt_in):
     """
     descripe:get the small op in stmt
@@ -8900,20 +8966,20 @@ def get_op_tensor_var(stmt_in):
     for_var = []
 
     def _post_order_for(stmt):
-        if isinstance(stmt, tvm.stmt.For):
+        if isinstance(stmt, _stmt.For):
             if stmt.extent.value != 1:
                 for_var.append(stmt.loop_var)
 
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order_for, ["For"])
 
     loads = []
 
     def _post_order(stmt):
-        if isinstance(stmt, tvm.expr.Load):
+        if isinstance(stmt, _expr.Load):
             loads.append(stmt)
 
     # get the all load
-    _ = tvm.ir_pass.IRTransform(stmt_in, None, _post_order, ["Load"])
+    _ = ir_pass.IRTransform(stmt_in, None, _post_order, ["Load"])
 
     tensor_var_list = []
     for load in loads:
@@ -8921,13 +8987,13 @@ def get_op_tensor_var(stmt_in):
 
         def get_var(stmt):
             # pylint: disable=cell-var-from-loop
-            if isinstance(stmt, tvm.expr.Add):
+            if isinstance(stmt, _expr.Add):
                 get_var(stmt.a)
                 get_var(stmt.b)
-            elif isinstance(stmt, tvm.expr.Mul):
+            elif isinstance(stmt, _expr.Mul):
                 get_var(stmt.a)
                 get_var(stmt.b)
-            elif isinstance(stmt, tvm.expr.Var):
+            elif isinstance(stmt, _expr.Var):
                 tensor_var_list.append(stmt)
 
         get_var(load.index)
@@ -8940,23 +9006,24 @@ def get_op_tensor_var(stmt_in):
                 return tensor_var_list
     return tensor_var_list
 
+
 # pylint: disable=too-many-locals
 def vector_instr_with_broadcast(stmt, instr_cmd):
-    '''
+    """
     vector instric for stmt with broadcast vector operation
-    '''
+    """
     ins, outs = cce_util.get_buffer(stmt)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     for_extent_vals = []
     for_vars = []
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extent_vals.append(_stmt.extent.value)
-            for_vars.append(_stmt.loop_var)
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extent_vals.append(statement.extent.value)
+            for_vars.append(statement.loop_var)
 
-    _ = tvm.ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(stmt, None, _post_order_for, ["For"])
 
     dtype = ins[0].dtype
     dst_buffer = outs[0]
@@ -9008,7 +9075,7 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
         reset_mask_insn(ir_builder, dtype, bits=c0_size)
 
         ir_builder.emit(
-            tvm.call_extern(
+            call_extern(
                 dtype, instr_cmd,
                 res_buf.access_ptr("rw", offset=0),
                 src_buf_0.access_ptr("rw", offset=0),
@@ -9036,17 +9103,17 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
         vector_inst_one_repeat_size = 64
 
         tmp_buffer = new_alloc(ir_builder, dtype, (vector_inst_one_repeat_size,),
-                               'tmp_buffer', scope=cce.scope_ubuf)
+                               'tmp_buffer', scope=cce_params.scope_ubuf)
 
     repeat_times = op_size // vector_inst_one_repeat_size
     remain_size = op_size % vector_inst_one_repeat_size
 
-    max_repeat_times = cce.VECTOR_INST_MAX_REPEAT_TIMES
+    max_repeat_times = cce_params.VECTOR_INST_MAX_REPEAT_TIMES
     count = 0
 
     with ir_builder.for_range(0, loop_count, name="loop_idx") as loop_idx:
         reset_mask_insn(ir_builder, dtype, bits=c0_size)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dtype, "vadds",
             tmp_buffer.access_ptr("rw", offset=0),
             src_buf_bc.access_ptr("r", offset=loop_idx*c0_size),
@@ -9065,14 +9132,14 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
 
                 if instr_cmd in ("vdiv", "vsub") and small_buf_index == 1:
                     ir_builder.emit(
-                        tvm.call_extern(
+                        call_extern(
                             dtype, instr_cmd,
                             dst_buffer.access_ptr(
                                 "rw", offset=offset_value + loop_idx*loop_offset),
                             src_1, src_0, max_repeat_times, 1, 1, 1, 8, 8, 0))
                 else:
                     ir_builder.emit(
-                        tvm.call_extern(
+                        call_extern(
                             dtype, instr_cmd,
                             dst_buffer.access_ptr(
                                 "rw", offset=offset_value + loop_idx*loop_offset),
@@ -9088,14 +9155,14 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
         if repeat_times > 0:
             if instr_cmd in ("vdiv", "vsub") and small_buf_index == 1:
                 ir_builder.emit(
-                    tvm.call_extern(
+                    call_extern(
                         dtype, instr_cmd,
                         dst_buffer.access_ptr(
                             "rw", offset=offset_value + loop_idx*loop_offset),
                         src_1, src_0, repeat_times, 1, 1, 1, 8, 8, 0))
             else:
                 ir_builder.emit(
-                    tvm.call_extern(
+                    call_extern(
                         dtype, instr_cmd,
                         dst_buffer.access_ptr(
                             "rw", offset=offset_value + loop_idx*loop_offset),
@@ -9110,14 +9177,14 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
 
             if instr_cmd in ("vdiv", "vsub") and small_buf_index == 1:
                 ir_builder.emit(
-                    tvm.call_extern(
+                    call_extern(
                         dtype, instr_cmd,
                         dst_buffer.access_ptr(
                             "rw", offset=offset_value + loop_idx*loop_offset),
                         src_1, src_0, 1, 1, 1, 1, 8, 8, 8))
             else:
                 ir_builder.emit(
-                    tvm.call_extern(
+                    call_extern(
                         dtype, instr_cmd,
                         dst_buffer.access_ptr(
                             "rw", offset=offset_value + loop_idx*loop_offset),
@@ -9127,7 +9194,8 @@ def vector_instr_with_broadcast(stmt, instr_cmd):
 
     return ir_builder.get()
 
-@tvm.register_func("tvm.intrin.cce.vector_tuple_reduce_sum_for_bn_update_grad")
+
+@register_func("tvm.intrin.cce.vector_tuple_reduce_sum_for_bn_update_grad")
 def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
     """
     tuple reduce sum convert to dichotomy add for bn_update_grad
@@ -9136,14 +9204,14 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
     """
 
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             for_extent_vals.append(tensor_op.extent.value)
 
-    tvm_ib = tvm.ir_builder.create()
+    tvm_ib = _create()
 
     # get input size and loop num
     for_extent_vals = []
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
     input_size = 1
     for i in for_extent_vals:
         input_size = input_size * i
@@ -9191,7 +9259,7 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
             tail_flag = True
         repeat = int(repeat)
 
-        ir_b.emit(tvm.call_extern(
+        ir_b.emit(call_extern(
             buffer_tensor.dtype,
             "vadd",
             buffer_tensor.access_ptr("rw", offset=0),
@@ -9203,7 +9271,7 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
         if tail_flag:
             tail_mask = (current_size - repeat * 2 * vector_inst_one_repeat_size) // 2
             reset_mask_insn(tvm_ib, dtype, tail_mask)
-            ir_b.emit(tvm.call_extern(
+            ir_b.emit(call_extern(
                 buffer_tensor.dtype,
                 "vadd",
                 buffer_tensor.access_ptr("rw", offset=repeat * vector_inst_one_repeat_size),
@@ -9227,7 +9295,7 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
             mask_bits = input_reduce_axis_shape / collapse_repeat - vector_inst_one_repeat_size
             add_repeat_stride = int(8 + mask_bits / 8)
             reset_mask_insn(tvm_ib, dtype, mask_bits)
-            tvm_ib.emit(tvm.call_extern(
+            tvm_ib.emit(call_extern(
                 dtype,
                 "vadd",
                 ins[in_index].access_ptr("rw", offset=0),
@@ -9237,14 +9305,14 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
 
             # emit vcadd for remain
             reset_mask_insn(tvm_ib, dtype)
-            tvm_ib.emit(tvm.call_extern(
+            tvm_ib.emit(call_extern(
                 dtype,
                 "vcadd",
                 out_buffer.access_ptr("rw", offset=0),
                 ins[in_index].access_ptr("r", offset=0), ub_loop_num, 1, 1, add_repeat_stride))
         else:
             # emit vcadd for no remain
-            tvm_ib.emit(tvm.call_extern(
+            tvm_ib.emit(call_extern(
                 dtype,
                 "vcadd",
                 out_buffer.access_ptr("rw", offset=0),
@@ -9254,7 +9322,8 @@ def vector_tuple_reduce_sum_for_bn_update_grad(tensor_op):
 
     return tvm_ib.get()
 
-@tvm.register_func("tvm.intrin.cce.vector_dichotomy_add_for_bn_reduce")
+
+@register_func("tvm.intrin.cce.vector_dichotomy_add_for_bn_reduce")
 def vector_dichotomy_add_for_bn_reduce(tensor_op):
     """
     vector dichotomy add for bn_reduce
@@ -9262,7 +9331,7 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
     :return:
     """
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             for_extent_vals.append(tensor_op.extent.value)
             for_vars.append(tensor_op.loop_var)
 
@@ -9274,12 +9343,12 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
     instr_cmd = "vadd"
 
     ins, outs = cce_util.get_buffer(tensor_op)
-    tvm_ib = tvm.ir_builder.create()
+    tvm_ib = _create()
 
     for_extent_vals = []
     for_vars = []
 
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
 
     is_ins_num_not_match = len(ins) != 4 and len(outs) != 2
     if is_ins_num_not_match:
@@ -9340,9 +9409,11 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
 
     # dichotomy buffer
     sum_x_temp_buffer = new_alloc(tvm_ib, dtype, (op_size // 2,),
-                                  'sum_x_temp_buffer', scope=cce.scope_ubuf)
+                                  'sum_x_temp_buffer',
+                                  scope=cce_params.scope_ubuf)
     square_x_temp_buffer = new_alloc(tvm_ib, dtype, (op_size // 2,),
-                                     'square_x_temp_buffer', scope=cce.scope_ubuf)
+                                     'square_x_temp_buffer',
+                                     scope=cce_params.scope_ubuf)
 
     if total_repeats > 0:
         dichotomy_times = math.ceil((math.log(total_repeats, 2)))
@@ -9352,33 +9423,33 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
     loop_tail = 4
     reset_mask_insn(tvm_ib, dtype, bits=vector_inst_one_repeat_size)
     while dichotomy_times > loop_tail:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    sum_x_temp_buffer.access_ptr("rw", offset=0),
-                                    sum_x_src_buffer.access_ptr("r", offset=0),
-                                    sum_x_src_buffer.access_ptr(
-                                        "r", offset=vector_inst_one_repeat_size),
-                                    repeats // 2, 1, 1, 1, 8, 16, 16))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                sum_x_temp_buffer.access_ptr("rw", offset=0),
+                                sum_x_src_buffer.access_ptr("r", offset=0),
+                                sum_x_src_buffer.access_ptr(
+                                    "r", offset=vector_inst_one_repeat_size),
+                                repeats // 2, 1, 1, 1, 8, 16, 16))
 
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    square_x_temp_buffer.access_ptr("rw", offset=0),
-                                    square_x_src_buffer.access_ptr("r", offset=0),
-                                    square_x_src_buffer.access_ptr(
-                                        "r", offset=vector_inst_one_repeat_size),
-                                    repeats // 2, 1, 1, 1, 8, 16, 16))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                square_x_temp_buffer.access_ptr("rw", offset=0),
+                                square_x_src_buffer.access_ptr("r", offset=0),
+                                square_x_src_buffer.access_ptr(
+                                    "r", offset=vector_inst_one_repeat_size),
+                                repeats // 2, 1, 1, 1, 8, 16, 16))
 
         if repeats % 2 != 0:
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                        sum_x_temp_buffer.access_ptr("rw", offset=0),
-                                        sum_x_src_buffer.access_ptr(
-                                            "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
-                                        sum_x_temp_buffer.access_ptr("r", offset=0),
-                                        repeats % 2, 1, 1, 1, 0, 8, 0))
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                        square_x_temp_buffer.access_ptr("rw", offset=0),
-                                        square_x_src_buffer.access_ptr(
-                                            "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
-                                        square_x_temp_buffer.access_ptr("r", offset=0),
-                                        repeats % 2, 1, 1, 1, 0, 8, 0))
+            tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                    sum_x_temp_buffer.access_ptr("rw", offset=0),
+                                    sum_x_src_buffer.access_ptr(
+                                        "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
+                                    sum_x_temp_buffer.access_ptr("r", offset=0),
+                                    repeats % 2, 1, 1, 1, 0, 8, 0))
+            tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                    square_x_temp_buffer.access_ptr("rw", offset=0),
+                                    square_x_src_buffer.access_ptr(
+                                        "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
+                                    square_x_temp_buffer.access_ptr("r", offset=0),
+                                    repeats % 2, 1, 1, 1, 0, 8, 0))
 
         sum_x_temp_buffer, sum_x_src_buffer = sum_x_src_buffer, sum_x_temp_buffer
 
@@ -9388,18 +9459,18 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
         dichotomy_times = dichotomy_times - 1
 
     if repeats > 1:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    sum_x_src_buffer.access_ptr("rw", offset=0),
-                                    sum_x_src_buffer.access_ptr(
-                                        "r", offset=vector_inst_one_repeat_size),
-                                    sum_x_src_buffer.access_ptr("r", offset=0),
-                                    repeats - 1, 1, 1, 1, 0, 8, 0))
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    square_x_src_buffer.access_ptr("rw", offset=0),
-                                    square_x_src_buffer.access_ptr(
-                                        "r", offset=vector_inst_one_repeat_size),
-                                    square_x_src_buffer.access_ptr("r", offset=0),
-                                    repeats - 1, 1, 1, 1, 0, 8, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                sum_x_src_buffer.access_ptr("rw", offset=0),
+                                sum_x_src_buffer.access_ptr(
+                                    "r", offset=vector_inst_one_repeat_size),
+                                sum_x_src_buffer.access_ptr("r", offset=0),
+                                repeats - 1, 1, 1, 1, 0, 8, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                square_x_src_buffer.access_ptr("rw", offset=0),
+                                square_x_src_buffer.access_ptr(
+                                    "r", offset=vector_inst_one_repeat_size),
+                                square_x_src_buffer.access_ptr("r", offset=0),
+                                repeats - 1, 1, 1, 1, 0, 8, 0))
 
     remain_size = last_none_reduce_size
     reset_mask_insn(tvm_ib, dtype, bits=remain_size)
@@ -9408,34 +9479,34 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
     # sum_x
     if total_repeats > 0:
         combine_repeat = vector_inst_one_repeat_size // last_none_reduce_size
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    sum_x_dst_buffer.access_ptr("rw", offset=0),
-                                    sum_x_src_buffer.access_ptr("r", offset=0),
-                                    sum_x_dst_buffer.access_ptr("r", offset=0),
-                                    combine_repeat, 1, 1, 1, 0, block_num, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                sum_x_dst_buffer.access_ptr("rw", offset=0),
+                                sum_x_src_buffer.access_ptr("r", offset=0),
+                                sum_x_dst_buffer.access_ptr("r", offset=0),
+                                combine_repeat, 1, 1, 1, 0, block_num, 0))
 
         # square_x
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    square_x_dst_buffer.access_ptr("rw", offset=0),
-                                    square_x_src_buffer.access_ptr("r", offset=0),
-                                    square_x_dst_buffer.access_ptr("r", offset=0),
-                                    combine_repeat, 1, 1, 1, 0, block_num, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                square_x_dst_buffer.access_ptr("rw", offset=0),
+                                square_x_src_buffer.access_ptr("r", offset=0),
+                                square_x_dst_buffer.access_ptr("r", offset=0),
+                                combine_repeat, 1, 1, 1, 0, block_num, 0))
 
     # tail
     tail_nums = (op_size % vector_inst_one_repeat_size) // last_none_reduce_size
     if tail_nums > 0:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    sum_x_dst_buffer.access_ptr("rw", offset=0),
-                                    sum_x_orignal_src_buffer.access_ptr(
-                                        "r", offset=total_repeats*vector_inst_one_repeat_size),
-                                    sum_x_dst_buffer.access_ptr("r", offset=0),
-                                    tail_nums, 1, 1, 1, 0, block_num, 0))
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    square_x_dst_buffer.access_ptr("rw", offset=0),
-                                    square_x_orignal_src_buffer.access_ptr(
-                                        "r", offset=total_repeats*vector_inst_one_repeat_size),
-                                    square_x_dst_buffer.access_ptr("r", offset=0),
-                                    tail_nums, 1, 1, 1, 0, block_num, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                sum_x_dst_buffer.access_ptr("rw", offset=0),
+                                sum_x_orignal_src_buffer.access_ptr(
+                                    "r", offset=total_repeats*vector_inst_one_repeat_size),
+                                sum_x_dst_buffer.access_ptr("r", offset=0),
+                                tail_nums, 1, 1, 1, 0, block_num, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                square_x_dst_buffer.access_ptr("rw", offset=0),
+                                square_x_orignal_src_buffer.access_ptr(
+                                    "r", offset=total_repeats*vector_inst_one_repeat_size),
+                                square_x_dst_buffer.access_ptr("r", offset=0),
+                                tail_nums, 1, 1, 1, 0, block_num, 0))
     reset_mask_insn(tvm_ib, dtype, bits=128)
     stmt = tvm_ib.get()
 
@@ -9467,55 +9538,55 @@ def vector_dichotomy_add_for_bn_reduce_for_mini(
         reset_mask_insn(tvm_ib, dtype, bits=tail_nums)
         offset = repeats*vector_inst_one_repeat_size
         tvm_ib.emit(
-            tvm.call_extern(dtype, instr_cmd,
-                            sum_x_src_buffer.access_ptr("rw", offset=0),
-                            sum_x_src_buffer.access_ptr(
-                                "r", offset=offset),
-                            sum_x_src_buffer.access_ptr("r", offset=0),
-                            1, 1, 1, 1, 8, 8, 8))
+            call_extern(dtype, instr_cmd,
+                        sum_x_src_buffer.access_ptr("rw", offset=0),
+                        sum_x_src_buffer.access_ptr(
+                            "r", offset=offset),
+                        sum_x_src_buffer.access_ptr("r", offset=0),
+                        1, 1, 1, 1, 8, 8, 8))
         tvm_ib.emit(
-            tvm.call_extern(dtype, instr_cmd,
-                            square_x_src_buffer.access_ptr("rw", offset=0),
-                            square_x_src_buffer.access_ptr(
-                                "r", offset=offset),
-                            square_x_src_buffer.access_ptr("r", offset=0),
-                            1, 1, 1, 1, 8, 8, 8))
+            call_extern(dtype, instr_cmd,
+                        square_x_src_buffer.access_ptr("rw", offset=0),
+                        square_x_src_buffer.access_ptr(
+                            "r", offset=offset),
+                        square_x_src_buffer.access_ptr("r", offset=0),
+                        1, 1, 1, 1, 8, 8, 8))
 
     reset_mask_insn(tvm_ib, dtype, bits=vector_inst_one_repeat_size)
     while repeats > 1:
         offset = repeats // 2 * vector_inst_one_repeat_size
         tvm_ib.emit(
-            tvm.call_extern(dtype, instr_cmd,
-                            sum_x_src_buffer.access_ptr("rw", offset=0),
-                            sum_x_src_buffer.access_ptr("r", offset=0),
-                            sum_x_src_buffer.access_ptr(
-                                "r", offset=offset),
-                            repeats // 2, 1, 1, 1, 8, 8, 8))
+            call_extern(dtype, instr_cmd,
+                        sum_x_src_buffer.access_ptr("rw", offset=0),
+                        sum_x_src_buffer.access_ptr("r", offset=0),
+                        sum_x_src_buffer.access_ptr(
+                            "r", offset=offset),
+                        repeats // 2, 1, 1, 1, 8, 8, 8))
 
         tvm_ib.emit(
-            tvm.call_extern(dtype, instr_cmd,
-                            square_x_src_buffer.access_ptr("rw", offset=0),
-                            square_x_src_buffer.access_ptr("r", offset=0),
-                            square_x_src_buffer.access_ptr(
-                                "r", offset=offset),
-                            repeats // 2, 1, 1, 1, 8, 8, 8))
+            call_extern(dtype, instr_cmd,
+                        square_x_src_buffer.access_ptr("rw", offset=0),
+                        square_x_src_buffer.access_ptr("r", offset=0),
+                        square_x_src_buffer.access_ptr(
+                            "r", offset=offset),
+                        repeats // 2, 1, 1, 1, 8, 8, 8))
 
         if repeats % 2 != 0:
             offset = (repeats//2)*2*vector_inst_one_repeat_size
             tvm_ib.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                sum_x_src_buffer.access_ptr("rw", offset=0),
-                                sum_x_src_buffer.access_ptr("r", offset=0),
-                                sum_x_src_buffer.access_ptr(
+                call_extern(dtype, instr_cmd,
+                            sum_x_src_buffer.access_ptr("rw", offset=0),
+                            sum_x_src_buffer.access_ptr("r", offset=0),
+                            sum_x_src_buffer.access_ptr(
                                 "r", offset=offset),
-                                repeats % 2, 1, 1, 1, 8, 8, 8))
+                            repeats % 2, 1, 1, 1, 8, 8, 8))
             tvm_ib.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                square_x_src_buffer.access_ptr("rw", offset=0),
-                                square_x_src_buffer.access_ptr("r", offset=0),
-                                square_x_src_buffer.access_ptr(
-                                    "r", offset=offset),
-                                repeats % 2, 1, 1, 1, 8, 8, 8))
+                call_extern(dtype, instr_cmd,
+                            square_x_src_buffer.access_ptr("rw", offset=0),
+                            square_x_src_buffer.access_ptr("r", offset=0),
+                            square_x_src_buffer.access_ptr(
+                                "r", offset=offset),
+                            repeats % 2, 1, 1, 1, 8, 8, 8))
 
         repeats = repeats // 2
 
@@ -9529,21 +9600,21 @@ def vector_dichotomy_add_for_bn_reduce_for_mini(
             offset = i * last_none_reduce_size
 
             tvm_ib.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                sum_x_dst_buffer.access_ptr("rw", offset=0),
-                                sum_x_dst_buffer.access_ptr("r", offset=0),
-                                sum_x_src_buffer.access_ptr(
-                                    "r", offset=offset),
-                                1, 1, 1, 1, 8, 8, 8))
+                call_extern(dtype, instr_cmd,
+                            sum_x_dst_buffer.access_ptr("rw", offset=0),
+                            sum_x_dst_buffer.access_ptr("r", offset=0),
+                            sum_x_src_buffer.access_ptr(
+                                "r", offset=offset),
+                            1, 1, 1, 1, 8, 8, 8))
 
             # square_x
             tvm_ib.emit(
-                tvm.call_extern(dtype, instr_cmd,
-                                square_x_dst_buffer.access_ptr("rw", offset=0),
-                                square_x_dst_buffer.access_ptr("r", offset=0),
-                                square_x_src_buffer.access_ptr(
-                                    "r", offset=offset),
-                                1, 1, 1, 1, 8, 8, 8))
+                call_extern(dtype, instr_cmd,
+                            square_x_dst_buffer.access_ptr("rw", offset=0),
+                            square_x_dst_buffer.access_ptr("r", offset=0),
+                            square_x_src_buffer.access_ptr(
+                                "r", offset=offset),
+                            1, 1, 1, 1, 8, 8, 8))
 
     reset_mask_insn(tvm_ib, dtype, bits=128)
     stmt = tvm_ib.get()
@@ -9551,7 +9622,7 @@ def vector_dichotomy_add_for_bn_reduce_for_mini(
     return stmt
 
 
-@tvm.register_func("tvm.intrin.cce.vector_dichotomy_add")
+@register_func("tvm.intrin.cce.vector_dichotomy_add")
 def vector_dichotomy_add(tensor_op):
     """
     vector dichotomy add
@@ -9559,7 +9630,7 @@ def vector_dichotomy_add(tensor_op):
     :return:
     """
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             for_extent_vals.append(tensor_op.extent.value)
             for_vars.append(tensor_op.loop_var)
 
@@ -9571,11 +9642,11 @@ def vector_dichotomy_add(tensor_op):
     instr_cmd = "vadd"
 
     ins, outs = cce_util.get_buffer(tensor_op)
-    tvm_ib = tvm.ir_builder.create()
+    tvm_ib = _create()
 
     for_extent_vals = []
     for_vars = []
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    _ = ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
 
     if len(ins) != 2 and len(outs) != 1:
         raise RuntimeError("Dichotomy add not support such emit_insn.")
@@ -9622,7 +9693,8 @@ def vector_dichotomy_add(tensor_op):
     total_repeats = op_size // vector_inst_one_repeat_size
 
     # dichotomy buffer
-    x_temp_buffer = new_alloc(tvm_ib, dtype, (op_size // 2,), 'x_temp_buffer', scope=cce.scope_ubuf)
+    x_temp_buffer = new_alloc(tvm_ib, dtype, (op_size // 2,), 'x_temp_buffer',
+                              scope=cce_params.scope_ubuf)
 
     if total_repeats > 0:
         dichotomy_times = math.ceil((math.log(total_repeats, 2)))
@@ -9631,32 +9703,32 @@ def vector_dichotomy_add(tensor_op):
     repeats = total_repeats
     loop_tail = 3
     while dichotomy_times > loop_tail:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    x_temp_buffer.access_ptr("rw", offset=0),
-                                    x_src_buffer.access_ptr("r", offset=0),
-                                    x_src_buffer.access_ptr("r",
-                                                            offset=vector_inst_one_repeat_size),
-                                    repeats // 2, 1, 1, 1, 8, 16, 16))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                x_temp_buffer.access_ptr("rw", offset=0),
+                                x_src_buffer.access_ptr("r", offset=0),
+                                x_src_buffer.access_ptr("r",
+                                                        offset=vector_inst_one_repeat_size),
+                                repeats // 2, 1, 1, 1, 8, 16, 16))
 
         if repeats % 2 != 0:
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                        x_temp_buffer.access_ptr("rw", offset=0),
-                                        x_src_buffer.access_ptr(
-                                            "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
-                                        x_temp_buffer.access_ptr("r", offset=0),
-                                        repeats % 2, 1, 1, 1, 0, 8, 0))
+            tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                    x_temp_buffer.access_ptr("rw", offset=0),
+                                    x_src_buffer.access_ptr(
+                                        "r", offset=(repeats//2)*2*vector_inst_one_repeat_size),
+                                    x_temp_buffer.access_ptr("r", offset=0),
+                                    repeats % 2, 1, 1, 1, 0, 8, 0))
 
         x_temp_buffer, x_src_buffer = x_src_buffer, x_temp_buffer
 
         repeats = repeats // 2
         dichotomy_times = dichotomy_times - 1
     if repeats > 1:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    x_src_buffer.access_ptr("rw", offset=0),
-                                    x_src_buffer.access_ptr("r",
-                                                            offset=vector_inst_one_repeat_size),
-                                    x_src_buffer.access_ptr("r", offset=0),
-                                    repeats - 1, 1, 1, 1, 0, 8, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                x_src_buffer.access_ptr("rw", offset=0),
+                                x_src_buffer.access_ptr("r",
+                                                        offset=vector_inst_one_repeat_size),
+                                x_src_buffer.access_ptr("r", offset=0),
+                                repeats - 1, 1, 1, 1, 0, 8, 0))
 
     remain_size = last_none_reduce_size
     reset_mask_insn(tvm_ib, dtype, bits=remain_size)
@@ -9665,29 +9737,28 @@ def vector_dichotomy_add(tensor_op):
     # sum_x
     if total_repeats > 0:
         combine_repeat = vector_inst_one_repeat_size // last_none_reduce_size
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    x_dst_buffer.access_ptr("rw", offset=0),
-                                    x_src_buffer.access_ptr("r", offset=0),
-                                    x_dst_buffer.access_ptr("r", offset=0),
-                                    combine_repeat, 1, 1, 1, 0, block_num, 0))
-
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                x_dst_buffer.access_ptr("rw", offset=0),
+                                x_src_buffer.access_ptr("r", offset=0),
+                                x_dst_buffer.access_ptr("r", offset=0),
+                                combine_repeat, 1, 1, 1, 0, block_num, 0))
 
     # tail
     tail_nums = (op_size % vector_inst_one_repeat_size) // last_none_reduce_size
     if tail_nums > 0:
-        tvm_ib.emit(tvm.call_extern(dtype, instr_cmd,
-                                    x_dst_buffer.access_ptr("rw", offset=0),
-                                    x_orignal_src_buffer.access_ptr(
-                                        "r", offset=total_repeats*vector_inst_one_repeat_size),
-                                    x_dst_buffer.access_ptr("r", offset=0),
-                                    tail_nums, 1, 1, 1, 0, block_num, 0))
+        tvm_ib.emit(call_extern(dtype, instr_cmd,
+                                x_dst_buffer.access_ptr("rw", offset=0),
+                                x_orignal_src_buffer.access_ptr(
+                                    "r", offset=total_repeats*vector_inst_one_repeat_size),
+                                x_dst_buffer.access_ptr("r", offset=0),
+                                tail_nums, 1, 1, 1, 0, block_num, 0))
     reset_mask_insn(tvm_ib, dtype, bits=128)
     stmt = tvm_ib.get()
 
     return stmt
 
 
-@tvm.register_func("tvm.intrin.cce.vector_dichotomy_reduce")
+@register_func("tvm.intrin.cce.vector_dichotomy_reduce")
 def vector_dichotomy_reduce(tensor_op):
     """
     vector dichotomy reduce
@@ -9700,7 +9771,7 @@ def vector_dichotomy_reduce(tensor_op):
         return tvm.decl_buffer(size, dtype,
                                name=buffer_var.name,
                                data=buffer_var,
-                               scope=cce.scope_ubuf,
+                               scope=cce_params.scope_ubuf,
                                data_alignment=bytes_per_block)
 
     def new_alloc(tvm_ib, dtype, shape, name, scope):
@@ -9709,19 +9780,19 @@ def vector_dichotomy_reduce(tensor_op):
         return get_buffer(shape, dtype, buf_var._buffer_var)
 
     def _post_order_reduce_op(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.Store):
-            if isinstance(tensor_op.value, tvm.expr.FloatImm):
+        if isinstance(tensor_op, _stmt.Store):
+            if isinstance(tensor_op.value, _expr.FloatImm):
                 return
-            if isinstance(tensor_op.value, tvm.expr.Add):
+            if isinstance(tensor_op.value, _expr.Add):
                 instr_cmd.append("vadd")
                 instr_cmd.append("vcgadd")
                 instr_cmd.append("vcadd")
-            elif isinstance(tensor_op.value, tvm.expr.Max):
+            elif isinstance(tensor_op.value, _expr.Max):
                 instr_cmd.append("vmax")
                 instr_cmd.append("vcgmax")
                 instr_cmd.append("vcmax")
                 instr_cmd.append("vcpadd")
-            elif isinstance(tensor_op.value, tvm.expr.Min):
+            elif isinstance(tensor_op.value, _expr.Min):
                 instr_cmd.append("vmin")
                 instr_cmd.append("vcgmin")
                 instr_cmd.append("vcmin")
@@ -9730,11 +9801,11 @@ def vector_dichotomy_reduce(tensor_op):
                 raise RuntimeError(error_meg_dichotomy_reduce)
 
     def _post_order_for(tensor_op):
-        if isinstance(tensor_op, tvm.stmt.For):
+        if isinstance(tensor_op, _stmt.For):
             for_vars_extent[tensor_op.loop_var] = tensor_op.extent.value
 
     def _post_order_buffer_and_index(tensor_op):
-        if isinstance(tensor_op, tvm.expr.Load):
+        if isinstance(tensor_op, _expr.Load):
             load_index[tensor_op.buffer_var] = tensor_op.index
             buf = get_buffer(1, tensor_op.dtype, tensor_op.buffer_var)
             buffers.append(buf)
@@ -9742,14 +9813,15 @@ def vector_dichotomy_reduce(tensor_op):
     def get_stride_info(index_op):
         stride_map = {}
         stride_list = []
+
         def _post_order_stride(tensor_op):
-            if isinstance(tensor_op, tvm.expr.Mul):
-                if isinstance(tensor_op.a, tvm.expr.Var) and \
-                        isinstance(tensor_op.b, tvm.expr.IntImm):
+            if isinstance(tensor_op, _expr.Mul):
+                if isinstance(tensor_op.a, _expr.Var) and \
+                        isinstance(tensor_op.b, _expr.IntImm):
                     stride_map[tensor_op.a] = tensor_op.b.value
                 else:
                     raise RuntimeError(error_meg_dichotomy_reduce)
-            if isinstance(tensor_op, tvm.expr.Var):
+            if isinstance(tensor_op, _expr.Var):
                 if tensor_op not in stride_map.keys():
                     stride_map[tensor_op] = 1
                 # check index
@@ -9757,9 +9829,9 @@ def vector_dichotomy_reduce(tensor_op):
                     raise RuntimeError(error_meg_dichotomy_reduce)
 
         # recursion visit for index
-        tvm.ir_pass.PostOrderVisit(index_op, _post_order_stride)
+        ir_pass.PostOrderVisit(index_op, _post_order_stride)
         # handle for loop order by src stride
-        index_stride_cmp_function = lambda x, y: y[1] - x[1]
+        def index_stride_cmp_function(x, y): return y[1] - x[1]
         for i in stride_map:
             stride_list.append([i, stride_map[i]])
         stride_list.sort(key=cmp_to_key(index_stride_cmp_function))
@@ -9785,11 +9857,11 @@ def vector_dichotomy_reduce(tensor_op):
         else:
             mask1 = get_vcpadd_mask_value(nums)
             mask2 = 0
-        tvm_ib.emit(tvm.call_extern(CALL_TYPE, "set_vector_mask",
-                                    tvm.const(mask2, dtype="uint64"),
-                                    tvm.const(mask1, dtype="uint64")))
+        tvm_ib.emit(call_extern(CALL_TYPE, "set_vector_mask",
+                                tvm.const(mask2, dtype="uint64"),
+                                tvm.const(mask1, dtype="uint64")))
 
-    tvm_ib = tvm.ir_builder.create()
+    tvm_ib = _create()
 
     # public info
     i_var = 0
@@ -9800,7 +9872,7 @@ def vector_dichotomy_reduce(tensor_op):
     bytes_per_block = 32
     bytes_per_repeat = 256
     repeat_times_max = [2**8 - 1, 2**16 - 1]
-    data_type_wides = {"float16" : 2, "float32" : 4}
+    data_type_wides = {"float16": 2, "float32": 4}
     full_mask_nums = 128
     least_cycle_intrin = "vmax"
     least_cycle_rpt = 2**8 - 1
@@ -9809,9 +9881,9 @@ def vector_dichotomy_reduce(tensor_op):
     for_vars_extent = {}
     buffers = []
     load_index = {}
-    tvm.ir_pass.PostOrderVisit(tensor_op, _post_order_reduce_op)
-    tvm.ir_pass.PostOrderVisit(tensor_op, _post_order_for)
-    tvm.ir_pass.PostOrderVisit(tensor_op, _post_order_buffer_and_index)
+    ir_pass.PostOrderVisit(tensor_op, _post_order_reduce_op)
+    ir_pass.PostOrderVisit(tensor_op, _post_order_for)
+    ir_pass.PostOrderVisit(tensor_op, _post_order_buffer_and_index)
     dst_index_stride_map, dst_index_stride_order = get_stride_info(load_index[buffers[dst].data])
     src_index_stride_map, src_index_stride_order = get_stride_info(load_index[buffers[src].data])
 
@@ -9870,24 +9942,24 @@ def vector_dichotomy_reduce(tensor_op):
         buffer_size = dichotomy_per_size * dichotomy_size // 2
         dichotomy_reduce_temp_buffer = new_alloc(tvm_ib, dtype, buffer_size,
                                                  'dichotomy_reduce_temp_buffer',
-                                                 scope=cce.scope_ubuf)
+                                                 scope=cce_params.scope_ubuf)
         # special for bert Nz
         if dtype == "float32" and len(instr_cmd) == 3 and \
                 reduce_tail == 16 and reduce_front == 16:
-            tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[0],
-                                        dichotomy_reduce_temp_buffer.access_ptr("w", offset=0),
-                                        buffers[src].access_ptr("r", offset=buffer_size),
-                                        buffers[src].access_ptr("r", offset=0),
-                                        reduce_const * 2, 1, 1, 1, 8, 8, 8))
-            tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[0],
-                                        dichotomy_reduce_temp_buffer.access_ptr("w", offset=0),
-                                        dichotomy_reduce_temp_buffer.access_ptr("r", offset=8),
-                                        dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
-                                        reduce_const, 2, 2, 2, 16, 16, 16))
-            tvm_ib.emit(tvm.call_extern(CALL_TYPE, instr_cmd[2],
-                                        buffers[dst].access_ptr("w", offset=0),
-                                        dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
-                                        reduce_const, 1, 2 * reduce_const, 2))
+            tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[0],
+                                    dichotomy_reduce_temp_buffer.access_ptr("w", offset=0),
+                                    buffers[src].access_ptr("r", offset=buffer_size),
+                                    buffers[src].access_ptr("r", offset=0),
+                                    reduce_const * 2, 1, 1, 1, 8, 8, 8))
+            tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[0],
+                                    dichotomy_reduce_temp_buffer.access_ptr("w", offset=0),
+                                    dichotomy_reduce_temp_buffer.access_ptr("r", offset=8),
+                                    dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
+                                    reduce_const, 2, 2, 2, 16, 16, 16))
+            tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[2],
+                                    buffers[dst].access_ptr("w", offset=0),
+                                    dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
+                                    reduce_const, 1, 2 * reduce_const, 2))
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=full_mask_nums)
             return tvm_ib.get()
 
@@ -9927,61 +9999,63 @@ def vector_dichotomy_reduce(tensor_op):
         rest_part = reduce_const % block_per_repeat
         if full_part:
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=repeat_per_nums)
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[1],
-                                        buffers[dst].access_ptr("w", offset=0),
-                                        buffers[src].access_ptr("r", offset=0),
-                                        full_part, 1, 1, 8))
+            tvm_ib.emit(call_extern(dtype, instr_cmd[1],
+                                    buffers[dst].access_ptr("w", offset=0),
+                                    buffers[src].access_ptr("r", offset=0),
+                                    full_part, 1, 1, 8))
         if rest_part:
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=rest_part * block_per_nums)
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[1],
-                                        buffers[dst].access_ptr(
-                                            "w", offset=full_part * block_per_repeat),
-                                        buffers[src].access_ptr(
-                                            "r", offset=full_part * repeat_per_nums),
-                                        1, 1, 1, 8))
+            tvm_ib.emit(call_extern(dtype, instr_cmd[1],
+                                    buffers[dst].access_ptr(
+                                        "w", offset=full_part * block_per_repeat),
+                                    buffers[src].access_ptr(
+                                        "r", offset=full_part * repeat_per_nums),
+                                    1, 1, 1, 8))
     else:
         # handle sum
         if len(instr_cmd) == 3:
             # use vc model
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=reduce_tail)
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[2],
-                                        buffers[dst].access_ptr("w", offset=0),
-                                        buffers[src].access_ptr("r", offset=0),
-                                        temp_repeats, 1, 1, repeat_stride))
+            tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                    buffers[dst].access_ptr("w", offset=0),
+                                    buffers[src].access_ptr("r", offset=0),
+                                    temp_repeats, 1, 1, repeat_stride))
         # handle max/min
         else:
             # use vc + vcpadd model
             temp_buffer_size = reduce_const * 2
             vcpadd_temp_buffer = new_alloc(tvm_ib, dtype, temp_buffer_size,
-                                           'vcpadd_temp_buffer', scope=cce.scope_ubuf)
+                                           'vcpadd_temp_buffer',
+                                           scope=cce_params.scope_ubuf)
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=reduce_tail)
-            tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[2],
-                                        vcpadd_temp_buffer.access_ptr("w", offset=0),
-                                        buffers[src].access_ptr("r", offset=0),
-                                        temp_repeats, 1, 1, repeat_stride))
+            tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                    vcpadd_temp_buffer.access_ptr("w", offset=0),
+                                    buffers[src].access_ptr("r", offset=0),
+                                    temp_repeats, 1, 1, repeat_stride))
             full_part = temp_buffer_size // repeat_per_nums
             rest_part = temp_buffer_size % repeat_per_nums
             if full_part:
                 set_vcpadd_mask(repeat_per_nums)
-                tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[3],
-                                            buffers[dst].access_ptr("w", offset=0),
-                                            vcpadd_temp_buffer.access_ptr("r", offset=0),
-                                            full_part, 1, 1, 8))
+                tvm_ib.emit(call_extern(dtype, instr_cmd[3],
+                                        buffers[dst].access_ptr("w", offset=0),
+                                        vcpadd_temp_buffer.access_ptr("r", offset=0),
+                                        full_part, 1, 1, 8))
             if rest_part:
                 set_vcpadd_mask(rest_part)
-                tvm_ib.emit(tvm.call_extern(dtype, instr_cmd[3],
-                                            buffers[dst].access_ptr(
-                                                "w", offset=full_part * repeat_per_nums // 2),
-                                            vcpadd_temp_buffer.access_ptr(
-                                                "r", offset=full_part * repeat_per_nums),
-                                            1, 1, 1, 8))
+                tvm_ib.emit(call_extern(dtype, instr_cmd[3],
+                                        buffers[dst].access_ptr(
+                                            "w", offset=full_part * repeat_per_nums // 2),
+                                        vcpadd_temp_buffer.access_ptr(
+                                            "r", offset=full_part * repeat_per_nums),
+                                        1, 1, 1, 8))
 
     reset_mask_insn(tvm_ib, CALL_TYPE, bits=full_mask_nums)
     return tvm_ib.get()
 
+
 def emit_insn_in_one_operation(op_buffers, init_offset, op_cmd, op_nums,
                                repeat_limit, repeat_per_nums, ir_b):
-    '''
+    """
     :param op_buffers: buffers in intrinsic
     :param init_offset: init offset in buffer
     :param op_cmd: intrinsic name
@@ -9989,7 +10063,7 @@ def emit_insn_in_one_operation(op_buffers, init_offset, op_cmd, op_nums,
     :param repeat_limit: max repeat times
     :param ir_b: ir build
     :return:
-    '''
+    """
     full_part = op_nums // repeat_per_nums
     rest_part = op_nums % repeat_per_nums
     if full_part:
@@ -10001,42 +10075,45 @@ def emit_insn_in_one_operation(op_buffers, init_offset, op_cmd, op_nums,
             cur_times = 0
             while cur_times < full_rpt:
                 ac_offset = size_per_full * cur_times
-                ir_b.emit(tvm.call_extern(CALL_TYPE, op_cmd,
-                                          op_buffers[0].access_ptr("w", offset=init_offset[0] +
-                                                                   ac_offset),
-                                          op_buffers[1].access_ptr("r", offset=init_offset[1] +
-                                                                   ac_offset),
-                                          op_buffers[2].access_ptr("r", offset=init_offset[2] +
-                                                                   ac_offset),
-                                          repeat_limit, 1, 1, 1, 8, 8, 8))
+                ir_b.emit(call_extern(CALL_TYPE, op_cmd,
+                                      op_buffers[0].access_ptr("w", offset=init_offset[0] +
+                                                               ac_offset),
+                                      op_buffers[1].access_ptr("r", offset=init_offset[1] +
+                                                               ac_offset),
+                                      op_buffers[2].access_ptr("r", offset=init_offset[2] +
+                                                               ac_offset),
+                                      repeat_limit, 1, 1, 1, 8, 8, 8))
                 cur_times += 1
             if rest_part:
                 ac_offset = size_per_full * cur_times
-                ir_b.emit(tvm.call_extern(CALL_TYPE, op_cmd,
-                                          op_buffers[0].access_ptr("w", offset=init_offset[0] +
-                                                                   ac_offset),
-                                          op_buffers[1].access_ptr("r", offset=init_offset[1] +
-                                                                   ac_offset),
-                                          op_buffers[2].access_ptr("r", offset=init_offset[2] +
-                                                                   ac_offset),
-                                          rest_rpt, 1, 1, 1, 8, 8, 8))
+                ir_b.emit(call_extern(CALL_TYPE, op_cmd,
+                                      op_buffers[0].access_ptr("w", offset=init_offset[0] +
+                                                               ac_offset),
+                                      op_buffers[1].access_ptr("r", offset=init_offset[1] +
+                                                               ac_offset),
+                                      op_buffers[2].access_ptr("r", offset=init_offset[2] +
+                                                               ac_offset),
+                                      rest_rpt, 1, 1, 1, 8, 8, 8))
         else:
-            ir_b.emit(tvm.call_extern(CALL_TYPE, op_cmd,
-                                      op_buffers[0].access_ptr("w", offset=init_offset[0]),
-                                      op_buffers[1].access_ptr("r", offset=init_offset[1]),
-                                      op_buffers[2].access_ptr("r", offset=init_offset[2]),
-                                      full_part, 1, 1, 1, 8, 8, 8))
+            ir_b.emit(call_extern(CALL_TYPE, op_cmd,
+                                  op_buffers[0].access_ptr("w", offset=init_offset[0]),
+                                  op_buffers[1].access_ptr("r", offset=init_offset[1]),
+                                  op_buffers[2].access_ptr("r", offset=init_offset[2]),
+                                  full_part, 1, 1, 1, 8, 8, 8))
     if rest_part:
         reset_mask_insn(ir_b, CALL_TYPE, bits=rest_part)
         ac_offset = full_part * repeat_per_nums
-        ir_b.emit(tvm.call_extern(CALL_TYPE, op_cmd,
-                                  op_buffers[0].access_ptr("w", offset=init_offset[0] + ac_offset),
-                                  op_buffers[1].access_ptr("r", offset=init_offset[1] + ac_offset),
-                                  op_buffers[2].access_ptr("r", offset=init_offset[2] + ac_offset),
-                                  1, 1, 1, 1, 8, 8, 8))
+        ir_b.emit(call_extern(CALL_TYPE, op_cmd,
+                              op_buffers[0].access_ptr("w", offset=init_offset[0] + ac_offset),
+                              op_buffers[1].access_ptr("r", offset=init_offset[1] + ac_offset),
+                              op_buffers[2].access_ptr("r", offset=init_offset[2] + ac_offset),
+                              1, 1, 1, 1, 8, 8, 8))
 
-OUT_REDUCE_BUFF_FP32 = 32768 # 32kB
-@tvm.register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_sum_optimal")
+
+OUT_REDUCE_BUFF_FP32 = 32768  # 32kB
+
+
+@register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_sum_optimal")
 def reduce_sum_5d_2_3_axis_optimal(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -10044,21 +10121,20 @@ def reduce_sum_5d_2_3_axis_optimal(tensor_op):
     """
     return vec_reduce_2_3_axis(tensor_op, "vadd")
 
+
 def vec_reduce_2_3_axis(tensor_op, intrinsic_cmd, args=None):
     """
           :param tensor_op: the stmt of for with cast
           :return: the intric stmt what we want
     """
-    # op_len = cce_util.get_op_lenth(tensor_op)
     _, tile_size, _ = cce_util.get_opshape_tilesize(tensor_op)
 
     ins, outs = cce_util.get_buffer(tensor_op, need_origin_adress=True)
-    # ins, outs = cce_util.get_dma_origin_buffer(tensor_op)
     dtype = outs[0].dtype
     if dtype not in ('float16', 'float32'):
-        raise ValueError("only support float16/float32 while dtype is %s"%dtype)
+        raise ValueError("only support float16/float32 while dtype is %s" % dtype)
 
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
     reset_mask = []
 
     # 5HD
@@ -10067,6 +10143,7 @@ def vec_reduce_2_3_axis(tensor_op, intrinsic_cmd, args=None):
     elif intrinsic_cmd in ("vadd_4d", "vmean_4d"):
         reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, reset_mask)
     return ir_builder.get()
+
 
 def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, reset_mask):
     """
@@ -10104,7 +10181,7 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
     args : list
         commond args like the strides in vector commond
     """
-    # tile_size: [16, 7, 7, 64, 7, 7, 16, 64, 16, 64, 4]
+    # e.g. the tile_size is [16, 7, 7, 64, 7, 7, 16, 64, 16, 64, 4]
     reduce_type = len(tile_size)
     reduce_type_map = {11: "single_reduce_sum_float32",
                        17: "cast_single_reduce_sum"}
@@ -10134,12 +10211,15 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
         return new_buffer
 
     if reduce_type_map[reduce_type] == "single_reduce_sum_float32" and dtype == "float32":
-        ub_tmp_buffer \
-            = new_alloc(ir_builder, dtype, (buffer_size, ), 'ub_tmp_buffer', scope=cce.scope_ubuf)
-        ub_ping_buffer \
-            = new_alloc(ir_builder, dtype, (buffer_size, ), 'ub_ping_buffer', scope=cce.scope_ubuf)
-        ub_pong_buffer \
-            = new_alloc(ir_builder, dtype, (buffer_size, ), 'ub_pong_buffer', scope=cce.scope_ubuf)
+        ub_tmp_buffer = new_alloc(ir_builder, dtype, (buffer_size, ),
+                                  'ub_tmp_buffer',
+                                  scope=cce_params.scope_ubuf)
+        ub_ping_buffer = new_alloc(ir_builder, dtype, (buffer_size, ),
+                                   'ub_ping_buffer',
+                                   scope=cce_params.scope_ubuf)
+        ub_pong_buffer = new_alloc(ir_builder, dtype, (buffer_size, ),
+                                   'ub_pong_buffer',
+                                   scope=cce_params.scope_ubuf)
         reset_mask_insn(ir_builder, dtype)
 
         # init zero ub_buffer
@@ -10147,11 +10227,11 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
         ub_offset = 0
         while repeat_times > 0:
             ir_builder.emit(
-                tvm.call_extern(dtype, "vmuls",
-                                ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
-                                ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
-                                tvm.const(0, dtype),
-                                min(255, repeat_times), 1, 1, 8, 8))
+                call_extern(dtype, "vmuls",
+                            ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
+                            ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
+                            tvm.const(0, dtype),
+                            min(255, repeat_times), 1, 1, 8, 8))
             repeat_times -= 255
             ub_offset += 255 * 128 // type_len_map[dtype]
 
@@ -10174,20 +10254,20 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
                 ub_pingpong_buffer = ub_pong_buffer
             src_addr = src_buffer.access_ptr('r', offset=(src_offset + dma_offset))
             ir_builder.emit(
-                tvm.call_extern(dtype, "copy_gm_to_ubuf",
-                                ub_pingpong_buffer.access_ptr("rw", offset=0), src_addr,
-                                sid, n_burst, len_burst, src_stride, dst_stride))
+                call_extern(dtype, "copy_gm_to_ubuf",
+                            ub_pingpong_buffer.access_ptr("rw", offset=0), src_addr,
+                            sid, n_burst, len_burst, src_stride, dst_stride))
             dma_offset += shape[3] * shape[4]
 
             repeat_times = (buffer_size * type_len_map[dtype]) // 128
             ub_offset = 0
             while repeat_times > 0:
                 ir_builder.emit(
-                    tvm.call_extern(dtype, "vadd",
-                                    ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
-                                    ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
-                                    ub_pingpong_buffer.access_ptr("r", offset=ub_offset),
-                                    min(255, repeat_times), 1, 1, 1, 8, 8, 8))
+                    call_extern(dtype, "vadd",
+                                ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
+                                ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
+                                ub_pingpong_buffer.access_ptr("r", offset=ub_offset),
+                                min(255, repeat_times), 1, 1, 1, 8, 8, 8))
                 repeat_times -= 255
                 ub_offset += 255 * 128 // type_len_map[dtype]
 
@@ -10202,10 +10282,10 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
         dst_stride = 0
         for i in range(shape[3]):
             ir_builder.emit(
-                tvm.call_extern(dtype, "copy_ubuf_to_ubuf",
-                                ub_ping_buffer.access_ptr("rw", offset=ping_offset),
-                                ub_tmp_buffer.access_ptr("rw", offset=dma_offset),
-                                sid, n_burst, len_burst, src_stride, dst_stride))
+                call_extern(dtype, "copy_ubuf_to_ubuf",
+                            ub_ping_buffer.access_ptr("rw", offset=ping_offset),
+                            ub_tmp_buffer.access_ptr("rw", offset=dma_offset),
+                            sid, n_burst, len_burst, src_stride, dst_stride))
             dma_offset += shape[4]
             ping_offset += buffer_size
 
@@ -10217,11 +10297,11 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
             ub_offset = 0
             while repeat_times > 0:
                 ir_builder.emit(
-                    tvm.call_extern(dtype, "vadd",
-                                    ub_ping_buffer.access_ptr("rw", offset=ub_offset),
-                                    ub_ping_buffer.access_ptr("rw", offset=ub_offset),
-                                    ub_ping_buffer.access_ptr("r", offset=(dma_offset+ub_offset)),
-                                    min(255, repeat_times), 1, 1, 1, 8, 8, 8))
+                    call_extern(dtype, "vadd",
+                                ub_ping_buffer.access_ptr("rw", offset=ub_offset),
+                                ub_ping_buffer.access_ptr("rw", offset=ub_offset),
+                                ub_ping_buffer.access_ptr("r", offset=(dma_offset+ub_offset)),
+                                min(255, repeat_times), 1, 1, 1, 8, 8, 8))
                 repeat_times -= 255
                 ub_offset += 255 * 128 // type_len_map[dtype]
 
@@ -10234,19 +10314,21 @@ def reduce_2_3_cmd_factory(ir_builder, intrinsic_cmd, ins, outs, tile_size, rese
         src_stride = 0
         dst_stride = 0
         ir_builder.emit(
-            tvm.call_extern(dtype, "copy_ubuf_to_gm", dst_addr,
-                            ub_ping_buffer.access_ptr("rw", offset=0),
-                            sid, n_burst, len_burst, src_stride, dst_stride))
+            call_extern(dtype, "copy_ubuf_to_gm", dst_addr,
+                        ub_ping_buffer.access_ptr("rw", offset=0),
+                        sid, n_burst, len_burst, src_stride, dst_stride))
 
         reset_mask_insn(ir_builder, dtype)
 
-@tvm.register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_sum_cast_4D_optimal")
+
+@register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_sum_cast_4D_optimal")
 def reduce_sum_cast_4d_2_3_axis_optimal(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
           :return: the intric stmt what we want
     """
     return vec_reduce_2_3_axis(tensor_op, "vadd_4d")
+
 
 def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, reset_mask):
     """
@@ -10282,7 +10364,7 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
     args : list
         commond args like the strides in vector commond
     """
-    # tile_size: [7, 7, 256, 7, 7, 256, 256, 4]
+    # e.g. the tile_size is [7, 7, 256, 7, 7, 256, 256, 4]
     reduce_type = len(tile_size)
     if intrinsic_cmd == "vmean_4d":
         reduce_type_map = {11: "cast_single_reduce_sum"}
@@ -10324,17 +10406,22 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
         ping_buff = min((ub_max_enable_buff_size - out_reduce_max_buff) // 4 // 2, 16384)
         out_buff = out_reduce_buff_fp32 // 4
 
-        ub_tmp_buffer = \
-            new_alloc(ir_builder, "float32", (ping_buff, ), 'ub_tmp_buffer', scope=cce.scope_ubuf)
-        ub_ping_buffer \
-            = new_alloc(ir_builder, dtype, (ping_buff, ), 'ub_ping_buffer', scope=cce.scope_ubuf)
-        ub_pong_buffer \
-            = new_alloc(ir_builder, dtype, (ping_buff, ), 'ub_pong_buffer', scope=cce.scope_ubuf)
-        ub_out_buffer = new_alloc(ir_builder, dtype, (out_buff, ), 'ub_out', scope=cce.scope_ubuf)
-        ub_out_fp32_buffer \
-            = new_alloc(ir_builder, "float32", (out_buff, ), 'ub_out_fp32', scope=cce.scope_ubuf)
-        ub_out_tmp_buffer \
-            = new_alloc(ir_builder, "float32", (out_buff, ), 'ub_out_tmp', scope=cce.scope_ubuf)
+        ub_tmp_buffer = new_alloc(ir_builder, "float32", (ping_buff, ),
+                                  'ub_tmp_buffer', scope=cce_params.scope_ubuf)
+        ub_ping_buffer = new_alloc(ir_builder, dtype, (ping_buff, ),
+                                   'ub_ping_buffer',
+                                   scope=cce_params.scope_ubuf)
+        ub_pong_buffer = new_alloc(ir_builder, dtype, (ping_buff, ),
+                                   'ub_pong_buffer',
+                                   scope=cce_params.scope_ubuf)
+        ub_out_buffer = new_alloc(ir_builder, dtype, (out_buff, ), 'ub_out',
+                                  scope=cce_params.scope_ubuf)
+        ub_out_fp32_buffer = new_alloc(ir_builder, "float32", (out_buff, ),
+                                       'ub_out_fp32',
+                                       scope=cce_params.scope_ubuf)
+        ub_out_tmp_buffer = new_alloc(ir_builder, "float32", (out_buff, ),
+                                      'ub_out_tmp',
+                                      scope=cce_params.scope_ubuf)
         reset_mask_insn(ir_builder, dtype)
 
         m_stride = 2
@@ -10343,7 +10430,7 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
 
         # calculate for column
         if ((shape[0] * shape[1]) // m_stride) \
-            >= (shape[2] * shape[3] * type_len_map[dtype] // 128):
+                >= (shape[2] * shape[3] * type_len_map[dtype] // 128):
             if (shape[2] * shape[3] * type_len_map[dtype]) % 16 == 0:
                 max_len_burst = (shape[2] * shape[3] * type_len_map[dtype]) // 16
             else:
@@ -10365,30 +10452,30 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
                     else:
                         len_burst = max_len_burst_tmp
                     src_stride = (shape[2] * shape[3] * m_stride * type_len_map[dtype]) // 16 \
-                                - len_burst
+                        - len_burst
                     dst_stride = 4 - len_burst
                     if max_mask >= 64:
                         mask = 64
                     else:
                         mask = max_mask
                     dma_offset = shape[2] * shape[3] \
-                                * (shape[0] * shape[1] - max_n_burst * m_stride) \
-                                + (shape[2] * shape[3] - max_mask)
+                        * (shape[0] * shape[1] - max_n_burst * m_stride) \
+                        + (shape[2] * shape[3] - max_mask)
 
-                    for i in range(m_stride): #  // 2
+                    for i in range(m_stride):  # // 2
                         # ping
                         # copy in: pingpang buffer
                         if i % 2 == 0:
-                            ub_pingpang_buffer = ub_pong_buffer #ub_pong_buffer
+                            ub_pingpang_buffer = ub_pong_buffer  # ub_pong_buffer
                         else:
                             ub_pingpang_buffer = ub_ping_buffer
                         sid = 0
                         src_addr = src_buffer.access_ptr('r', offset=(src_offset + dma_offset))
                         ir_builder.emit(
-                            tvm.call_extern(dtype, "copy_gm_to_ubuf",
-                                            ub_pingpang_buffer.access_ptr("rw", offset=0),
-                                            src_addr,
-                                            sid, n_burst, len_burst, src_stride, dst_stride))
+                            call_extern(dtype, "copy_gm_to_ubuf",
+                                        ub_pingpang_buffer.access_ptr("rw", offset=0),
+                                        src_addr,
+                                        sid, n_burst, len_burst, src_stride, dst_stride))
                         dma_offset += shape[2] * shape[3]
                         # cast to fp32
                         reset_mask_insn(ir_builder, dtype, bits=64)
@@ -10396,12 +10483,12 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
                         ub_offset = 0
                         while repeat_times > 0:
                             ir_builder.emit(
-                                tvm.call_extern(
+                                call_extern(
                                     "float32", "vconv_f162f32",
                                     ub_tmp_buffer.access_ptr("rw", offset=ub_offset),
                                     ub_pingpang_buffer.access_ptr("r", offset=ub_offset),
                                     min(repeat_times, 255), 1, 1, 8, 4)
-                                )
+                            )
                             repeat_times -= 255
                             ub_offset += 255 * 128 // type_len_map["float32"]
                         # reduce sum
@@ -10410,7 +10497,7 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
                         ub_offset_scale = i
                         reset_mask_insn(ir_builder, dtype, bits=mask)
                         while repeat_times > 0:
-                            ir_builder.emit(tvm.call_extern(
+                            ir_builder.emit(call_extern(
                                 "float32", "vcadd",
                                 ub_out_tmp_buffer.access_ptr("rw", offset=ub_offset_scale),
                                 ub_tmp_buffer.access_ptr("r", offset=ub_offset),
@@ -10423,33 +10510,33 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
                     if max_len_burst_tmp == max_len_burst:
                         vector_times = n_burst * m_stride * type_len_map["float32"] // 128 + 1
                         ir_builder.emit(
-                            tvm.call_extern("float32", "vmuls",
-                                            ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                            ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                            tvm.const(0.0, "float32"),
-                                            vector_times, 1, 1, 8, 8))
+                            call_extern("float32", "vmuls",
+                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                        tvm.const(0.0, "float32"),
+                                        vector_times, 1, 1, 8, 8))
                         vector_times = n_burst * m_stride * type_len_map["float32"] // 16
                         ir_builder.emit(
-                            tvm.call_extern("float32", "copy_ubuf_to_ubuf",
-                                            ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                            ub_out_tmp_buffer.access_ptr("rw", offset=0),
-                                            0, 1, vector_times, 0, 0))
+                            call_extern("float32", "copy_ubuf_to_ubuf",
+                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                        ub_out_tmp_buffer.access_ptr("rw", offset=0),
+                                        0, 1, vector_times, 0, 0))
                         vector_times = n_burst * m_stride * type_len_map["float32"] // 128 + 1
                         ir_builder.emit(
-                            tvm.call_extern("float32", "vmuls",
-                                            ub_out_tmp_buffer.access_ptr("rw", offset=0),
-                                            ub_out_tmp_buffer.access_ptr("rw", offset=0),
-                                            tvm.const(0.0, "float32"),
-                                            vector_times, 1, 1, 8, 8))
+                            call_extern("float32", "vmuls",
+                                        ub_out_tmp_buffer.access_ptr("rw", offset=0),
+                                        ub_out_tmp_buffer.access_ptr("rw", offset=0),
+                                        tvm.const(0.0, "float32"),
+                                        vector_times, 1, 1, 8, 8))
                     # add in ub_out
                     else:
                         vector_times = n_burst * m_stride * type_len_map["float32"] // 128 + 1
                         ir_builder.emit(
-                            tvm.call_extern("float32", "vadd",
-                                            ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                            ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                            ub_out_tmp_buffer.access_ptr("r", offset=0),
-                                            vector_times, 1, 1, 1, 8, 8, 8))
+                            call_extern("float32", "vadd",
+                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                        ub_out_tmp_buffer.access_ptr("r", offset=0),
+                                        vector_times, 1, 1, 1, 8, 8, 8))
                     max_len_burst_tmp -= 4
                     max_mask -= 64
 
@@ -10457,25 +10544,25 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
                     vector_times = n_burst * m_stride * type_len_map["float32"] // 128 + 1
                     const_mul = get_emitinsn_params("const_mul")
                     ir_builder.emit(
-                        tvm.call_extern("float32", "vmuls",
-                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                        ub_out_fp32_buffer.access_ptr("rw", offset=0),
-                                        tvm.const(const_mul, "float32"),
-                                        vector_times, 1, 1, 8, 8))
+                        call_extern("float32", "vmuls",
+                                    ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                    ub_out_fp32_buffer.access_ptr("rw", offset=0),
+                                    tvm.const(const_mul, "float32"),
+                                    vector_times, 1, 1, 8, 8))
                 # cast to fp16
                 vector_times = n_burst * m_stride * type_len_map["float32"] // 128 + 1
                 ir_builder.emit(
-                    tvm.call_extern(dtype, "vconv_f322f16",
-                                    ub_out_buffer.access_ptr("rw", offset=0),
-                                    ub_out_fp32_buffer.access_ptr("r", offset=0),
-                                    vector_times, 1, 1, 4, 8))
-                #copy to out
+                    call_extern(dtype, "vconv_f322f16",
+                                ub_out_buffer.access_ptr("rw", offset=0),
+                                ub_out_fp32_buffer.access_ptr("r", offset=0),
+                                vector_times, 1, 1, 4, 8))
+                # copy to out
                 dst_addr = dst_buffer.access_ptr('w', offset=(dst_offset + dma_out_offset))
                 dma_out_offset += n_burst * m_stride
                 ir_builder.emit(
-                    tvm.call_extern(dtype, "copy_ubuf_to_gm", dst_addr,
-                                    ub_out_buffer.access_ptr("rw", offset=0),
-                                    0, 1, n_burst * m_stride * type_len_map[dtype] // 16, 0, 0))
+                    call_extern(dtype, "copy_ubuf_to_gm", dst_addr,
+                                ub_out_buffer.access_ptr("rw", offset=0),
+                                0, 1, n_burst * m_stride * type_len_map[dtype] // 16, 0, 0))
                 max_n_burst -= 256
         reset_mask_insn(ir_builder, dtype)
 
@@ -10483,7 +10570,7 @@ def reduce_2_3_cmd_factory_4d(ir_builder, intrinsic_cmd, ins, outs, tile_size, r
         pass
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_mean_cast_4D_optimal")
+@register_func("tvm.intrin.cce.reduce_2_3_axis_reduce_mean_cast_4D_optimal")
 def reduce_mean_cast_4d_2_3_axis_optimal(tensor_op):
     """
           :param tensor_op: the stmt of for with cast
@@ -10491,18 +10578,19 @@ def reduce_mean_cast_4d_2_3_axis_optimal(tensor_op):
     """
     return vec_reduce_2_3_axis(tensor_op, "vmean_4d")
 
-@tvm.register_func("tvm.intrin.cce.last_axis_reduce_max")
+
+@register_func("tvm.intrin.cce.last_axis_reduce_max")
 def last_axis_reduce_max(stmt_op):
     """Collapse second input tensor to one repeat and calculate max to output"""
     # Get input and output buffers
     for_extents = []
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extents.append(int(_stmt.extent.value))
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extents.append(int(statement.extent.value))
 
-    tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     if len(for_extents) > 2:
         raise RuntimeError("last_axis_reduce_max only supports 2-dimentional last-axis reduce max")
     if len(for_extents) == 2:
@@ -10519,7 +10607,8 @@ def last_axis_reduce_max(stmt_op):
     # Check if input is aligned for each loop
     element_size = cce_util.get_align_factor(in_buffer.dtype)[1]
     element_per_block = ALIGNMENT_BYTES // element_size
-    vector_inst_one_repeat_size = cce.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_inst_one_repeat_size = \
+    cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
     repeat_times = input_size // vector_inst_one_repeat_size
     remains = input_size - vector_inst_one_repeat_size * repeat_times
     if outer_loop > 1 and input_size * element_size % ALIGNMENT_BYTES != 0:
@@ -10532,19 +10621,19 @@ def last_axis_reduce_max(stmt_op):
             new_buffer = tvm.decl_buffer(shape, buf_var.dtype, name=name, scope=scope, data=buf_var)
             return new_buffer
         res = new_alloc(ir_b, dtype, (input_size,),
-                        "last_axis_reduce_max_temp", cce.scope_ubuf)
+                        "last_axis_reduce_max_temp", cce_params.scope_ubuf)
         return res
 
-    buffer = allocate_reduce_max_temp_buffer(ir_builder, in_buffer.dtype)
+    tmp_buffer = allocate_reduce_max_temp_buffer(ir_builder, in_buffer.dtype)
     with ir_builder.for_range(0, outer_loop, "last_axis_reduce_max_outer_loop") as outer_loop:
-        # Initialize temp buffer
-        ir_builder.emit(tvm.call_extern(in_buffer.dtype,
-                                        'copy_ubuf_to_ubuf',
-                                        buffer.access_ptr("rw"),
-                                        in_buffer.access_ptr("r", offset=outer_loop * input_size),
-                                        0, 1, 8, 0, 0))
+        # Initialize temp tmp buffer
+        ir_builder.emit(call_extern(in_buffer.dtype,
+                                    'copy_ubuf_to_ubuf',
+                                    tmp_buffer.access_ptr("rw"),
+                                    in_buffer.access_ptr("r", offset=outer_loop * input_size),
+                                    0, 1, 8, 0, 0))
         # Main part
-        reset_mask_insn(ir_builder, buffer.dtype)
+        reset_mask_insn(ir_builder, tmp_buffer.dtype)
         offset = outer_loop * input_size
         # Because first repeat is moved into dst prior to calculation, repeat offset will be 1.
         MAXIMUM_REPEAT = 255
@@ -10552,37 +10641,37 @@ def last_axis_reduce_max(stmt_op):
         if repeat_times > MAXIMUM_REPEAT * 2 + REPEAT_OFFSET:
             raise RuntimeError("Reduce max axis too large, max 255 * 2 + 1:", repeat_times)
         if repeat_times > MAXIMUM_REPEAT + REPEAT_OFFSET:
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "vmax",
-                buffer.access_ptr("rw", offset=0),
-                buffer.access_ptr("r", offset=0),
+                tmp_buffer.access_ptr("rw", offset=0),
+                tmp_buffer.access_ptr("r", offset=0),
                 in_buffer.access_ptr("r", offset=offset + vector_inst_one_repeat_size),
                 MAXIMUM_REPEAT, 1, 1, 1, 0, 0, 8))
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "vmax",
-                buffer.access_ptr("rw", offset=0),
-                buffer.access_ptr("r", offset=0),
+                tmp_buffer.access_ptr("rw", offset=0),
+                tmp_buffer.access_ptr("r", offset=0),
                 in_buffer.access_ptr("r", offset=offset
                                      + vector_inst_one_repeat_size*(MAXIMUM_REPEAT+REPEAT_OFFSET)),
                 repeat_times - MAXIMUM_REPEAT - REPEAT_OFFSET, 1, 1, 1, 0, 0, 8))
         else:
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "vmax",
-                buffer.access_ptr("rw", offset=0),
-                buffer.access_ptr("r", offset=0),
+                tmp_buffer.access_ptr("rw", offset=0),
+                tmp_buffer.access_ptr("r", offset=0),
                 in_buffer.access_ptr("r", offset=offset + vector_inst_one_repeat_size),
                 repeat_times - 1, 1, 1, 1, 0, 0, 8))
         # Remain part
         if remains > 0:
-            reset_mask_insn(ir_builder, buffer.dtype, bits=remains)
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            reset_mask_insn(ir_builder, tmp_buffer.dtype, bits=remains)
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "vmax",
-                buffer.access_ptr("rw", offset=0),
-                buffer.access_ptr("r", offset=0),
+                tmp_buffer.access_ptr("rw", offset=0),
+                tmp_buffer.access_ptr("r", offset=0),
                 in_buffer.access_ptr("r", offset=offset
                                      + vector_inst_one_repeat_size * repeat_times),
                 1, 1, 1, 1, 0, 0, 8))
@@ -10591,52 +10680,52 @@ def last_axis_reduce_max(stmt_op):
         current_size = vector_inst_one_repeat_size
         for i in range(collapse_loop):
             current_size = current_size // 2
-            reset_mask_insn(ir_builder, buffer.dtype, bits=current_size)
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            reset_mask_insn(ir_builder, tmp_buffer.dtype, bits=current_size)
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "vmax",
-                buffer.access_ptr("rw", offset=0),
-                buffer.access_ptr("r", offset=0),
-                buffer.access_ptr("r", offset=current_size),
+                tmp_buffer.access_ptr("rw", offset=0),
+                tmp_buffer.access_ptr("r", offset=0),
+                tmp_buffer.access_ptr("r", offset=current_size),
                 1, 1, 1, 1, 8, 8, 8))
         # Split to block
         for i in range(1, element_per_block):
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            ir_builder.emit(call_extern(
+                tmp_buffer.dtype,
                 "reg_mov",
-                buffer.access_ptr("rw", offset=i * element_per_block),
-                buffer.access_ptr("r", offset=i)))
+                tmp_buffer.access_ptr("rw", offset=i * element_per_block),
+                tmp_buffer.access_ptr("r", offset=i)))
         # Final reduce
-        reset_mask_insn(ir_builder, buffer.dtype, bits=1)
-        ir_builder.emit(tvm.call_extern(
-            buffer.dtype,
+        reset_mask_insn(ir_builder, tmp_buffer.dtype, bits=1)
+        ir_builder.emit(call_extern(
+            tmp_buffer.dtype,
             "vmax",
-            buffer.access_ptr("rw", offset=0),
-            buffer.access_ptr("r", offset=0),
-            buffer.access_ptr("r", offset=element_per_block),
+            tmp_buffer.access_ptr("rw", offset=0),
+            tmp_buffer.access_ptr("r", offset=0),
+            tmp_buffer.access_ptr("r", offset=element_per_block),
             element_per_block - 1, 1, 1, 1, 1, 0, 0))
         # Output
-        ir_builder.emit(tvm.call_extern(
-            buffer.dtype,
+        ir_builder.emit(call_extern(
+            tmp_buffer.dtype,
             "reg_mov",
             out_buffer.access_ptr("rw", offset=outer_loop),
-            buffer.access_ptr("r", offset=0)))
-    reset_mask_insn(ir_builder, buffer.dtype)
+            tmp_buffer.access_ptr("r", offset=0)))
+    reset_mask_insn(ir_builder, tmp_buffer.dtype)
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.last_axis_reduce_sum_reuse")
+@register_func("tvm.intrin.cce.last_axis_reduce_sum_reuse")
 def last_axis_reduce_sum_reuse(stmt_op):
     """Collapse second input tensor to one repeat and calculate sum to output"""
     # Get input and output buffers
     for_extents = []
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extents.append(int(_stmt.extent.value))
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extents.append(int(statement.extent.value))
 
-    tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     if len(for_extents) > 2:
         raise RuntimeError("last_axis_reduce_sum_re only supports 2-dimentional last-axis reduce")
     if len(for_extents) == 2:
@@ -10652,7 +10741,8 @@ def last_axis_reduce_sum_reuse(stmt_op):
 
     # Check if input is aligned for each loop
     element_size = cce_util.get_align_factor(in_buffer.dtype)[1]
-    vector_inst_one_repeat_size = cce.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_inst_one_repeat_size = \
+        cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
     repeat_times = input_size // vector_inst_one_repeat_size
     remains = input_size - vector_inst_one_repeat_size * repeat_times
     collapse_loop_num = int(math.log(input_size / vector_inst_one_repeat_size, 2))
@@ -10662,27 +10752,27 @@ def last_axis_reduce_sum_reuse(stmt_op):
         raise RuntimeError("Reduce last axis data is not aligned for ub split factor larger than 1")
 
     # Do Emit Insn
-    def collapse(ir_b, buffer, current_size):
+    def collapse(ir_b, buf, current_size):
         repeat = current_size // 2 // vector_inst_one_repeat_size
-        ir_b.emit(tvm.call_extern(
-            buffer.dtype,
+        ir_b.emit(call_extern(
+            buf.dtype,
             "vadd",
-            buffer.access_ptr("rw", offset=0),
-            buffer.access_ptr("r", offset=0),
-            buffer.access_ptr("r", offset=current_size // 2),
+            buf.access_ptr("rw", offset=0),
+            buf.access_ptr("r", offset=0),
+            buf.access_ptr("r", offset=current_size // 2),
             repeat, 1, 1, 1, 8, 8, 8))
         return current_size // 2
-    buffer = in_buffer
+    buf = in_buffer
     with ir_builder.for_range(0, outer_loop, "last_axis_reduce_sum_reuse_outer_loop") as outer_loop:
         # Main part before collapse
         offset = outer_loop * input_size
         if out_of_collapse_repeat > 0:
-            reset_mask_insn(ir_builder, buffer.dtype)
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            reset_mask_insn(ir_builder, buf.dtype)
+            ir_builder.emit(call_extern(
+                buf.dtype,
                 "vadd",
-                buffer.access_ptr("rw", offset=offset),
-                buffer.access_ptr("r", offset=offset),
+                buf.access_ptr("rw", offset=offset),
+                buf.access_ptr("r", offset=offset),
                 in_buffer.access_ptr("r", offset=offset
                                      + vector_inst_one_repeat_size * collapse_repeat),
                 out_of_collapse_repeat, 1, 1, 1, 8, 8, 8))
@@ -10692,39 +10782,39 @@ def last_axis_reduce_sum_reuse(stmt_op):
             cur_size = collapse(ir_builder, in_buffer, cur_size)
         # Remain part
         if remains > 0:
-            reset_mask_insn(ir_builder, buffer.dtype, bits=remains)
-            ir_builder.emit(tvm.call_extern(
-                buffer.dtype,
+            reset_mask_insn(ir_builder, buf.dtype, bits=remains)
+            ir_builder.emit(call_extern(
+                buf.dtype,
                 "vadd",
-                buffer.access_ptr("rw", offset=offset),
-                buffer.access_ptr("r", offset=offset),
+                buf.access_ptr("rw", offset=offset),
+                buf.access_ptr("r", offset=offset),
                 in_buffer.access_ptr("r", offset=offset
                                      + vector_inst_one_repeat_size * repeat_times),
                 1, 1, 1, 1, 8, 8, 8))
         # Final reduce
-        reset_mask_insn(ir_builder, buffer.dtype)
-        ir_builder.emit(tvm.call_extern(
-            buffer.dtype,
+        reset_mask_insn(ir_builder, buf.dtype)
+        ir_builder.emit(call_extern(
+            buf.dtype,
             "vcadd",
             out_buffer.access_ptr("rw", offset=outer_loop),
-            buffer.access_ptr("r", offset=0),
+            buf.access_ptr("r", offset=0),
             1, 1, 1, 8))
-    reset_mask_insn(ir_builder, buffer.dtype)
+    reset_mask_insn(ir_builder, buf.dtype)
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_binary_sub_scalar_L1")
+@register_func("tvm.intrin.cce.elewise_binary_sub_scalar_L1")
 def elewise_binary_sub_scalar_L1(stmt_op):
     """A[a][b] - B[a]"""
     # Get input and output buffers
     for_extents = []
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extents.append(int(_stmt.extent.value))
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extents.append(int(statement.extent.value))
 
-    tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     if len(for_extents) > 2:
         raise RuntimeError("elewise_binary_sub_scalar only supports 2-dimentional last-axis scalar")
     if len(for_extents) == 2:
@@ -10741,7 +10831,8 @@ def elewise_binary_sub_scalar_L1(stmt_op):
 
     # Check if input is aligned for each loop
     element_size = cce_util.get_align_factor(in_buffer.dtype)[1]
-    vector_inst_one_repeat_size = cce.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_inst_one_repeat_size = \
+        cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
     repeat_times = input_size // vector_inst_one_repeat_size
     remains = input_size - vector_inst_one_repeat_size * repeat_times
     if outer_loop > 1 and input_size * element_size % ALIGNMENT_BYTES != 0:
@@ -10755,15 +10846,16 @@ def elewise_binary_sub_scalar_L1(stmt_op):
             return new_buffer
         tmp_buffer = new_alloc(ir_builder,
                                scalar.dtype, (ALIGNMENT_BYTES // element_size,), "sub_tmp_buf",
-                               cce.scope_ubuf)
-        reg = ir_builder.allocate(scalar.dtype, (1,), "reg_buf_sub", cce.scope_reg)
-        ir_builder.emit(tvm.call_extern(
+                               cce_params.scope_ubuf)
+        reg = ir_builder.allocate(scalar.dtype, (1,), "reg_buf_sub",
+                                  cce_params.scope_reg)
+        ir_builder.emit(call_extern(
             scalar.dtype,
             "reg_mov",
-            tvm.call_extern(reg.dtype, "reg", reg[0]),
+            call_extern(reg.dtype, "reg", reg[0]),
             scalar.access_ptr("r", offset=outer_loop)))
         reset_mask_insn(ir_builder, in_buffer.dtype, bits=ALIGNMENT_BYTES // element_size)
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             scalar.dtype, 'vector_dup',
             tmp_buffer.access_ptr('rw', offset=0),
             reg[0],
@@ -10778,7 +10870,7 @@ def elewise_binary_sub_scalar_L1(stmt_op):
         if repeat_times > 2 * MAXIMUM_REPEAT:
             raise RuntimeError("Repeat time too large:", repeat_times)
         if repeat_times > MAXIMUM_REPEAT:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 scalar.dtype,
                 "vsub",
                 out_buffer.access_ptr("rw", offset=outer_loop * input_size),
@@ -10786,7 +10878,7 @@ def elewise_binary_sub_scalar_L1(stmt_op):
                 tmp_buffer.access_ptr("r", offset=0),
                 MAXIMUM_REPEAT, 1, 1, 0, 8, 8, 0))
             offset = outer_loop * input_size + MAXIMUM_REPEAT * vector_inst_one_repeat_size
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 scalar.dtype,
                 "vsub",
                 out_buffer.access_ptr("rw", offset=offset),
@@ -10794,7 +10886,7 @@ def elewise_binary_sub_scalar_L1(stmt_op):
                 tmp_buffer.access_ptr("r", offset=0),
                 repeat_times - MAXIMUM_REPEAT, 1, 1, 0, 8, 8, 0))
         else:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 scalar.dtype,
                 "vsub",
                 out_buffer.access_ptr("rw", offset=outer_loop * input_size),
@@ -10805,7 +10897,7 @@ def elewise_binary_sub_scalar_L1(stmt_op):
         if remains > 0:
             reset_mask_insn(ir_builder, in_buffer.dtype, bits=remains)
             offset = outer_loop * input_size + repeat_times * vector_inst_one_repeat_size
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 scalar.dtype,
                 "vsub",
                 out_buffer.access_ptr("rw",
@@ -10815,9 +10907,9 @@ def elewise_binary_sub_scalar_L1(stmt_op):
                 1, 1, 1, 0, 8, 8, 0))
         reset_mask_insn(ir_builder, in_buffer.dtype)
         L1_workspace = new_alloc(ir_builder, out_buffer.dtype, out_buffer.shape, "L1_workspace",
-                                 cce.scope_cbuf)
+                                 cce_params.scope_cbuf)
         burst_length = int(math.ceil(input_size * element_size / ALIGNMENT_BYTES))
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             out_buffer.dtype,
             "copy_ubuf_to_cbuf",
             L1_workspace.access_ptr("rw", offset=0),
@@ -10829,14 +10921,14 @@ def elewise_binary_sub_scalar_L1(stmt_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.elewise_get_L1_workspace")
+@register_func("tvm.intrin.cce.elewise_get_L1_workspace")
 def elewise_get_L1_workspace(stmt_op):
     """Get L1 workspace defined by elewise_binary_sub_scalar_L1"""
     _, outs = cce_util.get_buffer(stmt_op, need_unique=True)
     in_buffer = cce_emitinsn_params.cceEmitParamsIns.get_param("L1_workspace")
     burst_length = cce_emitinsn_params.cceEmitParamsIns.get_param("L1_workspace_burst_length")
-    ir_builder = tvm.ir_builder.create()
-    ir_builder.emit(tvm.call_extern(
+    ir_builder = _create()
+    ir_builder.emit(call_extern(
         outs[0].dtype, 'copy_cbuf_to_ubuf',
         outs[0].access_ptr('rw', offset=0),
         in_buffer.access_ptr('rw', offset=0),
@@ -10852,7 +10944,7 @@ class TIKCallbackManager():
     func_map = {}
 
     @classmethod
-    def register(func, name):
+    def register(cls, name):
         """
           register the function.
 
@@ -10870,7 +10962,7 @@ class TIKCallbackManager():
         """
         func = cls.func_map.get(name, None)
         if func is None:
-            return
+            return None
         return func(*args)
 
     @classmethod
@@ -10901,26 +10993,26 @@ def tik_exception_process(loc):
     return tik_error_context, tik_error_traceback
 
 
-@tvm.register_func("tvm.intrin.cce.vector_reduce_sum_last_axis_opt")
+@register_func("tvm.intrin.cce.vector_reduce_sum_last_axis_opt")
 def vector_reduce_sum_last_axis_opt(
-    tensor_op):# pylint: disable=too-many-branches, too-many-statements
+        tensor_op):  # pylint: disable=too-many-branches, too-many-statements
     """
     vector_reduce_sum_last_axis_opt.
     only support last axis reduce sum and only one reduce axis.
     not reduce axis can multipy.
     """
     reduce_op = cce_util.get_reduce_op(tensor_op)
-    ir_builder = tvm.ir_builder.create()
+    ir_builder = _create()
 
     for_extents = []
     for_vars = []
 
-    def _post_order_for(_stmt):
-        if isinstance(_stmt, tvm.stmt.For):
-            for_extents.append(int(_stmt.extent.value))
-            for_vars.append(_stmt.loop_var)
+    def _post_order_for(statement):
+        if isinstance(statement, _stmt.For):
+            for_extents.append(int(statement.extent.value))
+            for_vars.append(statement.loop_var)
 
-    tvm.ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
+    ir_pass.IRTransform(tensor_op, None, _post_order_for, ["For"])
 
     if len(for_vars) == 1:
         raise RuntimeError("Vector_reduce_sum_last_axis_opt can't support!")
@@ -10928,7 +11020,7 @@ def vector_reduce_sum_last_axis_opt(
     k_var = for_vars[0]
 
     reduce_size = for_extents[0]
-    res_size = reduce(lambda x, y: x*y, for_extents[1:])
+    res_size = _reduce(lambda x, y: x*y, for_extents[1:])
 
     ins, outs = cce_util.get_buffer(reduce_op)
     dtype = ins[0].dtype
@@ -10956,7 +11048,7 @@ def vector_reduce_sum_last_axis_opt(
             count = 0
             tmp_repeat_times = repeat_times
             while tmp_repeat_times > 255:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dtype, 'vadd',
                     ins[1].access_ptr(
                         'rw',
@@ -10966,8 +11058,8 @@ def vector_reduce_sum_last_axis_opt(
                         offset=count*255*reduce_size - k_var),
                     ins[1].access_ptr(
                         'rw',
-                        offset=count*255*reduce_size + \
-                               (_loop + 1)*one_instr_num - k_var),
+                        offset=count*255*reduce_size +
+                        (_loop + 1)*one_instr_num - k_var),
                     255,
                     1, 1, 1, src_repeat_stride,
                     src_repeat_stride, src_repeat_stride))
@@ -10975,7 +11067,7 @@ def vector_reduce_sum_last_axis_opt(
                 count = count + 1
 
             if tmp_repeat_times > 0:
-                ir_builder.emit(tvm.call_extern(
+                ir_builder.emit(call_extern(
                     dtype, 'vadd',
                     ins[1].access_ptr(
                         'rw',
@@ -10985,8 +11077,8 @@ def vector_reduce_sum_last_axis_opt(
                         offset=count*255*reduce_size - k_var),
                     ins[1].access_ptr(
                         'rw',
-                        offset=count*255*reduce_size + \
-                               (_loop + 1)*one_instr_num - k_var),
+                        offset=count*255*reduce_size +
+                        (_loop + 1)*one_instr_num - k_var),
                     tmp_repeat_times,
                     1, 1, 1, src_repeat_stride,
                     src_repeat_stride, src_repeat_stride))
@@ -10997,7 +11089,7 @@ def vector_reduce_sum_last_axis_opt(
         count = 0
         tmp_repeat_times = repeat_times
         while tmp_repeat_times > 255:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dtype, 'vadd',
                 ins[1].access_ptr(
                     'rw',
@@ -11007,8 +11099,8 @@ def vector_reduce_sum_last_axis_opt(
                     offset=count * 255 * reduce_size - k_var),
                 ins[1].access_ptr(
                     'rw',
-                    offset=count * 255 * reduce_size + \
-                           loop_time * one_instr_num - k_var),
+                    offset=count * 255 * reduce_size +
+                    loop_time * one_instr_num - k_var),
                 255,
                 1, 1, 1, src_repeat_stride,
                 src_repeat_stride, src_repeat_stride))
@@ -11017,7 +11109,7 @@ def vector_reduce_sum_last_axis_opt(
             count = count + 1
 
         if tmp_repeat_times > 0:
-            ir_builder.emit(tvm.call_extern(
+            ir_builder.emit(call_extern(
                 dtype, 'vadd',
                 ins[1].access_ptr(
                     'rw',
@@ -11027,8 +11119,8 @@ def vector_reduce_sum_last_axis_opt(
                     offset=count * 255 * reduce_size - k_var),
                 ins[1].access_ptr(
                     'rw',
-                    offset=count * 255 * reduce_size + \
-                           loop_time * one_instr_num - k_var),
+                    offset=count * 255 * reduce_size +
+                    loop_time * one_instr_num - k_var),
                 tmp_repeat_times,
                 1, 1, 1, src_repeat_stride,
                 src_repeat_stride, src_repeat_stride))
@@ -11041,7 +11133,7 @@ def vector_reduce_sum_last_axis_opt(
     count = 0
     tmp_repeat_times = repeat_times
     while tmp_repeat_times > 255:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dtype, 'vcadd',
             outs[0].access_ptr('rw', offset=count*255),
             ins[1].access_ptr('rw',
@@ -11053,7 +11145,7 @@ def vector_reduce_sum_last_axis_opt(
         count = count + 1
 
     if tmp_repeat_times > 0:
-        ir_builder.emit(tvm.call_extern(
+        ir_builder.emit(call_extern(
             dtype, 'vcadd',
             outs[0].access_ptr('rw', offset=count*255),
             ins[1].access_ptr('rw',

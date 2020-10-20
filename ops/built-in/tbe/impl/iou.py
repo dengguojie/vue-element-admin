@@ -1,26 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 iou
 """
-
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # MAX ELIMENT NUM OF FP16 IN 1BLOCK
 FP16_ELIMENTS_BLOCK = 16
@@ -833,7 +832,7 @@ def _box_shape_check(input_name, shape):
 
 
 # pylint: disable=unused-argument
-@fusion_manager.register("iou")
+@tbe_platform.fusion_manager.fusion_manager.register("iou")
 def iou_compute(bboxes, gtboxes, overlap, mode, kernel_name):
     """
     calculating data
@@ -867,8 +866,9 @@ def iou_compute(bboxes, gtboxes, overlap, mode, kernel_name):
     return iou_res.run_tik(kernel_name)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     """
     calculating data
@@ -900,16 +900,16 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     bboxes_shape = bboxes.get("shape")
     gtboxes_shape = gtboxes.get("shape")
 
-    check_shape(bboxes_shape, param_name="bboxes")
-    check_shape(gtboxes_shape, param_name="gtboxes")
+    para_check.check_shape(bboxes_shape, param_name="bboxes")
+    para_check.check_shape(gtboxes_shape, param_name="gtboxes")
 
     _box_shape_check("bboxes", bboxes_shape)
     _box_shape_check("gtboxes", gtboxes_shape)
 
     bboxes_dtype = bboxes.get("dtype").lower()
-    util.compare_tensor_dict_key(bboxes, gtboxes, "dtype")
+    shape_util.compare_tensor_dict_key(bboxes, gtboxes, "dtype")
     check_list = ("float16", "float32")
-    check_dtype(bboxes_dtype, check_list, param_name="bboxes")
+    para_check.check_dtype(bboxes_dtype, check_list, param_name="bboxes")
 
     # check whether mode is valid
     check_list = ("iou", "iof")

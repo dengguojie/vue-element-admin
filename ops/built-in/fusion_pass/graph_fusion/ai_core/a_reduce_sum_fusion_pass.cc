@@ -1,36 +1,40 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief reducesum fusion pass
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file a_reduce_sum_fusion_pass.cpp
+ * \brief reducesum fusion pass
+ */
 #include "a_reduce_sum_fusion_pass.h"
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <sstream>
-#include <vector>
-#include <algorithm>
-#include "op_log.h"
-#include "graph/debug/ge_attr_define.h"
-#include "graph/utils/attr_utils.h"
-#include "graph/utils/graph_utils.h"
-#include "graph/utils/node_utils.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-#include "pattern_fusion_util.h"
 
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeReduceSum";
 static const string FUSED_NODE = "ReduceSum";
 
-Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info,
-  vector<int64_t> axis_info) {
-  for (auto &input_shape_value : tensor_info) {
-    if (input_shape_value < 0) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process, shouldn't delete.");
+Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info,
+                                                  Operator& op) {
+  bool keep_dims = false;
+  const string keep_dims_name = "keep_dims";
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "can't get keep_dims attr.");
+  }
+
+  for (auto& input_shape_value : tensor_info) {
+    if (input_shape_value < 0 && !keep_dims) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process and not keep dim, shouldn't delete.");
       return FAILED;
     }
   }
@@ -42,30 +46,24 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info,
   return SUCCESS;
 }
 
-vector<FusionPattern *> AReduceSumFusionPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
-  FusionPattern *pattern = \
-  new (std::nothrow) FusionPattern("AReduceSumFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),  return patterns);
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE})
-          .SetOutput(PATTERN_FUSEDNODE);
+vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceSumFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+                    return patterns);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
   return patterns;
 }
 
-Status AReduceSumFusionPass::Fusion(ge::ComputeGraph &graph,
-    Mapping &mapping, vector<ge::NodePtr> &newNodes) {
+Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion begin.");
-  ge::NodePtr sumNode = \
-  GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(sumNode == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
-           return PARAM_INVALID);
+  ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-  ge::GeTensorDesc tensor_input = \
-  sumNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc axis_input = \
-  sumNode->GetOpDesc()->GetInputDesc(1);
+  ge::GeTensorDesc tensor_input = sumNode->GetOpDesc()->GetInputDesc(0);
+  ge::GeTensorDesc axis_input = sumNode->GetOpDesc()->GetInputDesc(1);
 
   vector<int64_t> tensor_info = tensor_input.GetShape().GetDims();
   size_t tensor_size = tensor_input.GetShape().GetDimNum();
@@ -81,10 +79,10 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph &graph,
   }
 
   std::vector<int64_t> const_data;
-  int32_t* const_data_ptr = (int32_t*) data.GetData();
+  int32_t* const_data_ptr = (int32_t*)data.GetData();
   size_t const_data_size = data.GetSize() / sizeof(int32_t);
   for (size_t i = 0; i < const_data_size; ++i) {
-      const_data.push_back((int32_t) ((*(const_data_ptr + i))));
+    const_data.push_back((int32_t)((*(const_data_ptr + i))));
   }
 
   int axis_value = axis_input.GetShape().GetDim(0);
@@ -101,31 +99,27 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph &graph,
     }
   }
 
-  if (!(CheckSumFussionOrNot(tensor_info, const_data) == SUCCESS) && (axis_size!=1 || axis_value!=0)) {
+  if (!(CheckSumFussionOrNot(tensor_info, const_data, op) == SUCCESS) && (axis_size != 1 || axis_value != 0)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Not need delete sumNode");
     return NOT_CHANGED;
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and sum. connect beforeNode and afterNode");
-  for (auto inDataAnchor :
-       sumNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetOutDataAnchor(0),
-                                        inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(sumNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                     inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
+  for (auto &inDataAnchor : sumNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(sumNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reducesum edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sumNode failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sumNode failed."),
+                    return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion end");
 
   return SUCCESS;
-  }
-
-REGISTER_PASS("AReduceSumFusionPass", BUILT_IN_GRAPH_PASS,
-              AReduceSumFusionPass);
 }
+
+REGISTER_PASS("AReduceSumFusionPass", BUILT_IN_GRAPH_PASS, AReduceSumFusionPass);
+}  // namespace fe

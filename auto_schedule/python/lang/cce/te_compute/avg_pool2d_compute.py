@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache Licenses for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pooling2d compute
 """
 from te import tvm
@@ -36,6 +36,7 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
     h_p, w_p = (o_h - 1)*s_h + k_h, (o_w - 1)*s_w + k_w
     p_t, p_b = pooling_params["pad_top"], pooling_params["pad_bottom"]
     p_l, p_r = pooling_params["pad_left"], pooling_params["pad_right"]
+
     def _select(indices):
         i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]
         i_h, i_w = indices[2], indices[3]
@@ -117,7 +118,7 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
         tx_rh = tx_rh1
 
     # coeff area size
-    area = tvm.const(1 / (k_h *k_w), dtype=dtype)
+    area = tvm.const(1 / (k_h * k_w), dtype=dtype)
     shape = (x_n, x_c1, o_h, o_w, x_c0)
     h_start = (o_h - 1) * s_h - p_t
     h_value = [h_start + k_h, x_h.value + p_t]
@@ -133,13 +134,13 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
             name="tx_avg",
             tag="vector_muls")
     else:
-        area1 = tvm.const(1 / (last_h *k_w), dtype=dtype)
+        area1 = tvm.const(1 / (last_h * k_w), dtype=dtype)
         t_avg = tvm.compute(shape,
-            lambda n, c1, h, w, c0:
-            tvm.select(h < (o_h - 1), tx_rh[n, c1, h, w, c0] * area,
-                        tx_rh[n, c1, h, w, c0] * area1),
-            name="tx_avg",
-            tag="vector_muls")
+                            lambda n, c1, h, w, c0:
+                            tvm.select(h < (o_h - 1), tx_rh[n, c1, h, w, c0] * area,
+                                       tx_rh[n, c1, h, w, c0] * area1),
+                            name="tx_avg",
+                            tag="vector_muls")
 
     # copy ub to gm
     t_y = tvm.compute(

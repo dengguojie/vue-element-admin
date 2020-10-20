@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_ada_max
 
   Op_description :
@@ -39,21 +39,16 @@ apply_ada_max
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
 
 
 # pylint: disable=locally-disabled, too-many-arguments
 # pylint: disable=unused-argument, invalid-name, too-many-locals
-@fusion_manager.register("apply_ada_max_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_ada_max_d")
 def apply_ada_max_d_compute(var,
                             m,
                             v,
@@ -109,19 +104,18 @@ def apply_ada_max_d_compute(var,
 
     # cast to float32 for improved accuracy
     inp_dtype = var.dtype
-    if inp_dtype == 'float16' and api_check_support("te.lang.cce.vadd",
-                                                    "float32"):
-        var = te.lang.cce.cast_to(var, 'float32')
-        m = te.lang.cce.cast_to(m, 'float32')
-        v = te.lang.cce.cast_to(v, 'float32')
-        lr = te.lang.cce.cast_to(lr, 'float32')
-        beta1_power = te.lang.cce.cast_to(beta1_power, 'float32')
-        beta1 = te.lang.cce.cast_to(beta1, 'float32')
-        beta2 = te.lang.cce.cast_to(beta2, 'float32')
-        epsilon = te.lang.cce.cast_to(epsilon, 'float32')
-        grad = te.lang.cce.cast_to(grad, 'float32')
+    if inp_dtype == 'float16' and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, 'float32')
+        m = tbe.cast_to(m, 'float32')
+        v = tbe.cast_to(v, 'float32')
+        lr = tbe.cast_to(lr, 'float32')
+        beta1_power = tbe.cast_to(beta1_power, 'float32')
+        beta1 = tbe.cast_to(beta1, 'float32')
+        beta2 = tbe.cast_to(beta2, 'float32')
+        epsilon = tbe.cast_to(epsilon, 'float32')
+        grad = tbe.cast_to(grad, 'float32')
     else:
-        m = te.lang.cce.vmuls(m, tvm.const(1, dtype=inp_dtype))
+        m = tbe.vmuls(m, tvm.const(1, dtype=inp_dtype))
 
     rhs = tvm.compute(beta1.shape,
                       lambda *indices: beta1(*indices) * -1,
@@ -130,17 +124,17 @@ def apply_ada_max_d_compute(var,
                       lambda *indices: rhs(*indices)
                                        + tvm.const(1.0, dtype=rhs.dtype),
                       tag='elewise_single_VS_add')
-    lhs = te.lang.cce.vsub(grad, m)
+    lhs = tbe.vsub(grad, m)
     rhs = tvm.compute(lhs.shape,
                       lambda *indices: lhs(*indices) * rhs[0],
                       tag='elewise_single_VS_mul')
-    m = te.lang.cce.vadd(m, rhs)
+    m = tbe.vadd(m, rhs)
 
     lhs = tvm.compute(v.shape,
                       lambda *indices: v(*indices) * beta2[0],
                       tag='elewise_single_VS_mul')
-    rhs = te.lang.cce.vabs(grad)
-    v = te.lang.cce.vmax(lhs, rhs)
+    rhs = tbe.vabs(grad)
+    v = tbe.vmax(lhs, rhs)
 
     rhs = tvm.compute(v.shape,
                       lambda *indices: v(*indices) + epsilon[0],
@@ -158,17 +152,17 @@ def apply_ada_max_d_compute(var,
     lhs = tvm.compute(m.shape,
                       lambda *indices: m(*indices) * lr[0],
                       tag='elewise_single_VS_mul')
-    rhs = te.lang.cce.vdiv(lhs, rhs)
-    var = te.lang.cce.vsub(var, rhs)
+    rhs = tbe.vdiv(lhs, rhs)
+    var = tbe.vsub(var, rhs)
 
-    res1 = te.lang.cce.vadds(var, tvm.const(0.0, dtype="float32"))
-    res2 = te.lang.cce.vadds(m, tvm.const(0.0, dtype="float32"))
-    res3 = te.lang.cce.vadds(v, tvm.const(0.0, dtype="float32"))
+    res1 = tbe.vadds(var, tvm.const(0.0, dtype="float32"))
+    res2 = tbe.vadds(m, tvm.const(0.0, dtype="float32"))
+    res3 = tbe.vadds(v, tvm.const(0.0, dtype="float32"))
 
     if inp_dtype == 'float16':
-        res1 = te.lang.cce.cast_to(res1, inp_dtype)
-        res2 = te.lang.cce.cast_to(res2, inp_dtype)
-        res3 = te.lang.cce.cast_to(res3, inp_dtype)
+        res1 = tbe.cast_to(res1, inp_dtype)
+        res2 = tbe.cast_to(res2, inp_dtype)
+        res3 = tbe.cast_to(res3, inp_dtype)
 
     def _compute(*index):
         return m(*index), v(*index), var(*index),\
@@ -177,9 +171,11 @@ def apply_ada_max_d_compute(var,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def apply_ada_max_d(var,
                     m,
                     v,
@@ -237,12 +233,12 @@ def apply_ada_max_d(var,
 
     input_dict = (var, m, v, beta1_power, lr, beta1, beta2, epsilon, grad)
 
-    args = ApplyOpConfig.TensorArgs(input_dict, apply_ada_max_d_compute,
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict, apply_ada_max_d_compute,
                                     [var_out, m_out, v_out], 14)
-    name = ApplyOpConfig.TensorName(all=('var', 'm', 'v', 'beta1_power', 'lr',
-                                         'beta1', 'beta2', 'epsilon', 'grad'),
-                                    scalar=('lr', 'beta1_power', 'beta1',
-                                            'beta2', 'epsilon'),
-                                    reuse=('m', 'v', 'var'))
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'm', 'v', 'beta1_power', 'lr',
+                                                                'beta1', 'beta2', 'epsilon', 'grad'),
+                                                           scalar=('lr', 'beta1_power', 'beta1',
+                                                                   'beta2', 'epsilon'),
+                                                           reuse=('m', 'v', 'var'))
 
-    common_apply_op_process(ApplyOpConfig(args, name), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name), kernel_name)

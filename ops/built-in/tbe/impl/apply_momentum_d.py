@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_momentum
 
   Op_description :
@@ -36,17 +36,11 @@ apply_momentum
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_apply_op_schedule
 
 # scalar in apply_momentum
 NUM_ZERO = 0.0
@@ -54,7 +48,7 @@ NUM_ZERO = 0.0
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@fusion_manager.register("apply_momentum")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_momentum")
 def apply_momentum_compute_d(var,
                              accum,
                              lr,
@@ -101,18 +95,18 @@ def apply_momentum_compute_d(var,
 
     # cast to float32 for higher accuracy
     dtype = var.dtype
-    if dtype == "float16" and api_check_support("te.lang.cce.vadd", "float32"):
-        var = te.lang.cce.cast_to(var, "float32")
-        accum = te.lang.cce.cast_to(accum, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
-        momentum = te.lang.cce.cast_to(momentum, "float32")
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        grad = tbe.cast_to(grad, "float32")
+        momentum = tbe.cast_to(momentum, "float32")
 
     # update accum
     accum_delta = tvm.compute(accum.shape,
                               lambda *indice: accum(*indice) * momentum[0],
                               tag='elewise_single_VS_mul')
-    accum_t = te.lang.cce.vadd(accum_delta, grad)
+    accum_t = tbe.vadd(accum_delta, grad)
 
     # update var
     if use_nesterov:
@@ -126,21 +120,21 @@ def apply_momentum_compute_d(var,
         var_delta_2 = tvm.compute(var_delta_2.shape,
                                   lambda *indice: var_delta_2(*indice) * lr[0],
                                   tag='elewise_single_VS_mul')
-        var_delta = te.lang.cce.vadd(var_delta, var_delta_2)
-        var_t = te.lang.cce.vsub(var, var_delta)
+        var_delta = tbe.vadd(var_delta, var_delta_2)
+        var_t = tbe.vsub(var, var_delta)
     else:
         var_delta = tvm.compute(accum_t.shape,
                                 lambda *indice: accum_t(*indice) * lr[0],
                                 tag='elewise_single_VS_mul')
-        var_t = te.lang.cce.vsub(var, var_delta)
+        var_t = tbe.vsub(var, var_delta)
 
     if dtype == "float16":
-        var_t = te.lang.cce.cast_to(var_t, "float16")
-        accum_t = te.lang.cce.cast_to(accum_t, "float16")
+        var_t = tbe.cast_to(var_t, "float16")
+        accum_t = tbe.cast_to(accum_t, "float16")
 
-    var_out_data = te.lang.cce.vadds(
+    var_out_data = tbe.vadds(
         var_t, tvm.const(NUM_ZERO, var_t.dtype))
-    accum_out_data = te.lang.cce.vadds(
+    accum_out_data = tbe.vadds(
         accum_t, tvm.const(NUM_ZERO, accum_t.dtype))
 
     def _compute(*index):
@@ -150,8 +144,9 @@ def apply_momentum_compute_d(var,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_momentum_d(var,
                      accum,
                      lr,
@@ -200,16 +195,16 @@ def apply_momentum_d(var,
 
     input_dict = (var, accum, lr, grad, momentum)
 
-    args = ApplyOpConfig.TensorArgs(
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(
         input_dict,
         apply_momentum_compute_d,
         [var_out, accum_out],
         8 if use_nesterov else 6,
     )
-    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'grad',
-                                         'momentum'),
-                                    scalar=('lr', 'momentum'),
-                                    reuse=('accum', 'var'))
-    options = ApplyOpConfig.TensorOptions(attrs=use_nesterov)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'grad', 'momentum'),
+                                                           scalar=('lr', 'momentum'),
+                                                           reuse=('accum', 'var'))
+    options = util_apply_op_schedule.ApplyOpConfig.TensorOptions(attrs=use_nesterov)
 
-    common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name, options),
+                                                   kernel_name)

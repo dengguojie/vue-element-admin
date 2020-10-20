@@ -1,10 +1,29 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file prior_box_fusion_pass.cpp
+ * \brief
+ */
 #include "prior_box_fusion_pass.h"
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <map>
 #include <math.h>
+#include <iostream>
+#include <map>
+#include <algorithm>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -16,131 +35,55 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
-
 #include "common/debug/log.h"
 
-using namespace std;
-using namespace ge;
-
 namespace fe {
-static const string PATTERN_PRIORBOX = "PriorBox";
-static const char *PRIORBOX = "PriorBox";
+static const char PATTERN_PRIORBOX[] = "PriorBox";
+static const char PRIORBOX[] = "PriorBox";
+static const float FLOAT_NUM_ZERO = 0;
+static const uint16_t UINT_NUM_ZERO = 0;
 
-Status GenerateWIndexFP16(const int32_t w, uint16_t *output1) {
-  for (int32_t j = 0; j < w; ++j) {
-    fp16_t t;
-    t.val = 0;
-    t = j;
-    output1[j] = t.val;
+Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* output) {
+  if (output == nullptr) {
+    OP_LOGE("PriorBoxDV2", "output pointer is null!");
+    return FAILED;
+  }
+  GE_CHECK_POSITIVE_SIZE_RANGE(dimInfo.size());
+
+  int64_t nInput = dimInfo[0];
+  int64_t cInput = dimInfo[1];
+  int64_t hInput = dimInfo[2];
+  int64_t wInInput = dimInfo[3];
+
+  int64_t nOutput = nInput;
+  int64_t cOutput = cInput;
+  int64_t hOutput = hInput;
+  int64_t wOutput = wInInput;
+
+  // set output data
+  int64_t outOffsetPoint = 0;
+
+  for (int64_t n = 0; n < nOutput; n++) {
+    for (int64_t c = 0; c < cOutput; c++) {
+      int64_t offset = hOutput * c;
+      for (int64_t w = 0; w < wOutput; w++) {
+        for (int64_t h = 0; h < hOutput; h++) {
+          outOffsetPoint = n * cOutput * hOutput * wOutput + c * hOutput * wOutput + h * wOutput + w;
+          fp16_t tmp;
+          tmp = data[h + offset];
+          output[outOffsetPoint] = tmp.val;
+        }
+      }
+    }
   }
   return SUCCESS;
 }
-Status GenerateHIndexFP16(const int32_t h, uint16_t *output1) {
-  for (int32_t i = 0; i < h; ++i) {
-    fp16_t t;
-    t.val = 0;
-    t = i;
-    output1[i] = t.val;
-  }
-  return SUCCESS;
-}
-Status GenerateWIndexFP32(const int32_t w, float *output1) {
-  for (int32_t j = 0; j < w; ++j) {
-    output1[j] = (float) j;
-  }
-  return SUCCESS;
-}
-Status GenerateHIndexFP32(const int32_t h, float *output1) {
-  for (int32_t i = 0; i < h; ++i) {
-    output1[i] = (float) i;
-  }
-  return SUCCESS;
-}
 
-Status GenerateBoxFP32(float* box_w_all, float* box_h_all,
-                       vector<float>& aspectratios_new, ge::NodePtr fusedNode) {
-  vector<float> min_size;
-  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "min_size", min_size);
-  int64_t min_size_size = min_size.size();
-  vector<float> max_size;
-  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "max_size", max_size);
-
-  int count1 = 0;
-  int count2 = 0;
-  for(int k = 0; k < min_size_size; k++){
-    float box_w_min = min_size[k];
-    float box_h_min = min_size[k];
-    box_w_all[count1++] = box_w_min;
-    box_h_all[count2++] = box_h_min;
-    if (max_size.size() > 0) {
-      float box_w_max = sqrt(min_size[k] * max_size[k]);
-      float box_h_max = box_w_max;
-      box_w_all[count1++] = box_w_max;
-      box_h_all[count2++] = box_h_max;
-    }
-
-    for(uint16_t index = 0; index < aspectratios_new.size(); index++){
-      float ar = aspectratios_new[index];
-      float box_w = min_size[k] * sqrt(ar);
-      float box_h = min_size[k] / sqrt(ar);
-      box_w_all[count1++] = box_w;
-      box_h_all[count2++] = box_h;
-    }
-  }
-        return SUCCESS;
-}
-Status GenerateBoxFP16(uint16_t *box_w_all, uint16_t *box_h_all,
-                       vector<float>& aspectratios_new, ge::NodePtr fusedNode) {
-  vector<float> min_size;
-  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "min_size", min_size);
-  int64_t min_size_size = min_size.size();
-  vector<float> max_size;
-  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "max_size", max_size);
-
-  int count1 = 0;
-  int count2 = 0;
-  for(int k = 0; k < min_size_size; k++){
-    fp16_t t_box_w;
-    fp16_t t_box_h;
-    t_box_w.val = 0;
-    t_box_h.val = 0;
-
-    float box_w_min = min_size[k];
-    float box_h_min = min_size[k];
-    t_box_w = box_w_min;
-    t_box_h = box_h_min;
-    box_w_all[count1++] = t_box_w.val;
-    box_h_all[count2++] = t_box_h.val;
-
-    if (max_size.size() > 0) {
-      float box_w_max = sqrt(min_size[k] * max_size[k]);
-      float box_h_max = box_w_max;
-      t_box_w = box_w_max;
-      t_box_h = box_h_max;
-      box_w_all[count1++] = t_box_w.val;
-      box_h_all[count2++] = t_box_h.val;
-    }
-
-    for(uint16_t index = 0; index < aspectratios_new.size(); index++){
-      float ar = aspectratios_new[index];
-      float box_w = min_size[k] * sqrt(ar);
-      float box_h = min_size[k] / sqrt(ar);
-      t_box_w = box_w;
-      t_box_h = box_h;
-      box_w_all[count1++] = t_box_w.val;
-      box_h_all[count2++] = t_box_h.val;
-    }
-  }
-        return SUCCESS;
-}
-
-
-vector<FusionPattern *> PriorBoxPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
-  FusionPattern *pattern =
-    new (std::nothrow) FusionPattern("PriorBoxFusion");
+vector<FusionPattern*> PriorBoxPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("PriorBoxFusion");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-    return patterns);
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_PRIORBOX, {PRIORBOX}).SetOutput(PATTERN_PRIORBOX);
 
@@ -148,189 +91,297 @@ vector<FusionPattern *> PriorBoxPass::DefinePatterns() {
 
   return patterns;
 }
-Status PriorBoxPass::Fusion(ge::ComputeGraph &graph,
-                                  Mapping &mapping,
-                                  vector<ge::NodePtr> &newNodes) {
+
+Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_w, int64_t img_h, float step_w,
+                                  float step_h, vector<float>& min_size, vector<float>& max_size,
+                                  vector<float>& variance, vector<float>& aspect_ratios, float offset, bool clip,
+                                  int64_t prior_num, vector<float>& output) {
+  // Output data's size
+  int dim = layer_h * layer_w * prior_num * 4;
+
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Data size is %d = layer_width[%d] * layer_height[%d] * priornum[%d] * 4 points.", dim,
+          layer_w, layer_h, prior_num);
+
+  // Compute prior box
+  for (int h = 0; h < layer_h; ++h) {
+    for (int w = 0; w < layer_w; ++w) {
+      // Using each point in the feature map as a center point,
+      // the default offset is 0.5, can be thought to a little offset
+      // here map the center point to the orignal
+      float center_x = (w + offset) * step_w;
+      float center_y = (h + offset) * step_h;
+
+      float box_width, box_height;
+      for (unsigned int s = 0; s < min_size.size(); ++s) {
+        int min_value = min_size[s];
+        // first prior: aspect_ratio = 1, size = min_size
+        box_width = box_height = min_value;
+        // min_size can determine the normalized square box.
+        // xmin
+        float p1 = (center_x - box_width / 2.) / img_w;
+        // ymin
+        float p2 = (center_y - box_height / 2.) / img_h;
+        // xmax
+        float p3 = (center_x + box_width / 2.) / img_w;
+        // ymax
+        float p4 = (center_y + box_height / 2.) / img_h;
+        output.push_back(p1);
+        output.push_back(p2);
+        output.push_back(p3);
+        output.push_back(p4);
+
+        if (max_size.size() > 0) {
+          int max_value = max_size[s];
+          // second prior: aspect_ratio = 1, size = sqrt(min_size * max_size)
+          box_width = box_height = sqrt(min_value * max_value);
+          // xmin
+          float p1 = (center_x - box_width / 2.) / img_w;
+          // ymin
+          float p2 = (center_y - box_height / 2.) / img_h;
+          // xmax
+          float p3 = (center_x + box_width / 2.) / img_w;
+          // ymax
+          float p4 = (center_y + box_height / 2.) / img_h;
+          output.push_back(p1);
+          output.push_back(p2);
+          output.push_back(p3);
+          output.push_back(p4);
+        }
+        // rest of priors
+        for (unsigned int r = 0; r < aspect_ratios.size(); ++r) {
+          float ar = aspect_ratios[r];
+          // by definition, aspect_ratio and min_size codetermine the rectangle box
+          box_width = min_value * sqrt(ar);
+          box_height = min_value / sqrt(ar);
+          // xmin
+          float p1 = (center_x - box_width / 2.) / img_w;
+          // ymin
+          float p2 = (center_y - box_height / 2.) / img_h;
+          // xmax
+          float p3 = (center_x + box_width / 2.) / img_w;
+          // ymax
+          float p4 = (center_y + box_height / 2.) / img_h;
+          output.push_back(p1);
+          output.push_back(p2);
+          output.push_back(p3);
+          output.push_back(p4);
+        }
+      }
+    }
+  }
+  // clip represants if do any thing about out-of-bounds
+  // the default clip is false
+  // clip the prior's coordidate such that it is within [0, 1]
+  if (clip) {
+    for (int d = 0; d < dim; ++d) {
+      output[d] = std::min<float>(std::max<float>(output[d], 0.), 1.);
+    }
+  }
+
+  // the output c dim is 2
+  // and the first part is proposal boxe, another part is variance
+  if (variance.size() == 1) {
+    for (int i = 0; i < dim; ++i)
+      output.push_back(variance[0]);
+  } else {
+    int count = 0;
+    for (int h = 0; h < layer_h; ++h) {
+      for (int w = 0; w < layer_w; ++w) {
+        for (int i = 0; i < prior_num; ++i) {
+          for (int j = 0; j < 4; ++j) {
+            output.push_back(variance[j]);
+            ++count;
+          }
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
+Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into PriorBoxPass");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_PRIORBOX, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // input of priorbox
   ge::OpDescPtr priorboxDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(priorboxDesc == nullptr,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
-    return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
 
-  // 获取进入节点的输入描述：区分const与variable
-  ge::GeTensorDesc priorboxInputTensor =
-    fusedNode->GetOpDesc()->GetInputDesc(0);
+  // Get inputs
+  ge::GeTensorDesc priorboxInputTensor = fusedNode->GetOpDesc()->GetInputDesc(0);
 
-  // 获取shape信息
+  // Get shape info of input
   ge::GeShape diagInputShape = priorboxInputTensor.GetShape();
 
-  // GESHAPE->vector
+  // GESHAPE to vector
   vector<int64_t> dimInfo = diagInputShape.GetDims();
-  if(dimInfo.size() == 4){
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d", dimInfo[0],
-        dimInfo[1], dimInfo[2], dimInfo[3]);
-  } else if(dimInfo.size() == 5){
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d,%d", dimInfo[0],
-        dimInfo[1], dimInfo[2], dimInfo[3], dimInfo[4]);
-  } else{
+  if (dimInfo.size() == 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d", dimInfo[0], dimInfo[1], dimInfo[2],
+            dimInfo[3]);
+  } else if (dimInfo.size() == 5) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d,%d", dimInfo[0], dimInfo[1], dimInfo[2],
+            dimInfo[3], dimInfo[4]);
+  } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dim size must be 4 or 5!");
     return FAILED;
   }
 
-    vector<float> aspect_ratio;
-    ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "aspect_ratio", aspect_ratio);
-    int64_t ar_size = aspect_ratio.size();
-    vector<float> min_size;
-    ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "min_size", min_size);
-    int64_t min_size_size = min_size.size();
-    vector<float> max_size;
-    ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "max_size", max_size);
-    int64_t max_size_size = max_size.size();
-    bool flip;
-    ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "flip", flip);
+  // get image width and height from second input value
+  ge::GeTensorDesc imgInputTensor = fusedNode->GetOpDesc()->GetInputDesc(1);
+  // get shape information of image
+  ge::GeShape imgInputShape = imgInputTensor.GetShape();
+  // get dims
+  vector<int64_t> imgDimInfo = imgInputShape.GetDims();
+  if (imgDimInfo.size() == 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1], imgDimInfo[2],
+            imgDimInfo[3]);
+  } else if (imgDimInfo.size() == 5) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1],
+            imgDimInfo[2], imgDimInfo[3], imgDimInfo[4]);
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dim size must be 4 or 5!");
+    return FAILED;
+  }
 
-    GE_CHECK_POSITIVE_SIZE_RANGE(aspect_ratio.size());
-    GE_CHECK_POSITIVE_SIZE_RANGE(min_size.size());
+  // Get data type
+  vector<float> aspect_ratio;
+  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "aspect_ratio", aspect_ratio);
+  int64_t ar_size = aspect_ratio.size();
+  vector<float> min_size;
+  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "min_size", min_size);
+  int64_t min_size_size = min_size.size();
+  vector<float> max_size;
+  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "max_size", max_size);
+  int64_t max_size_size = max_size.size();
+  bool flip;
+  ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "flip", flip);
+  // Get value from prior box
+  vector<float> variance;
+  ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "variance", variance);
+  int64_t img_h;
+  ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_h", img_h);
+  int64_t img_w;
+  ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_w", img_w);
+  float step_w;
+  ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_w", step_w);
+  float step_h;
+  ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_h", step_h);
+  bool clip;
+  ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "clip", clip);
+  float offset;
+  ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "offset", offset);
 
-    vector<float> aspectratios_new;
-    for(int i = 0; i < ar_size; i++){
-        float ar = aspect_ratio[i];
-        bool already_exist = false;
-        if(fabsf(ar - 1.0) < 1e-6){
-            already_exist = true;
-        } else{
-            for(uint16_t j = 0; j < aspectratios_new.size(); j++){
-               if(fabsf(ar - aspectratios_new[j]) < 1e-6){
-                   already_exist = true;
-                   break;
-                }
-              }
+  GE_CHECK_POSITIVE_SIZE_RANGE(aspect_ratio.size());
+  GE_CHECK_POSITIVE_SIZE_RANGE(min_size.size());
+
+  vector<float> aspectratios_new;
+  for (int i = 0; i < ar_size; i++) {
+    float ar = aspect_ratio[i];
+    bool already_exist = false;
+    if (fabsf(ar - 1.0) < 1e-6) {
+      already_exist = true;
+    } else {
+      for (uint16_t j = 0; j < aspectratios_new.size(); j++) {
+        if (fabsf(ar - aspectratios_new[j]) < 1e-6) {
+          already_exist = true;
+          break;
         }
-        if(!already_exist){
-            aspectratios_new.push_back(ar);
-            if(flip){
-              aspectratios_new.push_back(1.0/ar);
-            }
-        }
+      }
     }
-    int64_t ar_new_size = aspectratios_new.size();
-
-    int64_t priorNum;
-    if (ar_size == 1 && (fabsf(aspect_ratio[0] - 1.0) < 1e-6)) {
-     priorNum = min_size_size * ar_size + max_size_size;
-    } else{
-      priorNum = min_size_size + min_size_size * ar_new_size + max_size_size;
+    if (!already_exist) {
+      aspectratios_new.push_back(ar);
+      if (flip) {
+        aspectratios_new.push_back(1.0 / ar);
+      }
     }
+  }
+  int64_t ar_new_size = aspectratios_new.size();
 
-  ge::GeTensorPtr assitPtrW = nullptr;
-  ge::GeTensorPtr assitPtrH = nullptr;
-  ge::GeTensorPtr assitPtrBoxW = nullptr;
-  ge::GeTensorPtr assitPtrBoxH = nullptr;
+  int64_t priorNum;
+  if (ar_size == 1 && (fabsf(aspect_ratio[0] - 1.0) < 1e-6)) {
+    priorNum = min_size_size * ar_size + max_size_size;
+  } else {
+    priorNum = min_size_size + min_size_size * ar_new_size + max_size_size;
+  }
 
-    unique_ptr<uint16_t[]> inputAssitW(new (std::nothrow)
-      uint16_t[dimInfo[3]]());
-    FUSION_PASS_CHECK(inputAssitW.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitW is NULL"),
+  // set layer width and height
+  int64_t layer_width = dimInfo[3];
+  int64_t layer_height = dimInfo[2];
+  float step_w_size, step_h_size;
+  // set image width and height
+  int64_t img_width, img_height;
+  // If img_w and img_h is none in attribute, set width and height from img's dims
+  if (img_h == 0 || img_w == 0) {
+    // The width and height of input
+    img_width = imgDimInfo[3];
+    img_height = imgDimInfo[2];
+  } else {
+    img_width = img_w;
+    img_height = img_h;
+  }
+  // If step_w and step_h is none in attribute, set width and height by layer
+  if (step_w == 0 || step_h == 0) {
+    step_w_size = static_cast<float>(img_width) / layer_width;  // scaling
+    step_h_size = static_cast<float>(img_height) / layer_height;
+  } else {
+    step_w_size = step_w;
+    step_h_size = step_h;
+  }
+
+  vector<float> outputData;
+  // Compute prior box result
+  Status ret = ComputeBoxes(layer_width, layer_height, img_width, img_height, step_w_size, step_h_size, min_size,
+                            max_size, variance, aspectratios_new, offset, clip, priorNum, outputData);
+
+  // The prior box input shape, same with output desc
+  ge::GeTensorDesc boxOutTensorDesc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  // prior box input tensor, same as output tensor
+  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
+  boxOutTensorDesc.SetOriginFormat(outputDesc.GetOriginFormat());
+  boxOutTensorDesc.SetFormat(outputDesc.GetFormat());
+  boxOutTensorDesc.SetOriginDataType(outputDesc.GetOriginDataType());
+  boxOutTensorDesc.SetDataType(outputDesc.GetDataType());
+  boxOutTensorDesc.SetOriginShape(outputDesc.GetOriginShape());
+  boxOutTensorDesc.SetShape(outputDesc.GetShape());
+  // output dims
+  vector<int64_t> outputDims = boxOutTensorDesc.GetShape().GetDims();
+  if (outputDims.size() == 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dimInfo:%d,%d,%d,%d", outputDims[0], outputDims[1],
+            outputDims[2], outputDims[3]);
+  }
+  int64_t dimNums = outputDims[0] * outputDims[1] * outputDims[2] * outputDims[3];
+
+  ge::GeTensorPtr assitPtr = nullptr;
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Input type is FP16.");
+  unique_ptr<uint16_t[]> outputAssit(new (std::nothrow) uint16_t[dimNums]());
+  FUSION_PASS_CHECK(outputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "outputAssit is NULL"),
+                    return PARAM_INVALID);
+  ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(outputAssit.get()));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  // vector to tensor for const
+  ret = BoxValueGenFP16(outputDims, outputData, outputAssit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Generate data by FP16 failed."), return ret);
+  // set output type to fp16
+  boxOutTensorDesc.SetDataType(ge::DT_FLOAT16);
+  FUSION_PASS_MAKE_SHARED(
+      (assitPtr = std::make_shared<ge::GeTensor>(boxOutTensorDesc, reinterpret_cast<uint8_t*>(outputAssit.get()),
+                                                 dimNums * sizeof(uint16_t))),
+      assitPtr = nullptr;
       return PARAM_INVALID);
-    unique_ptr<uint16_t[]> inputAssitH(new (std::nothrow)
-      uint16_t[dimInfo[2]]());
-    FUSION_PASS_CHECK(inputAssitH.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH is NULL"),
-      return PARAM_INVALID);
-    unique_ptr<uint16_t[]> inputAssitBoxW(new (std::nothrow)
-      uint16_t[priorNum]());
-    FUSION_PASS_CHECK(inputAssitBoxW.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitBoxW is NULL"),
-      return PARAM_INVALID);
-    unique_ptr<uint16_t[]> inputAssitBoxH(new (std::nothrow)
-      uint16_t[priorNum]());
-    FUSION_PASS_CHECK(inputAssitBoxH.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitBoxH is NULL"),
-      return PARAM_INVALID);
 
-    Status ret = GenerateWIndexFP16(dimInfo[3], inputAssitW.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex failed."), return ret);
-    ret = GenerateHIndexFP16(dimInfo[2], inputAssitH.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex failed."), return ret);
-
-    ret = GenerateBoxFP16(inputAssitBoxW.get(), inputAssitBoxH.get(), aspectratios_new, fusedNode);
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateBoxFP16 failed."), return ret);
-
-    // 定义辅助矩阵输入shape
-    vector<int64_t> assitDataWDimInfo;
-    assitDataWDimInfo.push_back(dimInfo[3]);
-    assitDataWDimInfo.push_back(1);
-    assitDataWDimInfo.push_back(1);
-    assitDataWDimInfo.push_back(1);
-    vector<int64_t> assitDataHDimInfo;
-    assitDataHDimInfo.push_back(dimInfo[2]);
-    assitDataHDimInfo.push_back(1);
-    assitDataHDimInfo.push_back(1);
-    assitDataHDimInfo.push_back(1);
-
-    vector<int64_t> assitBoxDimInfo;
-    assitBoxDimInfo.push_back(priorNum);
-    assitBoxDimInfo.push_back(1);
-    assitBoxDimInfo.push_back(1);
-    assitBoxDimInfo.push_back(1);
-
-    ge::GeShape assitDataWShape(assitDataWDimInfo);
-    ge::GeShape assitDataHShape(assitDataHDimInfo);
-    ge::GeShape assitBoxShape(assitBoxDimInfo);
-    ge::GeTensorDesc tensorDescW(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
-    tensorDescW.SetShape(assitDataWShape);
-    tensorDescW.SetOriginFormat(priorboxInputTensor.GetFormat());
-    tensorDescW.SetOriginDataType(DT_FLOAT16);
-    ge::GeTensorDesc tensorDescH(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
-    tensorDescH.SetShape(assitDataHShape);
-    tensorDescH.SetOriginFormat(priorboxInputTensor.GetFormat());
-    tensorDescH.SetOriginDataType(DT_FLOAT16);
-    ge::GeTensorDesc tensorDescBox(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
-    tensorDescBox.SetShape(assitBoxShape);
-    tensorDescBox.SetOriginFormat(priorboxInputTensor.GetFormat());
-    tensorDescBox.SetOriginDataType(DT_FLOAT16);
-
-    FUSION_PASS_MAKE_SHARED((assitPtrW =
-      std::make_shared<ge::GeTensor>(tensorDescW,
-      reinterpret_cast<uint8_t *>(inputAssitW.get()),
-      dimInfo[3] * sizeof(uint16_t))),
-      assitPtrW = nullptr; return PARAM_INVALID);
-    FUSION_PASS_MAKE_SHARED((assitPtrH =
-      std::make_shared<ge::GeTensor>(tensorDescH,
-      reinterpret_cast<uint8_t *>(inputAssitH.get()),
-      dimInfo[2] * sizeof(uint16_t))),
-      assitPtrH = nullptr; return PARAM_INVALID);
-
-    FUSION_PASS_MAKE_SHARED((assitPtrBoxW =
-      std::make_shared<ge::GeTensor>(tensorDescBox,
-      reinterpret_cast<uint8_t *>(inputAssitBoxW.get()),
-      priorNum * sizeof(uint16_t))),
-      assitPtrBoxW = nullptr; return PARAM_INVALID);
-    FUSION_PASS_MAKE_SHARED((assitPtrBoxH =
-      std::make_shared<ge::GeTensor>(tensorDescBox,
-      reinterpret_cast<uint8_t *>(inputAssitBoxH.get()),
-      priorNum * sizeof(uint16_t))),
-      assitPtrBoxH = nullptr; return PARAM_INVALID);
-
-  vector<ge::GeTensorPtr> weights = {assitPtrH, assitPtrW,
-    assitPtrBoxH, assitPtrBoxW};
+  vector<ge::GeTensorPtr> weights = {assitPtr};
   ge::OpDescUtils::SetWeights(fusedNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(fusedNode);
   NodePtr constInput0 = constInputNodes[0];
   constInput0->GetOpDesc()->SetType("Const");
-  NodePtr constInput1 = constInputNodes[1];
-  constInput1->GetOpDesc()->SetType("Const");
-  NodePtr constInput2 = constInputNodes[2];
-  constInput2->GetOpDesc()->SetType("Const");
-  NodePtr constInput3 = constInputNodes[3];
-  constInput3->GetOpDesc()->SetType("Const");
-
-  priorboxDesc->SetType("PriorBoxD");
+  // set type, use priorboxdv2 op
+  priorboxDesc->SetType("PriorBoxDV2");
   OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxFusionPass pass handle success!!!!");
 
   return SUCCESS;
-  }
-REGISTER_PASS("PriorBoxPass", BUILT_IN_GRAPH_PASS,
-  PriorBoxPass);
 }
+REGISTER_PASS("PriorBoxPass", BUILT_IN_GRAPH_PASS, PriorBoxPass);
+}  // namespace fe

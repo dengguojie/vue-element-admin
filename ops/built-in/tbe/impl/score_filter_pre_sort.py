@@ -1,27 +1,26 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 score_filter_pre_sort
 """
-
 # pylint: disable=C0302
 # pylint: disable=R0902
 # pylint: disable=R0915
 # pylint: disable=R0914
 # pylint: disable=R0913
 # pylint: disable=R0912
-
-
 from te import tik
 
 from topi.cce import util
@@ -118,8 +117,6 @@ class InitGmTensor:
         param num_in:
         return:
         """
-
-        # self.proposal_num[index, 0].set_as(num_in)
         self.proposal_num = num_in
 
     def set_out_gm(self, num_in):
@@ -614,7 +611,6 @@ def tik_topk_6114(tik_instance, data_ub, actual_num, score_threshold):
                                CONFIG_EIGHT - CONFIG_ONE,
                                CONFIG_ONE)
         rep_time = ceil_div(num_real, rep_str) - CONFIG_THREE
-        # rep_time = rep_time * rep_time - rep_time + CONFIG_ONE
         valid_bit_scalar = tik_instance.Scalar("uint32", name="valid_bit_scalar", init_value=0)
         valid_bit_scalar.set_as(rep_time * rep_time - rep_time + CONFIG_ONE)
         tik_instance.vmrgsort4(data_ub_b[rep_str * CONFIG_THREE, 0],
@@ -626,7 +622,6 @@ def tik_topk_6114(tik_instance, data_ub, actual_num, score_threshold):
                                False,
                                valid_bit_scalar,
                                CONFIG_ONE)
-        # 3072 * 2 --> 6144
         rep_str = rep_str * CONFIG_THREE
         tik_instance.vmrgsort4(data_ub_a,
                                (data_ub_b[0, 0],
@@ -738,6 +733,7 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
     param valid_bit: same to the  vmrgsort4, [3, 7, 15]
     param topk_k:
     param score_threshold:
+
     return: None
     """
 
@@ -755,15 +751,21 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
         dest_pos_ = tik_instance.Scalar("uint32", "dest_pos_", dest_pos)
         n_total_selected_ = tik_instance.Scalar("uint32", "n_total_selected_", 0)
         n_selected_ = tik_instance.Scalar("uint32", "n_selected_", 0)
+        is_odd_flag = tik_instance.Scalar("uint8", "is_odd_flag", 0)
 
-        num_exhausted = [tik_instance.Scalar(dtype="uint32") for i in range(CONFIG_FOUR)]
+        num_exhausted = [tik_instance.Scalar("uint32") for i in range(CONFIG_FOUR)]
         src_exhausted = [tik_instance.Scalar(dtype="uint32") for i in range(CONFIG_FOUR)]
         src_pos_ = [tik_instance.Scalar(dtype="uint32") for i in range(CONFIG_FOUR)]
+
+        addr_pos = [tik_instance.Scalar("uint32") for i in range(CONFIG_FOUR)]
+        list_len = [tik_instance.Scalar("uint32") for i in range(CONFIG_FOUR)]
 
         for i in range(CONFIG_FOUR):
             src_exhausted[i].set_as(0)
             num_exhausted[i].set_as(0)
             src_pos_[i].set_as(src_pos[i])
+            addr_pos[i].set_as(0)
+            list_len[i].set_as(CONFIG_LEN)
 
         # first time data in
         # four src
@@ -843,7 +845,8 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                                                0, 0)
         # not support
         else:
-            raise RuntimeError("valid_bit only support 3, 7, 15!")
+            raise RuntimeError("valid_bit only support %d, %d, %d!" %
+                               (CONFIG_THREE, CONFIG_SEVEN, CONFIG_SIXTEEN - CONFIG_ONE))
 
         with tik_instance.for_range(0, max_iteration):
             with tik_instance.if_scope(n_total_selected_ < topk_k):
@@ -856,12 +859,26 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                             src_pos_[t_cyc].set_as(src_pos_[t_cyc] + num_exhausted[t_cyc])
                             with tik_instance.if_scope(src_exhausted[t_cyc] + CONFIG_LEN <=
                                                        count_list[t_cyc]):
-                                tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                       src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                       0,
-                                                       CONFIG_ONE,
-                                                       CONFIG_LEN // CONFIG_TWO,
-                                                       0, 0)
+                                with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(0)
+                                    list_len[t_cyc].set_as(CONFIG_LEN)
+                                with tik_instance.else_scope():
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                    list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
                             with tik_instance.else_scope():
                                 tik_instance.vector_dup(CONFIG_MASK,
                                                         src_ub[t_cyc, 0, 0],
@@ -871,14 +888,33 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                                                         CONFIG_EIGHT)
                                 with tik_instance.if_scope(src_exhausted[t_cyc] <
                                                            count_list[t_cyc]):
-                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                           0,
-                                                           CONFIG_ONE,
-                                                           ceil_div(count_list[t_cyc] -
-                                                                    src_exhausted[t_cyc],
-                                                                    CONFIG_TWO),
-                                                           0, 0)
+                                    with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc],
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(0)
+                                        list_len[t_cyc].set_as(CONFIG_LEN)
+                                    with tik_instance.else_scope():
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc] +
+                                                                        CONFIG_ONE,
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                        list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
 
                 # three src
                 elif valid_bit == (CONFIG_EIGHT - CONFIG_ONE):
@@ -888,12 +924,26 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                             src_pos_[t_cyc].set_as(src_pos_[t_cyc] + num_exhausted[t_cyc])
                             with tik_instance.if_scope(src_exhausted[t_cyc] + CONFIG_LEN <=
                                                        count_list[t_cyc]):
-                                tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                       src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                       0,
-                                                       CONFIG_ONE,
-                                                       CONFIG_LEN // CONFIG_TWO,
-                                                       0, 0)
+                                with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(0)
+                                    list_len[t_cyc].set_as(CONFIG_LEN)
+                                with tik_instance.else_scope():
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                    list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
                             with tik_instance.else_scope():
                                 tik_instance.vector_dup(CONFIG_MASK,
                                                         src_ub[t_cyc, 0, 0],
@@ -903,14 +953,33 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                                                         CONFIG_EIGHT)
                                 with tik_instance.if_scope(src_exhausted[t_cyc] <
                                                            count_list[t_cyc]):
-                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                           0,
-                                                           CONFIG_ONE,
-                                                           ceil_div(count_list[t_cyc] -
-                                                                    src_exhausted[t_cyc],
-                                                                    CONFIG_TWO),
-                                                           0, 0)
+                                    with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc],
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(0)
+                                        list_len[t_cyc].set_as(CONFIG_LEN)
+                                    with tik_instance.else_scope():
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc] +
+                                                                        CONFIG_ONE,
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                        list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
 
                 # two src
                 elif valid_bit == CONFIG_THREE:
@@ -920,12 +989,26 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                             src_pos_[t_cyc].set_as(src_pos_[t_cyc] + num_exhausted[t_cyc])
                             with tik_instance.if_scope(src_exhausted[t_cyc] + CONFIG_LEN <=
                                                        count_list[t_cyc]):
-                                tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                       src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                       0,
-                                                       CONFIG_ONE,
-                                                       CONFIG_LEN // CONFIG_TWO,
-                                                       0, 0)
+                                with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(0)
+                                    list_len[t_cyc].set_as(CONFIG_LEN)
+                                with tik_instance.else_scope():
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
+                                                           0,
+                                                           CONFIG_ONE,
+                                                           CONFIG_LEN // CONFIG_TWO,
+                                                           0, 0)
+                                    addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                    list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                    src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
                             with tik_instance.else_scope():
                                 tik_instance.vector_dup(CONFIG_MASK,
                                                         src_ub[t_cyc, 0, 0],
@@ -935,48 +1018,115 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
                                                         CONFIG_EIGHT)
                                 with tik_instance.if_scope(src_exhausted[t_cyc] <
                                                            count_list[t_cyc]):
-                                    tik_instance.data_move(src_ub[t_cyc, 0, 0],
-                                                           src_tensor[t_cyc][src_pos_[t_cyc], 0],
-                                                           0,
-                                                           CONFIG_ONE,
-                                                           ceil_div(count_list[t_cyc] -
-                                                                    src_exhausted[t_cyc],
-                                                                    CONFIG_TWO),
-                                                           0, 0)
+                                    with tik_instance.if_scope(src_pos_[t_cyc] % CONFIG_TWO == 0):
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc],
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(0)
+                                        list_len[t_cyc].set_as(CONFIG_LEN)
+                                    with tik_instance.else_scope():
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] - CONFIG_ONE)
+                                        tik_instance.data_move(src_ub[t_cyc, 0, 0],
+                                                               src_tensor[t_cyc][src_pos_[t_cyc],
+                                                                                 0],
+                                                               0,
+                                                               CONFIG_ONE,
+                                                               ceil_div(count_list[t_cyc] -
+                                                                        src_exhausted[t_cyc] +
+                                                                        CONFIG_ONE,
+                                                                        CONFIG_TWO),
+                                                               0, 0)
+                                        addr_pos[t_cyc].set_as(CONFIG_ONE)
+                                        list_len[t_cyc].set_as(CONFIG_LEN - CONFIG_ONE)
+                                        src_pos_[t_cyc].set_as(src_pos_[t_cyc] + CONFIG_ONE)
 
                 # Step-2: Perform the sort with exhausted suspend mode enabled
-                tik_instance.vmrgsort4(dst_ub,
-                                       (src_ub[0, 0, 0], src_ub[CONFIG_ONE, 0, 0],
-                                        src_ub[CONFIG_TWO, 0, 0], src_ub[CONFIG_THREE, 0, 0]),
-                                       (CONFIG_LEN, CONFIG_LEN, CONFIG_LEN, CONFIG_LEN),
-                                       True,
-                                       valid_bit,
-                                       CONFIG_ONE,
-                                       num_exhausted)
+                with tik_instance.if_scope(is_odd_flag == 0):
+                    tik_instance.vmrgsort4(dst_ub,
+                                           (src_ub[0, addr_pos[0], 0],
+                                            src_ub[CONFIG_ONE, addr_pos[CONFIG_ONE], 0],
+                                            src_ub[CONFIG_TWO, addr_pos[CONFIG_TWO], 0],
+                                            src_ub[CONFIG_THREE, addr_pos[CONFIG_THREE], 0]),
+                                           (list_len[0], list_len[CONFIG_ONE],
+                                            list_len[CONFIG_TWO], list_len[CONFIG_THREE]),
+                                           True,
+                                           valid_bit,
+                                           CONFIG_ONE,
+                                           num_exhausted)
+                    n_selected_.set_as(0)
+                with tik_instance.else_scope():
+                    tik_instance.vmrgsort4(dst_ub[CONFIG_ONE, 0],
+                                           (src_ub[0, addr_pos[0], 0],
+                                            src_ub[CONFIG_ONE, addr_pos[CONFIG_ONE], 0],
+                                            src_ub[CONFIG_TWO, addr_pos[CONFIG_TWO], 0],
+                                            src_ub[CONFIG_THREE, addr_pos[CONFIG_THREE], 0]),
+                                           (list_len[0], list_len[CONFIG_ONE],
+                                            list_len[CONFIG_TWO], list_len[CONFIG_THREE]),
+                                           True,
+                                           valid_bit,
+                                           CONFIG_ONE,
+                                           num_exhausted)
+                    n_selected_.set_as(CONFIG_ONE)
 
                 # Step-3: Move result from UB to OUT
-                n_selected_.set_as(0)
                 for i in range(CONFIG_FOUR):
                     n_selected_.set_as(n_selected_ + num_exhausted[i])
 
-                with tik_instance.if_scope(n_total_selected_ + n_selected_ <= topk_k):
-                    tik_instance.data_move(dst_tensor[dest_pos_, 0],
-                                           dst_ub,
-                                           0,
-                                           CONFIG_ONE,
-                                           ceil_div(n_selected_, CONFIG_TWO),
-                                           0, 0)
-                    dest_pos_.set_as(dest_pos_ + n_selected_)
+                # whether the num of selected proposals is times of 2
+                is_odd_flag.set_as(n_selected_ % CONFIG_TWO)
 
+                # the selected num of proposals is times 0f 2
+                with tik_instance.if_scope(is_odd_flag == 0):
+                    with tik_instance.if_scope(n_total_selected_ + n_selected_ <= topk_k):
+                        tik_instance.data_move(dst_tensor[dest_pos_, 0],
+                                               dst_ub,
+                                               0,
+                                               CONFIG_ONE,
+                                               n_selected_ // CONFIG_TWO,
+                                               0, 0)
+                        dest_pos_.set_as(dest_pos_ + n_selected_)
+
+                    with tik_instance.else_scope():
+                        tik_instance.data_move(dst_tensor[dest_pos_, 0],
+                                               dst_ub,
+                                               0,
+                                               CONFIG_ONE,
+                                               ceil_div(topk_k - n_total_selected_, CONFIG_TWO),
+                                               0, 0)
+
+                    n_total_selected_.set_as(n_total_selected_ + n_selected_)
+                # the selected num of proposals is odd
                 with tik_instance.else_scope():
-                    tik_instance.data_move(dst_tensor[dest_pos_, 0],
-                                           dst_ub,
+                    with tik_instance.if_scope(n_total_selected_ + n_selected_ <= topk_k):
+                        tik_instance.data_move(dst_tensor[dest_pos_, 0],
+                                               dst_ub,
+                                               0,
+                                               CONFIG_ONE,
+                                               n_selected_ // CONFIG_TWO,
+                                               0, 0)
+                        dest_pos_.set_as(dest_pos_ + n_selected_ - CONFIG_ONE)
+
+                    with tik_instance.else_scope():
+                        tik_instance.data_move(dst_tensor[dest_pos_, 0],
+                                               dst_ub,
+                                               0,
+                                               CONFIG_ONE,
+                                               ceil_div(topk_k - n_total_selected_, CONFIG_TWO),
+                                               0, 0)
+
+                    n_total_selected_.set_as(n_total_selected_ + n_selected_ - CONFIG_ONE)
+                    tik_instance.data_move(dst_ub,
+                                           dst_ub[n_selected_ - CONFIG_ONE, 0],
                                            0,
                                            CONFIG_ONE,
-                                           ceil_div(topk_k - n_total_selected_, CONFIG_TWO),
+                                           CONFIG_ONE,
                                            0, 0)
-
-                n_total_selected_.set_as(n_total_selected_ + n_selected_)
 
 
 def tik_topk_external_sort(tik_instance, data_gm, input_param, core_offset):
@@ -1162,7 +1312,7 @@ def tik_topk_external_sort(tik_instance, data_gm, input_param, core_offset):
                 src_pos_[CONFIG_THREE].set_as(src_pos_[CONFIG_THREE] + CONFIG_TOPK2 * CONFIG_THREE)
 
                 dst_offset1 = (t_cyc % CONFIG_TWO) * CONFIG_TOPK2 + core_offset[CONFIG_TWO]
-                dst_offset2 = ((t_cyc + CONFIG_ONE) % CONFIG_TWO) * CONFIG_TOPK2 +\
+                dst_offset2 = ((t_cyc + CONFIG_ONE) % CONFIG_TWO) * CONFIG_TOPK2 + \
                               core_offset[CONFIG_TWO]
                 with tik_instance.new_stmt_scope():
                     tik_topk_vms4(tik_instance,

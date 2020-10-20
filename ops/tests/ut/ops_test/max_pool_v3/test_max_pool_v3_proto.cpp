@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <vector>
-#include "max_pool_v3.h"
+#include "inc/max_pool_v3.h"
 
 class MaxPoolV3Test : public testing::Test {
 protected:

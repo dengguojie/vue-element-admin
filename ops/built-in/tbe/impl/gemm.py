@@ -1,47 +1,49 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-copyright 2020 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License == distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 gemm
 """
-from __future__ import absolute_import
+import math
 
-from math import ceil
-# pylint: disable=import-error
-import te.lang.cce
-import te.platform.cce_params as cce
-from te.utils.error_manager import error_manager_util as err_man
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from impl.util import util_select_op_base
 from te import tvm
-from topi import generic
-from topi.cce import util
-
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils import error_manager
+from te.utils import para_check
 
 ALPHA_BETA_SHAPE = [1]
-NoneType = type(None)
 MAX_INT32_LENGTH = 2147483647
 
 
-def op_select_format(input_x1, input_x2, # pylint: disable=too-many-arguments
-                     alpha, beta, bias=None, output_y=None, trans_a=False,
-                     trans_b=False, kernel_name="gemm"):
+# pylint: disable=too-many-arguments
+def op_select_format(
+    input_x1,
+    input_x2,
+    alpha,
+    beta,
+    bias=None,
+    output_y=None,
+    trans_a=False,
+    trans_b=False,
+    kernel_name="gemm",
+):
     """
     select format dynamically
     """
+
     def _select_format(params):
         input_x1 = params[0]
         input_x2 = params[1]
@@ -50,74 +52,73 @@ def op_select_format(input_x1, input_x2, # pylint: disable=too-many-arguments
         format_b = input_x2.get("format")
         format_c = bias.get("format")
         need_transdata = False
-        if set([format_a, format_b, format_c]) & \
-                set(["FRACTAL_NZ", "FRACTAL_Z"]):
+        if set([format_a, format_b, format_c]) & set(["FRACTAL_NZ", "FRACTAL_Z"]):
             need_transdata = True
         else:
             if trans_b:
                 b_n = shape_b[0]
             else:
                 b_n = shape_b[1]
-            if b_n % cce.BLOCK_OUT != 0:
+            if b_n % tbe_platform.BLOCK_OUT != 0:
                 need_transdata = True
 
         if need_transdata:
-            input0 = gen_param(
+            input0 = util_select_op_base.gen_param(
                 classify="input0",
                 name="a",
                 datatype="float16,float16,int8,int8",
                 format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
             )
-            input1 = gen_param(
+            input1 = util_select_op_base.gen_param(
                 classify="input1",
                 name="b",
                 datatype="float16,float16,int8,int8",
                 format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z",
             )
-            input2 = gen_param(
+            input2 = util_select_op_base.gen_param(
                 classify="input2",
                 name="c",
                 datatype="float32,float16,int32,float32",
                 format="FRACTAL_NZ,FRACTAL_NZ,ND,FRACTAL_NZ",
             )
-            output0 = gen_param(
+            output0 = util_select_op_base.gen_param(
                 classify="output0",
                 name="y",
                 datatype="float32,float16,int32,float32",
                 format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
             )
         else:
-            input0 = gen_param(
+            input0 = util_select_op_base.gen_param(
                 classify="input0",
                 name="a",
                 datatype="float16,float16,int8,int8",
                 format="ND,ND,ND,ND",
             )
-            input1 = gen_param(
+            input1 = util_select_op_base.gen_param(
                 classify="input1",
                 name="b",
                 datatype="float16,float16,int8,int8",
                 format="ND,ND,ND,ND",
             )
-            input2 = gen_param(
+            input2 = util_select_op_base.gen_param(
                 classify="input2",
                 name="c",
                 datatype="float32,float16,int32,float32",
                 format="ND,ND,ND,ND",
             )
-            output0 = gen_param(
+            output0 = util_select_op_base.gen_param(
                 classify="output0",
                 name="y",
                 datatype="float32,float16,int32,float32",
                 format="ND,ND,ND,ND",
             )
-        input3 = gen_param(
+        input3 = util_select_op_base.gen_param(
             classify="input3",
             name="alpha",
             datatype="float32,float16,int32,float32",
             format="ND,ND,ND,ND",
         )
-        input4 = gen_param(
+        input4 = util_select_op_base.gen_param(
             classify="input4",
             name="beta",
             datatype="float32,float16,int32,float32",
@@ -125,16 +126,31 @@ def op_select_format(input_x1, input_x2, # pylint: disable=too-many-arguments
         )
         return [input0, input1, input2, input3, input4, output0]
 
-    params = [input_x1, input_x2, alpha, beta, bias, output_y, trans_a,
-              trans_b, kernel_name]
+    params = [
+        input_x1,
+        input_x2,
+        alpha,
+        beta,
+        bias,
+        output_y,
+        trans_a,
+        trans_b,
+        kernel_name,
+    ]
     param_list = _select_format(params)
-    return get_dynamic_param_in_json(param_list)
+    return util_select_op_base.get_dynamic_param_in_json(param_list)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
+# pylint: disable=locally-disabled,too-many-arguments,too-many-branches
 def _shape_check(
-        shape_a, shape_b, shape_bias, src_dtype,
-        trans_a, trans_b, alpha_dtype, beta_dtype, dst_dtype,
+    shape_a,
+    shape_b,
+    src_dtype,
+    trans_a,
+    trans_b,
+    alpha_dtype,
+    beta_dtype,
+    dst_dtype,
 ):
     """
     Check the given input if legal
@@ -164,9 +180,9 @@ def _shape_check(
             "param1_name": "alpha",
             "param1_value": "{}".format(alpha_dtype),
             "param2_name": "beta",
-            "param2_value": "{}".format(beta_dtype)
+            "param2_value": "{}".format(beta_dtype),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if alpha_dtype != dst_dtype:
         args_dict = {
             "errCode": "E60002",
@@ -174,9 +190,9 @@ def _shape_check(
             "param1_name": "alpha",
             "param1_value": "{}".format(alpha_dtype),
             "param2_name": "y",
-            "param2_value": "{}".format(dst_dtype)
+            "param2_value": "{}".format(dst_dtype),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if src_dtype == "int8":
         if dst_dtype not in ["int32", "float32"]:
@@ -184,18 +200,18 @@ def _shape_check(
                 "errCode": "E60003",
                 "a_dtype": src_dtype,
                 "expected_dtype_list": "int32,float32",
-                "out_dtype": "{}".format(dst_dtype)
+                "out_dtype": "{}".format(dst_dtype),
             }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     elif src_dtype == "float16":
         if dst_dtype not in ["float16", "float32"]:
             args_dict = {
                 "errCode": "E60003",
                 "a_dtype": src_dtype,
                 "expected_dtype_list": "float16,float32",
-                "out_dtype": "{}".format(dst_dtype)
+                "out_dtype": "{}".format(dst_dtype),
             }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     src_dtype = src_dtype.lower()
 
@@ -206,27 +222,27 @@ def _shape_check(
             "errCode": "E60005",
             "param_name": "a",
             "expected_dtype_list": "{}".format(check_list),
-            "dtype": "{}".format(src_dtype)
+            "dtype": "{}".format(src_dtype),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if len(shape_a) != 2 and len(shape_a) != 4:
         args_dict = {
             "errCode": "E60006",
             "param_name": "a",
             "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_a))
+            "length": "{}".format(len(shape_a)),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if len(shape_b) != 2 and len(shape_b) != 4:
         args_dict = {
             "errCode": "E60006",
             "param_name": "b",
             "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_b))
+            "length": "{}".format(len(shape_b)),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if len(shape_a) == 2 and len(shape_b) == 2:
         if trans_a:
@@ -240,12 +256,8 @@ def _shape_check(
             kn_shape = shape_b[0]
 
         if km_shape != kn_shape:
-            args_dict = {
-                "errCode": "E60009",
-                "a_1d": km_shape,
-                "b_0d": kn_shape
-            }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
 def _get_bias_element(shape_bias_element):
@@ -266,15 +278,15 @@ def _get_input_shape_a(shape_x, dtype):
     dim_a = shape_x[0]
     dim_b = shape_x[1]
     res = list()
-    block_in = cce.BLOCK_IN
+    block_in = tbe_platform.BLOCK_IN
 
     if dtype == "float16":
-        block_reduce = cce.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
     else:
-        block_reduce = cce.BLOCK_REDUCE_INT8
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
-    res.append(ceil(dim_a/block_in)*block_in)
-    res.append(ceil(dim_b/block_reduce)*block_reduce)
+    res.append(math.ceil(dim_a / block_in) * block_in)
+    res.append(math.ceil(dim_b / block_reduce) * block_reduce)
     return res
 
 
@@ -282,21 +294,24 @@ def _get_input_shape_b(shape_x, dtype):
     dim_a = shape_x[0]
     dim_b = shape_x[1]
     res = list()
-    block_out = cce.BLOCK_OUT
+    block_out = tbe_platform.BLOCK_OUT
 
     if dtype == "float16":
-        block_reduce = cce.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
     else:
-        block_reduce = cce.BLOCK_REDUCE_INT8
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
-    res.append(ceil(dim_a/block_reduce)*block_reduce)
-    res.append(ceil(dim_b/block_out)*block_out)
+    res.append(math.ceil(dim_a / block_reduce) * block_reduce)
+    res.append(math.ceil(dim_b / block_out) * block_out)
     return res
 
 
 def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
-    if input_x1["ori_format"] == "ND" and input_x2["ori_format"] == \
-            "ND" and bias["ori_format"] == "ND":
+    if (
+        input_x1["ori_format"] == "ND"
+        and input_x2["ori_format"] == "ND"
+        and bias["ori_format"] == "ND"
+    ):
         shape_a = list(input_x1["ori_shape"])
         shape_b = list(input_x2["ori_shape"])
         shape_bias = list(bias["ori_shape"])
@@ -315,15 +330,18 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
                 "errCode": "E60000",
                 "param_name": "c shape",
                 "expected_value": str([a_m, b_n]),
-                "input_value": "{}".format(shape_bias)
+                "input_value": "{}".format(shape_bias),
             }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     else:
         shape_a = list(input_x1["shape"])
         shape_b = list(input_x2["shape"])
         shape_bias = list(bias["shape"])
         if len(shape_bias) == 2:
-            shape_bias = [ceil(shape_bias[1]/cce.BLOCK_OUT), ceil(shape_bias[0]/cce.BLOCK_IN)]
+            shape_bias = [
+                math.ceil(shape_bias[1] / tbe_platform.BLOCK_OUT),
+                math.ceil(shape_bias[0] / tbe_platform.BLOCK_IN),
+            ]
         else:
             shape_bias = shape_bias[:2]
         if input_x2["dtype"] == "int8" and shape_bias != [shape_b[1], shape_a[1]]:
@@ -331,23 +349,42 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
                 "errCode": "E60000",
                 "param_name": "c shape",
                 "expected_value": str([shape_a[1], shape_b[1]]),
-                "input_value": "{}".format(shape_bias)
+                "input_value": "{}".format(shape_bias),
             }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
         if input_x2["dtype"] == "float16" and shape_bias != [shape_b[0], shape_a[1]]:
             args_dict = {
                 "errCode": "E60000",
                 "param_name": "c shape",
                 "expected_value": str([shape_a[1], shape_b[0]]),
-                "input_value": "{}".format(shape_bias)
+                "input_value": "{}".format(shape_bias),
             }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
-# pylint: disable=locally-disabled,too-many-arguments, too-many-locals, too-many-statements
-@util.check_input_type(dict, dict, dict, dict, dict, dict, bool, bool, str)
-def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
-         trans_b=False, kernel_name="gemm"):
+# pylint: disable=locally-disabled,too-many-arguments, too-many-locals,too-many-statements
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_BOOL,
+    para_check.REQUIRED_ATTR_BOOL,
+    para_check.KERNEL_NAME,
+)
+def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-locals
+    input_x1,
+    input_x2,
+    bias,
+    alpha,
+    beta,
+    output_y=None,
+    trans_a=False,
+    trans_b=False,
+    kernel_name="gemm",
+):
     """
     calculating  matrix multiplication with bias, C = alpha*A*B + beta*bias, support input
     data with Nz format.
@@ -393,9 +430,9 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
         if len(shape_b) < 2:
             shape_b = input_x2.get("shape")
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_a)
-    util.check_shape_rule(shape_b)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_a)
+    para_check.check_shape_rule(shape_b)
 
     alpha_dtype = alpha.get("dtype")
     beta_dtype = beta.get("dtype")
@@ -412,15 +449,21 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
             "param1_name": "a",
             "param1_value": "{}".format(src_dtype),
             "param2_name": "b",
-            "param2_value": "{}".format(b_dtype)
+            "param2_value": "{}".format(b_dtype),
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     _bias_check(input_x1, input_x2, bias, trans_a, trans_b)
 
     _shape_check(
-        shape_a, shape_b, shape_bias, src_dtype,
-        trans_a, trans_b, alpha_dtype, beta_dtype, dst_dtype,
+        shape_a,
+        shape_b,
+        src_dtype,
+        trans_a,
+        trans_b,
+        alpha_dtype,
+        beta_dtype,
+        dst_dtype,
     )
 
     if bias.get("format") != "ND" and len(shape_bias) == 2:
@@ -446,11 +489,8 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
             trans_b = bool(1 - trans_b)
 
     if bias is None or not bool(bias):
-        args_dict = {
-            "errCode": "E60108",
-            "reason": "unsupport c is None"
-        }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        args_dict = {"errCode": "E60108", "reason": "unsupport c is None"}
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if len(shape_a) == 2:
         m_shape = shape_a[0]
@@ -460,23 +500,27 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
         n_shape = shape_b[1]
 
     if src_dtype == "float16":
-        block_reduce = cce.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
     else:
-        block_reduce = cce.BLOCK_REDUCE_INT8
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
-    block_in = cce.BLOCK_IN
-    block_out = cce.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
 
     if len(shape_a) == 2:
         if trans_a:
             shape_a_temp = (
-                m_shape // block_reduce, km_shape // block_in, block_in,
-                block_reduce
+                m_shape // block_reduce,
+                km_shape // block_in,
+                block_in,
+                block_reduce,
             )
         else:
             shape_a_temp = (
-                m_shape // block_in, km_shape // block_reduce, block_in,
-                block_reduce
+                m_shape // block_in,
+                km_shape // block_reduce,
+                block_in,
+                block_reduce,
             )
         if input_x1.get("format") == "FRACTAL_NZ":
             format_a = "FRACTAL_NZ"
@@ -491,13 +535,17 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
     if len(shape_b) == 2:
         if trans_b:
             shape_b_temp = (
-                kn_shape // block_out, n_shape // block_reduce, block_reduce,
-                block_out
+                kn_shape // block_out,
+                n_shape // block_reduce,
+                block_reduce,
+                block_out,
             )
         else:
             shape_b_temp = (
-                kn_shape // block_reduce, n_shape // block_out, block_out,
-                block_reduce
+                kn_shape // block_reduce,
+                n_shape // block_out,
+                block_out,
+                block_reduce,
             )
         if input_x2.get("format") == "FRACTAL_Z":
             format_b = "fractal"
@@ -517,40 +565,57 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
     # 获取Nz格式的bias shape
     if bias.get("format") != "ND" and len(shape_bias) != 4:
         shape_bias_temp = (
-            shape_bias[1] // block_out, shape_bias[0] // block_in, block_in,
+            shape_bias[1] // block_out,
+            shape_bias[0] // block_in,
+            block_in,
             block_out,
-            )
+        )
     else:
         shape_bias_temp = shape_bias
 
     def _gemm_local_compute():
-        tensor_a = tvm.placeholder(shape_a_temp, name='tensor_a',
-                                   dtype=src_dtype)
-        tensor_b = tvm.placeholder(shape_b_temp, name='tensor_b',
-                                   dtype=src_dtype)
-        tensor_alpha = tvm.placeholder(ALPHA_BETA_SHAPE, name='tensor_alpha',
-                                       dtype=alpha_dtype)
-        tensor_beta = tvm.placeholder(ALPHA_BETA_SHAPE, name='tensor_beta',
-                                      dtype=alpha_dtype)
-        tensor_bias = tvm.placeholder(shape_bias_temp, name='tensor_bias',
-                                      dtype=dst_dtype)
-        result = te.lang.cce.gemm(
-            tensor_a, tensor_b, tensor_alpha, tensor_beta, trans_a, trans_b,
-            format_a=format_a, format_b=format_b, dst_dtype=dst_dtype,
+        tensor_a = tvm.placeholder(shape_a_temp, name="tensor_a", dtype=src_dtype)
+        tensor_b = tvm.placeholder(shape_b_temp, name="tensor_b", dtype=src_dtype)
+        tensor_alpha = tvm.placeholder(
+            ALPHA_BETA_SHAPE, name="tensor_alpha", dtype=alpha_dtype
+        )
+        tensor_beta = tvm.placeholder(
+            ALPHA_BETA_SHAPE, name="tensor_beta", dtype=alpha_dtype
+        )
+        tensor_bias = tvm.placeholder(
+            shape_bias_temp, name="tensor_bias", dtype=dst_dtype
+        )
+        result = tbe.gemm(
+            tensor_a,
+            tensor_b,
+            tensor_alpha,
+            tensor_beta,
+            trans_a,
+            trans_b,
+            format_a=format_a,
+            format_b=format_b,
+            dst_dtype=dst_dtype,
             tensor_bias=tensor_bias,
-            kernel_name=kernel_name
+            kernel_name=kernel_name,
         )
 
         with tvm.target.cce():
-            schedule = generic.auto_schedule(result)
+            schedule = tbe.auto_schedule(result)
 
-        tensor_list = [tensor_a, tensor_b, tensor_bias,
-                       tensor_alpha, tensor_beta, result]
-        config = {"print_ir": False,
-                  "name": kernel_name,
-                  "tensor_list": tensor_list,
-                  }
-        te.lang.cce.cce_build_code(schedule, config)
+        tensor_list = [
+            tensor_a,
+            tensor_b,
+            tensor_bias,
+            tensor_alpha,
+            tensor_beta,
+            result,
+        ]
+        config = {
+            "print_ir": False,
+            "name": kernel_name,
+            "tensor_list": tensor_list,
+        }
+        tbe.cce_build_code(schedule, config)
 
     def _is_larger_than_int32(input_tensor):
         m_bit_ratio = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
@@ -564,5 +629,3 @@ def gemm(input_x1, input_x2, bias, alpha, beta, output_y=None, trans_a=False,
         return False
 
     _gemm_local_compute()
-
-

@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 slice_d
 """
 from __future__ import absolute_import
@@ -28,7 +30,9 @@ from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 import te.platform.cce_params as cce_params
 from te.utils.op_utils import *
+from te.utils.error_manager import error_manager_vector
 
+BURST_LEN = 65535
 BLOCK_SIZE = 32
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -53,6 +57,7 @@ class SliceLastDimCompute(object):
         self.begin_last = 1
         self.dtype = dtype
         self.kernel_name = kernel_name
+        #The number of bytes of the corresponding data type divided by 8
         self.ele_size = cce.cce_intrin.get_bit_len(self.dtype) // 8
         # align size for product dim, to make sure out data is 32B align
         self.product_dim_align_size = BLOCK_SIZE // self.ele_size
@@ -135,8 +140,10 @@ class SliceLastDimCompute(object):
 
         """
         if self.check_result == False:
-            raise RuntimeError(
-                "conditions of SliceLastDimCompute are not fulfilled")
+            expected_value = "fulfilled"
+            real_value = "not fulfilled"
+            error_manager_vector.raise_err_input_value_invalid("slice_d", "conditions of SliceLastDimCompute are",
+                                                               expected_value, real_value)
 
         tik_instance = tik.Tik()
         self.tik_instance = tik_instance
@@ -150,8 +157,7 @@ class SliceLastDimCompute(object):
                                 (self.dim_product, self.output_dim_last),
                                 name="y", scope=tik.scope_gm)
 
-        with tik_instance.for_range(0, aicore_num, block_num=aicore_num)\
-                as block_idx:
+        with tik_instance.for_range(0, aicore_num, block_num=aicore_num) as block_idx:
             dim_product_begin, dim_product_size = self._get_block_tiling(
                 self.dim_product, aicore_num, block_idx)
             max_dim_product = ub_size // self.ele_size\
@@ -261,6 +267,7 @@ class SliceDiffLastDimCompute(object):
         self.all_dim = len(shape)
         self.dtype = dtype
         self.kernel_name = kernel_name
+        #The number of bytes of the corresponding data type divided by 8
         self.ele_size = cce.cce_intrin.get_bit_len(self.dtype) // 8
         # align size for product dim, to make sure out data is 32B align
         self.product_dim_align_size = BLOCK_SIZE // self.ele_size
@@ -353,8 +360,10 @@ class SliceDiffLastDimCompute(object):
 
         """
         if self.check_result == False:
-            raise RuntimeError(
-                "conditions of SliceLastDimCompute are not fulfilled")
+            expected_value = "fulfilled"
+            real_value = "not fulfilled"
+            error_manager_vector.raise_err_input_value_invalid("slice_d", "conditions of SliceLastDimCompute are",
+                                                               expected_value, real_value)
 
         tik_instance = tik.Tik()
         self.tik_instance = tik_instance
@@ -480,21 +489,26 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
     check_shape(shape, param_name="x")
 
     if not (len(shape) == len(begin) and len(shape) == len(size)):
-        raise RuntimeError(
-            "the length of begin and size must be equal to shape!")
+        expected_value = "must be equal to shape!"
+        real_value = "not equal to shape!"
+        error_manager_vector.raise_err_input_value_invalid("slice_d", "length of begin and size",
+                                                           expected_value, real_value)
 
     for i, (shape_i, begin_i) in enumerate(zip(shape, begin)):
         if not (isinstance(begin[i], int) and 0 <= begin_i < shape_i):
-            raise RuntimeError(
-                "value of begin must be int,"
-                " greater than or equal to 0, and less than shape!")
+            expected_value = "greater than or equal to 0, and less than shape!"
+            real_value = "less than 0, and less than shape!"
+            error_manager_vector.raise_err_input_value_invalid("slice_d", "value of begin must be int",
+                                                               expected_value, real_value)
 
     for i, (shape_i, size_i) in enumerate(zip(shape, size)):
         if not (isinstance(size[i], int) and -1 <= size_i <= shape_i
                 and size_i != 0):
-            raise RuntimeError(
-                "value of size must be int, greater than or equal to -1,"
-                " less than or equal to shape, and cannot be equal to 0!")
+            expected_value = "greater than or equal to -1," \
+                             "less than or equal to shape, and cannot be equal to 0!"
+            real_value = "greater than shape, and equal to 0!"
+            error_manager_vector.raise_err_input_value_invalid("slice_d", "value of begin must be int",
+                                                               expected_value, real_value)
 
     end = _get_end(shape, begin, size)
     for i, (shape_i, end_i) in enumerate(zip(shape, end)):
@@ -614,6 +628,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     calculate the split parameters according to different shapes
 
     """
+    #size of ub
     ub_size_bytes = UB_SIZE_B - 1024
     dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes), divide by 32 to get
@@ -662,7 +677,7 @@ def _tilling_axis(shape, dtype, no_remainder):
         if len(shape) >= 2 and split_axis == 0\
                 and shape[0] >= device_core_num\
                 and shape[0] < (2 * device_core_num)\
-                and shape[0] < 65535:
+                and shape[0] < BURST_LEN:
             split_factor = 1
 
     return split_axis, split_factor
@@ -751,7 +766,7 @@ def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
         else:
             core_num = size[0]
         if (split_axis == len(size) - 1 and split_factor < element_align)\
-                or core_num > 65535:
+                or core_num > BURST_LEN:
             split_axis, split_factor = _tilling_axis(size, x.dtype, False)
             axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
                                                     factor=split_factor)
@@ -789,7 +804,7 @@ def _ceil_fill(value, block):
     fill the input value by block
 
     """
-    return _ceil_div(value, block)*block
+    return _ceil_div(value, block) * block
 
 
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
@@ -814,11 +829,11 @@ def _func_gm_to_ub(args):
 
     with tvm_ib.if_scope(ori_nburst > 0):
         with tvm_ib.if_scope(burst_len > 0):
-            with tvm_ib.if_scope(burst_len <= 65535):
+            with tvm_ib.if_scope(burst_len <= BURST_LEN):
                 with tvm_ib.if_scope(src_stride >= 0):
                     with tvm_ib.if_scope(dst_stride >= 0):
-                        with tvm_ib.if_scope(dst_stride <= 65535):
-                            with tvm_ib.if_scope(src_stride <= 65535):
+                        with tvm_ib.if_scope(dst_stride <= BURST_LEN):
+                            with tvm_ib.if_scope(src_stride <= BURST_LEN):
                                 with tvm_ib.if_scope(ori_nburst <= 4095):
                                     tvm_ib.emit(
                                         tvm.call_extern(
@@ -839,69 +854,45 @@ def _func_gm_to_ub(args):
                                                           name="num_cy")\
                                             as num_cy:
                                         data_cur = data_offset + (
-                                            burst_len + src_stride) \
-                                                   * param.get("cp_align_len")\
+                                            burst_len + src_stride) * param.get("cp_align_len")\
                                                    * n_burst * num_cy
                                         ub_cur = ub_offset + (
-                                            burst_len + dst_stride) \
-                                                 * param.get("cp_align_len")\
+                                            burst_len + dst_stride) * param.get("cp_align_len")\
                                                  * n_burst * num_cy
                                         tvm_ib.emit(
                                             tvm.call_extern(
-                                                data_ub.dtype,
-                                                "copy_gm_to_ubuf",
-                                                data_ub.access_ptr(
-                                                    "w",
-                                                    offset=ub_cur),
-                                                data.access_ptr(
-                                                    'r',
-                                                    offset=data_cur),
-                                                0, n_burst,
-                                                burst_len,
-                                                src_stride,
-                                                dst_stride))
+                                                data_ub.dtype, "copy_gm_to_ubuf",
+                                                data_ub.access_ptr("w", offset=ub_cur),
+                                                data.access_ptr('r', offset=data_cur),
+                                                0, n_burst, burst_len, src_stride, dst_stride))
                                     with tvm_ib.if_scope(c_mod > 0):
                                         data_cur = data_offset + (
-                                            burst_len + src_stride) \
-                                                   * param.get("cp_align_len")\
+                                            burst_len + src_stride) * param.get("cp_align_len")\
                                                    * n_burst * c_cycle
                                         ub_cur = ub_offset + (
-                                            burst_len + dst_stride) \
-                                                 * param.get("cp_align_len")\
+                                            burst_len + dst_stride) * param.get("cp_align_len")\
                                                  * n_burst * c_cycle
                                         tvm_ib.emit(
                                             tvm.call_extern(
-                                                data_ub.dtype,
-                                                "copy_gm_to_ubuf",
-                                                data_ub.access_ptr(
-                                                    "w", offset=ub_cur),
-                                                data.access_ptr(
-                                                    'r', offset=data_cur),
-                                                0, c_mod, burst_len,
-                                                src_stride,
-                                                dst_stride))
+                                                data_ub.dtype, "copy_gm_to_ubuf",
+                                                data_ub.access_ptr("w", offset=ub_cur),
+                                                data.access_ptr('r', offset=data_cur),
+                                                0, c_mod, burst_len, src_stride, dst_stride))
                             with tvm_ib.else_scope():
                                 with tvm_ib.for_range(0, ori_nburst,
                                                       name="num_nb") as num_nb:
                                     data_cur = data_offset + (
-                                        burst_len + src_stride)\
-                                               * param.get("cp_align_len")\
+                                        burst_len + src_stride) * param.get("cp_align_len")\
                                                * num_nb
                                     ub_cur = ub_offset + (
-                                        burst_len + dst_stride)\
-                                             * param.get("cp_align_len")\
+                                        burst_len + dst_stride) * param.get("cp_align_len")\
                                              * num_nb
                                     tvm_ib.emit(
                                         tvm.call_extern(
-                                            data_ub.dtype,
-                                            "copy_gm_to_ubuf",
-                                            data_ub.access_ptr(
-                                                "w", offset=ub_cur),
-                                            data.access_ptr(
-                                                'r', offset=data_cur),
-                                            0, 1, burst_len,
-                                            0, 0))
-
+                                            data_ub.dtype, "copy_gm_to_ubuf",
+                                            data_ub.access_ptr("w", offset=ub_cur),
+                                            data.access_ptr('r', offset=data_cur),
+                                            0, 1, burst_len, 0, 0))
 
 def _func_gm_to_ub_align(args):
     """
@@ -913,11 +904,11 @@ def _func_gm_to_ub_align(args):
 
     with tvm_ib.if_scope(ori_nburst > 0):
         with tvm_ib.if_scope(burst_len > 0):
-            with tvm_ib.if_scope(burst_len <= 65535):
+            with tvm_ib.if_scope(burst_len <= BURST_LEN):
                 with tvm_ib.if_scope(src_stride >= 0):
                     with tvm_ib.if_scope(dst_stride >= 0):
-                        with tvm_ib.if_scope(dst_stride <= 65535):
-                            with tvm_ib.if_scope(src_stride <= 65535):
+                        with tvm_ib.if_scope(dst_stride <= BURST_LEN):
+                            with tvm_ib.if_scope(src_stride <= BURST_LEN):
                                 with tvm_ib.if_scope(ori_nburst <= 4095):
                                     tvm_ib.emit(
                                         tvm.call_extern(
@@ -1030,7 +1021,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_zero)))
+                                       + (num_cr * ele_reg + reg_zero)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1039,7 +1030,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_one)))
+                                       + (num_cr * ele_reg + reg_one)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1048,7 +1039,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_two)))
+                                       + (num_cr * ele_reg + reg_two)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1057,7 +1048,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_three)))
+                                       + (num_cr * ele_reg + reg_three)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1066,7 +1057,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_four)))
+                                       + (num_cr * ele_reg + reg_four)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1075,7 +1066,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_five)))
+                                       + (num_cr * ele_reg + reg_five)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1084,7 +1075,7 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_six)))
+                                       + (num_cr * ele_reg + reg_six)))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
@@ -1093,63 +1084,63 @@ def _reg_mov_row(args):
                                offset=(num_d * dim_ele_in
                                        + (col_begin + num_c) * row_in
                                        + row_begin
-                                       + (num_cr*ele_reg + reg_seven)))
+                                       + (num_cr * ele_reg + reg_seven)))
         ))
 
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_zero)),
+                                + (num_cr * ele_reg + reg_zero)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_zero])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_one)),
+                                + (num_cr * ele_reg + reg_one)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_one])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_two)),
+                                + (num_cr * ele_reg + reg_two)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_two])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_three)),
+                                + (num_cr * ele_reg + reg_three)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_three])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_four)),
+                                + (num_cr * ele_reg + reg_four)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_four])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_five)),
+                                + (num_cr * ele_reg + reg_five)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_five])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_six)),
+                                + (num_cr * ele_reg + reg_six)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_six])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
             data_res.access_ptr('w', offset=num_d * dim_ele_out
                                 + num_c * row_out
-                                + (num_cr*ele_reg + reg_seven)),
+                                + (num_cr * ele_reg + reg_seven)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_seven])
         ))
 
@@ -1162,13 +1153,13 @@ def _reg_mov_row(args):
                                    offset=(num_d * dim_ele_in
                                            + (col_begin + num_c) * row_in
                                            + row_begin
-                                           + (r_cycle*ele_reg + num_er)))
+                                           + (r_cycle * ele_reg + num_er)))
             ))
             tvm_ib.emit(tvm.call_extern(
                 data_res.dtype, "reg_mov",
                 data_res.access_ptr('w', offset=num_d * dim_ele_out
                                     + num_c * row_out
-                                    + (r_cycle*ele_reg + num_er)),
+                                    + (r_cycle * ele_reg + num_er)),
                 tvm.call_extern(reg.dtype, "reg", reg[0])
             ))
 
@@ -1319,16 +1310,16 @@ def _func_mov_scalar_one(args):
     _, num_dim_one_core, col_in, row_in = data.shape
     _, _, col_out, row_out = dst.shape
 
-    one_core_ele_in = num_dim_one_core*col_in*row_in
+    one_core_ele_in = num_dim_one_core * col_in * row_in
     one_core_ele_out = num_dim_one_core * col_out * row_out
 
-    dim_ele_in = col_in*row_in
-    dim_ele_out = col_out*row_out
+    dim_ele_in = col_in * row_in
+    dim_ele_out = col_out * row_out
     num_dim_one_loop = ub_ele // dim_ele_in
     ub_loop = num_dim_one_core // num_dim_one_loop
     num_dim_mod = num_dim_one_core % num_dim_one_loop
     ele_one_loop_in = num_dim_one_loop*dim_ele_in
-    ele_mod_in = num_dim_mod*dim_ele_in
+    ele_mod_in = num_dim_mod * dim_ele_in
     ele_one_loop_out = num_dim_one_loop * dim_ele_out
     ele_mod_out = num_dim_mod * dim_ele_out
 
@@ -1353,7 +1344,7 @@ def _func_mov_scalar_one(args):
             with tvm_ib.if_scope(ele_one_loop_out >= cp_align_len):
                 ele_one_loop_out_align = ele_one_loop_out - cp_align_len
                 dst_offset = n_index * one_core_ele_out\
-                             + num_u*ele_one_loop_out
+                             + num_u * ele_one_loop_out
                 burst_len_dst = _ceil_div(ele_one_loop_out_align, cp_align_len)
                 tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
                                             dst.access_ptr('w',
@@ -1486,7 +1477,7 @@ def _reg_mov_only_col(args):
 
     ele_reg = 8
     r_cycle = col_len // ele_reg
-    r_mod = col_len - ele_reg*r_cycle
+    r_mod = col_len - ele_reg * r_cycle
     reg_zero = 0
     reg_one = 1
     reg_two = 2
@@ -1501,97 +1492,97 @@ def _reg_mov_only_col(args):
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_zero]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_zero)*row_len_src
+                               offset=((num_cr * ele_reg + reg_zero) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_one]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_one)*row_len_src
+                               offset=((num_cr * ele_reg + reg_one) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_two]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_two)*row_len_src
+                               offset=((num_cr * ele_reg + reg_two) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_three]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_three)*row_len_src
+                               offset=((num_cr * ele_reg + reg_three) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_four]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_four)*row_len_src
+                               offset=((num_cr * ele_reg + reg_four) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_five]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_five)*row_len_src
+                               offset=((num_cr * ele_reg + reg_five) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_six]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_six)*row_len_src
+                               offset=((num_cr * ele_reg + reg_six) * row_len_src
                                        + n_begin))
         ))
         tvm_ib.emit(tvm.call_extern(
             data_ub.dtype, "reg_mov",
             tvm.call_extern(reg.dtype, "reg", reg[reg_seven]),
             data_ub.access_ptr('r',
-                               offset=((num_cr*ele_reg + reg_seven)*row_len_src
+                               offset=((num_cr * ele_reg + reg_seven) * row_len_src
                                        + n_begin))
         ))
 
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_zero)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_zero)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_zero])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_one)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_one)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_one])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_two)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_two)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_two])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_three)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_three)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_three])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_four)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_four)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_four])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_five)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_five)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_five])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_six)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_six)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_six])
         ))
         tvm_ib.emit(tvm.call_extern(
             data_res.dtype, "reg_mov",
-            data_res.access_ptr('w', offset=(num_cr*ele_reg + reg_seven)),
+            data_res.access_ptr('w', offset=(num_cr * ele_reg + reg_seven)),
             tvm.call_extern(reg.dtype, "reg", reg[reg_seven])
         ))
 
@@ -1601,12 +1592,12 @@ def _reg_mov_only_col(args):
                 data_ub.dtype, "reg_mov",
                 tvm.call_extern(reg.dtype, "reg", reg[0]),
                 data_ub.access_ptr('r',
-                                   offset=((r_cycle*ele_reg + num_er)
+                                   offset=((r_cycle * ele_reg + num_er)
                                            * row_len_src + n_begin))
             ))
             tvm_ib.emit(tvm.call_extern(
                 data_res.dtype, "reg_mov",
-                data_res.access_ptr('w', offset=(r_cycle*ele_reg + num_er)),
+                data_res.access_ptr('w', offset=(r_cycle * ele_reg + num_er)),
                 tvm.call_extern(reg.dtype, "reg", reg[0])
             ))
 
@@ -2148,7 +2139,7 @@ def _func_sp_vadds_rowzu_mul(args):
     row_out_align = _ceil_fill(row_out, cp_align_len) + cp_align_len
     row_out_align_block = row_out_align // cp_align_len
 
-    row_out_align_ub = (ub_ele_half // row_out_align // row_zu)*row_zu
+    row_out_align_ub = (ub_ele_half // row_out_align // row_zu) * row_zu
     ub_loop = col_len_shape // row_out_align_ub
     ub_mod = col_len_shape % row_out_align_ub
     ub_loop_ele_in = row_out_align_ub*row_in
@@ -2834,7 +2825,8 @@ def _func_91_90_fp32(args):
                    ub_offset, res_offset, \
                    repeat, srcm0, dstm0, srcm1, dstm1, cp_align_len
             _func_vadds(args)
-
+ 
+            #set mask slice
             mask1, mask2 = _set_mask_slice(0, 128 - 90 - 2 * (num_zi % 4))
             tvm_ib.emit(tvm.call_extern(
                 dst.dtype, "set_vector_mask",
@@ -3854,6 +3846,7 @@ def _func_602_601_fp16(args):
                        repeat, srcm0, dstm0, srcm1, dstm1, cp_align_len
                 _func_vadds(args)
 
+                #set mask slice 0f float16
                 mask1, mask2 = _set_mask_slice_fp16(0, 0)
                 tvm_ib.emit(tvm.call_extern(
                     dst.dtype, "set_vector_mask",
@@ -4848,41 +4841,25 @@ def _vconv_one_fp16(args):
                                     two_begin + dst_eight_gap
                                     + i * dst_gap))
 
-    tvm_ib.emit(tvm.call_extern("int32",
-                                "set_va_reg_sb",
-                                "VA0",
+    tvm_ib.emit(tvm.call_extern("int32", "set_va_reg_sb", "VA0",
                                 addr_array_buf.access_ptr("rw",
                                                           offset=src0_offset)))
-    tvm_ib.emit(tvm.call_extern("int32",
-                                "set_va_reg_sb",
-                                "VA1",
+    tvm_ib.emit(tvm.call_extern("int32", "set_va_reg_sb", "VA1",
                                 addr_array_buf.access_ptr("rw",
                                                           offset=src1_offset)))
-    tvm_ib.emit(tvm.call_extern("int32",
-                                "set_va_reg_sb",
-                                "VA2",
+    tvm_ib.emit(tvm.call_extern("int32", "set_va_reg_sb", "VA2",
                                 addr_array_buf.access_ptr("rw",
                                                           offset=dst0_offset)))
-    tvm_ib.emit(tvm.call_extern("int32",
-                                "set_va_reg_sb",
-                                "VA3",
+    tvm_ib.emit(tvm.call_extern("int32", "set_va_reg_sb", "VA3",
                                 addr_array_buf.access_ptr("rw",
                                                           offset=dst1_offset)))
 
     with tvm_ib.if_scope(repeat_vconv == 1):
-        tvm_ib.emit(tvm.call_extern("int32",
-                                    "scatter_vnchwconv_b16",
-                                    "VA2",
-                                    "VA0",
-                                    1,
-                                    0,
-                                    0))
+        tvm_ib.emit(tvm.call_extern("int32", "scatter_vnchwconv_b16",
+                                    "VA2", "VA0", 1, 0, 0))
     with tvm_ib.else_scope():
-        tvm_ib.emit(tvm.call_extern("int32",
-                                    "scatter_vnchwconv_b16",
-                                    "VA2",
-                                    "VA0",
-                                    repeat_vconv,
+        tvm_ib.emit(tvm.call_extern("int32", "scatter_vnchwconv_b16",
+                                    "VA2", "VA0", repeat_vconv,
                                     dst_stride_vconv,
                                     src_stride_vconv))
 

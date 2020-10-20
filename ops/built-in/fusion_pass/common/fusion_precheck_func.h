@@ -1,28 +1,39 @@
 /**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief precheck functions.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef BUILT_IN_FUSION_PASS_PRECHECK_FUNC_H_
-#define BUILT_IN_FUSION_PASS_PRECHECK_FUNC_H_
+/*!
+ * \file fusion_precheck_func.h
+ * \brief precheck functions.
+ */
+#ifndef OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_PRECHECK_FUNC_H_
+#define OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_PRECHECK_FUNC_H_
 
 #include "graph/utils/node_utils.h"
+#include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 namespace fe {
 
-bool ApplyRmsPropPreCheck(ge::NodePtr node);
-bool FusedMulApplyMomentumPreCheck(ge::NodePtr node);
-bool FusedMulApplyMomentumExternPreCheck(ge::NodePtr node);
-bool ApplyAdagradV2PreCheck(ge::NodePtr node);
-bool ApplyKerasMomentumPreCheck(ge::NodePtr node);
-bool SparseApplyFtrlPreCheck(ge::NodePtr node);
-bool SparseApplyFtrlV2PreCheck(ge::NodePtr node);
-bool SparseApplyAdagradV2PreCheck(ge::NodePtr node);
-bool SparseApplyRmsPropPreCheck(ge::NodePtr node);
-bool SparseApplyAdadeltaPreCheck(ge::NodePtr node);
+Status ApplyRmsPropPreCheck(ge::NodePtr node);
+Status FusedMulApplyMomentumPreCheck(ge::NodePtr node);
+Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node);
+Status ApplyAdagradV2PreCheck(ge::NodePtr node);
+Status ApplyKerasMomentumPreCheck(ge::NodePtr node);
+Status SparseApplyFtrlPreCheck(ge::NodePtr node);
+Status SparseApplyFtrlV2PreCheck(ge::NodePtr node);
+Status SparseApplyAdagradV2PreCheck(ge::NodePtr node);
+Status SparseApplyRmsPropPreCheck(ge::NodePtr node);
+Status SparseApplyAdadeltaPreCheck(ge::NodePtr node);
 }  // namespace fe
-#endif
+#endif  // OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_PRECHECK_FUNC_H_

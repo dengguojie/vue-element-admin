@@ -1,27 +1,28 @@
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 conv3d backprop filter DSL interface.
-
 """
-from __future__ import absolute_import
-from __future__ import print_function
 import functools
+
+import te.platform as tbe_platform
+from te.lang.cce.te_compute import util as te_util
+from te.utils import para_check
+from te.utils.error_manager import error_manager_util
 from te import tvm
-from te.lang.cce.te_compute import util
-from te.utils.error_manager import error_manager_util as err_mana
-from te.platform.cce_conf import get_soc_spec
+
 
 # fractal size, only support 16 for now
 BLOCK_SIZE = 16
@@ -29,7 +30,7 @@ BLOCK_SIZE = 16
 DATA_SIZE_LIMIT_INT64 = 9223372036864776807
 
 
-def check_shape_rule(shape, dim, formats, name):
+def _check_shape_rule(shape, dim, formats, name):
     """
     check shape
 
@@ -41,7 +42,8 @@ def check_shape_rule(shape, dim, formats, name):
             'expected_length': str(dim),
             'length': str(len(shape))
         }
-        raise RuntimeError(args_dict, err_mana.get_error_message(args_dict))
+        raise RuntimeError(args_dict,
+                           error_manager_util.get_error_message(args_dict))
     for dim_x in shape:
         if (not isinstance(dim_x, int)) or dim_x <= 0:
             args_dict = {
@@ -49,26 +51,10 @@ def check_shape_rule(shape, dim, formats, name):
                 'param_name': name
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
 
-def ceil_div(dividend, divisor):
-    """
-    do division and round up to an integer
-
-    """
-    if divisor == 0:
-        args_dict = {
-            'errCode': 'E62502',
-            'first_operand': str(dividend),
-            'second_operand': str(divisor)
-        }
-        raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
-    return (dividend + divisor - 1) // divisor
-
-
-def check_attr_rule(attr, dim, attr_limit, formats, name):
+def _check_attr_rule(attr, dim, attr_limit, formats, name):
     """
     check attribute
 
@@ -83,10 +69,9 @@ def check_attr_rule(attr, dim, attr_limit, formats, name):
             'length': str(len(attr))
         }
         raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+                           error_manager_util.get_error_message(args_dict))
     for attr_x in attr:
-        if (not isinstance(attr_x, int)) \
-                or attr_x < attr_min or attr_x > attr_max:
+        if (not isinstance(attr_x, int)) or attr_x < attr_min or attr_x > attr_max:
             args_dict = {
                 'errCode': 'E60011',
                 'range': '[{},{}]'.format(attr_min, attr_max),
@@ -94,10 +79,10 @@ def check_attr_rule(attr, dim, attr_limit, formats, name):
                 'value': str(attr_x)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
 
-def check_variable_range(variable, minimum, maximum, name):
+def _check_variable_range(variable, minimum, maximum, name):
     """
     check variable range
 
@@ -110,10 +95,10 @@ def check_variable_range(variable, minimum, maximum, name):
             'value': str(variable)
         }
         raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+                           error_manager_util.get_error_message(args_dict))
 
 
-def check_addressing_rule(shape, byte_count, limit):
+def _check_addressing_rule(shape, byte_count, limit):
     """
     check addressing limit
 
@@ -128,7 +113,7 @@ def check_addressing_rule(shape, byte_count, limit):
             'value': str(product * byte_count)
         }
         raise RuntimeError(args_dict,
-                           err_mana.get_error_message(args_dict))
+                           error_manager_util.get_error_message(args_dict))
 
 
 class Conv3dBackpropFilter:
@@ -139,23 +124,26 @@ class Conv3dBackpropFilter:
     ----------
     __init__ : initialization
 
-    deconv_dw_input_check_1: parameters check part 1
+    _deconv_dw_input_check_1: parameters check part 1
 
-    deconv_dw_input_check_2: parameters check part 2
+    _deconv_dw_input_check_2: parameters check part 2
 
-    deconv_dw_compute : compute process
+    _deconv_dw_access: compute generation
 
-    grads_2_matrix : compute definition of loading grads to cbuf
+    _deconv_dw_compute: compute process
 
-    grads_2_fractal : compute definition of load_3d
+    _grads_2_matrix: compute definition of loading grads to cbuf
 
-    fmap_2_col_matrix : compute definition of set_fmatrix
+    _fmap_2_matrix: compute definiton of set_fmatrix
 
-    fmap_2_col_fractal : compute definition of load_3d
+    _fmap_2_matrix_load2d: compute definiton of loading fmap to L1
 
-    mad : compute definition of mmad
+    _fmap_2_fractal: compute definiton of loading fmap to L0B
+
+    _mad: compute definition of mmad
 
     """
+
     def __init__(self,
                  input_x,
                  out_backprop,
@@ -176,16 +164,16 @@ class Conv3dBackpropFilter:
         out_backprop : the grads data, tvm.placeholder, 6hd shape
         [N, DO, GRADS_C1, HO, WO, GRADS_C0]
 
-        filter_sizes : 4-D shape, specifies the filter sizes
-        [GRADS_C, DK, C, DH, DW]
+        filter_sizes : 5-D shape, specifies the filter sizes
+        [GRADS_C, KD, C, KH, KW]
 
-        strides : 2-D shape in height and width dimension
+        strides : 3-D shape in depth, height and width dimension
         [STRIDE_D, STRIDE_H, STRIDE_W]
 
-        padding : 4-D shape in up/down/left/right dimension
+        padding : 6-D shape in front/back/up/down/left/right dimension
         [PAD_D, PAD_D, PAD_H, PAD_H, PAD_W, PAD_W]
 
-        dilations : 4-D shape in batch/channel/height/width dimension
+        dilations : 5-D shape in batch/channel/depth/height/width dimension
 
         res_dtype : the output data type
 
@@ -194,7 +182,7 @@ class Conv3dBackpropFilter:
         None
         """
 
-        self.shapelist = {}
+        self.shape_list = {}
 
         self.fmap = input_x
         self.grads = out_backprop
@@ -209,7 +197,7 @@ class Conv3dBackpropFilter:
         self.stride = list(strides)
         self.dilation = list(dilations)
 
-        self.optag = "conv3d_backprop_filter"
+        self.op_tag = "conv3d_backprop_filter"
 
         self._kernel_name = kernel_name
 
@@ -219,19 +207,20 @@ class Conv3dBackpropFilter:
         # [N, D, C1, H, W, C0]
         self.shape_x_6hd = list(x.value for x in self.fmap.shape)
 
-        self.shapelist['grads_6hd'] = self.shape_grads_6hd
-        self.shapelist['fmap_6hd'] = self.shape_x_6hd
+        self.shape_list['grads_6hd'] = self.shape_grads_6hd
+        self.shape_list['fmap_6hd'] = self.shape_x_6hd
 
         # flag of special case
         self.flag_all_one_case = False
         self.dw_ddr = []
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
+
         # special supporting for a unique case, there are 2 conditions:
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
-        if self.stride[1:] == [1, 1] and self.shape_x_6hd[3:5] == [1, 1] \
-            and self.shape_grads_6hd[3:5] == [1, 1] \
-            and self.weight_shape[3:5] == [1, 1]:
+        if (self.stride[1:] == [1, 1] and self.shape_x_6hd[3:5] == [1, 1]
+            and self.shape_grads_6hd[3:5] == [1, 1]
+            and self.weight_shape[3:5] == [1, 1]):
             self.flag_all_one_case = True
 
         self.flag_load3d_special_case = False
@@ -243,13 +232,13 @@ class Conv3dBackpropFilter:
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
         pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = self.pad
 
-        if (1 <= kernel_height <= 11) and (1 <= kernel_width <= 11) \
+        if ((1 <= kernel_height <= 11) and (1 <= kernel_width <= 11)
             and (fmap_height + pad_top + pad_bottom == kernel_height
-                 or fmap_width + pad_left + pad_right == kernel_width or \
-                     fmap_depth + pad_front+pad_back == kernel_depth):
+            or fmap_width + pad_left + pad_right == kernel_width or
+            fmap_depth + pad_front+pad_back == kernel_depth)):
             self.flag_load3d_special_case = True
 
-    def deconv_dw_input_check_1(self):
+    def _deconv_dw_input_check_1(self):
         """
         do input parameters check part1
 
@@ -263,7 +252,7 @@ class Conv3dBackpropFilter:
                 'dtype': str(self.fmap_dtype)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
         if self.grads_dtype != "float16":
             args_dict = {
                 'errCode': 'E60005',
@@ -272,9 +261,8 @@ class Conv3dBackpropFilter:
                 'dtype': str(self.grads_dtype)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
-        is_lhisi_version = get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                           "Hi3796CV300CS")
+                               error_manager_util.get_error_message(args_dict))
+        is_lhisi_version = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS")
         if is_lhisi_version and self.res_dtype != "float16":
             args_dict = {
                 'errCode': 'E60005',
@@ -283,7 +271,7 @@ class Conv3dBackpropFilter:
                 'dtype': str(self.res_dtype)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
         if not is_lhisi_version and self.res_dtype != "float32":
             args_dict = {
                 'errCode': 'E60005',
@@ -292,78 +280,74 @@ class Conv3dBackpropFilter:
                 'dtype': str(self.res_dtype)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         # check shape
         # each element must be positive int
-        check_shape_rule(self.shape_x_6hd, 6, "NDC1HWC0", "x")
-        check_shape_rule(self.shape_grads_6hd, 6, "NDC1HWC0", "out_backprop")
-        check_shape_rule(self.weight_shape, 5, "NDCHW", "filter_sizes")
+        _check_shape_rule(self.shape_x_6hd, 6, "NDC1HWC0", "x")
+        _check_shape_rule(self.shape_grads_6hd, 6, "NDC1HWC0", "out_backprop")
+        _check_shape_rule(self.weight_shape, 5, "NDCHW", "filter_sizes")
 
-        _, grads_depth, _, grads_height, grads_width, _ \
-            = self.shape_grads_6hd
+        _, grads_depth, _, grads_height, grads_width, _ = self.shape_grads_6hd
         _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
 
-        if ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
+        if te_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
             args_dict = {
                 'errCode': 'E62504',
                 'backprop_C': str(self.shape_grads_6hd[2]),
-                'forward_shape': str(ceil_div(self.weight_shape[0], 16))
+                'forward_shape': str(te_util.int_ceil_div(self.weight_shape[0], 16))
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
-        if ceil_div(self.weight_shape[2], 16) != self.shape_x_6hd[2]:
+        if te_util.int_ceil_div(self.weight_shape[2], 16) != self.shape_x_6hd[2]:
             args_dict = {
                 'errCode': 'E60010',
                 'channel_of_x': str(self.shape_x_6hd[2]),
-                'channel_of_filter': str(ceil_div(self.weight_shape[0], 16))
+                'channel_of_filter': str(te_util.int_ceil_div(self.weight_shape[0], 16))
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         # individual range check
         if not self.flag_all_one_case:
             if not self.flag_load3d_special_case:
-                check_variable_range(grads_depth, 2, 4096,
+                _check_variable_range(grads_depth, 2, 4096,
                                      "depth of out_backprop")
-                check_variable_range(grads_height, 2, 4096,
+                _check_variable_range(grads_height, 2, 4096,
                                      "height of out_backprop")
-                check_variable_range(grads_width, 2, 4096,
+                _check_variable_range(grads_width, 2, 4096,
                                      "width of out_backprop")
             else:
-                check_variable_range(grads_depth, 1, 4096,
+                _check_variable_range(grads_depth, 1, 4096,
                                      "depth of out_backprop")
-                check_variable_range(grads_height, 1, 4096,
+                _check_variable_range(grads_height, 1, 4096,
                                      "height of out_backprop")
-                check_variable_range(grads_width, 1, 4096,
+                _check_variable_range(grads_width, 1, 4096,
                                      "width of out_backprop")
-        check_variable_range(fmap_depth, 1, 4096, "depth of x")
-        check_variable_range(fmap_height, 1, 4096, "height of x")
-        check_variable_range(fmap_width, 1, 4096, "width of x")
-        check_variable_range(kernel_depth, 1, 256, "depth of filter")
-        check_variable_range(kernel_height, 1, 256, "height of filter")
-        check_variable_range(kernel_width, 1, 256, "width of filter")
+        _check_variable_range(fmap_depth, 1, 4096, "depth of x")
+        _check_variable_range(fmap_height, 1, 4096, "height of x")
+        _check_variable_range(fmap_width, 1, 4096, "width of x")
+        _check_variable_range(kernel_depth, 1, 256, "depth of filter")
+        _check_variable_range(kernel_height, 1, 256, "height of filter")
+        _check_variable_range(kernel_width, 1, 256, "width of filter")
 
-        check_attr_rule(self.stride, 3, [1, 63], "[strideD, strideH, strideW]",
-                        "stride")
-        check_attr_rule(self.pad, 6, [0, 266],
+        _check_attr_rule(self.stride, 3, [1, 63],
+                         "[strideD, strideH, strideW]", "stride")
+        _check_attr_rule(self.pad, 6, [0, 266],
                         "[front,back,up,down,left,right]", "pad")
         return True
 
-    def deconv_dw_input_check_2(self):
+    def _deconv_dw_input_check_2(self):
         """
         do input parameters check part2
 
         """
         stride_depth, stride_height, stride_width = self.stride
-        pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right \
-            = self.pad
-        _, grads_depth, grads_channel_1, grads_height, grads_width, grads_c0 \
-            = self.shape_grads_6hd
-        _, fmap_depth, fmap_channel_1, fmap_height, fmap_width, fmap_c0 \
-            = self.shape_x_6hd
+        pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = self.pad
+        _, grads_depth, grads_channel_1, grads_height, grads_width, grads_c0 = self.shape_grads_6hd
+        _, fmap_depth, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
         dilationn, dilationd, dilationc, dilationh, dilationw = self.dilation
 
@@ -375,7 +359,7 @@ class Conv3dBackpropFilter:
                     'errCode': 'E62510'
                 }
                 raise RuntimeError(args_dict,
-                                   err_mana.get_error_message(args_dict))
+                    error_manager_util.get_error_message(args_dict))
             dilation_dhw = [dilationd, dilationh, dilationw]
             for item in dilation_dhw:
                 if item < dilation_min or item > dilation_max:
@@ -386,7 +370,7 @@ class Conv3dBackpropFilter:
                         'value': str(item)
                     }
                     raise RuntimeError(args_dict,
-                                       err_mana.get_error_message(args_dict))
+                        error_manager_util.get_error_message(args_dict))
 
         _check_dilation()
 
@@ -396,7 +380,7 @@ class Conv3dBackpropFilter:
                 'shape_c0': str(self.shape_x_6hd[5])
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         if self.shape_grads_6hd[5] != BLOCK_SIZE:
             args_dict = {
@@ -404,7 +388,7 @@ class Conv3dBackpropFilter:
                 'shape_c0': str(self.shape_grads_6hd[5])
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
         # batch_size should be same
         if self.shape_x_6hd[0] != self.shape_grads_6hd[0]:
             args_dict = {
@@ -413,12 +397,12 @@ class Conv3dBackpropFilter:
                 'forward_shape': str(self.shape_x_6hd[0])
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         # coupling range check
         dilation_kernel_depth = (kernel_depth - 1) * dilationd + 1
-        computed_grads_depth = (fmap_depth - dilation_kernel_depth + \
-                                 pad_front + pad_back)//stride_depth + 1
+        computed_grads_depth = (fmap_depth - dilation_kernel_depth +
+                                pad_front + pad_back)//stride_depth + 1
         if computed_grads_depth != grads_depth:
             args_dict = {
                 'errCode': 'E60000',
@@ -427,10 +411,10 @@ class Conv3dBackpropFilter:
                 'input_value': str(computed_grads_depth)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         dilation_kernel_height = (kernel_height - 1) * dilationh + 1
-        computed_grads_height = (fmap_height - dilation_kernel_height + \
+        computed_grads_height = (fmap_height - dilation_kernel_height +
                                  pad_top + pad_bottom)//stride_height + 1
         if computed_grads_height != grads_height:
             args_dict = {
@@ -440,11 +424,11 @@ class Conv3dBackpropFilter:
                 'input_value': str(computed_grads_height)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         dilation_kernel_width = (kernel_width - 1) * dilationw + 1
-        computed_grads_width = (fmap_width - dilation_kernel_width + \
-                                 pad_left + pad_right)//stride_width + 1
+        computed_grads_width = (fmap_width - dilation_kernel_width +
+                                pad_left + pad_right)//stride_width + 1
         if computed_grads_width != grads_width:
             args_dict = {
                 'errCode': 'E60000',
@@ -453,52 +437,49 @@ class Conv3dBackpropFilter:
                 'input_value': str(computed_grads_width)
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         fmap_depth_after_pad = fmap_depth + pad_front + pad_back
         fmap_height_after_pad = fmap_height + pad_top + pad_bottom
         fmap_width_after_pad = fmap_width + pad_left + pad_right
-        if dilation_kernel_height > fmap_height_after_pad \
-            or dilation_kernel_width > fmap_width_after_pad \
-            or dilation_kernel_depth > fmap_depth_after_pad:
+        if (dilation_kernel_height > fmap_height_after_pad
+            or dilation_kernel_width > fmap_width_after_pad
+            or dilation_kernel_depth > fmap_depth_after_pad):
             args_dict = {
                 'errCode': 'E60108',
                 'reason': 'depth/height/width of filter '
                           'cannot exceed that of x.'
             }
             raise RuntimeError(args_dict,
-                               err_mana.get_error_message(args_dict))
+                               error_manager_util.get_error_message(args_dict))
 
         def _check_pad():
-            if pad_front >= dilation_kernel_depth \
-                or pad_back >= dilation_kernel_depth:
+            if pad_front >= dilation_kernel_depth or pad_back >= dilation_kernel_depth:
                 args_dict = {
                     'errCode': 'E60108',
                     'reason': 'pad in front/back should '
                               'less than depth of filter.'
                 }
                 raise RuntimeError(args_dict,
-                                   err_mana.get_error_message(args_dict))
+                    error_manager_util.get_error_message(args_dict))
 
-            if pad_top >= dilation_kernel_height \
-                or pad_bottom >= dilation_kernel_height:
+            if pad_top >= dilation_kernel_height or pad_bottom >= dilation_kernel_height:
                 args_dict = {
                     'errCode': 'E60108',
                     'reason': 'pad in up/down should '
                               'less than height of filter.'
                 }
                 raise RuntimeError(args_dict,
-                                   err_mana.get_error_message(args_dict))
+                    error_manager_util.get_error_message(args_dict))
 
-            if pad_left >= dilation_kernel_width \
-                or pad_right >= dilation_kernel_width:
+            if pad_left >= dilation_kernel_width or pad_right >= dilation_kernel_width:
                 args_dict = {
                     'errCode': 'E60108',
                     'reason': 'pad in left/right should '
                               'less than width of filter.'
                 }
                 raise RuntimeError(args_dict,
-                                   err_mana.get_error_message(args_dict))
+                    error_manager_util.get_error_message(args_dict))
 
         _check_pad()
 
@@ -506,26 +487,26 @@ class Conv3dBackpropFilter:
         kernel_fractal = (kernel_depth * fmap_channel_1 * kernel_height *
                           kernel_width, grads_channel_1 * grads_c0, fmap_c0)
 
-        check_addressing_rule(self.shape_grads_6hd, 2, DATA_SIZE_LIMIT_INT64)
-        check_addressing_rule(self.shape_x_6hd, 2, DATA_SIZE_LIMIT_INT64)
-        check_addressing_rule(kernel_fractal, 4, DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(self.shape_grads_6hd, 2, DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(self.shape_x_6hd, 2, DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(kernel_fractal, 4, DATA_SIZE_LIMIT_INT64)
         return True
 
-    def deconv_dw_access(self):
+    def _deconv_dw_access(self):
         """
         complete compute generation, including input check,
         compute definition and result record
 
         """
 
-        self.deconv_dw_input_check_1()
-        self.deconv_dw_input_check_2()
-        self.deconv_dw_compute()
+        self._deconv_dw_input_check_1()
+        self._deconv_dw_input_check_2()
+        self._deconv_dw_compute()
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
 
-    def deconv_dw_compute(self):
+    def _deconv_dw_compute(self):
         """
-        complege compute definition
+        complete compute definition
 
         """
         def _grads_2_fractal(grads_shape_fractal, grads_2_matrix):
@@ -548,22 +529,20 @@ class Conv3dBackpropFilter:
 
                 """
 
-                batch_indices, grads_c1_indices, hw_mad_1_indices, \
-                grads_c0_indices, hw_mad_0_indices = indices
+                batch_indices, grads_c1_indices, hw_mad_1_indices, grads_c0_indices, hw_mad_0_indices = indices
 
                 batch_size_index = batch_indices
                 grads_channel_1_index = grads_c1_indices
-                grads_hw_index = hw_mad_1_indices * BLOCK_SIZE \
-                                 + hw_mad_0_indices
+                grads_hw_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
                 grads_c0_index = grads_c0_indices
 
                 return grads_2_matrix(batch_size_index, grads_channel_1_index,
                                       grads_hw_index, grads_c0_index)
 
             return tvm.compute(grads_shape_fractal,
-                               lambda *indices: \
-                                   __grads_2_fractal_compute(indices,
-                                                             grads_2_matrix),
+                               lambda *indices:
+                               __grads_2_fractal_compute(indices,
+                                                         grads_2_matrix),
                                name='grads_2_fractal',
                                tag='grads_2_fractal')
 
@@ -585,13 +564,11 @@ class Conv3dBackpropFilter:
                 """
                 do coordinate calculation
                 """
-                batch_indices, hw_mad_1_indices, fmap_c1_indices, \
-                fmap_c0_indices, hw_mad_0_indices = indices
+                batch_indices, hw_mad_1_indices, fmap_c1_indices, fmap_c0_indices, hw_mad_0_indices = indices
 
                 batch_size_index = batch_indices
                 fmap_channel_1_index = fmap_c1_indices
-                fmap_hw_index = hw_mad_1_indices * BLOCK_SIZE \
-                                + hw_mad_0_indices
+                fmap_hw_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
                 fmap_c0_index = fmap_c0_indices
 
                 return fmap_2_matrix(batch_size_index, fmap_channel_1_index,
@@ -606,34 +583,31 @@ class Conv3dBackpropFilter:
 
         fmap_dtype = self.fmap_dtype
 
-        batch_size, grads_depth, grads_channel_1, grads_height, grads_width, \
-        grads_c0 = self.shape_grads_6hd
-        _, fmap_depth, fmap_channel_1, fmap_height, fmap_width, fmap_c0 \
-            = self.shape_x_6hd
+        batch_size, grads_depth, grads_channel_1, grads_height, grads_width, grads_c0 = self.shape_grads_6hd
+        _, fmap_depth, fmap_channel_1, fmap_height, fmap_width, fmap_c0  = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
         # align to 16
-        hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) \
-                 // BLOCK_SIZE*BLOCK_SIZE
+        hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
 
         # move grads to L1
         grads_shape_matrix = (batch_size * grads_depth, grads_channel_1,
                               grads_height * grads_width, grads_c0)
-        self.shapelist['grads_matrix'] = grads_shape_matrix
+        self.shape_list['grads_matrix'] = grads_shape_matrix
 
-        grads_matrix = self.grads_2_matrix(grads_shape_matrix, self.grads)
+        grads_matrix = self._grads_2_matrix(grads_shape_matrix, self.grads)
 
         # move grads_matrix to L0A and do transpose
         grads_shape_fractal = (batch_size * grads_depth, grads_channel_1,
                                hw_mad // BLOCK_SIZE, grads_c0, BLOCK_SIZE)
 
-        self.shapelist['grads_fractal'] = grads_shape_fractal
-        grads_fractal = _grads_2_fractal(grads_shape_fractal, \
+        self.shape_list['grads_fractal'] = grads_shape_fractal
+        grads_fractal = _grads_2_fractal(grads_shape_fractal,
                                          grads_matrix)
 
         stride_depth, _, _ = self.stride
         pad_front, _, _, _, _, _ = self.pad
 
-        def tensor_to_al1():
+        def _tensor_to_al1():
             fmap_al1_shape = (batch_size * grads_depth,
                               kernel_depth * fmap_channel_1, fmap_height,
                               fmap_width, fmap_c0)
@@ -653,7 +627,7 @@ class Conv3dBackpropFilter:
             return fmap_l1
 
         if not self.flag_all_one_case:
-            fmap_l1 = tensor_to_al1()
+            fmap_l1 = _tensor_to_al1()
 
         if not self.flag_all_one_case:
             # shape of fmap_original_matrix, corresponding to set_fmatrix
@@ -662,18 +636,18 @@ class Conv3dBackpropFilter:
                                           kernel_depth * fmap_channel_1,
                                           kernel_height, kernel_width, fmap_c0)
 
-            self.shapelist['fmap_original_matrix'] = fmap_shape_original_matrix
+            self.shape_list['fmap_original_matrix'] = fmap_shape_original_matrix
 
-            fmap_matrix = self.fmap_2_matrix(fmap_shape_original_matrix,
+            fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
                                              fmap_l1, fmap_dtype)
             # move fmap to L0B
             fmap_shape_fmap_matrix = (batch_size * grads_depth,
                                       hw_mad // BLOCK_SIZE, kernel_depth *
                                       fmap_channel_1 * kernel_height *
                                       kernel_width, fmap_c0, BLOCK_SIZE)
-            self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
+            self.shape_list['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
-            fmap_fractal = self.fmap_2_fractal(fmap_shape_fmap_matrix,
+            fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
                                                fmap_matrix, fmap_dtype)
 
         # else: all_one_case, using load_2d instead of load_3d
@@ -683,26 +657,26 @@ class Conv3dBackpropFilter:
                                  kernel_depth * fmap_channel_1,
                                  fmap_height * fmap_width, fmap_c0)
 
-            self.shapelist['fmap_matrix'] = fmap_shape_matrix
+            self.shape_list['fmap_matrix'] = fmap_shape_matrix
 
-            fmap_matrix = self.fmap_2_matrix_load2d(fmap_shape_matrix,
+            fmap_matrix = self._fmap_2_matrix_load2d(fmap_shape_matrix,
                                                     self.fmap)
             # move fmap to L0B
             fmap_shape_fractal = (batch_size * grads_depth, hw_mad //
                                   BLOCK_SIZE, kernel_depth * fmap_channel_1 *
                                   kernel_height * kernel_width, fmap_c0,
                                   BLOCK_SIZE)
-            self.shapelist['fmap_matrix'] = fmap_shape_fractal
+            self.shape_list['fmap_matrix'] = fmap_shape_fractal
 
             fmap_fractal = _fmap_2_fractal_load2d(fmap_shape_fractal,
                                                   fmap_matrix)
         # shape of result dw [n1,m,n0]
         dw_shape = (kernel_depth * fmap_channel_1 * kernel_height *
                     kernel_width, grads_channel_1 * grads_c0, fmap_c0)
-        self.shapelist['dw'] = dw_shape
+        self.shape_list['dw'] = dw_shape
 
         # do mmad
-        dw_cc = self.mad(dw_shape, grads_fractal, fmap_fractal)
+        dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
 
         def _lambda_func_dw_cc(*params):
             return dw_cc(*params)
@@ -720,11 +694,11 @@ class Conv3dBackpropFilter:
         self.dw_ddr = tvm.compute(dw_shape,
                                   _lambda_func_dw_ubuf,
                                   name='dw_ddr',
-                                  tag=self.optag + "dw_ddr")
+                                  tag=self.op_tag + "dw_ddr")
 
         return 1
 
-    def grads_2_matrix(self, grads_shape_matrix, grads):
+    def _grads_2_matrix(self, grads_shape_matrix, grads):
         """
         compute definiton of loading grads to L1
 
@@ -742,11 +716,10 @@ class Conv3dBackpropFilter:
             """
             do coordinate calculation
             """
-            grads_depth = self.shapelist['grads_6hd'][1]
-            grads_width = self.shapelist['grads_6hd'][4]
+            grads_depth = self.shape_list['grads_6hd'][1]
+            grads_width = self.shape_list['grads_6hd'][4]
 
-            batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices \
-            = indices
+            batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices = indices
 
             # calculate index of grads according to indice of grads_matrix
             batch_size_index = batch_indices // grads_depth
@@ -766,7 +739,7 @@ class Conv3dBackpropFilter:
             name='grads_2_matrix',
             tag='grads_2_matrix')
 
-    def fmap_2_matrix(self, fmap_shape_original_matrix, fmap, fmap_dtype):
+    def _fmap_2_matrix(self, fmap_shape_original_matrix, fmap, fmap_dtype):
         """
         compute definiton of set_fmatrix
 
@@ -783,7 +756,8 @@ class Conv3dBackpropFilter:
         fmap : input tensor in L1
 
         fmap_dtype : data type of fmap
-        in shape (batch_size, fmap_depth, fmap_channel_1, fmap_height, fmap_width, C0)
+        in shape (batch_size, fmap_depth, fmap_channel_1,
+                  fmap_height, fmap_width, C0)
 
         Returns
         -------
@@ -804,27 +778,19 @@ class Conv3dBackpropFilter:
 
             """
 
-            _, _, _, fmap_height, fmap_width, _ = self.shapelist['fmap_6hd']
+            _, _, _, fmap_height, fmap_width, _ = self.shape_list['fmap_6hd']
 
-            batch_indices, \
-            hw_fuse_indices, \
-            fmap_c1_indices, \
-            kernel_height_indices, \
-            kernel_width_indices, \
-            fmap_c0_indices = indices
+            (batch_indices, hw_fuse_indices, fmap_c1_indices, kernel_height_indices,
+             kernel_width_indices, fmap_c0_indices) = indices
 
-            dilation_kernel_width = kernel_width \
-                                    + (kernel_width - 1) * (dilationw - 1)
+            dilation_kernel_width = kernel_width + (kernel_width - 1) * (dilationw - 1)
             fmap_width_after_pad = fmap_width + pad_left + pad_right
-            width_out = (fmap_width_after_pad - dilation_kernel_width) \
-                        // stridew + 1
+            width_out = (fmap_width_after_pad - dilation_kernel_width) // stridew + 1
 
             n_index = batch_indices
             c1_index = fmap_c1_indices
-            h_index = (hw_fuse_indices // width_out) * strideh \
-                      + kernel_height_indices * dilationh
-            w_index = (hw_fuse_indices % width_out) * stridew \
-                      + kernel_width_indices * dilationw
+            h_index = (hw_fuse_indices // width_out) * strideh + kernel_height_indices * dilationh
+            w_index = (hw_fuse_indices % width_out) * stridew + kernel_width_indices * dilationw
             c0_index = fmap_c0_indices
             # if index belongs to padding and 16 align, select 0
             return tvm.select(tvm.any(h_index < pad_top,
@@ -832,7 +798,7 @@ class Conv3dBackpropFilter:
                                       w_index < pad_left,
                                       w_index > fmap_width + pad_left - 1),
                               tvm.const(0.0, fmap_dtype),
-                              fmap(n_index, c1_index, h_index-pad_top, \
+                              fmap(n_index, c1_index, h_index-pad_top,
                                    w_index-pad_left, c0_index))
 
         _, _, pad_top, _, pad_left, pad_right = self.pad
@@ -862,7 +828,7 @@ class Conv3dBackpropFilter:
                 'load2d_flag': False
             })
 
-    def fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
+    def _fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
         """
         compute definiton of loading fmap to L1
 
@@ -881,15 +847,13 @@ class Conv3dBackpropFilter:
             do coordinate calculation
 
             """
-            fmap_width = self.shapelist['fmap_6hd'][4]
-            fmap_channel_1 = self.shapelist['fmap_6hd'][2]
-            grads_depth = self.shapelist['grads_6hd'][1]
+            fmap_width = self.shape_list['fmap_6hd'][4]
+            fmap_channel_1 = self.shape_list['fmap_6hd'][2]
+            grads_depth = self.shape_list['grads_6hd'][1]
             stride_depth = self.stride[0]
-            batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices \
-            = indices
+            batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices = indices
             batch_size_index = batch_indices // grads_depth
-            fmap_depth_index = batch_indices % grads_depth * stride_depth + \
-                               fmap_c1_indices // fmap_channel_1
+            fmap_depth_index = batch_indices % grads_depth * stride_depth + fmap_c1_indices // fmap_channel_1
             fmap_channel_1_index = fmap_c1_indices % fmap_channel_1
             fmap_height_index = (hw_mad_indices // fmap_width)
             fmap_width_index = (hw_mad_indices % fmap_width)
@@ -911,7 +875,7 @@ class Conv3dBackpropFilter:
                 "load2d_flag": True
             })
 
-    def fmap_2_fractal(self, fmap_shape_fmap_matrix, fmap_2_col_matrix,
+    def _fmap_2_fractal(self, fmap_shape_fmap_matrix, fmap_2_col_matrix,
                        fmap_dtype):
         """
         compute definiton of loading fmap to L0B
@@ -946,24 +910,20 @@ class Conv3dBackpropFilter:
 
             """
 
-            _, hw_fuse, _, kernel_height, kernel_width, _ \
-                = self.shapelist['fmap_original_matrix']
+            _, hw_fuse, _, kernel_height, kernel_width, _ = self.shape_list['fmap_original_matrix']
 
-            n_vm_index, hw_mad_1_indices, fkk_indices, \
-            fmap_c0_indices, hw_mad_0_indices \
-                = indices
+            n_vm_index, hw_mad_1_indices, fkk_indices, fmap_c0_indices, hw_mad_0_indices = indices
 
             hw_vm_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
             c1_vm_index = ((
                 (fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE) //
-                           kernel_width) // kernel_height
+                kernel_width) // kernel_height
             kh_vm_index = ((
                 (fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE) //
-                           kernel_width) % kernel_height
+                kernel_width) % kernel_height
             kw_vm_index = ((fkk_indices * BLOCK_SIZE + fmap_c0_indices) //
                            BLOCK_SIZE) % kernel_width
-            c0_vm_index = \
-                (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+            c0_vm_index = (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
 
             # select padding and 16 align
             return tvm.select(
@@ -978,13 +938,14 @@ class Conv3dBackpropFilter:
                            name='fmap_2_col_fractal',
                            tag='fmap_2_col_fractal')
 
-    def mad(self, mad_shape, grads, fmap):
+    def _mad(self, mad_shape, grads, fmap):
         """
         calculate mad result tensor
         Parameters
         ----------
         mad_shape : result shape
-        (kernel_depth*fmap_channel_1*kernel_height*kernel_width, grads_channel, fmap_c0)
+        (kernel_depth*fmap_channel_1*kernel_height*kernel_width,
+         grads_channel, fmap_c0)
 
         grads : tensor in L0A
         grads_shape_fractal = (batch_size*grads_depth,
@@ -996,7 +957,7 @@ class Conv3dBackpropFilter:
         fmap : tensor in L0B
         fmap_shape_fmap_matrix = (batch_size*grads_depth,
                                   hw_mad//block_size_K,
-                                  kernel_depth*fmap_channel_1*kernel_height*kernel_width,
+                                  kernel_depth*fmap_channel_1* kernel_height*kernel_width,
                                   fmap_c0,
                                   block_size_K)
 
@@ -1005,8 +966,7 @@ class Conv3dBackpropFilter:
         None
         """
 
-        batch_size, grads_depth, _, grads_height, grads_width, _ \
-            = self.shapelist['grads_6hd']
+        batch_size, grads_depth, _, grads_height, grads_width, _ = self.shape_list['grads_6hd']
         hw_fuse = grads_height * grads_width
 
         batch_axis = tvm.reduce_axis((0, batch_size * grads_depth),
@@ -1034,8 +994,9 @@ class Conv3dBackpropFilter:
         return c_col
 
 
-@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
-                       (list, tuple), (list, tuple), (list, tuple), str, str)
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
+                             (list, tuple), (list, tuple), (list, tuple),
+                             str, str)
 def conv3d_backprop_filter_compute(input_x,
                                    out_backprop,
                                    filter_sizes,
@@ -1053,13 +1014,13 @@ def conv3d_backprop_filter_compute(input_x,
 
     out_backprop : the grads data, tvm.placeholder, 6hd shape
 
-    filter_sizes : 4-D shape, specifies the filter sizes
+    filter_sizes : 5-D shape, specifies the filter sizes
 
-    strides : 2-D shape, specifies in height and width dimension
+    strides : 3-D shape, specifies in depth, height and width dimension
 
-    padding : 4-D shape, specifies in up/down/left/right dimension
+    padding : 6-D shape, specifies in up/down/left/right dimension
 
-    dilations : 4-D shape, specifies in batch/channel/height/width dimension
+    dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
 
     res_dtype : the output data type
 
@@ -1082,6 +1043,6 @@ def conv3d_backprop_filter_compute(input_x,
                                             dilations=dilations,
                                             res_dtype=res_dtype,
                                             kernel_name=kernel_name)
-    deconv_dw_object.deconv_dw_access()
+    deconv_dw_object._deconv_dw_access()
 
     return deconv_dw_object.res_tensor

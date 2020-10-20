@@ -1,37 +1,34 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 split_d
 """
-from __future__ import absolute_import
+import functools
 
-from functools import reduce as functools_reduce
 import numpy as np
-import te.lang.cce
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
 from te import tik
-from te import platform as tbe_platform
-from te.platform.cce_build import build_config
-from topi.cce import util
-from impl.copy_only import copy_only
-from impl.split_last_dim import split_last_dim
-from impl.split_last_dim import check_use_last_dim_branch
-from impl.split_last_dim import SplitWith5HD
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl import copy_only
+from impl import split_last_dim
+from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 # one block size
 BLOCK_SIZE = 32
@@ -55,14 +52,14 @@ class SplitMov:
         """init split_d base parameters
         """
         self.tik_instance = tik.Tik()
-        self.aicore_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
         self.kernel_name = kernel_name
         self.dtype = dtype
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.one_block_ele = 32 // self.dtype_size
         self.half_ub_ele = (
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) //
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) //
             self.dtype_size // 2 - self.one_block_ele)
 
         if not size_splits:
@@ -348,17 +345,17 @@ class SplitLastDimVnv:
         """init split_d base parameters
         """
         self.tik_instance = tik.Tik()
-        self.aicore_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
         self.kernel_name = kernel_name
         self.dtype = dtype
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.input_shape = shape
-        self.input_size = functools_reduce(lambda x, y: x * y, self.input_shape)
+        self.input_size = functools.reduce(lambda x, y: x * y, self.input_shape)
         self.split_dim = split_dim
         self.num_split = num_split
         self.output_shapes = output_shapes
-        self.output_size = functools_reduce(lambda x, y: x * y,
+        self.output_size = functools.reduce(lambda x, y: x * y,
                                             self.output_shapes[0])
         self.input_tensor, self.output_tensors = self.init_gm_tensor()
 
@@ -660,12 +657,12 @@ def split_d_compute(input_value,
     output_tensor_list: list
         the list of output tensors, output tensor type is TVM tensor.
     """
-    shape = te.lang.cce.util.shape_to_list(input_value.shape)
+    shape = shape_util.shape_to_list(input_value.shape)
     size = shape[split_dim] // num_split
 
     size_splits = [size] * num_split
 
-    output_shape_list, output_tensor_list = te.lang.cce.split_compute_com(
+    output_shape_list, output_tensor_list = tbe.split_compute_com(
         input_value, split_dim, size_splits)
 
     return output_shape_list, output_tensor_list
@@ -737,7 +734,7 @@ def op_select_format(input_value,
         is_support_nz = True
 
     split_with_5hd_not_align = \
-        SplitWith5HD(input_value, output_data,
+        split_last_dim.SplitWith5HD(input_value, output_data,
                      split_dim, num_split, kernel_name)
     is_support_other_5hd = split_with_5hd_not_align.check_op_select()
 
@@ -766,17 +763,18 @@ def op_select_format(input_value,
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = gen_param(
+    input0 = util_select_op_base.gen_param(
         classify="input0", name="x", datatype=dtype_str, format=format_str)
-    output0 = gen_param(
+    output0 = util_select_op_base.gen_param(
         classify="output0", name="y", datatype=dtype_str, format=format_str)
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-@check_op_params(REQUIRED_INPUT, DYNAMIC_OUTPUT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def split_d(input_value,
             output_data,
             split_dim,
@@ -804,7 +802,7 @@ def split_d(input_value,
     input_format = input_value.get("format")
     ori_format = input_value.get("ori_format")
     if input_format == "NC1HWC0":
-        split_dim = util.axis_transfrom_5d(split_dim, ori_format)
+        split_dim = shape_util.axis_transform_5d(split_dim, ori_format)
 
     shape = input_value.get("shape")
     dtype = input_value.get("dtype")
@@ -812,19 +810,20 @@ def split_d(input_value,
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
 
-    check_shape(shape, param_name="input_value")
-    check_dtype(dtype_lower, check_list, param_name="input_value")
+    para_check.check_shape(shape, param_name="input_value")
+    para_check.check_dtype(dtype_lower, check_list, param_name="input_value")
 
     shape_len = len(shape)
-    split_dim = util.axis_check(shape_len, split_dim)
+    split_dim = shape_util.axis_check(shape_len, split_dim)
 
     if num_split < 1:
-        raise RuntimeError("The num_split (%d) must be greater or equal to %d" %
-                           (num_split, 1))
+        expected_value = "must be greater or equal to 1"
+        real_value = "less to 1"
+        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
+                                                           expected_value, real_value)
 
-    split_with_5hd_not_align = \
-        SplitWith5HD(input_value, output_data,
-                     split_dim, num_split, kernel_name)
+    split_with_5hd_not_align = split_last_dim.SplitWith5HD(input_value, output_data,
+                                                           split_dim, num_split, kernel_name)
     if split_with_5hd_not_align.check_5hd_vnchw():
         split_with_5hd_not_align.do_5hd_split_cut_by_batch()
         return
@@ -835,7 +834,7 @@ def split_d(input_value,
             "split_dim (%d)" % (num_split, shape[split_dim]))
 
     if num_split == 1:
-        copy_only(input_value, input_value, kernel_name)
+        copy_only.copy_only(input_value, input_value, kernel_name)
         return
 
     split_mov = SplitMov(shape, dtype_lower, split_dim, num_split, None,
@@ -844,7 +843,7 @@ def split_d(input_value,
     new_split_dim = split_mov.split_dim
     new_size_splits = split_mov.size_splits
     new_output_shapes = split_mov.output_shapes
-    input_size = functools_reduce(lambda x, y: x * y, new_shape)
+    input_size = functools.reduce(lambda x, y: x * y, new_shape)
 
     if dtype_lower == "float16" and new_split_dim == len(new_shape) - 1 and \
             new_size_splits[0] == 1 and num_split <= 16 \
@@ -854,9 +853,9 @@ def split_d(input_value,
         split_vnc.split_last_dim_vnc_compute()
         return
 
-    if check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim,
+    if split_last_dim.check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim,
                                  num_split, new_size_splits):
-        split_last_dim(new_shape, dtype_lower, new_split_dim, num_split,
+        split_last_dim.split_last_dim(new_shape, dtype_lower, new_split_dim, num_split,
                        new_size_splits, kernel_name)
         return
 
@@ -868,10 +867,8 @@ def split_d(input_value,
     output_shape_list, output_tensor_list = split_d_compute(
         data, output_data, split_dim, num_split, kernel_name)
 
-    sch, build_list = te.lang.cce.split_schedule_com(data, split_dim,
-                                                     output_shape_list,
-                                                     output_tensor_list)
+    sch, build_list = tbe.split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
 

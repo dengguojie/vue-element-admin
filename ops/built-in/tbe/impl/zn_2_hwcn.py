@@ -1,34 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-zn_2_nchw
+zn_2_hwcn
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from te import platform as cce
+from te import platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.cce_build import build_config
-import te.platform.cce_params as cce_params
-from topi.cce import util
 
 # available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 # available number of cores
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+AICORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 # pylint: disable=locally-disabled,too-many-lines
@@ -67,8 +61,8 @@ def _get_param_more_row(tvm_ib, src_shape, dtype):
 
     """
     device_core_num = AICORE_NUM
-    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    float_size = tbe_platform.get_bit_len(dtype) // 8
+    cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // float_size
     ub_ele = ((UB_SIZE_B - 32) // 2) // float_size
     _, n_no, n_ni, c_0 = src_shape
     row_ele = n_no*n_ni*c_0
@@ -450,15 +444,15 @@ def _more_row_ir(dst, data, c_0):
 
     data_ub = _new_alloc(tvm_ib, dst.dtype,
                          param.get('num_row_one_core')*param.get("row_ele"),
-                         "data_ub", scope=cce.scope_ubuf)
+                         "data_ub", scope=tbe_platform.scope_ubuf)
     data_res = _new_alloc(tvm_ib, dst.dtype,
                           param.get('num_row_one_core')*param.get("row_ele"),
-                          "data_res", scope=cce.scope_ubuf)
-    reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
+                          "data_res", scope=tbe_platform.scope_ubuf)
+    reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=tbe_platform.scope_reg)
     data_tail = _new_alloc(tvm_ib, dst.dtype, param.get('cp_align_len'),
-                           "data_tail", scope=cce.scope_ubuf)
+                           "data_tail", scope=tbe_platform.scope_ubuf)
     reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
-                               scope=cce.scope_reg)
+                               scope=tbe_platform.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
                           name="num_g") as num_g:
@@ -495,8 +489,8 @@ def _get_param_split_row(tvm_ib, src_shape, dtype):
 
     """
     device_core_num = AICORE_NUM
-    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
+    float_size = tbe_platform.get_bit_len(dtype) // 8
+    cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // float_size
     ub_ele = ((UB_SIZE_B - 32) // 2) // float_size
     n_row, n_no, n_ni, c_0 = src_shape
     num_ele_unit = n_ni*c_0
@@ -802,16 +796,16 @@ def _split_row_ir(dst, data):
     data_ub = _new_alloc(tvm_ib, dst.dtype,
                          param.get('num_unit_one_core')
                          * param.get("num_ele_unit"),
-                         "data_ub", scope=cce.scope_ubuf)
+                         "data_ub", scope=tbe_platform.scope_ubuf)
     data_res = _new_alloc(tvm_ib, dst.dtype,
                           param.get('num_unit_one_core')
                           * param.get("num_ele_unit"),
-                          "data_res", scope=cce.scope_ubuf)
-    reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
+                          "data_res", scope=tbe_platform.scope_ubuf)
+    reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=tbe_platform.scope_reg)
     data_tail = _new_alloc(tvm_ib, dst.dtype, param.get('cp_align_len'),
-                           "data_tail", scope=cce.scope_ubuf)
+                           "data_tail", scope=tbe_platform.scope_ubuf)
     reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
-                               scope=cce.scope_reg)
+                               scope=tbe_platform.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
                           name="num_g") as num_g:
@@ -956,16 +950,16 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "hwcn":
         raise RuntimeError("dst_format must be HWCN !")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 4, 4)
-    util.check_shape_rule(dst_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 4, 4)
+    para_check.check_shape_rule(dst_shape, 4, 4)
+    para_check.check_tensor_shape_size(src_shape)
+    para_check.check_tensor_shape_size(dst_shape)
 
     if src_shape[2] != 16 or src_shape[3] != 16:
         raise RuntimeError(
@@ -988,10 +982,10 @@ def _get_ir_branch(src_shape, dtype):
     judge ir node builder branch for nchw float32 scene
 
     """
-    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    float_size = tbe_platform.get_bit_len(dtype) // 8
     ub_bytes = UB_SIZE_B - 32
     ub_half = ub_bytes // 2
-    float_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    float_size = tbe_platform.get_bit_len(dtype) // 8
     n_no = src_shape[1]
     row_bytes = n_no*16*16*float_size
     if row_bytes <= ub_half:
@@ -1000,7 +994,7 @@ def _get_ir_branch(src_shape, dtype):
         return "split_row"
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def zn_2_hwcn(src, dst, src_format, dst_format, kernel_name='zn_2_hwcn'):
     """
     algorithm: zn_2_hwcn
@@ -1049,5 +1043,5 @@ def zn_2_hwcn(src, dst, src_format, dst_format, kernel_name='zn_2_hwcn'):
 
     tensor_list = [data, res]
     sch = tvm.create_schedule(res.op)
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)

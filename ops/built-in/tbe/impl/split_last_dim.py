@@ -1,24 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-split_for_last_dim
+split_last_dim
 """
-
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
+
 
 # 1111000011110000111100001111000011110000111100001111000011110000
 MASK_FOR_11110000 = 17361641481138401520
@@ -76,7 +76,7 @@ class SplitLastDim():
         """
         self.src_shape = shape
         self.src_dtype = dtype
-        self.data_size = util.check_tensor_shape_size(list(self.src_shape))
+        self.data_size = para_check.check_tensor_shape_size(list(self.src_shape))
         self.split_dim = split_dim
         self.num_split = num_split
         self.split_dim_size = self.src_shape[self.split_dim]
@@ -526,8 +526,10 @@ def check_use_last_dim_branch(shape,
         data_len_one_block = 16
     else:
         data_len_one_block = 8
-    is_shape_support = ((out_split_size % data_len_one_block == 0 and out_split_size < half_ub)
-                        or out_split_size < data_len_one_block)
+    is_shape_support = ((out_split_size % data_len_one_block == 0 and
+                         out_split_size < half_ub and shape[split_dim] //
+                         data_len_one_block < 65535) or
+                        out_split_size < data_len_one_block)
 
     return is_shape_support and is_dtype_support and is_split and is_last_dim
 
@@ -575,7 +577,7 @@ class SplitWith5HD:
         self.format = input_value.get("format")
         self.ori_format = input_value.get("ori_format")
         self.output_data = output_data
-        self.src_size = util.check_tensor_shape_size(list(self.src_shape))
+        self.src_size = para_check.check_tensor_shape_size(list(self.src_shape))
         self.dst_size = self.src_size // num_split
 
         self.split_dim = split_dim

@@ -1,13 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @file  tile_fusion_pass.cpp
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief tile fusion pass(tile --> tile_d)
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * author z00512353
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file tile_fusion_pass.cpp
+ * \brief tile fusion pass(tile --> tile_d)
+ */
 #include "tile_fusion_pass.h"
 
 #include <iostream>
@@ -27,21 +37,20 @@
 using namespace ge;
 namespace fe {
 
-static const char *FUSED_NODE = "Tile";
+static const char* FUSED_NODE = "Tile";
 
 static const std::string PATTERN_FUSEDNODE = "FusedNodeTile";
 
 static const int64_t MULTIPLE_NUM = 1;
 
-vector<FusionPattern *> ConstToAttrTilePass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
+vector<FusionPattern*> ConstToAttrTilePass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
 
-  FusionPattern *pattern = new(std::nothrow) FusionPattern("TileConstToAttrFusion");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("TileConstToAttrFusion");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-  return patterns);
+                    return patterns);
 
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE})
-      .SetOutput(PATTERN_FUSEDNODE);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
 
   patterns.push_back(pattern);
 
@@ -50,88 +59,93 @@ vector<FusionPattern *> ConstToAttrTilePass::DefinePatterns() {
 
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
-Status ConstToAttrTilePass::Fusion(ge::ComputeGraph &graph,
-                                   Mapping &mapping,
-                                   vector<ge::NodePtr> &fusionNodes) {
-
+Status ConstToAttrTilePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   std::string fusionOpType = "TileD";
   std::vector<PassAttrInfo> tileAttrInfo;
   PassAttrInfo multiples = {1, "multiples", "SetListInt"};
   tileAttrInfo.push_back(multiples);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Begin to do tile fusion pass.");
 
-//  PatternFusionUtil patternFusionUtil;
+  //  PatternFusionUtil patternFusionUtil;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
-           return PARAM_INVALID);
-  ge::OpDescPtr fusionDescPtr =
-      PatternFusionUtil::GetFusionOpDesc(fusedNode, fusionOpType, tileAttrInfo);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is nullptr, fusion failed."),
+                    return PARAM_INVALID);
+  ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(fusedNode, fusionOpType, tileAttrInfo);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion op desc is nullptr."),
+                    return NOT_CHANGED);
 
   // get const_data
-  Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
+  Operator tileOp = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
   Tensor data;
-  if (GRAPH_SUCCESS != op.GetInputConstData("multiples", data)) {
+  if (tileOp.GetInputConstData("multiples", data) != GRAPH_SUCCESS) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "GetInputConstData of multiples failed.");
     return false;
   }
-  DataType dtype = op.GetInputDesc("multiples").GetDataType();
+  DataType dtype = tileOp.GetInputDesc("multiples").GetDataType();
   std::vector<int64_t> const_data;
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*) data.GetData();
+    int32_t* const_data_ptr = (int32_t*)data.GetData();
     size = data.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
-      const_data.push_back((int32_t) ((*(const_data_ptr + i))));
+      const_data.push_back((int32_t)((*(const_data_ptr + i))));
     }
   } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*) data.GetData();
+    int64_t* const_data_ptr = (int64_t*)data.GetData();
     size = data.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
-      const_data.push_back(((int64_t) (*(const_data_ptr + i))));
+      const_data.push_back(((int64_t)(*(const_data_ptr + i))));
     }
   } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Input multiples not support this type");
   }
 
+  // get with control edge
+  auto constControlAnchors = fusedNode->GetInAllNodes().at(1)->GetInControlAnchor()->GetPeerOutControlAnchors();
+  auto tileControlAnchors = fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors();
   ge::NodePtr fusion_node = nullptr;
-  for (size_t i = 0; i < const_data.size(); ++i) {
-    if (const_data[i] != MULTIPLE_NUM) {
+  for (size_t index = 0; index < const_data.size(); ++index) {
+    if (const_data[index] != MULTIPLE_NUM) {
       FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op TileD Not Supported."),
-          return NOT_CHANGED);
-      Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType, tileAttrInfo, fusion_node);
-      if (ret != SUCCESS) {
+                        return NOT_CHANGED);
+      Status result = PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType, tileAttrInfo, fusion_node);
+      if (result != SUCCESS) {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Tile has input which is not a CONST, graph not changed.");
         return NOT_CHANGED;
       }
+      // link control anchor
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to link control anchor.");
+      for (auto outControlAnchor : constControlAnchors) {
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outControlAnchor, fusion_node->GetInControlAnchor()) != SUCCESS,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out control edge failed."), return FAILED);
+      }
+      for (auto outControlAnchor : tileControlAnchors) {
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outControlAnchor, fusion_node->GetInControlAnchor()) != SUCCESS,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out control edge failed."), return FAILED);
+      }
       fusionNodes.push_back(fusion_node);
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Tile fusion pass end.");
       return SUCCESS;
     }
   }
   // connect data anchor
   auto preOutDataAnchor = fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor();
-  for (auto inDataAnchor :
-       fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0),
-                                        inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutDataAnchor,
-                                    inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+  for (auto inDataAnchor : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutDataAnchor, inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
   // connect control anchor
   ge::NodePtr preNode = nullptr;
   preNode = fusedNode->GetInDataAnchor(0)->GetOwnerNode();
   auto preOutControlAnchor = preNode->GetOutControlAnchor();
   if (fusedNode->GetOutControlAnchor() != nullptr) {
-    for (auto inControlAnchor :
-         fusedNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutControlAnchor(),
-                                          inControlAnchor) != SUCCESS,
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
-      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutControlAnchor,
-                                       inControlAnchor) != SUCCESS,
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out control edge failed."), return FAILED);
+    for (auto inControlAnchor : fusedNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutControlAnchor, inControlAnchor) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out control edge failed."), return FAILED);
     }
   }
 
@@ -141,18 +155,17 @@ Status ConstToAttrTilePass::Fusion(ge::ComputeGraph &graph,
   ge::NodePtr constNode = constAnchorPtr1->GetOwnerNode();
   if (PatternFusionUtil::GetOutEdgeSize(constNode) == 0) {
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode->GetName().c_str()),
-             return FAILED);
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode->GetName().c_str()),
+                      return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode->GetName().c_str());
   }
   // remove node
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", fusedNode->GetName().c_str()),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", fusedNode->GetName().c_str()),
+                    return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove Node:[%s].", fusedNode->GetName().c_str());
 
   return SUCCESS;
 }
-REGISTER_PASS("TileConstToAttrFusion", BUILT_IN_GRAPH_PASS, ConstToAttrTilePass
-);
-}
+REGISTER_PASS("TileConstToAttrFusion", BUILT_IN_GRAPH_PASS, ConstToAttrTilePass);
+}  // namespace fe

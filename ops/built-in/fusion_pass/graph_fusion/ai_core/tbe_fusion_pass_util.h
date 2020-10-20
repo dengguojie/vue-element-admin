@@ -1,5 +1,25 @@
-#ifndef FE_TBE_FUSION_PASS_UTIL_H
-#define FE_TBE_FUSION_PASS_UTIL_H
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file tbe_fusion_pass_util.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_FUSION_PASS_UTIL_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_FUSION_PASS_UTIL_H_
 
 #include <vector>
 #include <string>
@@ -17,8 +37,8 @@ namespace fe {
  * @param [in] graph
  * @return status whether insert success
  */
-Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex,
-                              const vector<int64_t>& permList, ge::ComputeGraph &graph);
+Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex, const vector<int64_t>& permList,
+                              ge::ComputeGraph& graph);
 
 /**
  * Insert a transpose after one output of one op
@@ -29,32 +49,30 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
  * @return status whether insert success
  */
 
-Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex,
-                             const vector<int64_t>& permList, ge::ComputeGraph &graph);
+Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex, const vector<int64_t>& permList,
+                             ge::ComputeGraph& graph);
 
 class TbeFusionPassUtil {
  public:
-/**
- * Get int type const value from tensor data
- * @param [in] data const tensor data
- * @param [in] data_type DT_INT8, DT_INT16, DT_INT32, DT_INT64
- * @param [out] const_values const int values
- * @return true:success, false:failed.
- */
-  static bool GetConstIntData(const ge::Tensor& data, ge::DataType data_type,
-                              std::vector<int64_t>& const_values);
+  /**
+   * Get int type const value from tensor data
+   * @param [in] data const tensor data
+   * @param [in] data_type DT_INT8, DT_INT16, DT_INT32, DT_INT64
+   * @param [out] const_values const int values
+   * @return true:success, false:failed.
+   */
+  static bool GetConstIntData(const ge::Tensor& data, ge::DataType data_type, std::vector<int64_t>& const_values);
 
   /**
- * Get int type const value from tensor data
- * @param [in] op Operator
- * @param [in] name name of the input
- * @param [out] values const int values
- * @return true:success, false:failed.
- */
-  static bool GetConstIntData(const ge::Operator& op, const std::string& name,
-                              std::vector<int64_t>& values);
+   * Get int type const value from tensor data
+   * @param [in] op Operator
+   * @param [in] name name of the input
+   * @param [out] values const int values
+   * @return true:success, false:failed.
+   */
+  static bool GetConstIntData(const ge::Operator& op, const std::string& name, std::vector<int64_t>& values);
 };
 
 }  // namespace fe
 
-#endif  // FE_TBE_FUSION_PASS_UTIL_H
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_FUSION_PASS_UTIL_H_

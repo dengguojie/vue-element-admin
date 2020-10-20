@@ -1,27 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-reduce_min
+reduce_min_d
 """
-
+import te.lang.cce as tbe
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-import te.lang.cce
-from topi import generic
-from topi.cce import util
 from impl import reduce_min_d_tik
-from te.utils.op_utils import *
+
 
 # define the type of None
 NONETYPE = type(None)
@@ -53,7 +52,7 @@ def reduce_min_d_compute(input_min, output_min, axis,
     res: TVM tensor
         the reduced tensor
     """
-    shape = te.lang.cce.util.shape_to_list(input_min.shape)
+    shape = shape_util.shape_to_list(input_min.shape)
     shape_len = len(shape)
     if not axis:
         axis = range(shape_len)
@@ -61,15 +60,15 @@ def reduce_min_d_compute(input_min, output_min, axis,
         axis = list(axis)
     input_dtype = input_min.dtype.lower()
 
-    res_reduce_min = te.lang.cce.reduce_min(input_min, axis=axis,
-                                            keepdims=keep_dims)
-    res = te.lang.cce.cast_to(res_reduce_min, input_dtype)
+    res_reduce_min = tbe.reduce_min(input_min, axis=axis, keepdims=keep_dims)
+    res = tbe.cast_to(res_reduce_min, input_dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT),
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT),
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_min_d(input_min, output_min, axis,
                  keep_dims=None, kernel_name="reduce_min_d"):
     """
@@ -96,10 +95,10 @@ def reduce_min_d(input_min, output_min, axis,
     """
     shape_input = input_min.get("shape")
     dtype_input = input_min.get("dtype")
-    check_shape(shape_input, param_name="input_min")
+    para_check.check_shape(shape_input, param_name="input_min")
 
     check_list = ("float16", "float32", "int8", "uint8")
-    check_dtype(dtype_input.lower(), check_list, param_name="input_min")
+    para_check.check_dtype(dtype_input.lower(), check_list, param_name="input_min")
 
     shape_len = len(shape_input)
 
@@ -109,12 +108,12 @@ def reduce_min_d(input_min, output_min, axis,
     if hasattr(axis, 'index'):
         axis = list(axis)
 
-    axis = util.axis_check(shape_len, axis)
+    axis = shape_util.axis_check(shape_len, axis)
 
-    is_5hdc = util.check_and_init_5hdc_reduce_support(input_min, axis)
+    is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_min, axis)
     if not is_5hdc:
-        shape_input, axis = util.shape_refine(list(shape_input), axis)
-        shape_input, axis = util.simplify_axis_shape(shape_input, axis)
+        shape_input, axis = shape_util.shape_refine(list(shape_input), axis)
+        shape_input, axis = shape_util.simplify_axis_shape(shape_input, axis)
 
     data_input = tvm.placeholder(shape_input, name="data_input_" + kernel_name,
                                  dtype=dtype_input.lower())
@@ -131,8 +130,8 @@ def reduce_min_d(input_min, output_min, axis,
             res.ori_shape = input_min["ori_shape"]
             res.ori_format = input_min["ori_format"]
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
 
         config = {"name": kernel_name,
                   "tensor_list": [data_input, res]}
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

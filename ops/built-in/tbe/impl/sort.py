@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from topi.cce import util
@@ -5,7 +8,7 @@ from functools import reduce as functools_reduce
 
 PROPOSAL_NUM = 8
 FP16_BYTE = 2
-MAX_NUM = 7920
+MAX_NUM = 7040
 
 
 @fusion_manager.register("sort")
@@ -42,9 +45,9 @@ def cheak(x, y1, y2, axis, kernel_name):
     num = shape[axis]
 
     if num > MAX_NUM:
-        raise RuntimeError("Num in dim is too big (>7920).")
+        raise RuntimeError("Num in dim is too big (>7040).")
 
-    return shape, dtype, axis, allnum, num
+    return shape, dtype, allnum, num
 
 
 def vbs16(tik_instance, num, total, input_ub, descending):
@@ -312,6 +315,54 @@ def moveout(tik_instance, descending, total, num, data_out, index, input_ub, des
     return data_out, data_indices
 
 
+def sort_compute(tik_instance, dtype, total, i0, descending, num, distance, shape, big_distance, data_out, data_indices,
+                 input_gm, L):
+    """
+    Function: sortcompute in UB.
+    Modify : 2020-08-03
+
+    Attention : This way is unstable (can't compare two scalar).
+    Init base parameters
+    Parameters
+    ----------
+    dtype, total, i0, descending, num, distance, shape, big_distance, L : for index compute
+    data_out, data_indices, input_gm : for data move
+    ----------
+    """
+
+    input_ub = tik_instance.Tensor(dtype, [total * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
+    data_out_ub_ = tik_instance.Tensor(dtype, [16], name="data_out_ub_", scope=tik.scope_ubuf)
+    data_indices_ub_int_ = tik_instance.Tensor("int32", [16], name="data_indices_ub_int_", scope=tik.scope_ubuf)
+
+    index = 0
+    big_index = 0
+    for i1 in range(L - 1):
+        index += (i0 % shape[i1]) * distance[i1]
+        big_index += (i0 % shape[i1]) * big_distance[i1]
+        i0 = i0 // shape[i1]
+
+    # 1. Move data from OUT to UB
+    tik_instance.data_move(input_ub[0], input_gm[index], 0, 1, total // 16, 0, 0)
+    threadNum = 2 if num > 1 else 1
+    with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
+        input_ub[(num - 1 - i2) * PROPOSAL_NUM + 4].set_as(input_ub[(num - 1 - i2)])
+        data_indices_ub_int_.set_as(num - 1 - i2)
+        tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
+        input_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(data_out_ub_[0])
+
+    # 2. vbs16
+    input_ub, dest_pos_ub = vbs16(tik_instance, num, total, input_ub, descending)
+
+    # 3. vms4
+    input_ub, dest_pos_ub = vms4(tik_instance, num, total, input_ub, dest_pos_ub)
+
+    # 4. Move Data from UB to OUT
+    data_out, data_indices = moveout(tik_instance, descending, total, num, data_out, big_index, input_ub,
+                                     dest_pos_ub, data_indices, threadNum)
+
+    return data_out, data_indices
+
+
 @util.check_input_type(dict, dict, dict, int, bool, str)
 def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     """
@@ -333,56 +384,62 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
         the name of the operator
     ----------
     """
-    shape, dtype, axis, allnum, num = cheak(x, y1, y2, axis, kernel_name)
+    shape, dtype, allnum, num = cheak(x, y1, y2, axis, kernel_name)
 
     tik_instance = tik.Tik(tik.Dprofile())
-
-    input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
-    data_out = tik_instance.Tensor(dtype, shape, name="data_out", scope=tik.scope_gm)
-    data_indices = tik_instance.Tensor("int32", shape, name="data_indices", scope=tik.scope_gm)
 
     add16 = (16 - (num % 16)) % 16
     total = num + add16
 
+    big_shape = list(shape)
+    big_shape[-1] = total
+
+    input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
+    data_out = tik_instance.Tensor(dtype, big_shape, name="data_out", scope=tik.scope_gm, is_workspace=True)
+    data_indices = tik_instance.Tensor("int32", big_shape, name="data_indices", scope=tik.scope_gm, is_workspace=True)
+    data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
+    data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
+
     # to figure the index of input_gm
     L = len(shape)
     distance = []
+    big_distance = []
     tmp = allnum
+    big_tmp = allnum // num * total
 
-    for i in range(L):
+    for i in range(L - 1):
         tmp = tmp // shape[i]
         distance.append(tmp)
+        big_tmp = big_tmp // shape[i]
+        big_distance.append(big_tmp)
 
-    with tik_instance.for_range(0, allnum // num, block_num=allnum // num) as i0:
-        input_ub = tik_instance.Tensor(dtype, [total * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
-        data_out_ub_ = tik_instance.Tensor(dtype, [16], name="data_out_ub_", scope=tik.scope_ubuf)
-        data_indices_ub_int_ = tik_instance.Tensor("int32", [16], name="data_indices_ub_int_", scope=tik.scope_ubuf)
+    rounds = allnum // num
 
-        index = 0
-        for i1 in range(L):
-            if i1 != axis:
-                index += (i0 % shape[i1]) * distance[i1]
-                i0 = i0 // shape[i1]
+    available_aicore_num = tik.Dprofile().get_aicore_num()
+    used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
+    batch_num_per_aicore_process = rounds // used_aicore_num
+    batch_tail = rounds % used_aicore_num
 
-        # 1. Move data from OUT to UB
-        tik_instance.data_move(input_ub[0], input_gm[index], 0, 1, total // 16, 0, 0)
-        threadNum = 2 if num > 1 else 1
-        with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
-            input_ub[(num - 1 - i2) * PROPOSAL_NUM + 4].set_as(input_ub[(num - 1 - i2)])
-            data_indices_ub_int_.set_as(num - 1 - i2)
-            tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
-            input_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(data_out_ub_[0])
+    with tik_instance.for_range(0, used_aicore_num, block_num=used_aicore_num) as i:
+        with tik_instance.for_range(0, batch_num_per_aicore_process) as k:
+            data_out, data_indices = sort_compute(tik_instance, dtype, total, i + k * used_aicore_num, descending,
+                                                  num, distance, shape, big_distance, data_out, data_indices, input_gm,
+                                                  L)
+        with tik_instance.if_scope(i < batch_tail):
+            data_out, data_indices = sort_compute(tik_instance, dtype, total,
+                                                  batch_num_per_aicore_process * used_aicore_num + i, descending, num,
+                                                  distance, shape, big_distance, data_out, data_indices, input_gm, L)
 
-        # 2. vbs16
-        input_ub, dest_pos_ub = vbs16(tik_instance, num, total, input_ub, descending)
+    float_ub = tik_instance.Tensor("float16", [total], name="float_ub", scope=tik.scope_ubuf)
+    int_ub = tik_instance.Tensor("int32", [total], name="int_ub", scope=tik.scope_ubuf)
 
-        # 3. vms4
-        input_ub, dest_pos_ub = vms4(tik_instance, num, total, input_ub, dest_pos_ub)
+    with tik_instance.for_range(0, rounds) as i:
+        tik_instance.data_move(float_ub[0], data_out[i * total], 0, 1, total // 16, 0, 0)
+        tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, total // 16, 0, 0)
 
-        # 4. Move Data from UB to OUT
-        data_out, data_indices = moveout(tik_instance, descending, total, num, data_out, index, input_ub,
-                                         dest_pos_ub, data_indices, threadNum)
+        tik_instance.data_move(int_ub[0], data_indices[i * total], 0, 1, total // 8, 0, 0)
+        tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, total // 8, 0, 0)
 
-    tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[input_gm], outputs=[data_out, data_indices])
+    tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[input_gm], outputs=[data_out_, data_indices_])
 
     return tik_instance

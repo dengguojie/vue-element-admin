@@ -1,28 +1,27 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 crop
 """
 from te import tik
-from te import platform as tbe_platform
-from te.utils.op_utils import *
-from topi.cce import util
+import te.platform as tbe_platform
+from te.utils import para_check
+
 from impl import constant_util as constant
 from impl import common_util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-
+from impl.util import util_select_op_base
 
 
 # reserve size for ub
@@ -30,8 +29,8 @@ RESERVE_SIZE = 16 * 1024
 
 
 # pylint: disable=invalid-name,too-many-arguments,unused-argument
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_INT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                 para_check.OPTION_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def crop(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     """
     the main function of crop
@@ -101,7 +100,7 @@ class Crop:
         self.instance = tik.Tik(tik.Dprofile())
         self.dtype = input_dict.get("x1").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
-        total_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        total_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         ub_size = (total_size - RESERVE_SIZE) // (2 * self.dsize)
         burnest_len = constant.BLOCK_SIZE // self.dsize
         ub_size = ((ub_size + burnest_len - 1) // burnest_len) * burnest_len
@@ -149,7 +148,7 @@ class Crop:
       None
       """
         limit_size_of_each_block = self.get_limit_size_of_each_block()
-        block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         shape_y = self.input_dict.get("y").get("shape")
         loop = get_shape_total_number(shape_y) // limit_size_of_each_block
         element_num, _ = self.get_element_num()
@@ -497,7 +496,7 @@ def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     ori_shape = x.get("ori_shape")
 
     dtype_out = dtype_base
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         dtype_out = dtype_lhisi
 
@@ -512,14 +511,14 @@ def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     dtype_str = ','.join(dtype_out)
     format_str = ','.join(format_out)
 
-    input0 = gen_param(
+    input0 = util_select_op_base.gen_param(
         classify="input0", name="x", datatype=dtype_str, format=format_str)
-    input1 = gen_param(
+    input1 = util_select_op_base.gen_param(
         classify="input1", name="size", datatype=dtype_str, format=format_str)
-    output0 = gen_param(
+    output0 = util_select_op_base.gen_param(
         classify="output0", name="y", datatype=dtype_str, format=format_str)
     param_list = [input0, input1, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
@@ -552,30 +551,26 @@ def check_and_adjust_offset(input_dict):
     x2_shape = input_dict.get("x2").get("shape")
     y_dtype = input_dict.get("y").get("dtype").lower()
     y_shape = input_dict.get("y").get("shape")
-    check_shape(x1_shape, param_name="x1")
-    check_dtype(x1_dtype, ("int8", "uint8", "int16", "uint16", "int32",
+    para_check.check_shape(x1_shape, param_name="x1")
+    para_check.check_dtype(x1_dtype, ("int8", "uint8", "int16", "uint16", "int32",
                            "uint32", "int64", "uint64", "float16",
                            "float32"), param_name="x1")
-    check_shape(x2_shape, param_name="x2")
-    check_dtype(x2_dtype, ("int8", "uint8", "int16", "uint16", "int32",
+    para_check.check_shape(x2_shape, param_name="x2")
+    para_check.check_dtype(x2_dtype, ("int8", "uint8", "int16", "uint16", "int32",
                            "uint32", "int64", "uint64", "float16",
                            "float32"), param_name="x2")
 
-    check_shape(y_shape, param_name="y")
-    check_dtype(y_dtype, ("int8", "uint8", "int16", "uint16", "int32",
+    para_check.check_shape(y_shape, param_name="y")
+    para_check.check_dtype(y_dtype, ("int8", "uint8", "int16", "uint16", "int32",
                           "uint32", "int64", "uint64", "float16", "float32"), param_name="y")
     if x2_dtype != y_dtype or y_dtype != x1_dtype:
         raise RuntimeError("size's datatype must be the same as \
         y's datatype and x's datatype")
 
     if not check_same_shape(y_shape, x2_shape):
-        errorInfo = {}
-        errorInfo['errCode'] = 'E80017'
-        errorInfo['op_name'] = 'crop'
-        errorInfo['param_name1'] = 'y_shape'
-        errorInfo['param_name2'] = 'x2_shape'
-        errorInfo['param1_shape'] = ','.join(str(i) for i in y_shape)
-        errorInfo['param2_shape'] = ','.join(str(i) for i in x2_shape)
+        errorInfo = {'errCode': 'E80017', 'op_name': 'crop', 'param_name1': 'y_shape', 'param_name2': 'x2_shape',
+                     'param1_shape': ','.join(str(i) for i in y_shape),
+                     'param2_shape': ','.join(str(i) for i in x2_shape)}
         raise RuntimeError(errorInfo,
                            "In op[%s], the parameter[%s][%s] are not equal in"
                            " shape with shapes[%s][%s]." %
@@ -584,13 +579,9 @@ def check_and_adjust_offset(input_dict):
                             errorInfo['param2_shape']))
 
     if len(x2_shape) != len(x1_shape):
-        errorInfo = {}
-        errorInfo['errCode'] = 'E80017'
-        errorInfo['op_name'] = 'crop'
-        errorInfo['param_name1'] = 'x1_shape'
-        errorInfo['param_name2'] = 'x2_shape'
-        errorInfo['param1_shape'] = ','.join(str(i) for i in x1_shape)
-        errorInfo['param2_shape'] = ','.join(str(i) for i in x2_shape)
+        errorInfo = {'errCode': 'E80017', 'op_name': 'crop', 'param_name1': 'x1_shape', 'param_name2': 'x2_shape',
+                     'param1_shape': ','.join(str(i) for i in x1_shape),
+                     'param2_shape': ','.join(str(i) for i in x2_shape)}
         raise RuntimeError(errorInfo,
                            "In op[%s], the parameter[%s][%s] are not equal"
                            " in shape with shapes[%s][%s]." %
@@ -603,13 +594,8 @@ def check_and_adjust_offset(input_dict):
         x1_ori_shape = input_dict.get("x1").get("ori_shape")
     axis = input_dict.get("axis")
     if axis >= len(x1_ori_shape) or axis < -len(x1_ori_shape):
-        errorInfo = {}
-        errorInfo['errCode'] = OP_ERROR_CODE_002
-        errorInfo['op_name'] = 'crop'
-        errorInfo['param_name'] = 'axis'
-        errorInfo['min_value'] = str(-len(x1_ori_shape))
-        errorInfo['max_value'] = str(len(x1_ori_shape))
-        errorInfo['real_value'] = axis
+        errorInfo = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'crop', 'param_name': 'axis',
+                     'min_value': str(-len(x1_ori_shape)), 'max_value': str(len(x1_ori_shape)), 'real_value': axis}
         raise RuntimeError(errorInfo,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %

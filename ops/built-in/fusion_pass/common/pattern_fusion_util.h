@@ -1,12 +1,27 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief Provide some basic methods for fusion pass (include change a const input to attr)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef FE_PATTER_FUSION_UTIL_H
-#define FE_PATTER_FUSION_UTIL_H
+/*!
+ * \file pattern_fusion_util.h
+ * \brief add a control edge from source node to dest node Provide some
+ *   basic methods for fusion pass (include change a const input to attr)
+ */
+
+#ifndef OPS_BUILT_IN_FUSION_PASS_COMMON_PATTERN_FUSION_UTIL_H_
+#define OPS_BUILT_IN_FUSION_PASS_COMMON_PATTERN_FUSION_UTIL_H_
 
 #include "securec.h"
 #include "graph/compute_graph.h"
@@ -16,8 +31,7 @@
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 
 using namespace ge;
-namespace fe
-{
+namespace fe {
 struct PassAttrInfo {
   int attrIndex;
   std::string attrName;
@@ -30,102 +44,77 @@ struct PassInputInfo {
 };
 
 #define FUSION_PASS_MAKE_SHARED(exec_expr0, exec_expr1) \
-  do {\
-    try {\
-      exec_expr0;\
-    }\
-    catch(...) {\
-      exec_expr1;\
-    }\
+  do {                                                  \
+    try {                                               \
+      exec_expr0;                                       \
+    } catch (...) {                                     \
+      exec_expr1;                                       \
+    }                                                   \
   } while (0)
 
 #define FUSION_PASS_CHECK(cond, log_func, return_expr) \
-  do {\
-    if (cond) {\
-      log_func;\
-      return_expr;\
-    }\
+  do {                                                 \
+    if (cond) {                                        \
+      log_func;                                        \
+      return_expr;                                     \
+    }                                                  \
   } while (0)
 
-  template <typename Dtype>
-  Status NnSet(const int32_t n, const Dtype alpha, Dtype &output1) {
-    Dtype *output = &output1;
-    FUSION_PASS_CHECK(output == nullptr, OP_LOGE("NnSet", "output is null"), return FAILED);
+template <typename Dtype>
+Status NnSet(const int32_t n, const Dtype alpha, Dtype& output1) {
+  Dtype* output = &output1;
+  FUSION_PASS_CHECK(output == nullptr, OP_LOGE("NnSet", "output is null"), return FAILED);
 
-    if (alpha == 0) {
-      memset_s(output, sizeof(Dtype) * n, 0, sizeof(Dtype) * n);
-    }
-
-    for (int32_t i = 0; i < n; ++i) {
-      output[i] = alpha;
-    }
-    return SUCCESS;
+  if (alpha == 0) {
+    memset_s(output, sizeof(Dtype) * n, 0, sizeof(Dtype) * n);
   }
+
+  for (int32_t i = 0; i < n; ++i) {
+    output[i] = alpha;
+  }
+  return SUCCESS;
+}
 
 class PatternFusionUtil {
  public:
-  Status ConstToAttr(ge::ComputeGraph& graph,
-                     ge::NodePtr fusedNode,
-                     std::string fusionOpType,
-                     std::map<int16_t , std::string> attrInfo);
-
-  static Status ConstToAttrWithType(ge::ComputeGraph& graph,
-                                    ge::NodePtr& fusedNode,
-                                    std::string fusionOpType,
-                                    std::vector<PassAttrInfo>& attrInfo);
-  static Status ConstToAttrWithNode(ge::ComputeGraph& graph,
-                                    ge::NodePtr& fusedNode,
-                                    std::string fusionOpType,
-                                    std::vector<PassAttrInfo>& attrInfo,
-                                    ge::NodePtr& fusionNode);
+  static Status ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, std::string fusionOpType,
+                                    std::vector<PassAttrInfo>& attrInfo, ge::NodePtr& fusionNode);
   static size_t GetOutEdgeSize(NodePtr node);
-  static ge::OpDescPtr GetFusionOpDesc(ge::NodePtr fusedNodePtr,
-                                       std::string fusionOpType,
+  static ge::OpDescPtr GetFusionOpDesc(ge::NodePtr fusedNodePtr, std::string fusionOpType,
                                        std::vector<PassAttrInfo>& attrInfos);
-  static Status SetOutputDescAttrForDataDump(ge::NodePtr fusedNode,
-                                             ge::NodePtr fusionNode);
-  static Status RecordOriginalNamesForConstToAttr(
-      ge::NodePtr& fusedNode, std::vector<PassAttrInfo>& attrInfos,
-      std::vector<ge::NodePtr> &originalNodes);
-  static Status InsertSliceDNodes(ComputeGraph &graph,
-                                  NodePtr srcNode,
-                                  unsigned int constIdx,
-                                  const vector<NodePtr> &newConvNodes,
-                                  int64_t group,
-                                  size_t sliceDimIdx);
-  static Status AddInputToOutput(ge::NodePtr node, std::vector<PassInputInfo> &inputInfoVec);
-  static Status ParseChannelIdx (ge::GeTensorDesc &tensorDesc, size_t &channelIdx);
-  static Status ProcessGroupPadding(ComputeGraph &graph, const NodePtr& groupConvNode, int64_t groups);
+  static Status SetOutputDescAttrForDataDump(ge::NodePtr fusedNode, ge::NodePtr fusionNode);
+  static Status RecordOriginalNamesForConstToAttr(ge::NodePtr& fusedNode, std::vector<PassAttrInfo>& attrInfos,
+                                                  std::vector<ge::NodePtr>& originalNodes);
+  static Status InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode, unsigned int constIdx,
+                                  const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx);
+  static Status AddInputToOutput(ge::NodePtr node, std::vector<PassInputInfo>& inputInfoVec);
+  static Status ParseChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx);
+  static Status ProcessGroupPadding(ComputeGraph& graph, const NodePtr& groupConvNode, int64_t groups);
 
   static Status RemoveInputEdge(ge::NodePtr node);
 
- /**
- * @ingroup fe
- * @brief add a control edge from source node to dest node
- */
+  static Status SetWeightByIndex(ge::NodePtr node, ge::GeTensorPtr tensor, const uint32_t &index,
+                                 ge::ComputeGraph &graph);
+
+  static Status UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr);
+  /**
+  * @ingroup fe
+  * @brief add a control edge from source node to dest node
+  */
   static Status LinkControlEdge(ge::NodePtr srcNode, ge::NodePtr dstNode);
 
-  static  Status CopyMultiReferenceConstNode(ge::ComputeGraph &graph, ge::NodePtr nodePtr);
+  static Status CopyMultiReferenceConstNode(ge::ComputeGraph& graph, ge::NodePtr nodePtr);
 
  private:
-  void SetConstValueToAttr(ge::OpDescPtr op_desc,
-                           const ge::Tensor& const_tensor,
-                           const DataType& dtype,
-                           std::string attr_name);
-  static void SetConstValueToAttrWithType(ge::OpDescPtr op_desc,
-                                          const ge::Tensor& const_tensor,
-                                          const DataType& dtype,
+  static void SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const ge::Tensor& const_tensor, const DataType& dtype,
                                           PassAttrInfo& attrInfo);
-  static bool FindAttrInfoByIndex(vector<PassAttrInfo>& attrInfos , int index, PassAttrInfo& retAttrinfo);
-  static Status GenGroupPaddingTensor(ge::GeTensorDesc &inTensor,
-                                    ge::GeTensorDesc &outTensor,
-                                    int64_t groups, const NodePtr& weightNode);
-  static NodePtr AddGroupPaddingNode(ComputeGraph &graph,
-                                     ge::GeTensorDesc &inTensor,
-                                     ge::GeTensorDesc &outTensor,
+  static bool FindAttrInfoByIndex(vector<PassAttrInfo>& attrInfos, int index, PassAttrInfo& retAttrinfo);
+  static Status GenGroupPaddingTensor(ge::GeTensorDesc& inTensor, ge::GeTensorDesc& outTensor, int64_t groups,
+                                      const NodePtr& weightNode);
+  static NodePtr AddGroupPaddingNode(ComputeGraph& graph, ge::GeTensorDesc& inTensor, ge::GeTensorDesc& outTensor,
                                      string nodeName);
 };
 
 }  // namespace fe
 
-#endif  // FE_PATTER_FUSION_UTIL_H
+#endif  // OPS_BUILT_IN_FUSION_PASS_COMMON_PATTERN_FUSION_UTIL_H_

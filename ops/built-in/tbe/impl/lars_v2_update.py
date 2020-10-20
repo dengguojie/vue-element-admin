@@ -1,39 +1,32 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-lars_v2_update op
+lars_v2_update
 """
-
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.lang.cce
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.cce_build import build_config, build_config_update
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("lars_v2_update")
-def lars_v2_update_compute(inputs_data,
-                           hyperparam,
-                           epsilon,
-                           use_clip,
-                           out,
-                           kernel_name="lars"):
+# pylint: disable=too-many-arguments,unused-argument
+@tbe_platform.fusion_manager.fusion_manager.register("lars_v2_update")
+def lars_v2_update_compute(inputs_data, hyperparam, epsilon, use_clip, out, kernel_name="lars"):
     """
     lars_update compute
 
@@ -57,41 +50,37 @@ def lars_v2_update_compute(inputs_data,
     """
     weight, grad, weight_s, grad_s, weight_decay, learning_rate = inputs_data
 
-    weight_norm = te.lang.cce.vsqrt(weight_s)
-    grad_norm = te.lang.cce.vsqrt(grad_s)
+    weight_norm = tbe.vsqrt(weight_s)
+    grad_norm = tbe.vsqrt(grad_s)
 
-    coeff_weight_norm = te.lang.cce.vmuls(weight_norm, hyperparam)
-    weight_norm_decay = te.lang.cce.vmul(weight_norm, weight_decay)
-    weight_grad_norm = te.lang.cce.vadd(weight_norm_decay, grad_norm)
-    norm_res = te.lang.cce.vadds(weight_grad_norm, epsilon)
-    coeff = te.lang.cce.vdiv(coeff_weight_norm, norm_res)
+    coeff_weight_norm = tbe.vmuls(weight_norm, hyperparam)
+    weight_norm_decay = tbe.vmul(weight_norm, weight_decay)
+    weight_grad_norm = tbe.vadd(weight_norm_decay, grad_norm)
+    norm_res = tbe.vadds(weight_grad_norm, epsilon)
+    coeff = tbe.vdiv(coeff_weight_norm, norm_res)
 
     if use_clip:
-        coeff_clip = te.lang.cce.vdiv(coeff, learning_rate)
-        coff_max = te.lang.cce.vmins(coeff_clip,
-                                     tvm.const(1, dtype=weight.dtype))
-        clip_coff = te.lang.cce.vmaxs(coff_max, tvm.const(0,
-                                                          dtype=weight.dtype))
-        coeff_broadcast = te.lang.cce.broadcast(clip_coff, weight.shape)
+        coeff_clip = tbe.vdiv(coeff, learning_rate)
+        coff_max = tbe.vmins(coeff_clip, tvm.const(1, dtype=weight.dtype))
+        clip_coff = tbe.vmaxs(coff_max, tvm.const(0, dtype=weight.dtype))
+        coeff_broadcast = tbe.broadcast(clip_coff, weight.shape)
     else:
-        coeff_broadcast = te.lang.cce.broadcast(coeff, weight.shape)
+        coeff_broadcast = tbe.broadcast(coeff, weight.shape)
 
-    weight_decay_broadcast = te.lang.cce.broadcast(weight_decay, weight.shape)
-    weight_weight_decay = te.lang.cce.vmul(weight, weight_decay_broadcast)
-    weight_grad = te.lang.cce.vadd(weight_weight_decay, grad)
+    weight_decay_broadcast = tbe.broadcast(weight_decay, weight.shape)
+    weight_weight_decay = tbe.vmul(weight, weight_decay_broadcast)
+    weight_grad = tbe.vadd(weight_weight_decay, grad)
 
-    out = te.lang.cce.vmul(weight_grad, coeff_broadcast)
+    out = tbe.vmul(weight_grad, coeff_broadcast)
 
     return out
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_FLOAT,
-                          op_utils.OPTION_ATTR_FLOAT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+# pylint: disable=too-many-arguments,unused-argument
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def lars_v2_update(weight,
                    grad,
                    weight_s,
@@ -166,33 +155,27 @@ def lars_v2_update(weight,
     if grad_dtype != weight_dtype:
         raise RuntimeError("wight and grad must be the same dtype")
 
-    vdiv_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vdiv", "float32")
+    vdiv_support = tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")
     if weight_dtype == "float32" and not vdiv_support:
-        raise RuntimeError(
-            "Input dtype is float32, but do not support on the platform")
+        raise RuntimeError("Input dtype is float32, but do not support on the platform")
 
     input_place_holders = []
     for i, input_val in enumerate(inputs):
         input_dtype = input_val.get("dtype").lower()
         input_shape = input_val.get("shape")
-        op_utils.check_shape(input_shape)
-        op_utils.check_dtype(input_dtype, check_list)
-        shape_one_dim = (functools_reduce(operator.mul, input_shape), )
-        input_place_holders.append(
-            tvm.placeholder(shape_one_dim,
-                            name="input_data_%d" % i,
-                            dtype=input_dtype))
+        para_check.check_shape(input_shape)
+        para_check.check_dtype(input_dtype, check_list)
+        shape_one_dim = (functools.reduce(operator.mul, input_shape), )
+        input_place_holders.append(tvm.placeholder(shape_one_dim, name="input_data_%d" % i, dtype=input_dtype))
 
-    res = lars_v2_update_compute(input_place_holders, hyperparam, epsilon,
-                                 use_clip, out, kernel_name)
+    res = lars_v2_update_compute(input_place_holders, hyperparam, epsilon, use_clip, out, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     data = input_place_holders
     data.append(res)
 
-    new_config = build_config_update(build_config, "dummy_placeholder", True)
+    new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
     with new_config:
         tvm.build(schedule, data, "cce", name=kernel_name)

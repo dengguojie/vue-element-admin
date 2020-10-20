@@ -1,24 +1,25 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file spectral_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#ifndef GE_OP_SPECTRAL_OPS_H
-#define GE_OP_SPECTRAL_OPS_H
+
+/*!
+ * \file spectral_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_SPECTRAL_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_SPECTRAL_OPS_H_
 
 #include "graph/operator.h"
 #include "graph/operator_reg.h"
@@ -26,16 +27,16 @@
 namespace ge {
 
 /**
-*@brief Real-valued fast Fourier transform.
+*@brief Real-valued fast Fourier transform . \n
 
 *@par Inputs:
 *@li input: A float32 tensor.
-*@li fft_length: An int32 tensor of shape [1]. The FFT length.
+*@li fft_length: An int32 tensor of shape [1]. The FFT length . \n
 
 *@par Outputs:
-*@li y: A complex64 tensor of the same rank as `input`. The inner-most \n
-dimension of `input` is replaced with the `fft_length / 2 + 1` unique \n
-frequency components of its 1D Fourier transform.
+*@li y: A complex64 tensor of the same rank as `input`. The inner-most
+dimension of `input` is replaced with the `fft_length / 2 + 1` unique
+frequency components of its 1D Fourier transform . \n
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow RFFT operator.
@@ -48,4 +49,4 @@ REG_OP(RFFT)
 
 }  // namespace ge
 
-#endif //GE_OP_SPECTRAL_OPS_H
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_SPECTRAL_OPS_H_

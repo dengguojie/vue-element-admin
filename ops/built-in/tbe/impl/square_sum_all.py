@@ -1,32 +1,29 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 square_sum_all
 """
-
+import functools
 import math
 import operator
-from functools import reduce as functools_reduce
 
-import te.platform.cce_params as cce_params
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tik
-from te.utils import op_utils
+from te.utils import para_check
 
-# Each core processing data num greater than the size
-# we can get better performace from experience
+# Each core processing data num greater than the size we can get better performace from experience
 MINIMUM_DATA_NUM_EACH_CORE = 1024
 
 
@@ -57,32 +54,26 @@ class SquareSumAll():
         None
         """
         self.tik_instance = tik.Tik()
-        self.device_core_num = tbe_platform.cce_conf.get_soc_spec(\
-            tbe_platform.cce_conf.CORE_NUM)
+        self.device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.input_x_shape = input_x.get("shape")
         self.input_x_dtype = input_x.get("dtype").lower()
         self.input_y_shape = input_y.get("shape")
         self.input_y_dtype = input_y.get("dtype").lower()
 
-        self.shape_one_dim = (functools_reduce(operator.mul,
-                                               self.input_x_shape), )
+        self.shape_one_dim = (functools.reduce(operator.mul, self.input_x_shape), )
         self.input_x_num = self.shape_one_dim[0]
 
         # Reserved 64 Bytes for the two inputs 32B alignment
-        self.ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(\
-            tbe_platform.cce_conf.UB_SIZE) - 64
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 64
 
         self.kernel_name = kernel_name
-        self.dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.input_x_dtype) // 8
-        one_block_bytes_size = cce_params.VECTOR_INST_BLOCK_WIDTH // \
-            cce_params.VECTOR_INST_BLOCK_NUM
+        self.dtype_bytes_size = tbe_platform.get_bit_len(self.input_x_dtype) // 8
+        one_block_bytes_size = tbe_platform.VECTOR_INST_BLOCK_WIDTH // tbe_platform.VECTOR_INST_BLOCK_NUM
         self.data_each_block = one_block_bytes_size // self.dtype_bytes_size
 
         self.vector_process_bytes = 256
 
-        self.vector_mask_max = cce_params.VECTOR_INST_BLOCK_NUM * \
-            self.data_each_block
+        self.vector_mask_max = tbe_platform.VECTOR_INST_BLOCK_NUM * self.data_each_block
 
         if self.input_x_num < self.data_each_block:
             self.block_num = 1
@@ -98,7 +89,7 @@ class SquareSumAll():
         self.remain_core = self.input_x_num % self.block_num
         self.process_data_num_each_core = self.data_num_each_core
 
-        self.check_param()
+        self._check_param()
 
         self.input_x_gm = self.tik_instance.Tensor(self.input_x_dtype,
                                                    self.shape_one_dim,
@@ -123,7 +114,7 @@ class SquareSumAll():
         self.process_times = None
         self.core_tail_num = None
 
-    def check_param(self):
+    def _check_param(self):
         """
         Check parameter
 
@@ -135,27 +126,20 @@ class SquareSumAll():
         -------
         None
         """
-        op_utils.check_shape(self.input_x_shape, param_name="input_x")
-        op_utils.check_shape(self.input_y_shape, param_name="input_y")
-        op_utils.check_dtype(self.input_x_dtype, ("float32", ),
-                             param_name="input_x")
-        op_utils.check_dtype(self.input_y_dtype, ("float32", ),
-                             param_name="input_y")
+        para_check.check_shape(self.input_x_shape, param_name="input_x")
+        para_check.check_shape(self.input_y_shape, param_name="input_y")
+        para_check.check_dtype(self.input_x_dtype, ("float32", ), param_name="input_x")
+        para_check.check_dtype(self.input_y_dtype, ("float32", ), param_name="input_y")
 
-        add_support = tbe_platform.cce_conf.api_check_support(
-            "tik.vadd", "float32")
+        add_support = tbe_platform.api_check_support("tik.vadd", "float32")
 
         if self.input_x_dtype != self.input_y_dtype:
-            raise RuntimeError(
-                "input_x and input_y do not have the same dtype")
+            raise RuntimeError("input_x and input_y do not have the same dtype")
 
         if self.input_x_dtype == "float32" and not add_support:
-            raise RuntimeError(
-                "Input dtype is float32, but do not support on the platform")
+            raise RuntimeError("Input dtype is float32, but do not support on the platform")
 
-    # pylint: disable=too-many-arguments
-    def vector_add(self, mask, des_offset, src1_offset, src2_offset,
-                   repeat_times):
+    def _vector_add(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """
         Execute the vector add calculation
 
@@ -175,16 +159,12 @@ class SquareSumAll():
         -------
         None
         """
-        self.tik_instance.vadd(mask, self.input_x_ub[des_offset],
-                               self.input_x_ub[src1_offset],
-                               self.input_x_ub[src2_offset], repeat_times, 1,
-                               1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.input_y_ub[des_offset],
-                               self.input_y_ub[src1_offset],
-                               self.input_y_ub[src2_offset], repeat_times, 1,
-                               1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.input_x_ub[des_offset], self.input_x_ub[src1_offset],
+                               self.input_x_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.input_y_ub[des_offset], self.input_y_ub[src1_offset],
+                               self.input_y_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
 
-    def reduce_sum(self, calc_num):
+    def _reduce_sum(self, calc_num):
         """
         Execute add calculation
 
@@ -209,25 +189,21 @@ class SquareSumAll():
         if add_loop > 0:
             with self.tik_instance.for_range(0, add_loop) as add_index:
                 calc_offset = add_index * self.vector_mask_max * 255
-                self.vector_add(self.vector_mask_max, calc_offset, calc_offset,
-                                calc_offset + calc_num, 255)
+                self._vector_add(self.vector_mask_max, calc_offset, calc_offset, calc_offset + calc_num, 255)
             calc_offset = add_loop * self.vector_mask_max * 255
-        repeat_time = (calc_num %
-                       (self.vector_mask_max * 255)) // self.vector_mask_max
+        repeat_time = (calc_num % (self.vector_mask_max * 255)) // self.vector_mask_max
         if repeat_time > 0:
-            self.vector_add(self.vector_mask_max, calc_offset, calc_offset,
-                            calc_offset + calc_num, repeat_time)
+            self._vector_add(self.vector_mask_max, calc_offset, calc_offset, calc_offset + calc_num, repeat_time)
         last_num = calc_num % self.vector_mask_max
         if last_num > 0:
             calc_offset += repeat_time * self.vector_mask_max
-            self.vector_add(last_num, calc_offset, calc_offset,
-                            calc_offset + calc_num, 1)
+            self._vector_add(last_num, calc_offset, calc_offset, calc_offset + calc_num, 1)
         if tail_num > 0:
             last_num = tail_num % self.vector_mask_max
-            self.vector_add(last_num, 0, 0, total_sum_num, 1)
+            self._vector_add(last_num, 0, 0, total_sum_num, 1)
         return calc_num
 
-    def init_ub_tensor(self, process_data_num):
+    def _init_ub_tensor(self, process_data_num):
         """
         Compute the ub size of tensors
 
@@ -248,8 +224,7 @@ class SquareSumAll():
             every_process_data_num = ub_max_num // 2
 
         self.every_process_data_num = every_process_data_num
-        self.process_times = process_data_num_each_core // \
-            every_process_data_num
+        self.process_times = process_data_num_each_core // every_process_data_num
         self.core_tail_num = process_data_num_each_core % every_process_data_num
 
         flag = self.data_each_block
@@ -264,7 +239,7 @@ class SquareSumAll():
                                                    name="input_y_ub",
                                                    scope=tik.scope_ubuf)
 
-    def execute_square_sum_all(self, data_offset):
+    def _execute_square_sum_all(self, data_offset):
         """
         execute square_sum operation
 
@@ -280,15 +255,14 @@ class SquareSumAll():
         temp_offset = data_offset
         with self.tik_instance.for_range(0, self.process_times) as i:
             data_offset = data_offset + i * self.every_process_data_num
-            self.calc_op(self.every_process_data_num, data_offset)
+            self._calc_op(self.every_process_data_num, data_offset)
 
         data_offset = temp_offset + self.every_process_data_num * self.process_times
         if self.core_tail_num > 0:
-            self.calc_op(self.core_tail_num, data_offset)
+            self._calc_op(self.core_tail_num, data_offset)
 
     # pylint: disable=too-many-arguments,
-    def vector_mul(self, mask, des_offset, src1_offset, src2_offset,
-                   repeat_times):
+    def _vector_mul(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """
         Execute the vector mul calculation
 
@@ -308,16 +282,12 @@ class SquareSumAll():
         -------
         None
         """
-        self.tik_instance.vmul(mask, self.input_x_ub[des_offset],
-                               self.input_x_ub[src1_offset],
-                               self.input_x_ub[src2_offset], repeat_times, 1,
-                               1, 1, 8, 8, 8)
-        self.tik_instance.vmul(mask, self.input_y_ub[des_offset],
-                               self.input_y_ub[src1_offset],
-                               self.input_y_ub[src2_offset], repeat_times, 1,
-                               1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, self.input_x_ub[des_offset], self.input_x_ub[src1_offset],
+                               self.input_x_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, self.input_y_ub[des_offset], self.input_y_ub[src1_offset],
+                               self.input_y_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
 
-    def calc_op(self, calc_num, offset):
+    def _calc_op(self, calc_num, offset):
         """
         every process square_sum
 
@@ -333,46 +303,36 @@ class SquareSumAll():
         None
         """
         burst_len = math.ceil(calc_num / self.data_each_block)
-        self.tik_instance.data_move(self.input_x_ub, self.input_x_gm[offset],
-                                    0, 1, burst_len, 0, 0)
-        self.tik_instance.data_move(self.input_y_ub, self.input_y_gm[offset],
-                                    0, 1, burst_len, 0, 0)
+        self.tik_instance.data_move(self.input_x_ub, self.input_x_gm[offset], 0, 1, burst_len, 0, 0)
+        self.tik_instance.data_move(self.input_y_ub, self.input_y_gm[offset], 0, 1, burst_len, 0, 0)
 
         calc_loop = calc_num // (self.vector_mask_max * 255)
         calc_offset = 0
         if calc_loop > 0:
             with self.tik_instance.for_range(0, calc_loop) as add_index:
                 calc_offset = add_index * self.vector_mask_max * 255
-                self.vector_mul(self.vector_mask_max, calc_offset, calc_offset,
-                                calc_offset, 255)
+                self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, 255)
             calc_offset = self.vector_mask_max * 255 * (calc_loop)
 
-        repeat_time = (calc_num % (self.vector_mask_max * 255) //
-                       self.vector_mask_max)
+        repeat_time = (calc_num % (self.vector_mask_max * 255) // self.vector_mask_max)
 
         if repeat_time > 0:
-            self.vector_mul(self.vector_mask_max, calc_offset, calc_offset,
-                            calc_offset, repeat_time)
+            self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, repeat_time)
         last_num = calc_num % self.vector_mask_max
         if last_num > 0:
             calc_offset += repeat_time * self.vector_mask_max
-            self.vector_mul(last_num, calc_offset, calc_offset, calc_offset, 1)
+            self._vector_mul(last_num, calc_offset, calc_offset, calc_offset, 1)
         while calc_num > self.vector_process_bytes // self.dtype_bytes_size:
-            calc_num = self.reduce_sum(calc_num)
-            if (calc_num <=
-                    self.vector_process_bytes // self.dtype_bytes_size):
+            calc_num = self._reduce_sum(calc_num)
+            if calc_num <= self.vector_process_bytes // self.dtype_bytes_size:
                 break
         vcadd_mask = calc_num
-        self.tik_instance.vcadd(vcadd_mask, self.input_x_ub, self.input_x_ub,
-                                1, 1, 1, 8)
-        self.tik_instance.vcadd(vcadd_mask, self.input_y_ub, self.input_y_ub,
-                                1, 1, 1, 8)
+        self.tik_instance.vcadd(vcadd_mask, self.input_x_ub, self.input_x_ub, 1, 1, 1, 8)
+        self.tik_instance.vcadd(vcadd_mask, self.input_y_ub, self.input_y_ub, 1, 1, 1, 8)
 
         self.tik_instance.set_atomic_add(1)
-        self.tik_instance.data_move(self.output_x_gm, self.input_x_ub, 0, 1, 1,
-                                    0, 0)
-        self.tik_instance.data_move(self.output_y_gm, self.input_y_ub, 0, 1, 1,
-                                    0, 0)
+        self.tik_instance.data_move(self.output_x_gm, self.input_x_ub, 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(self.output_y_gm, self.input_y_ub, 0, 1, 1, 0, 0)
         self.tik_instance.set_atomic_add(0)
 
     def square_sum_all_operator(self):
@@ -391,39 +351,31 @@ class SquareSumAll():
         if self.block_num > 1:
             process_data_num = self.data_num_each_core
             process_data_extern_num = self.data_num_each_core + self.remain_core
-            with self.tik_instance.for_range(
-                    0, self.block_num, block_num=self.block_num) as loop_index:
+            with self.tik_instance.for_range(0, self.block_num, block_num=self.block_num) as loop_index:
                 move_offset = loop_index * self.data_num_each_core
-                with self.tik_instance.if_scope(loop_index == self.block_num -
-                                                1):
-                    self.init_ub_tensor(process_data_extern_num)
-                    self.execute_square_sum_all(move_offset)
+                with self.tik_instance.if_scope(loop_index == self.block_num - 1):
+                    self._init_ub_tensor(process_data_extern_num)
+                    self._execute_square_sum_all(move_offset)
                 with self.tik_instance.else_scope():
-                    self.init_ub_tensor(process_data_num)
-                    self.execute_square_sum_all(move_offset)
+                    self._init_ub_tensor(process_data_num)
+                    self._execute_square_sum_all(move_offset)
         else:
-            self.init_ub_tensor(self.data_num_each_core)
+            self._init_ub_tensor(self.data_num_each_core)
             move_offset = 0
-            self.execute_square_sum_all(move_offset)
+            self._execute_square_sum_all(move_offset)
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.input_x_gm, self.input_y_gm),
-                                   outputs=(self.output_x_gm,
-                                            self.output_y_gm),
+                                   outputs=(self.output_x_gm, self.output_y_gm),
                                    enable_l2=False)
 
         return self.tik_instance
 
 
 # pylint: disable=unused-argument
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.KERNEL_NAME)
-def square_sum_all(input_x,
-                   input_y,
-                   output_x,
-                   output_y,
-                   kernel_name="square_sum"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def square_sum_all(input_x, input_y, output_x, output_y, kernel_name="square_sum"):
     """
     calculating square_sum
 

@@ -1,19 +1,20 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 euclidean_norm_d
 """
-
 import te.lang.cce
 from te import tvm
 from te.utils.op_utils import *
@@ -24,7 +25,6 @@ from te.platform import get_soc_spec
 
 @fusion_manager.register("euclidean_norm_d")
 def euclidean_norm_d_compute(x,
-                             dtype,
                              y,
                              axes,
                              keepdims,
@@ -36,8 +36,6 @@ def euclidean_norm_d_compute(x,
     ----------
     x : TVM tensor
         the placeholder of input_x
-    dtype : string
-        the type of input_x
     y : dict
         dict of output_y, include keys(shape and dtype)
     axes: int, list, tuple or NONETYPE
@@ -52,14 +50,23 @@ def euclidean_norm_d_compute(x,
     res: TVM tensor
         the calculation results
     """
-
+    dtype = x.dtype.lower()
+    shape = x.shape
     product = get_soc_spec("SOC_VERSION")
     if product != "Ascend310" and dtype != "float32":
         x = te.lang.cce.cast_to(x, "float32")
+    one_flag = []
+    axis = list(axes)
+    for i in axis:
+        one_flag.append(int(shape[i]))
 
-    res_mul = te.lang.cce.vmul(x, x)
-    res_sum = te.lang.cce.sum(res_mul, axes, keepdims)
-    res = te.lang.cce.vsqrt(res_sum, 1)
+    if int(len(set(one_flag))) == 1 and int(one_flag[0]) == 1:
+        res = te.lang.cce.vmuls(x, 1)
+    else:
+        res_mul = te.lang.cce.vmul(x, x)
+        res_sum = te.lang.cce.sum(res_mul, axes, keepdims)
+        res = te.lang.cce.vsqrt(res_sum, 1)
+
     if res.dtype != dtype:
         res = te.lang.cce.cast_to(res, dtype)
     return res
@@ -128,12 +135,20 @@ def euclidean_norm_d(input_data,
         axes = list(axes)
 
     axes = wrap_axes_to_positive(axes, len(shape))
-    check_shape(axes, min_dim=-shape_len, max_dim=shape_len - 1)
-    refined_shape, refined_axes = refine_shape_axes_custom(shape, axes)
 
+    check_shape(axes, min_dim=-shape_len, max_dim=shape_len - 1)
+    axis = list(axes)
+    one_flag = []
+    for i in axis:
+        one_flag.append(int(shape[i]))
+
+    if int(len(set(one_flag))) == 1 and int(one_flag[0]) == 1:
+        refined_shape, refined_axes = shape, axes
+    else:
+        refined_shape, refined_axes = refine_shape_axes_custom(shape, axes)
     data_input = tvm.placeholder(refined_shape, name="data_input", dtype=input_dtype)
-    res = euclidean_norm_d_compute(data_input, input_dtype, output_data,
-                                    refined_axes, keepdims, kernel_name)
+    res = euclidean_norm_d_compute(data_input, output_data,
+                                   refined_axes, keepdims, kernel_name)
 
     with tvm.target.cce():
         schedule = generic.auto_schedule(res)
@@ -141,3 +156,4 @@ def euclidean_norm_d(input_data,
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 
     te.lang.cce.cce_build_code(schedule, config)
+

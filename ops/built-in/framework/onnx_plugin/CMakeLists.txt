@@ -23,26 +23,33 @@ protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
 
 # the list of source files
 set(_onnx_plugins
- abs_plugin.cc
- add_plugin.cc
- batch_normalization_plugin.cc
- concat_plugin.cc
- conv2d_plugin.cc
- div_plugin.cc
- gather_plugin.cc
- gemm_plugin.cc
- global_average_pool_plugin.cc
- max_pool_plugin.cc
- mul_plugin.cc
- reduce_mean_plugin.cc
- reduce_sum_plugin.cc
- relu_plugin.cc
- reshape_plugin.cc
- shape_plugin.cc
- sigmoid_plugin.cc
- sqrt_plugin.cc
- sub_plugin.cc
- unsqueeze_plugin.cc
+  abs_plugin.cc
+  add_plugin.cc
+  ascend_anti_quant_plugin.cc
+  ascend_dequant_plugin.cc
+  ascend_dequant_s16_plugin.cc
+  ascend_quant_plugin.cc
+  ascend_requant_plugin.cc
+  ascend_requant_s16_plugin.cc
+  batch_normalization_plugin.cc
+  concat_plugin.cc
+  conv2d_plugin.cc
+  div_plugin.cc
+  gather_plugin.cc
+  gemm_plugin.cc
+  global_average_pool_plugin.cc
+  max_pool_plugin.cc
+  mul_plugin.cc
+  pad_plugin.cc
+  reduce_mean_plugin.cc
+  reduce_sum_plugin.cc
+  relu_plugin.cc
+  reshape_plugin.cc
+  shape_plugin.cc
+  sigmoid_plugin.cc
+  sqrt_plugin.cc
+  sub_plugin.cc
+  unsqueeze_plugin.cc
 )
 
 add_library(ops_all_onnx_plugin SHARED
@@ -55,6 +62,9 @@ target_include_directories(ops_all_onnx_plugin PRIVATE
   ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
   ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${_proto_include}
   ${Protobuf_INCLUDE}
 )

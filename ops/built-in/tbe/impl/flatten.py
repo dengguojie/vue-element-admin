@@ -1,29 +1,23 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 flatten
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from te import tvm
 from te import platform as tbe_platform
-from te.platform.cce_build import build_config
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # max block num
 MAX_BLOCK = 65535
@@ -75,7 +69,9 @@ def _tile_axis(data_list, shape, dtype):
 
 
 # pylint: disable=invalid-name,unnecessary-lambda,unused-argument
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def flatten(x, y, kernel_name="flatten"):
     """return a copy of the tensor collapsed into one dimension.
 
@@ -98,8 +94,8 @@ def flatten(x, y, kernel_name="flatten"):
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
 
-    check_shape(shape, param_name="x")
-    check_dtype(dtype_lower, check_list, param_name="x")
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_dtype(dtype_lower, check_list, param_name="x")
 
     size = 1
     for i, _ in enumerate(shape):
@@ -115,5 +111,5 @@ def flatten(x, y, kernel_name="flatten"):
 
     sch_new = _tile_axis([sch, data_ub, res], shape_new, dtype_lower)
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch_new, [data, res], "cce", name=kernel_name)

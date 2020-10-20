@@ -1,38 +1,38 @@
 /**
- * @file mul_add_fusion_pass.h
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @brief mul add usion pass(mul --> add)
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#ifndef FE_MUL_ADD_FUSION_H
-#define FE_MUL_ADD_FUSION_H
+/*!
+ * \file mul_add_fusion_pass.h
+ * \brief mul add usion pass(mul --> add)
+ */
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADD_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADD_FUSION_PASS_H_
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class MulAddFusionPass : public PatternFusionBasePass {
-protected:
+ protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph &graph,
-                Mapping& mapping,
-                vector<ge::NodePtr> &fusionNodes) override;
-private:
-    const string FUSED_OP_TYPE = "FusedMulAdd";
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+
+ private:
+  const string FUSED_OP_TYPE = "FusedMulAdd";
 };
 
 }  // namespace fe
 
-#endif  // FE_MUL_ADD_FUSION_H
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADD_FUSION_PASS_H_

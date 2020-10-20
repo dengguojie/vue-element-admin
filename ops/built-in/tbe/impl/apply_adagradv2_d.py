@@ -1,34 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_adagradv2_d
 """
-
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.lang.cce
-from te import platform as tbe_platform
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.utils import para_check
 
 
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("apply_adagradv2_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_adagradv2_d")
 def apply_adagradv2_d_compute(var,
                               accum,
                               lr,
@@ -72,25 +69,22 @@ def apply_adagradv2_d_compute(var,
     out_var, out_accum
     """
     input_dtype = var.dtype
-    vmul_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vmul", "float32")
+    vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if input_dtype == "float32" and not vmul_support:
-        raise RuntimeError(
-            "Input dtype is float32, but do not support on the platform")
+        raise RuntimeError("Input dtype is float32, but do not support on the platform")
 
     if update_slots is True:
-        grad_square = te.lang.cce.vmul(grad, grad)
-        out_accum = te.lang.cce.vadd(accum, grad_square)
+        grad_square = tbe.vmul(grad, grad)
+        out_accum = tbe.vadd(accum, grad_square)
     else:
-        out_accum = te.lang.cce.vadds(accum, tvm.const(0.0, input_dtype))
+        out_accum = tbe.vadds(accum, tvm.const(0.0, input_dtype))
 
-    lr_brc = te.lang.cce.broadcast(lr, grad.shape)
-    lr_grad = te.lang.cce.vmul(grad, lr_brc)
-    sqrt_accum = te.lang.cce.vsqrt(out_accum)
-    sqrt_accum_epsilon = te.lang.cce.vadds(sqrt_accum,
-                                           tvm.const(epsilon, input_dtype))
-    update = te.lang.cce.vdiv(lr_grad, sqrt_accum_epsilon)
-    out_var = te.lang.cce.vsub(var, update)
+    lr_brc = tbe.broadcast(lr, grad.shape)
+    lr_grad = tbe.vmul(grad, lr_brc)
+    sqrt_accum = tbe.vsqrt(out_accum)
+    sqrt_accum_epsilon = tbe.vadds(sqrt_accum, tvm.const(epsilon, input_dtype))
+    update = tbe.vdiv(lr_grad, sqrt_accum_epsilon)
+    out_var = tbe.vsub(var, update)
 
     return out_var, out_accum
 
@@ -108,20 +102,17 @@ def _get_placeholder(dict_list, name_list):
         if name == 'lr' and shape[0] != 1:
             raise RuntimeError("The shape of lr must be scalar.")
 
-        op_utils.check_dtype(dtype, ('float32', ), param_name="var")
-        op_utils.check_shape(shape)
-        shape_refine = (functools_reduce(operator.mul, shape), )
-        list_placeholder.append(
-            tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
+        para_check.check_dtype(dtype, ('float32', ), param_name="var")
+        para_check.check_shape(shape)
+        shape_refine = (functools.reduce(operator.mul, shape), )
+        list_placeholder.append(tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
 
 # pylint: disable=unbalanced-tuple-unpacking,invalid-name
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_ATTR_FLOAT,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_adagradv2_d(var,
                       accum,
                       lr,
@@ -165,16 +156,13 @@ def apply_adagradv2_d(var,
     None
     """
     input_name_list = ['var', 'accum', 'lr', 'grad']
-    var, accum, lr, grad = _get_placeholder([var, accum, lr, grad],
-                                            input_name_list)
+    var, accum, lr, grad = _get_placeholder([var, accum, lr, grad], input_name_list)
 
-    out_var, out_accum = apply_adagradv2_d_compute(var, accum, lr, grad,
-                                                   out_var, out_accum, epsilon,
-                                                   update_slots)
+    out_var, out_accum = apply_adagradv2_d_compute(var, accum, lr, grad, out_var, out_accum, epsilon, update_slots)
     outs = [out_var, out_accum]
     build_list = [var, accum, lr, grad, out_var, out_accum]
     with tvm.target.cce():
-        sch = generic.auto_schedule(outs)
+        sch = tbe.auto_schedule(outs)
     config = {"name": kernel_name, "tensor_list": build_list}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,25 +1,27 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 arg_max_with_kd
 """
-
 # pylint: disable=too-many-lines,import-error
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils import para_check
+from te.utils import shape_util
+
+from impl.util import util_select_op_base
 
 # define a scalar for fp16 minimal
 SCALAR_MIN_FP16 = -65500
@@ -41,7 +43,6 @@ DATA_EACH_VNCHWCONV = 16
 AXIS_SIZE_MAX = 2 ** 31
 # large task case threshold
 LARGE_TASK_NUM_PER_CORE = 32
-
 
 
 def _get_div_ceil_int(int1, int2):
@@ -180,89 +181,89 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
     # check topk
     if axis != AXIS_DEFAULT:
         # make axis in -len(shape_x) <= axis < len(shape_x)
-        axis = util.axis_check(len(ori_shape), axis)
+        axis = shape_util.axis_check(len(ori_shape), axis)
 
     # for 5hd, axis is only valid for n,h,w
     if ((ori_format == "NHWC" and axis != 3) or (ori_format == "NCHW" and axis != 1)) and \
             len(ori_shape) == 4 and axis != AXIS_DEFAULT:
         # NC1HWC0+ND
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in \
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in \
                 ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             # fp16/fp32
-            input0 = gen_param(classify="input0", name="x",
-                               datatype="float16,float,float16,float",
-                               format="NC1HWC0,NC1HWC0,ND,ND")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16,float,float16,float",
+                                                   format="NC1HWC0,NC1HWC0,ND,ND")
             if out_max_index:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="int32,int32,int32,int32",
-                                    format="NC1HWC0,NC1HWC0,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="int32,int32,int32,int32",
+                                                        format="NC1HWC0,NC1HWC0,ND,ND")
             else:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="float16,float,float16,float",
-                                    format="NC1HWC0,NC1HWC0,ND,ND")
-            output1 = gen_param(classify="output1", name="values",
-                                datatype="float16,float,float16,float",
-                                format="NC1HWC0,NC1HWC0,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="float16,float,float16,float",
+                                                        format="NC1HWC0,NC1HWC0,ND,ND")
+            output1 = util_select_op_base.gen_param(classify="output1", name="values",
+                                                    datatype="float16,float,float16,float",
+                                                    format="NC1HWC0,NC1HWC0,ND,ND")
         else:
             # fp16
-            input0 = gen_param(classify="input0", name="x",
-                               datatype="float16,float16",
-                               format="NC1HWC0,ND")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16,float16",
+                                                   format="NC1HWC0,ND")
             if out_max_index:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="int32,int32",
-                                    format="NC1HWC0,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="int32,int32",
+                                                        format="NC1HWC0,ND")
             else:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="float16,float16",
-                                    format="NC1HWC0,ND")
-            output1 = gen_param(classify="output1", name="values",
-                                datatype="float16,float16",
-                                format="NC1HWC0,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="float16,float16",
+                                                        format="NC1HWC0,ND")
+            output1 = util_select_op_base.gen_param(classify="output1", name="values",
+                                                    datatype="float16,float16",
+                                                    format="NC1HWC0,ND")
     else:
         # ND
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in \
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in \
                 ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             # fp16/fp32
-            input0 = gen_param(classify="input0", name="x",
-                               datatype="float16,float",
-                               format="ND,ND")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16,float",
+                                                   format="ND,ND")
             if out_max_index:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="int32,int32",
-                                    format="ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="int32,int32",
+                                                        format="ND,ND")
             else:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="float16,float",
-                                    format="ND,ND")
-            output1 = gen_param(classify="output1", name="values",
-                                datatype="float16,float",
-                                format="ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="float16,float",
+                                                        format="ND,ND")
+            output1 = util_select_op_base.gen_param(classify="output1", name="values",
+                                                    datatype="float16,float",
+                                                    format="ND,ND")
         else:
             # fp16
-            input0 = gen_param(classify="input0", name="x",
-                               datatype="float16",
-                               format="ND")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16",
+                                                   format="ND")
             if out_max_index:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="int32",
-                                    format="ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="int32",
+                                                        format="ND")
             else:
-                output0 = gen_param(classify="output0", name="indices",
-                                    datatype="float16",
-                                    format="ND")
-            output1 = gen_param(classify="output1", name="values",
-                                datatype="float16",
-                                format="ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="indices",
+                                                        datatype="float16",
+                                                        format="ND")
+            output1 = util_select_op_base.gen_param(classify="output1", name="values",
+                                                    datatype="float16",
+                                                    format="ND")
 
     param_list = [input0, output0, output1]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
 
 # pylint: disable=invalid-name,too-many-arguments,too-many-locals,too-many-branches
 # pylint: disable=too-many-statements
-@util.check_input_type(dict, dict, dict, int, bool, int, str)
+@para_check.check_input_type(dict, dict, dict, int, bool, int, str)
 def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, topk=1,
                     kernel_name="arg_max_with_kd"):
     """
@@ -305,8 +306,8 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
             raise RuntimeError("x's ori_shape is invalid for 5D Tensor")
         # only N,H,W axis is valid for 5hd
         if axis != AXIS_DEFAULT:
-            axis = util.axis_check(length_x_ori, axis)
-            axis = util.axis_transfrom_5d(axis, ori_format)
+            axis = shape_util.axis_check(length_x_ori, axis)
+            axis = shape_util.axis_transform_5d(axis, ori_format)
             if axis in (1, 4):
                 raise RuntimeError("axis is invalid for 5D Tensor")
         else:
@@ -318,17 +319,17 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
     # check topk
     if axis == AXIS_DEFAULT:
         # check shape len
-        util.check_shape_rule(shape_x, min_dim=2, max_dim=8)
+        para_check.check_shape_rule(shape_x, min_dim=2, max_dim=8)
 
         for dim in shape_x[1:]:
             axis_size *= dim
     else:
         # check shape len
-        util.check_shape_rule(shape_x, min_dim=1, max_dim=8)
+        para_check.check_shape_rule(shape_x, min_dim=1, max_dim=8)
 
         # check axis
         # constraints: -len(shape_x) <= axis < len(shape_x)
-        axis = util.axis_check(len(shape_x), axis)
+        axis = shape_util.axis_check(len(shape_x), axis)
 
         axis_size = shape_x[axis]
 
@@ -339,9 +340,9 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
     if axis_size > AXIS_SIZE_MAX:
         raise RuntimeError("axis_size is larger than int limit, fail")
 
-    util.check_tensor_shape_size(shape_x)
-    util.check_dtype_rule(dtype_x, ("float16", "float32"))
-    util.check_kernel_name(kernel_name)
+    para_check.check_tensor_shape_size(shape_x)
+    para_check.check_dtype_rule(dtype_x, ("float16", "float32"))
+    para_check.check_kernel_name(kernel_name)
 
     # set out_max_index, according to the caffe logic
     out_max_index = True
@@ -463,11 +464,11 @@ class ArgMax():
         self.profile = tik.Dprofile()
         self.tik_instance = tik.Tik(self.profile, True)
 
-        self.version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.version = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        self.product_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.product_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-        self.product_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.product_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
         if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS") and \
                 self.dtype_x == "float32":
@@ -486,24 +487,18 @@ class ArgMax():
             self.tik_instance
         """
         # the result index tensor in gm
-        if self.out_max_index:
-            self.result_gm = self.tik_instance.Tensor(
-                "int32",
-                (_get_round_ceil_int(self.gm_result_size, self.index_each_block),),
-                name="result_gm",
-                scope=tik.scope_gm)
-        else:
-            self.result_gm = None
+        self.result_gm = self.tik_instance.Tensor(
+            "int32",
+            (_get_round_ceil_int(self.gm_result_size, self.index_each_block),),
+            name="result_gm",
+            scope=tik.scope_gm)
 
         # the result value tensor in gm
-        if self.out_max_val:
-            self.result_gm_value = self.tik_instance.Tensor(
-                self.dtype_x,
-                (_get_round_ceil_int(self.gm_result_size, self.data_each_block),),
-                name="result_gm_value",
-                scope=tik.scope_gm)
-        else:
-            self.result_gm_value = None
+        self.result_gm_value = self.tik_instance.Tensor(
+            self.dtype_x,
+            (_get_round_ceil_int(self.gm_result_size, self.data_each_block),),
+            name="result_gm_value",
+            scope=tik.scope_gm)
 
         if self.axis_size == 1:
             # special case for axis_size == 1
@@ -529,11 +524,7 @@ class ArgMax():
                 self.argmax_last_axis()
 
         inputs = [self.data_gm]
-        outputs = []
-        if self.result_gm is not None:
-            outputs.append(self.result_gm)
-        if self.result_gm_value is not None:
-            outputs.append(self.result_gm_value)
+        outputs = [self.result_gm, self.result_gm_value]
 
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
@@ -2808,19 +2799,19 @@ class ArgMax():
                 if loop_times != 0:
                     with self.tik_instance.for_range(0, loop_times, thread_num=thread_2) as loop:
                         argmax_func(ub_buf_size, loop, offset, need_merge,
-                                    ub_result_first[core_i, 0],
-                                    ub_result_second[core_i, 0],
-                                    ub_result_third[core_i, 0],
+                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector],
+                                    ub_result_second[core_i * 2 * self.data_each_block],
+                                    ub_result_third[core_i * self.data_each_block],
                                     ub_result_indices[core_i],
-                                    ub_result_value[core_i, 0])
+                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV])
                 if align_flag:
                     with self.tik_instance.new_stmt_scope():
                         argmax_func(over_size, loop_times, offset, need_merge,
-                                    ub_result_first[core_i, 0],
-                                    ub_result_second[core_i, 0],
-                                    ub_result_third[core_i, 0],
+                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector],
+                                    ub_result_second[core_i * 2 * self.data_each_block],
+                                    ub_result_third[core_i * self.data_each_block],
                                     ub_result_indices[core_i],
-                                    ub_result_value[core_i, 0])
+                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV])
 
             gm_out_offset = n_i * segment_core + CORE_SEGMENT_LEN_DB * segment_index
             # store the indices

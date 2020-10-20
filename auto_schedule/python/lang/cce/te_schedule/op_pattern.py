@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 common function
 """
 # pylint: disable=invalid-name
@@ -609,9 +609,9 @@ in_update_pattern_list = [
         "broadcast_for_tensor",
         "elewise_single_VS_mul",
         "placeholder",
+        "broadcast_for_tensor",
         "elewise_single_sqrt",
         "elewise_single_VS_add",
-        "broadcast_for_tensor",
         "elewise_binary_sub",
         "elewise_single_VS_mul",
         "placeholder",
@@ -640,9 +640,9 @@ in_update_pattern_list = [
         "broadcast_for_tensor",
         "elewise_single_VS_mul",
         "placeholder",
+        "broadcast_for_tensor",
         "elewise_single_sqrt",
         "elewise_single_VS_add",
-        "broadcast_for_tensor",
         "elewise_binary_sub",
         "elewise_single_VS_mul",
         "placeholder",
@@ -661,15 +661,34 @@ in_update_pattern_list = [
         "broadcast_for_tensor",
         "elewise_single_VS_mul",
         "placeholder",
+        "broadcast_for_tensor",
         "elewise_single_sqrt",
         "elewise_single_VS_add",
-        "broadcast_for_tensor",
         "elewise_binary_sub",
         "elewise_single_VS_mul",
         "placeholder",
         "elewise_binary_mul",
         "elewise_single_VS_mul",
     ],
+    # for in_infer_v2
+    [
+        "elewise_binary_add",
+        "elewise_binary_mul",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "placeholder",
+        "broadcast_for_tensor",
+        "elewise_binary_mul",
+        "placeholder",
+        "elewise_single_rsqrt",
+        "elewise_single_VS_add",
+        "placeholder",
+        "broadcast_for_tensor",
+        "placeholder",
+        "elewise_single_VS_add",
+        "elewise_single_VS_add",
+    ]
 ]
 
 gn_update_pattern_list = [
@@ -683,9 +702,9 @@ gn_update_pattern_list = [
         "broadcast_for_tensor",
         "elewise_single_VS_mul",
         "placeholder",
+        "broadcast_for_tensor",
         "elewise_single_sqrt",
         "elewise_single_VS_add",
-        "broadcast_for_tensor",
         "elewise_binary_sub",
         "elewise_single_VS_mul",
         "placeholder",
@@ -703,9 +722,9 @@ gn_update_pattern_list = [
         "broadcast_for_tensor",
         "elewise_single_VS_mul",
         "placeholder",
+        "broadcast_for_tensor",
         "elewise_single_sqrt",
         "elewise_single_VS_add",
-        "broadcast_for_tensor",
         "elewise_binary_sub",
         "elewise_single_VS_mul",
         "placeholder",
@@ -1613,7 +1632,7 @@ reduce_mean_2d_aligned_mid_reduce_no_cast_list = [  # pylint: disable=invalid-na
         "reduce_sum",
         "elewise_single_VS_mul",
         "placeholder",
-     ],
+    ],
 ]
 
 cosine_embedding_loss_tag_list = [

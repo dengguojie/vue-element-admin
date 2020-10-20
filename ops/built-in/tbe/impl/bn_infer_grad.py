@@ -1,39 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 bn_infer_grad
 """
-
-from __future__ import absolute_import
-from __future__ import division
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as tbe_platform
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
-
-MAX_SHAPE_NUM = 10000000
-SCALAR_ONE = 1
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils import error_manager
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=locally-disabled,too-many-arguments
-@fusion_manager.register("bn_infer_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("bn_infer_grad")
 def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
                           epsilon, kernel_name="bn_infer_grad"):
     """
@@ -58,7 +50,7 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
     x_backprop: dict
         dict of x_norm, A 5D Tensor for output x_norm.
     epsilon: float
-        A small float number added to the variance of x. Defaults to `0.0001`.
+        A small float number added to the variance of x.
     kernel_name: str
         kernel name, default value is "bn_infer_grad"
 
@@ -66,27 +58,25 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
     -------
     res: x_backprop
    """
-    shape_x = te.lang.cce.util.shape_to_list(grads.shape)
+    shape_x = shape_util.shape_to_list(grads.shape)
 
     is_cast = False
     if grads.dtype == "float16" and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                                    "float32"):
+           tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
         is_cast = True
-        grads = te.lang.cce.cast_to(grads, "float32")
+        grads = tbe.cast_to(grads, "float32")
 
-    data_adds = te.lang.cce.vadds(batch_variance, epsilon)
-    data_rsqrt = te.lang.cce.vsqrt(data_adds)
-    shape_var = te.lang.cce.util.shape_to_list(batch_variance.shape)
-    data_cast = te.lang.cce.broadcast(tvm.const(SCALAR_ONE, "float32"),
-                                      shape_var)
-    data_rsqrts = te.lang.cce.vdiv(data_cast, data_rsqrt)
+    data_adds = tbe.vadds(batch_variance, epsilon)
+    data_rsqrt = tbe.vsqrt(data_adds)
+    shape_var = shape_util.shape_to_list(batch_variance.shape)
+    data_cast = tbe.broadcast(tvm.const(1, "float32"), shape_var)
+    data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
 
-    scale_mul = te.lang.cce.vmul(scale, data_rsqrts)
-    scale_mul_broadcast = te.lang.cce.broadcast(scale_mul, shape_x)
-    res = te.lang.cce.vmul(scale_mul_broadcast, grads)
+    scale_mul = tbe.vmul(scale, data_rsqrts)
+    scale_mul_broadcast = tbe.broadcast(scale_mul, shape_x)
+    res = tbe.vmul(scale_mul_broadcast, grads)
     if is_cast:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
@@ -105,33 +95,41 @@ def _check_shape(shape_grads, shape_batch_variance):
     -------
     None
     """
-    check_shape(shape_grads, param_name="grads")
+    para_check.check_shape(shape_grads, param_name="grads")
 
-    check_shape(shape_batch_variance, param_name="batch_variance")
+    para_check.check_shape(shape_batch_variance, param_name="batch_variance")
 
     dim_c1 = shape_grads[1]
     dim_c0 = shape_grads[4]
 
     if len(shape_grads) != 5:
-        raise RuntimeError(
-            "This operator can only support 5D")
+        error_detail = "This operator can only support 5D"
+        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
     if dim_c0 != 16:
-        raise RuntimeError("shape_grads last dim must be 16")
+        error_detail = "shape_grads last dim must be 16"
+        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
+
     if len(shape_batch_variance) != 5:
-        raise RuntimeError(
-            "This operator can only support 5D")
+        error_detail = "This operator can only support 5D"
+        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
+                                                                         error_detail)
 
-    if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1\
-            or shape_batch_variance[3] != 1:
-        raise RuntimeError(
-            "Dimensions except Dimension C must be one for shape_batch_mean")
+    if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
+       or shape_batch_variance[3] != 1:
+        error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
+        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
+                                                                         error_detail)
+
     if shape_batch_variance[1] != dim_c1 or shape_batch_variance[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal")
+        batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
+        error_manager.error_manager_vector.raise_err_check_params_rules("bn_infer_grad",
+                                                                        batch_variance_rule, "batch_variance",
+                                                                        shape_batch_variance[1] *
+                                                                        shape_batch_variance[4])
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_infer_grad(grads, scale, batch_variance,
                   x_backprop, epsilon=0.0001,
                   kernel_name="bn_infer_grad"):
@@ -167,12 +165,12 @@ def bn_infer_grad(grads, scale, batch_variance,
     input_scale_dtype = scale.get("dtype").lower()
     batch_variance_dtype = batch_variance.get("dtype").lower()
 
-    check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
-    check_dtype(input_scale_dtype, ("float32",), param_name="scale")
-    check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
+    para_check.check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
+    para_check.check_dtype(input_scale_dtype, ("float32",), param_name="scale")
+    para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
     _check_shape(shape_grads, shape_batch_variance)
-    util.compare_tensor_dict_key(scale, batch_variance, "shape")
+    shape_util.compare_tensor_dict_key(scale, batch_variance, "shape")
 
     grads_input = tvm.placeholder(shape_grads, name="grads_input",
                                   dtype=input_grads_dtype)
@@ -187,8 +185,8 @@ def bn_infer_grad(grads, scale, batch_variance,
                                 x_backprop, epsilon,
                                 kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
     tensor_list = [grads_input, scale_input, batch_variance_input, res]
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

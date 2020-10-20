@@ -1,24 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 vector schedule
 """
 import abc
 from te import platform as cceconf
 from te import tvm
-
 
 
 # 'pylint: disable=no-self-use, too-many-instance-attributes, too-few-public-methods, redefined-builtin, useless-object-inheritance
@@ -229,7 +228,6 @@ class VectorSchedule(object):
     def _calculate_cache_write(self):
         return
 
-
     @abc.abstractmethod
     def _calculate_compute_inline(self):
         return
@@ -250,10 +248,8 @@ class VectorSchedule(object):
     def _calculate_emit_insn(self):
         return
 
-
     def _get_block_num(self):
         return cceconf.get_soc_spec("CORE_NUM")
-
 
     def _map_apend(self, input_map, key, value):
         if input_map.get(key):
@@ -313,4 +309,3 @@ class VectorSchedule(object):
             align_factor = 8
             dtype_bytes = 4
         return align_factor, dtype_bytes
-

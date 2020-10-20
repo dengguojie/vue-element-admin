@@ -1,31 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic square
 """
-import te.lang.dynamic
+import functools
+
+import te.lang.dynamic as dynamic
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from topi import generic
-from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify, Mode
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
 
 
 def square_compute(input_x, output_y, kernel_name="square"):
@@ -47,12 +43,12 @@ def square_compute(input_x, output_y, kernel_name="square"):
     res : tvm.tensor
         the result of square
     """
-    res = te.lang.dynamic.vmul(input_x, input_x)
+    res = dynamic.vmul(input_x, input_x)
     return res
 
 
-@te.op.register_operator("Square")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_platform.register_operator("Square")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def square(input_x, output, kernel_name="square"):
     """
     algorithm: square
@@ -75,25 +71,25 @@ def square(input_x, output, kernel_name="square"):
     # check dtype
     x_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32")
-    check_dtype(x_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(x_dtype, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = tbe_platform.classify([input_x], tbe_platform.Mode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with te.op.compute():
+        with tbe_platform.compute():
             # shape
-            x_shape = variable_shape([input_x])
+            x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
             # square_compute
             data_x = tvm.placeholder(fuseshape, x_dtype, name="data_x")
             res = square_compute(data_x, output, kernel_name)
 
             tensors.append((data_x, res))
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = dynamic.auto_schedule(res)
         schedules.append(sch)
 
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    dynamic.build(schedules, config)

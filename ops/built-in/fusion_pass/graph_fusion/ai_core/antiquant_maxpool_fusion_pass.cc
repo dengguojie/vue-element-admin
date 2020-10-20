@@ -1,19 +1,23 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @brief antiquant maxpool fusion pass
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file antiquant_maxpool_fusion_pass.cpp
+ * \brief antiquant maxpool fusion pass
+ */
 #include "antiquant_maxpool_fusion_pass.h"
 
 #include <iostream>
@@ -32,19 +36,18 @@
 
 using namespace ge;
 namespace fe {
-static const char *ANTIQUANT = "AscendAntiQuant";
-static const char *MAXPOOL = "MaxPool";
-static const char *QUANT = "AscendQuant";
+static const char* ANTIQUANT = "AscendAntiQuant";
+static const char* MAXPOOL = "MaxPool";
+static const char* QUANT = "AscendQuant";
 static const std::string PATTERN_ANTIQUANT = "FusedNodeAntiQuant";
 static const std::string PATTERN_MAXPOOL = "FusedNodeMaxPool";
 static const std::string PATTERN_QUANT = "FusedNodeQuant";
 
 vector<FusionPattern*> AntiQuantMaxPoolFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
-  FusionPattern *pattern =
-      new (std::nothrow) FusionPattern("AntiQuantMaxPoolFusionPass");
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("AntiQuantMaxPoolFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_ANTIQUANT, {ANTIQUANT})
       .AddOpDesc(PATTERN_MAXPOOL, {MAXPOOL})
@@ -58,14 +61,14 @@ vector<FusionPattern*> AntiQuantMaxPoolFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status AntiQuantMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
-                                        Mapping& mapping,
-                                        vector<ge::NodePtr> &fusionNodes) {
+Status AntiQuantMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get all nodes
   ge::NodePtr anti_node = GetNodeFromMapping(PATTERN_ANTIQUANT, mapping);
   ge::NodePtr maxpool_node = GetNodeFromMapping(PATTERN_MAXPOOL, mapping);
-  FUSION_PASS_CHECK(anti_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "anti_node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(maxpool_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(anti_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "anti_node is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(maxpool_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // if not satisfied, then back
   int flag_back = 0;
@@ -98,14 +101,11 @@ Status AntiQuantMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
 
   if (flag_back == 1) {
     // connect output edge
-    for (auto inDataAnchor :
-        anti_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(anti_node->GetOutDataAnchor(0),
-                                            inDataAnchor) != SUCCESS,
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed for back."), return FAILED);
-        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_node->GetOutDataAnchor(0),
-                                        inDataAnchor) != SUCCESS,
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed for back."), return FAILED);
+    for (auto inDataAnchor : anti_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(anti_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed for back."), return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed for back."), return FAILED);
     }
     // set AscendQuant attr
     float scale;
@@ -139,11 +139,11 @@ Status AntiQuantMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
     }
     // delete fused nodes
     FUSION_PASS_CHECK(graph.RemoveNode(anti_node) != SUCCESS,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove anti_node failed for back."), return FAILED);
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove anti_node failed for back."), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "AntiQuantMaxPoolFusionPass graph fusion success!");
   return SUCCESS;
 }
 REGISTER_PASS("AntiQuantMaxPoolFusionPass", BUILT_IN_GRAPH_PASS, AntiQuantMaxPoolFusionPass);
-}
+}  // namespace fe

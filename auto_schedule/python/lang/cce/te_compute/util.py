@@ -1,14 +1,24 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
+util
 """
 # pylint: disable=import-error
 from decorator import decorator
-from te import platform as cceconf
 from te import tvm
 from te.platform import intrinsic_check_support
-from te.platform import get_soc_spec
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
 from te.platform.cce_conf import VERSION_SHISI
@@ -31,20 +41,20 @@ DTYPE_MAP = {
 
 DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
-        "AllSoc": ("float16", "float32", "int32", "int16", "uint16", \
+        "AllSoc": ("float16", "float32", "int32", "int16", "uint16",
                    "int8", "uint8"),
-        VERSION_MINI: ("float16", "float32", "int32", "int16", "uint16", \
-                      "int8", "uint8"),
-        VERSION_CLOUD: ("float16", "float32", "int32", "int16", "uint16", \
-                      "int8", "uint8"),
-        VERSION_MINI_1951: ("float16", "float32", "int32", "int16", "uint16", \
-                      "int8", "uint8"),
-        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16", "uint16", \
-                      "int8", "uint8"),
-        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16", "uint16", \
-                      "int8", "uint8"),
-        VERSION_SHISI: ("float16", "float32", "int32", "int16", "uint16", \
-                          "int8", "uint8"),
+        VERSION_MINI: ("float16", "float32", "int32", "int16", "uint16",
+                       "int8", "uint8"),
+        VERSION_CLOUD: ("float16", "float32", "int32", "int16", "uint16",
+                        "int8", "uint8"),
+        VERSION_MINI_1951: ("float16", "float32", "int32", "int16", "uint16",
+                            "int8", "uint8"),
+        VERSION_MINI_1951M: ("float16", "float32", "int32", "int16", "uint16",
+                             "int8", "uint8"),
+        VERSION_MINI_1951PG2: ("float16", "float32", "int32", "int16", "uint16",
+                               "int8", "uint8"),
+        VERSION_SHISI: ("float16", "float32", "int32", "int16", "uint16",
+                        "int8", "uint8"),
     },
 
     # segment
@@ -175,24 +185,24 @@ DSL_CHECK_SUPPORT_MAP = {
         "AllSoc": ("float16",),
         VERSION_MINI: ("float16", "float32"),
         VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_1951: ("float16", "float32"), # int32: nlst support, last not
+        VERSION_MINI_1951: ("float16", "float32"),  # int32: nlst support, last not
         VERSION_MINI_1951M: ("float16", "float32"),
         VERSION_MINI_1951PG2: ("float16", "float32"),
         VERSION_SHISI: ("float16",),
     },
     "reduce_max": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"), # fp32:last need priority_flag
-        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI: ("float16", "float32", "int32"),  # fp32:last need priority_flag
+        VERSION_CLOUD: ("float16", "float32", "int32"),
         VERSION_MINI_1951: ("float16", "float32"),
-        VERSION_MINI_1951M: ("float16", "float32"), # int32: nlst support, last not
+        VERSION_MINI_1951M: ("float16", "float32"), # v200 int32: nlst support, last not
         VERSION_MINI_1951PG2: ("float16", "float32"),
         VERSION_SHISI: ("float16",),
     },
     "reduce_min": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"), # int32: nlst support, last not
-        VERSION_CLOUD: ("float16", "float32"), # fp32:last need priority_flag
+        VERSION_MINI: ("float16", "float32"),  # int32: nlst support, last not
+        VERSION_CLOUD: ("float16", "float32"),  # fp32:last need priority_flag
         VERSION_MINI_1951: ("float16", "float32"),
         VERSION_MINI_1951M: ("float16", "float32"),
         VERSION_MINI_1951PG2: ("float16", "float32"),
@@ -200,7 +210,7 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"), # int32: nlst/last support
+        VERSION_MINI: ("float16", "float32"),  # int32: nlst/last support
         VERSION_CLOUD: ("float16", "float32"),
         VERSION_MINI_1951: ("float16", "float32"),
         VERSION_MINI_1951M: ("float16", "float32"),
@@ -503,38 +513,38 @@ DSL_CHECK_SUPPORT_MAP = {
         "AllSoc": ("float16",),
         VERSION_MINI: ("float16", "float32", "int32"),
         VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_1951: ("float16", "float32"), # int32: schedule not support
-        VERSION_MINI_1951M: ("float16", "float32"), # int32: schedule not support
+        VERSION_MINI_1951: ("float16", "float32"),  # int32: schedule not support
+        VERSION_MINI_1951M: ("float16", "float32"),  # int32: schedule not support
         VERSION_MINI_1951PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",), # int32: schedule not support
+        VERSION_SHISI: ("float16",),  # int32: schedule not support
     },
     "cast_to": {
         "AllSoc": ("f162f32", "f162s8", "f162u8", "f162s32", \
                    "s82f16", "s82u8", "u82f16", "u82s8", \
                    "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_MINI: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                      "f162f32", "f162s8", "f162u8", "f162s32", \
-                      "s82f16", "s82u8", "u82f16", "u82s8", \
-                      "s322f16", "s322s8", "s322u8", "s322f32"),
+                       "f162f32", "f162s8", "f162u8", "f162s32", \
+                       "s82f16", "s82u8", "u82f16", "u82s8", \
+                       "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_CLOUD: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                      "f162f32", "f162s8", "f162u8", "f162s32", \
-                      "s82f16", "s82u8", "u82f16", "u82s8", \
-                      "s322f16", "s322s8", "s322u8", "s322f32"),
+                        "f162f32", "f162s8", "f162u8", "f162s32", \
+                        "s82f16", "s82u8", "u82f16", "u82s8", \
+                        "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_MINI_1951: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                      "f162f32", "f162s8", "f162u8", "f162s32", \
-                      "s82f16", "s82u8", "u82f16", "u82s8", \
-                      "s322f16", "s322s8", "s322u8", "s322f32"),
+                            "f162f32", "f162s8", "f162u8", "f162s32", \
+                            "s82f16", "s82u8", "u82f16", "u82s8", \
+                            "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_MINI_1951M: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                      "f162f32", "f162s8", "f162u8", "f162s32", \
-                      "s82f16", "s82u8", "u82f16", "u82s8", \
-                      "s322f16", "s322s8", "s322u8", "s322f32"),
+                             "f162f32", "f162s8", "f162u8", "f162s32", \
+                             "s82f16", "s82u8", "u82f16", "u82s8", \
+                             "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_MINI_1951PG2: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                      "f162f32", "f162s8", "f162u8", "f162s32", \
-                      "s82f16", "s82u8", "u82f16", "u82s8", \
-                      "s322f16", "s322s8", "s322u8", "s322f32"),
+                               "f162f32", "f162s8", "f162u8", "f162s32", \
+                               "s82f16", "s82u8", "u82f16", "u82s8", \
+                               "s322f16", "s322s8", "s322u8", "s322f32"),
         VERSION_SHISI: ("f162f32", "f162s8", "f162u8", "f162s32", \
-                          "s82f16", "s82u8", "u82f16", "u82s8", \
-                          "s322f16", "s322s8", "s322u8", "s322f32"),
+                        "s82f16", "s82u8", "u82f16", "u82s8", \
+                        "s322f16", "s322s8", "s322u8", "s322f32"),
     },
 
     "conv": {
@@ -584,7 +594,6 @@ def dsl_support_dtype(dsl_name):
     return list(soc_support_dtype)
 
 
-
 def dsl_check_support(dsl_api, dtype=None):
     """
     dsl_check_support
@@ -620,7 +629,7 @@ def check_input_type(*type_args, **type_kwargs):
     check input parameter type
     """
     # for pylint, reserved argument, otherwise "Unused argument"
-    type_kwargs = type_kwargs
+    _ = type_kwargs
 
     def out_wrapper(func):
         """
@@ -707,7 +716,7 @@ def is_cast_support(src_type, dst_type):
         return True
 
     cast_type = get_cast_type(src_type, dst_type)
-    
+
     if intrinsic_check_support("Intrinsic_vconv", cast_type):
         return True
     else:
@@ -768,6 +777,16 @@ def int_ceil_div(num_a, num_b):
     if num_b == 0:
         raise RuntimeError(" division by zero")
     return (num_a + num_b - 1) // num_b
+
+
+def align(x_1, x_2):
+    """
+    do align
+
+    """
+    if x_2 == 0:
+        raise RuntimeError("division by zero")
+    return (x_1 + x_2 - 1) // x_2 * x_2
 
 
 def get_and_res(flag_a, flag_b):

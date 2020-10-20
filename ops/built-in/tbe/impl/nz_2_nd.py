@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 nz_2_nd
 """
 # pylint: disable=too-many-lines,import-error,too-many-branches,too-many-arguments
@@ -3808,32 +3808,16 @@ class Nz2NDCompute(object):
                             with tik_instance.if_scope(offset_z > 0):
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:
-                                        input_z_ub[i * self.output_shape[-1] + j + offset_z] = \
+                                        input_z_ub[i * self.output_shape[-1] + j] = \
                                             input_y_ub[i * num_gm * 16 + j]
                                 # back one_block
-                                tik_instance.data_move(input_y_ub[0],
-                                                       self.output_y_gm[dst_gm - offset_z],
+                                tik_instance.data_move(self.output_y_gm[dst_gm],
+                                                       input_z_ub[0],
                                                        0,
                                                        1,
                                                        1,
                                                        0,
                                                        0)
-
-                                with tik_instance.for_range(0, offset_z) as j:
-                                    input_z_ub[j] = input_y_ub[j]
-                                minimum_data_move = 32 // self.num_bit
-                                last_psm = acture_memory % 16 / minimum_data_move
-                                burstlen_gm2ub_sp = math.ceil(last_psm) * minimum_data_move
-                                burstlen_gm2ub_sp = burstlen_gm2ub_sp * self.num_bit // \
-                                                    DATA_MOVE_MIN_UNIT
-                                if burstlen_gm2ub_sp > 0:
-                                    tik_instance.data_move(self.output_y_gm[dst_gm - offset_z],
-                                                           input_z_ub[0],
-                                                           0,
-                                                           1,
-                                                           burstlen_gm2ub_sp,
-                                                           0,
-                                                           0)
                             with tik_instance.else_scope():
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:
@@ -4050,32 +4034,16 @@ class Nz2NDCompute(object):
                             with tik_instance.if_scope(offset_z > 0):
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:
-                                        input_z_ub[i * self.output_shape[-1] + j + offset_z] = \
+                                        input_z_ub[i * self.output_shape[-1] + j] = \
                                             input_y_ub_vconv[i * num_gm * 16 + j]
                                 # back one_block
-                                tik_instance.data_move(input_y_ub_vconv[0],
-                                                       self.output_y_gm[dst_gm - offset_z],
+                                tik_instance.data_move(self.output_y_gm[dst_gm],
+                                                       input_z_ub[0],
                                                        0,
                                                        1,
                                                        1,
                                                        0,
                                                        0)
-
-                                with tik_instance.for_range(0, offset_z) as j:
-                                    input_z_ub[j] = input_y_ub_vconv[j]
-                                minimum_data_move = 32 // self.num_bit
-                                last_psm = acture_memory % 16 / minimum_data_move
-                                burstlen_gm2ub_sp = math.ceil(last_psm) * minimum_data_move
-                                burstlen_gm2ub_sp = burstlen_gm2ub_sp * self.num_bit // \
-                                                    DATA_MOVE_MIN_UNIT
-                                if burstlen_gm2ub_sp > 0:
-                                    tik_instance.data_move(self.output_y_gm[dst_gm - offset_z],
-                                                           input_z_ub[0],
-                                                           0,
-                                                           1,
-                                                           burstlen_gm2ub_sp,
-                                                           0,
-                                                           0)
                             with tik_instance.else_scope():
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:
@@ -4160,7 +4128,7 @@ class Nz2NDCompute(object):
                                                num_gm, burstlen_gm2ub, srcstride_gm2ub,
                                                dststride_gm2ub, src_x_index, 0)
 
-                    # -------------------Vconv int32 to fp32---------------------
+                    # VADD
                     vector_repeat_merchant = num_gm * 16 // MASK
                     vector_repeat_remainder = num_gm * 16 % MASK
 
@@ -4271,32 +4239,16 @@ class Nz2NDCompute(object):
                             with tik_instance.if_scope(offset_z > 0):
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:
-                                        input_z_ub[i * self.output_shape[-1] + j + offset_z] = \
+                                        input_z_ub[i * self.output_shape[-1] + j] = \
                                             input_y_ub[i * num_gm * 16 + j]
                                 # back one_block
-                                tik_instance.data_move(input_y_ub[0],
-                                                       self.output_y_gm[dst_gm - offset_z],
+                                tik_instance.data_move(self.output_y_gm[dst_gm],
+                                                       input_z_ub[0],
                                                        0,
                                                        1,
                                                        1,
                                                        0,
                                                        0)
-
-                                with tik_instance.for_range(0, offset_z) as j:
-                                    input_z_ub[j] = input_y_ub[j]
-                                minimum_data_move = 32 // self.num_bit
-                                last_psm = acture_memory % 16 / minimum_data_move
-                                burstlen_gm2ub_sp = math.ceil(last_psm) * minimum_data_move
-                                burstlen_gm2ub_sp = burstlen_gm2ub_sp * self.num_bit // \
-                                                    DATA_MOVE_MIN_UNIT
-                                if burstlen_gm2ub_sp > 0:
-                                    tik_instance.data_move(self.output_y_gm[dst_gm - offset_z],
-                                                           input_z_ub[0],
-                                                           0,
-                                                           1,
-                                                           burstlen_gm2ub_sp,
-                                                           0,
-                                                           0)
                             with tik_instance.else_scope():
                                 with tik_instance.for_range(0, use_time) as i:
                                     with tik_instance.for_range(0, self.output_shape[-1]) as j:

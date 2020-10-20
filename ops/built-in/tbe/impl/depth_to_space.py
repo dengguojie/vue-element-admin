@@ -1,26 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 depth_to_space
 """
 # pylint: disable=too-many-lines,import-error
-from functools import reduce as functools_reduce
+import functools
+
 from te import platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # available ub size
 TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -146,7 +146,7 @@ class DepthToSpaceNHWCCompute:
 
         self.output_shape = (self.output_batch, self.output_height,
                              self.output_width, self.output_depth)
-        check_shape(self.output_shape, param_name="y")
+        para_check.check_shape(self.output_shape, param_name="y")
         # the number of data that UB can put in
         self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
         # minimum granularity of data_move
@@ -188,7 +188,7 @@ class DepthToSpaceNHWCCompute:
         calculate the tiling axis
         """
         for i, _ in enumerate(self.tiling_shape):
-            buf_size_needed = functools_reduce(lambda x1, x2: x1 * x2,
+            buf_size_needed = functools.reduce(lambda x1, x2: x1 * x2,
                                                self.tiling_shape[i:])
             is_buffer_large_enough = self.ub_memory // buf_size_needed
             if is_buffer_large_enough > 0:
@@ -207,14 +207,14 @@ class DepthToSpaceNHWCCompute:
             loop_memory = self.ub_memory - self.ub_memory % self.num_data
             loop_times = (self.num_data_one_move + loop_memory - 1) // \
                          loop_memory
-            loop_number = functools_reduce(lambda x1, x2: x1 * x2,
+            loop_number = functools.reduce(lambda x1, x2: x1 * x2,
                                            self.tiling_shape[:4]) * loop_times
         # set block_num according to the product of first tiling_index axis
         # of tiling_shape
         elif tiling_index == 0:
             return 1
         else:
-            loop_number = functools_reduce(lambda x1, x2: x1 * x2,
+            loop_number = functools.reduce(lambda x1, x2: x1 * x2,
                                            self.tiling_shape[:tiling_index])
         if loop_number < MAX_CORE_NUM:
             return loop_number
@@ -285,7 +285,7 @@ class DepthToSpaceNHWCCompute:
             padding_status = tik_instance.Scalar("uint64")
             num_padding_loop = tik_instance.Scalar("uint64")
             padding_loop = (self.num_data + loop_number *
-                            self.min_size - 1) //\
+                            self.min_size - 1) // \
                            (loop_number * self.min_size)
             with tik_instance.if_scope(num_core_loop >=
                                        (core_loop - padding_loop)):
@@ -331,8 +331,8 @@ class DepthToSpaceNHWCCompute:
                                                self.num_data, 0, 0)
                     else:
                         with tik_instance.if_scope(
-                            output_index < handling_times -
-                            self.num_data // self.min_size):
+                                output_index < handling_times -
+                                self.num_data // self.min_size):
                             tik_instance.data_move(self.output_y_gm
                                                    [dst_y_first_index +
                                                     output_index *
@@ -374,7 +374,7 @@ class DepthToSpaceNHWCCompute:
                                                   [src_ub_index +
                                                    num_min_size])
                                 tmp_ub[remainder_pad + num_pad *
-                                       self.min_size + num_min_size] =\
+                                       self.min_size + num_min_size] = \
                                     tmp_scalar
                         tik_instance.data_move(
                             self.output_y_gm[dst_y_first_index +
@@ -455,7 +455,7 @@ class DepthToSpaceNHWCCompute:
             with tik_instance.for_range(0, ((self.min_size * handling_times -
                                              padding_remainder) +
                                             self.min_size - 1) //
-                                        self.min_size) \
+                                           self.min_size) \
                     as output_index:
                 tik_instance.data_move(self.output_y_gm[dst_y_first_index +
                                                         output_index *
@@ -473,7 +473,7 @@ class DepthToSpaceNHWCCompute:
                 tmp_scalar.set_as(self.input_x_ub[src_ub_index +
                                                   num_padding_first])
                 tmp_ub[num_padding_first] = tmp_scalar
-            with tik_instance.for_range(0, padding_remainder // self.min_size)\
+            with tik_instance.for_range(0, padding_remainder // self.min_size) \
                     as num_padding_second:
                 src_ub_index = (self.min_size * handling_times -
                                 padding_remainder) // self.min_size * \
@@ -527,7 +527,7 @@ class DepthToSpaceNHWCCompute:
                                               name="input_x_ub",
                                               scope=tik.scope_ubuf)
         if self.is_align:
-            loop_number = self.input_batch * self.input_height *\
+            loop_number = self.input_batch * self.input_height * \
                           self.block_size
             with tik_instance.for_range(0, loop_number) as num_index:
                 num_block_h = num_index % self.block_size
@@ -542,7 +542,7 @@ class DepthToSpaceNHWCCompute:
 
             handling_data = (self.input_batch * self.input_height *
                              self.block_size * self.input_width *
-                             self.min_size + self.num_data - 1) //\
+                             self.min_size + self.num_data - 1) // \
                             self.num_data
             self.data_move_ub2gm_align(tik_instance, dst_y_first_index,
                                        handling_data)
@@ -624,7 +624,7 @@ class DepthToSpaceNHWCCompute:
                         dst_y_first_index = num_b * self.output_height * \
                                             self.output_width * \
                                             self.output_depth - \
-                                            (align_loop - 1) *\
+                                            (align_loop - 1) * \
                                             total_num_one_loop
                         handling_data = (align_loop * total_num_one_loop +
                                          self.num_data - 1) // self.num_data
@@ -636,7 +636,7 @@ class DepthToSpaceNHWCCompute:
                         dst_y_first_index = num_b * self.output_height * \
                                             self.output_width * \
                                             self.output_depth - \
-                                            (remainder - 1) *\
+                                            (remainder - 1) * \
                                             total_num_one_loop
                         handling_data = (remainder * total_num_one_loop +
                                          self.num_data - 1) // self.num_data
@@ -648,7 +648,7 @@ class DepthToSpaceNHWCCompute:
                                   self.input_width
                     with tik_instance.for_range(0, loop_number) as num_index:
                         num_w = num_index % self.input_width
-                        div_input_width = (num_index - num_w) //\
+                        div_input_width = (num_index - num_w) // \
                                           self.input_width
                         num_block_h = div_input_width % self.block_size
                         num_h = (div_input_width - num_block_h) // \
@@ -809,10 +809,10 @@ class DepthToSpaceNHWCCompute:
                                                        core_loop - 1)):
                         dst_y_first_index = ((num_b * self.input_height +
                                               num_h) * self.block_size +
-                                             num_block_h) *\
+                                             num_block_h) * \
                                             self.output_width * \
                                             self.output_depth - \
-                                            (align_loop - 1) *\
+                                            (align_loop - 1) * \
                                             total_num_one_loop
                         handling_data = (align_loop * total_num_one_loop +
                                          self.num_data - 1) // self.num_data
@@ -826,7 +826,7 @@ class DepthToSpaceNHWCCompute:
                                              num_block_h) * \
                                             self.output_width * \
                                             self.output_depth - \
-                                            (remainder - 1) *\
+                                            (remainder - 1) * \
                                             total_num_one_loop
                         handling_data = (remainder * total_num_one_loop +
                                          self.num_data - 1) // self.num_data
@@ -949,14 +949,14 @@ class DepthToSpaceNHWCCompute:
                                                   name="input_x_ub",
                                                   scope=tik.scope_ubuf)
             total_core_loop_num = self.input_batch * self.input_height * \
-                                  self.block_size * self.input_width *\
+                                  self.block_size * self.input_width * \
                                   loop_times
             core_loop, sum_core = _cal_core(tik_instance, total_core_loop_num,
                                             num_core, core_number)
             with tik_instance.for_range(0, core_loop) as num_core_loop:
                 total_core_loop = sum_core + num_core_loop
                 num_loop_time = total_core_loop % loop_times
-                div_loop_times = (total_core_loop - num_loop_time) //\
+                div_loop_times = (total_core_loop - num_loop_time) // \
                                  loop_times
                 num_w = div_loop_times % self.input_width
                 div_input_width = (div_loop_times - num_w) // self.input_width
@@ -965,7 +965,7 @@ class DepthToSpaceNHWCCompute:
                                    self.block_size
                 num_h = div_block_size_h % self.input_height
                 num_b = (div_block_size_h - num_h) // self.input_height
-                src_x_index = self.output_depth * self.block_size *\
+                src_x_index = self.output_depth * self.block_size * \
                               num_block_h + (num_w + self.input_width *
                                              (num_h + self.input_height *
                                               num_b)) * \
@@ -1021,8 +1021,8 @@ class DepthToSpaceNHWCCompute:
                                 tmp_ub[self.num_data - remainder +
                                        num_remainder] = tmp_scalar
                             with tik_instance.for_range(
-                                0, self.num_data - remainder)\
-                                as num_data_before:
+                                    0, self.num_data - remainder) \
+                                    as num_data_before:
                                 tmp_scalar.set_as(tmp_ub_before
                                                   [remainder +
                                                    num_data_before])
@@ -1098,8 +1098,11 @@ class DepthToSpaceNHWCCompute:
 
         return tik_instance
 
+
 # pylint: disable=invalid-name,unused-argument
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def depth_to_space(x, y, block_size, data_format='NHWC',
                    kernel_name="depth_to_space"):
     """
@@ -1127,10 +1130,10 @@ def depth_to_space(x, y, block_size, data_format='NHWC',
     """
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
-    check_shape(input_shape, param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
     check_list = ("int8", "int16", "int32", "uint8", "uint16",
                   "uint32", "uint64", "int64", "float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="x")
+    para_check.check_dtype(input_dtype, check_list, param_name="x")
 
     if len(input_shape) != 4:
         raise RuntimeError("length of input_shape should be 4 but got: %d" %

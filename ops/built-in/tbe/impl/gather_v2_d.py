@@ -1,35 +1,33 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 gather_v2_d
 """
 # pylint: disable=locally-disabled,too-many-lines
-from functools import reduce as functools_reduce
+import functools
 
-from topi.cce import util
 from te import tvm
-from te import platform as cce
-from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 
 
 # available soc resources
-UB_SIZE = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-L1_SIZE = cce.cce_conf.get_soc_spec(cce.cce_conf.L1_SIZE)
-CORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 TOTAL_PARAMS = 255000
 INDICES_LINE = 64
 
@@ -91,7 +89,7 @@ def _get_target_core_num(tensor_params, tensor_indices):
     row_num_each_core = input_shape[0] // target_core_num
     remaining_row = input_shape[0] % target_core_num
     row_len = int(tensor_params.shape[2])
-    dtype_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+    dtype_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
 
     if not _is_greater_than_32b(tensor_params, tensor_indices,
                                 row_num_each_core):
@@ -113,6 +111,21 @@ def _get_target_core_num(tensor_params, tensor_indices):
     return target_core_num, row_num_each_core, remaining_row
 
 
+def _get_target_core_num_non_zero(tensor_params):
+    """ Get the device core numbers. for example, product = cloud, then
+    target_core_num = 32, and then compute the greatest common number of actual
+    device core numbers and indices size
+    """
+    target_core_num = CORE_NUM
+    row_num_each_core = int(tensor_params.shape[0] // target_core_num)
+    core_num_one_more = int(tensor_params.shape[0] % target_core_num)
+
+    if row_num_each_core < 1:
+        target_core_num = core_num_one_more
+
+    return target_core_num, row_num_each_core, core_num_one_more
+
+
 def _get_burst_len(row_num, dtype):
     """ Get the burst length for generic DMA move .
 
@@ -129,7 +142,7 @@ def _get_burst_len(row_num, dtype):
         Burst length for generic DMA move.
     """
     # Convert byts to Bytes
-    dtype_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
     # get the elements number each block can put in (32 Bytes in one block)
     elements_num_per_block = 32 // dtype_size
     # The basic block size is 32B
@@ -156,12 +169,12 @@ def _get_ub_available_size(indices_shape, dtype, tensor_params):
         Available UB size based on Bytes.
     """
     ub_size = UB_SIZE - 1024 # reserve 1024 Bytes for temporary UB application
-    indices_size = int(functools_reduce(lambda i, j: i * j, indices_shape))
+    indices_size = int(functools.reduce(lambda i, j: i * j, indices_shape))
     params_size = int(
-        functools_reduce(lambda i, j: i * j, tensor_params.shape[:]))
+        functools.reduce(lambda i, j: i * j, tensor_params.shape[:]))
     # Convert bytes to Bytes
-    dtype_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    params_dtype_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
+    params_dtype_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
     if indices_size * dtype_size < ub_size // 2:
         align_indices_size = (indices_size * dtype_size // 32 + 1) * 32
         ub_available_size = ub_size - align_indices_size
@@ -170,7 +183,7 @@ def _get_ub_available_size(indices_shape, dtype, tensor_params):
 
     is_params_ub = False
     params_ub_size = 0
-    row_size = int(tensor_params.shape[2]) * (cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8)
+    row_size = int(tensor_params.shape[2]) * (tbe_platform.get_bit_len(tensor_params.dtype) // 8)
     if params_size * params_dtype_size < ub_size // 2 \
             and (_is_align(tensor_params) or int(row_size) < 32):
         is_params_ub = True
@@ -204,7 +217,7 @@ def _params_tiling(tensor_params, tensor_indices, row_num_each_core):
         Number of rows of the last loop.
     """
     # Convert byts to Bytes
-    src_dtype_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+    src_dtype_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
     row_size = int(tensor_params.shape[2]) * src_dtype_size
     indices_shape_each_core = [
         row_num_each_core,
@@ -231,7 +244,7 @@ def _is_greater_than_32b(tensor_params, tensor_indices, row_num_each_core):
 
     loop_num, _, ub_row_num_once, last_loop_row_num, _ = _params_tiling(
         tensor_params, tensor_indices, row_num_each_core)
-    row_size = int(tensor_params.shape[2]) * (cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8)
+    row_size = int(tensor_params.shape[2]) * (tbe_platform.get_bit_len(tensor_params.dtype) // 8)
     burst_len_ub = _get_burst_len(ub_row_num_once, tensor_params.dtype)
     burst_len_last_loop = _get_burst_len(last_loop_row_num,
                                          tensor_params.dtype)
@@ -285,12 +298,12 @@ def _gather_v2_operation(tensor_params, tensor_indices, output, tvm_ib,
     if tensor_indices.dtype.lower() == "int64":
         reg = tvm_ib.allocate("int32", (1,),
                               name='reg',
-                              scope=cce.scope_reg)
+                              scope=tbe_platform.scope_reg)
         row_len = tvm.const(int(tensor_params.shape[2]), dtype="int32")
     else:
         reg = tvm_ib.allocate(tensor_indices.dtype, (1,),
                               name='reg',
-                              scope=cce.scope_reg)
+                              scope=tbe_platform.scope_reg)
         row_len = int(tensor_params.shape[2])
 
     if op_parameters.get('is_params_ub') and _is_align(tensor_params):
@@ -326,7 +339,7 @@ def _gather_v2_operation(tensor_params, tensor_indices, output, tvm_ib,
                     tensor_params.access_ptr('r', offset=gm_offset), 0, 1,
                     op_parameters.get('burst_row_len'), 0, 0))
 
-    num_in_32b = 32 * 8 // cce.cce_intrin.get_bit_len(tensor_params.dtype)
+    num_in_32b = 32 * 8 // tbe_platform.get_bit_len(tensor_params.dtype)
     is_multi_core = op_parameters.get('is_multi_core')
 
     if _is_align(tensor_params) or (is_last is False) or (is_multi_core is
@@ -379,7 +392,7 @@ def _is_align(tensor_params):
     False: can't aligned by 32B.
     """
     # Convert byts to Bytes
-    dtype_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+    dtype_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
     row_size = int(tensor_params.shape[2] * dtype_size)
 
     return bool(row_size % 32 == 0)
@@ -397,17 +410,17 @@ def _small_dataset_operation(tensor_params, tensor_indices, output, tvm_ib,
     if tensor_indices.dtype.lower() == "int64":
         reg = tvm_ib.allocate("int32", (1,),
                               name='reg',
-                              scope=cce.scope_reg)
+                              scope=tbe_platform.scope_reg)
         row_len = tvm.const(int(tensor_params.shape[2]), dtype="int32")
     else:
         reg = tvm_ib.allocate(tensor_indices.dtype, (1,),
                               name='reg',
-                              scope=cce.scope_reg)
+                              scope=tbe_platform.scope_reg)
         row_len = int(tensor_params.shape[2])
 
-    bit_size = cce.cce_intrin.get_bit_len(tensor_params.dtype)
-    total_params = int(functools_reduce(lambda i, j: i * j, tensor_params.shape[:]))
-    indices_len = int(functools_reduce(lambda i, j: i * j,
+    bit_size = tbe_platform.get_bit_len(tensor_params.dtype)
+    total_params = int(functools.reduce(lambda i, j: i * j, tensor_params.shape[:]))
+    indices_len = int(functools.reduce(lambda i, j: i * j,
                                        tensor_indices.shape[:]))
     l1_size = int(L1_SIZE)
     if total_params * bit_size // 8 < l1_size \
@@ -442,7 +455,7 @@ def _small_dataset_operation(tensor_params, tensor_indices, output, tvm_ib,
             temp_ub = _new_alloc(tvm_ib,
                                  tensor_params.dtype, [1, row_len + 32],
                                  "temp_ub",
-                                 scope=cce.scope_ubuf)
+                                 scope=tbe_platform.scope_ubuf)
 
             if total_params * bit_size // 8 < l1_size \
                     and not (total_params > TOTAL_PARAMS
@@ -529,9 +542,9 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
     """Describe gather process in different segmentation scenario."""
     row_len = int(tensor_params.shape[2])
     total_row = int(
-        functools_reduce(lambda i, j: i * j, tensor_indices.shape[:]))
+        functools.reduce(lambda i, j: i * j, tensor_indices.shape[:]))
     total_params = int(
-        functools_reduce(lambda i, j: i * j, tensor_params.shape[:]))
+        functools.reduce(lambda i, j: i * j, tensor_params.shape[:]))
     op_parameters['burst_row_len'] = _get_burst_len(row_len,
                                                     tensor_params.dtype)
     op_parameters['burst_loop_len'] = _get_burst_len(row_len,
@@ -542,7 +555,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
 
     loop_num, split_num, ub_row_num_once, last_loop_row_num, is_params_ub = \
         _params_tiling(tensor_params, tensor_indices, row_num_once)
-    row_size = int(tensor_params.shape[2]) * (cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8)
+    row_size = int(tensor_params.shape[2]) * (tbe_platform.get_bit_len(tensor_params.dtype) // 8)
 
     if row_size < 32:
         if is_params_ub:
@@ -551,14 +564,14 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                                     tensor_params.dtype,
                                                     [1, total_params],
                                                     "params_ub",
-                                                    scope=cce.scope_ubuf)
+                                                    scope=tbe_platform.scope_ubuf)
         src_shape_each_core = [row_num_once, row_len]
         op_parameters['loop_row_num'] = row_num_once
         op_parameters['data_ub'] = _new_alloc(tvm_ib,
                                               tensor_params.dtype,
                                               src_shape_each_core,
                                               "data_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
 
         op_parameters['gm_offset'] = pre_num * int(tensor_params.shape[1])
         op_parameters['indices_offset'] = 0
@@ -578,7 +591,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                                 tensor_params.dtype,
                                                 [1, total_params],
                                                 "params_ub",
-                                                scope=cce.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
 
     # copy into UB one-row at a time, and copy out to GM after processing
     if loop_num != row_num_once or split_num == 0:
@@ -588,7 +601,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                                   tensor_params.dtype,
                                                   src_shape_each_core,
                                                   "data_ub",
-                                                  scope=cce.scope_ubuf)
+                                                  scope=tbe_platform.scope_ubuf)
             with tvm_ib.for_range(0, row_num_once,
                                   name='gather_num') as gather_num:
                 op_parameters['gm_offset'] = pre_num * int(tensor_params.shape[1])
@@ -621,7 +634,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                                       tensor_params.dtype,
                                                       src_shape_each_core,
                                                       "data_ub",
-                                                      scope=cce.scope_ubuf)
+                                                      scope=tbe_platform.scope_ubuf)
                 op_parameters['burst_loop_len'] = _get_burst_len(
                     ub_row_num_once * row_len, tensor_params.dtype)
                 op_parameters['output_num'] = ub_row_num_once * row_len
@@ -650,7 +663,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                                       tensor_params.dtype,
                                                       src_shape_each_core,
                                                       "data_ub",
-                                                      scope=cce.scope_ubuf)
+                                                      scope=tbe_platform.scope_ubuf)
                 op_parameters['burst_loop_len'] = _get_burst_len(
                     last_loop_row_num * row_len, tensor_params.dtype)
                 op_parameters['output_num'] = last_loop_row_num * row_len
@@ -672,7 +685,7 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
                                               tensor_params.dtype,
                                               src_shape_each_core,
                                               "data_ub",
-                                              scope=cce.scope_ubuf)
+                                              scope=tbe_platform.scope_ubuf)
         with tvm_ib.for_range(0, row_num_once,
                               name='gather_num') as gather_num:
             op_parameters['burst_row_len'] = _get_burst_len(
@@ -729,12 +742,12 @@ def _gather_v2_loop(output, tensor_params, tensor_indices, op_parameters,
 
 def _indices_tiling(tensor_params, tensor_indices, row_num_each_core):
     """Segmentation logic for indices"""
-    params_dtype_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+    params_dtype_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
     row_size = int(tensor_params.shape[2]) * params_dtype_size
     params_size = int(
-        functools_reduce(lambda i, j: i * j, tensor_params.shape[:]))
+        functools.reduce(lambda i, j: i * j, tensor_params.shape[:]))
 
-    indices_dtype_size = cce.cce_intrin.get_bit_len(tensor_indices.dtype) // 8
+    indices_dtype_size = tbe_platform.get_bit_len(tensor_indices.dtype) // 8
     indices_size = row_num_each_core * indices_dtype_size
     ub_size = UB_SIZE - 1024
 
@@ -758,7 +771,76 @@ def _indices_tiling(tensor_params, tensor_indices, row_num_each_core):
     return loop_num, row_num_once, last_loop_row_num
 
 
-def _kernel_ir(output, tensor_params, tensor_indices):
+def _compute_axis_not_zero(output, tensor_params, tensor_indices,
+                           op_parameters, tvm_ib, row_num_each_core, gather_len, indices_len):
+    """compute for value of axis is not zero"""
+    reg = tvm_ib.allocate(tensor_indices.dtype, (1,),
+                          name='reg',
+                          scope=cce.scope_reg)
+    row_len = int(tensor_params.shape[2])
+    burst_indices = _get_burst_len(indices_len,
+                                   tensor_indices.dtype)
+    burst_loop_len = _get_burst_len(row_len,
+                                    tensor_params.dtype)
+
+    tvm_ib.emit(
+        tvm.call_extern(
+            tensor_indices.dtype, "copy_gm_to_ubuf",
+            op_parameters.get('indices_ub').access_ptr("w"),
+            tensor_indices.access_ptr('r', offset=0), 0, 1,
+            burst_indices, 0, 0))
+
+    with tvm_ib.for_range(0, row_num_each_core, name='pre_axis_num') as pre_axis_num:
+        with tvm_ib.for_range(0, indices_len, name='indices_num') as indices_num:
+            tvm_ib.emit(
+                tvm.call_extern(
+                    tensor_indices.dtype, "reg_mov",
+                    tvm.call_extern(reg.dtype, "reg", reg[0]),
+                    op_parameters.get('indices_ub').access_ptr('r', offset=indices_num)))
+            params_offset = op_parameters.get('gm_offset') + pre_axis_num * gather_len + reg[0] * row_len
+            tvm_ib.emit(
+                tvm.call_extern(
+                    tensor_params.dtype, "copy_gm_to_ubuf",
+                    op_parameters.get('params_ub').access_ptr("w", offset=0),
+                    tensor_params.access_ptr('r', offset=params_offset), 0, 1,
+                    burst_loop_len, 0, 0))
+
+            output_offset = (op_parameters.get('output_offset') + (pre_axis_num * indices_len + indices_num)) * row_len
+            bit_size = tbe_platform.get_bit_len(tensor_params.dtype)
+            num_in_32b = 32 * 8 // bit_size
+
+            with tvm_ib.if_scope(tvm.all(pre_axis_num == row_num_each_core - 1, indices_num == indices_len - 1)):
+                tvm_ib.emit(
+                    tvm.call_extern(
+                        output.dtype, "copy_ubuf_to_gm",
+                        output.access_ptr("w", offset=output_offset),
+                        op_parameters.get('params_ub').access_ptr("r"), 0, 1,
+                        burst_loop_len - 1, 0, 0))
+
+                for j in range(num_in_32b):
+                    tvm_ib.emit(
+                        tvm.call_extern(
+                            output.dtype, "reg_mov",
+                            op_parameters.get('ub_for_32B').access_ptr("rw", offset=j),
+                            op_parameters.get('params_ub').access_ptr(
+                                "r",
+                                offset=row_len - num_in_32b + j)))
+                tvm_ib.emit(
+                    tvm.call_extern(
+                        output.dtype, "copy_ubuf_to_gm",
+                        output.access_ptr("w",
+                                          offset=output_offset + row_len - num_in_32b),
+                        op_parameters.get('ub_for_32B').access_ptr("r"), 0, 1, 1, 0, 0))
+            with tvm_ib.else_scope():
+                tvm_ib.emit(
+                    tvm.call_extern(
+                        output.dtype, "copy_ubuf_to_gm",
+                        output.access_ptr("w", offset=output_offset),
+                        op_parameters.get('params_ub').access_ptr("r", offset=0), 0, 1,
+                        burst_loop_len, 0, 0))
+
+
+def _kernel_ir(output, tensor_params, tensor_indices, axis):
     """ IR node builder make function
 
     Parameters
@@ -774,12 +856,17 @@ def _kernel_ir(output, tensor_params, tensor_indices):
     -------
     stmt, The result statement.
     """
+    total_params = int(functools.reduce(lambda i, j: i * j, tensor_params.shape[:]))
+    l1_size = int(L1_SIZE)
+    row_size = int(tensor_params.shape[2]) * \
+               (tbe_platform.get_bit_len(tensor_params.dtype) // 8)
+    bit_size = tbe_platform.get_bit_len(tensor_params.dtype)
+    indices_len = int(functools.reduce(lambda i, j: i * j,
+                                       tensor_indices.shape[:]))
+    gather_len = int(functools.reduce(lambda i, j: i * j, tensor_params.shape[1:]))
+    indices_size = indices_len * (tbe_platform.get_bit_len(tensor_indices.dtype) // 8)
+
     tvm_ib = tvm.ir_builder.create()
-    # block tiling,get the appropriate core numbers for thread extent.
-    target_core_num, row_num_each_core, remaining_row = _get_target_core_num(
-        tensor_params, tensor_indices)
-    block_index = tvm.thread_axis("blockIdx.x")
-    tvm_ib.scope_attr(block_index, "thread_extent", target_core_num)
 
     # Define a dictionary to save the parameters needed by _gather_v2_operation()
     # loop_row_num: Numbers of row to put into UB per loop
@@ -801,6 +888,8 @@ def _kernel_ir(output, tensor_params, tensor_indices):
         'loop_row_num': 1,
         'burst_row_len': 1,
         'burst_loop_len': 1,
+        'burst_params': 1,
+        'burst_indices': 1,
         'indices_ub': 0,
         'params_ub': 0,
         'data_ub': 0,
@@ -815,6 +904,50 @@ def _kernel_ir(output, tensor_params, tensor_indices):
         'is_params_ub': False
     }
 
+    if (row_size + indices_size) < (UB_SIZE - 1024) and \
+            row_size > 32 and axis > 0 and int(tensor_params.shape[0]) > 32 and not _is_align(tensor_params):
+        target_core_num, row_num_each_core, core_num_one_more = _get_target_core_num_non_zero(tensor_params)
+        block_index = tvm.thread_axis("blockIdx.x")
+        tvm_ib.scope_attr(block_index, "thread_extent", target_core_num)
+        op_parameters['params_ub'] = _new_alloc(tvm_ib,
+                                                tensor_params.dtype,
+                                                int(tensor_params.shape[2]),
+                                                "params_ub",
+                                                scope=cce.scope_ubuf)
+        op_parameters['indices_ub'] = _new_alloc(tvm_ib,
+                                                 tensor_indices.dtype,
+                                                 indices_len,
+                                                 "indices_ub",
+                                                 scope=cce.scope_ubuf)
+        op_parameters['ub_for_32B'] = _new_alloc(tvm_ib,
+                                                 tensor_params.dtype,
+                                                 32,
+                                                 "ub_for_32B",
+                                                 scope=cce.scope_ubuf)
+        op_parameters['burst_params'] = _get_burst_len(gather_len,
+                                                       tensor_params.dtype)
+        op_parameters['burst_indices'] = _get_burst_len(indices_len,
+                                                        tensor_indices.dtype)
+
+        with tvm_ib.if_scope(block_index < core_num_one_more):
+            op_parameters['gm_offset'] = (block_index * row_num_each_core) * gather_len
+            op_parameters['output_offset'] = (block_index * row_num_each_core) * indices_len
+            _compute_axis_not_zero(output, tensor_params, tensor_indices,
+                                   op_parameters, tvm_ib, row_num_each_core + 1, gather_len, indices_len)
+        with tvm_ib.else_scope():
+            op_parameters['gm_offset'] = (block_index * row_num_each_core + core_num_one_more) * gather_len
+            op_parameters['output_offset'] = (block_index * row_num_each_core + core_num_one_more) * indices_len
+            _compute_axis_not_zero(output, tensor_params, tensor_indices,
+                                   op_parameters, tvm_ib, row_num_each_core, gather_len, indices_len)
+
+        return tvm_ib.get()
+
+    # block tiling,get the appropriate core numbers for thread extent.
+    target_core_num, row_num_each_core, remaining_row = _get_target_core_num(
+        tensor_params, tensor_indices)
+    block_index = tvm.thread_axis("blockIdx.x")
+    tvm_ib.scope_attr(block_index, "thread_extent", target_core_num)
+
     if int(target_core_num) > 1:
         op_parameters['is_multi_core'] = True
     loop_num, row_num_once, last_loop_row_num = _indices_tiling(
@@ -823,24 +956,17 @@ def _kernel_ir(output, tensor_params, tensor_indices):
     op_parameters['ub_for_32B'] = _new_alloc(
         tvm_ib,
         tensor_params.dtype,
-        32 * 8 // cce.cce_intrin.get_bit_len(tensor_params.dtype),
+        32 * 8 // tbe_platform.get_bit_len(tensor_params.dtype),
         "ub_for_32B",
-        scope=cce.scope_ubuf)
+        scope=tbe_platform.scope_ubuf)
 
-    total_params = int(functools_reduce(lambda i, j: i * j, tensor_params.shape[:]))
-    l1_size = int(L1_SIZE)
-    row_size = int(tensor_params.shape[2]) * \
-               (cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8)
-    bit_size = cce.cce_intrin.get_bit_len(tensor_params.dtype)
-    indices_len = int(functools_reduce(lambda i, j: i * j,
-                                       tensor_indices.shape[:]))
     if total_params * bit_size // 8 < l1_size and row_size < 32 \
             and not (total_params > TOTAL_PARAMS
                      and indices_len < INDICES_LINE) \
             and indices_len > INDICES_LINE:
         op_parameters['params_cbuf'] = _new_alloc(tvm_ib, tensor_params.dtype,
                                                   [1, total_params],
-                                                  "params_cbuf", scope=cce.scope_cbuf)
+                                                  "params_cbuf", scope=tbe_platform.scope_cbuf)
 
     with tvm_ib.for_range(0, pre_axis_num, name='pre_axis_num') as pre_num:
         # Processing previous batches(loop_num) of data
@@ -853,7 +979,7 @@ def _kernel_ir(output, tensor_params, tensor_indices):
                                                      tensor_indices.dtype,
                                                      indices_shape_each_core,
                                                      "indices_ub",
-                                                     scope=cce.scope_ubuf)
+                                                     scope=tbe_platform.scope_ubuf)
             with tvm_ib.for_range(0, loop_num, name='num') as num:
                 op_parameters['indices_offset'] = \
                     (block_index * row_num_each_core + num * row_num_once)
@@ -873,7 +999,7 @@ def _kernel_ir(output, tensor_params, tensor_indices):
 
         row_len = int(tensor_params.shape[2])
         align_offset = 0
-        params_bit_size = cce.cce_intrin.get_bit_len(tensor_params.dtype) // 8
+        params_bit_size = tbe_platform.get_bit_len(tensor_params.dtype) // 8
         with tvm_ib.if_scope(last_loop_row_num > 0):
             if row_len < 32 and params_bit_size * row_len * int(
                     last_loop_row_num) < 32 and int(target_core_num) > 1:
@@ -886,7 +1012,7 @@ def _kernel_ir(output, tensor_params, tensor_indices):
                                                      tensor_indices.dtype,
                                                      indices_shape_each_core,
                                                      "indices_ub",
-                                                     scope=cce.scope_ubuf)
+                                                     scope=tbe_platform.scope_ubuf)
             op_parameters[
                 'indices_offset'] = block_index * row_num_each_core + \
                                     loop_num * row_num_once - align_offset
@@ -919,7 +1045,7 @@ def _kernel_ir(output, tensor_params, tensor_indices):
                     tensor_indices.dtype,
                     indices_shape_each_core,
                     "indices_ub",
-                    scope=cce.scope_ubuf)
+                    scope=tbe_platform.scope_ubuf)
                 op_parameters['indices_offset'] = row_num_each_core * \
                                                   target_core_num - align_offset
                 # copy indices from gm to ub
@@ -940,7 +1066,7 @@ def _kernel_ir(output, tensor_params, tensor_indices):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@fusion_manager.register("gather_v2_d")
+@tbe_platform.fusion_manager.fusion_manager.register("gather_v2_d")
 def gather_v2_compute(tensor_params,
                       tensor_indices,
                       params_shape,
@@ -987,7 +1113,7 @@ def gather_v2_compute(tensor_params,
     ]
 
     res = tvm.extern([out_shape], [tensor_params, tensor_indices],
-                     lambda ins, outs: _kernel_ir(outs[0], ins[0], ins[1]),
+                     lambda ins, outs: _kernel_ir(outs[0], ins[0], ins[1], axis),
                      name="res",
                      dtype=params_dtype)
 
@@ -995,7 +1121,9 @@ def gather_v2_compute(tensor_params,
 
 
 # pylint: disable=locally-disabled,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     """ Gather slices from `params` axis `axis` according to `indices`.
     Produces an output tensor with shape `params.shape[:axis] + indices.shape +
@@ -1029,18 +1157,18 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
 
     dtype_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")
-    check_dtype(params_dtype, dtype_list, param_name="x")
-    check_dtype(indices_dtype, ("int32", "int64"), param_name="indices")
-    check_shape(params_shape, param_name="x")
-    check_shape(indices_shape, param_name="indices")
+    para_check.check_dtype(params_dtype, dtype_list, param_name="x")
+    para_check.check_dtype(indices_dtype, ("int32", "int64"), param_name="indices")
+    para_check.check_shape(params_shape, param_name="x")
+    para_check.check_shape(indices_shape, param_name="indices")
 
-    axis = util.axis_check(len(params_shape), axis)
+    axis = shape_util.axis_check(len(params_shape), axis)
 
     # Reshape the indices_shape to 1D and reshape the params_shape to 3D in
     # order to simplify
     # the calculation, due to only 0 is supported for axis currently.
     indices_reshape = [
-        int(functools_reduce(lambda i, j: i * j, indices_shape)),
+        int(functools.reduce(lambda i, j: i * j, indices_shape)),
     ]
     pre_axis_shape = params_shape[:axis]
     after_axis_shape = params_shape[axis + 1:]
@@ -1049,9 +1177,9 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     if not after_axis_shape:
         after_axis_shape = [1, ]
     params_reshape = [
-        int(functools_reduce(lambda i, j: i * j, pre_axis_shape)),
+        int(functools.reduce(lambda i, j: i * j, pre_axis_shape)),
         params_shape[axis],
-        int(functools_reduce(lambda i, j: i * j, after_axis_shape))
+        int(functools.reduce(lambda i, j: i * j, after_axis_shape))
     ]
 
     output_shape = [
@@ -1059,7 +1187,7 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
         indices_reshape[0],
         params_reshape[2]
     ]
-    check_shape(output_shape, param_name="y")
+    para_check.check_shape(output_shape, param_name="y")
 
     tensor_params = tvm.placeholder(params_reshape,
                                     dtype=params_dtype,
@@ -1081,7 +1209,7 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
 
     sch = tvm.create_schedule(res.op)
 
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(sch, [tensor_params, tensor_indices, res],
                   "cce",
                   name=kernel_name)

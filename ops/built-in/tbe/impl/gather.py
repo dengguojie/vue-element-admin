@@ -1,26 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 gather
 """
-from topi.cce import util
+
 from impl.gather_v2_d import gather_v2_d
-from te.utils.op_utils import *
+from te.utils import shape_util
+from te.utils import para_check
+
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def gather(x, indices, y, validate_indices=True, kernel_name="gather"):
     """Gather slices from `params` according to `indices`.`indices` must be an
     integertensor of any dimension (usually 0-D or 1-D).Produces an output
@@ -48,11 +52,11 @@ def gather(x, indices, y, validate_indices=True, kernel_name="gather"):
     indices_shape = indices.get("shape")
     indices_dtype = indices.get("dtype").lower()
 
-    check_shape(x_shape, param_name="x")
-    check_shape(indices_shape, param_name="indices")
+    para_check.check_shape(x_shape, param_name="x")
+    para_check.check_shape(indices_shape, param_name="indices")
     dtype_list = ("int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16", "float32")
-    check_dtype(indices_dtype, ("int32", "int64"), param_name="indices")
-    check_dtype(x_dtype, dtype_list, param_name="x")
+    para_check.check_dtype(indices_dtype, ("int32", "int64"), param_name="indices")
+    para_check.check_dtype(x_dtype, dtype_list, param_name="x")
 
     gather_v2_d(x, indices, y, 0, kernel_name)

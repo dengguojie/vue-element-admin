@@ -1,16 +1,18 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 nll_loss_grad
 """
 # pylint: disable=ungrouped-imports,import-error
@@ -87,7 +89,7 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
 # pylint: disable=too-many-instance-attributes,too-many-arguments
 # pylint: disable=too-many-locals,too-many-statements
 # pylint: disable=attribute-defined-outside-init
-class nll_loss_grad_compute:
+class NllLossGradCompute:
     """
     NLLLOSSGRAD
 
@@ -889,6 +891,6 @@ def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
     """
     _shape_and_dtype_check(x, y_grad, target, weight, total_weight,
                            reduction, kernel_name)
-    nll_loss_function = nll_loss_grad_compute(x, y_grad, target, weight,
+    nll_loss_function = NllLossGradCompute(x, y_grad, target, weight,
                                               reduction, kernel_name)
     return nll_loss_function.nll_loss_compute_start()

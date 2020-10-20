@@ -1,32 +1,34 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 shuffle_channel
 """
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te.utils import op_utils
-from te import platform as tbe_platform
 from impl import constant_util as constant
 from impl import common_util
+
 
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-statements
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.OPTION_ATTR_INT, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
     """
     the main function of shuffle_channel
@@ -50,12 +52,12 @@ def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
         "group": group,
         "kernel_name": kernel_name
     }
-    check_param(input_dict)
+    _check_param(input_dict)
     shuffle_process = ShuffleChannel(input_dict)
     shuffle_process.compute_shuffle_channel()
     shuffle_process.instance.BuildCCE(kernel_name=kernel_name,
-                                      inputs=(shuffle_process.x_gm),
-                                      outputs=(shuffle_process.y_gm),
+                                      inputs=(shuffle_process.x_gm,),
+                                      outputs=(shuffle_process.y_gm,),
                                       enable_l2=False)
 
     return shuffle_process.instance
@@ -87,12 +89,12 @@ class ShuffleChannel:
         self.instance = tik.Tik(tik.Dprofile())
         self.dtype = input_dict.get("x").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
-        total_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        total_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         ub_size = (total_size - RESERVE_SIZE) // (2 * self.dsize)
         burnest_len = constant.BLOCK_SIZE // self.dsize
         ub_size = ((ub_size + burnest_len - 1) // burnest_len) * burnest_len
         self.one_max_size = ub_size
-        x_len = get_shape_total_number(input_dict.get("x").get("shape"))
+        x_len = _get_shape_total_number(input_dict.get("x").get("shape"))
         x_len = ((x_len + burnest_len - 1) // burnest_len) * burnest_len
         hw = input_dict.get("y").get("shape")[2] * \
              input_dict.get("y").get("shape")[3]
@@ -100,23 +102,23 @@ class ShuffleChannel:
         if mod != 0:
             x_len = x_len + burnest_len
         self.x_gm = self.instance.Tensor(self.dtype, (x_len,), name="x_gm",
-                                         scope=tik.scope_gm)
+                                         scope=tbe_platform.scope_gm)
         self.y_gm = self.instance.Tensor(self.dtype, (x_len,), name="y_gm",
-                                         scope=tik.scope_gm)
+                                         scope=tbe_platform.scope_gm)
         self.input_dict = input_dict
 
     def get_blockdim_and_loop_cycle(self):
         """
-      get block dim and loop cycle
+        get block dim and loop cycle
 
-      Parameters
-      ----------
+        Parameters
+        ----------
         None
-      Returns
-      -------
-      None
-      """
-        block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        Returns
+        -------
+        block_num, inner_loop, inner_loop_mod
+        """
+        block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         shape_y = self.input_dict.get("y").get("shape")
         limit_size_of_each_block = shape_y[2] * shape_y[3]
@@ -134,8 +136,7 @@ class ShuffleChannel:
             limit_size_of_each_block = each_block_align
         limit_channel_of_each_block = limit_size_of_each_block // \
                                       (shape_y[2] * shape_y[3])
-        loop = (total_channel * shape_y[2] * shape_y[3]) // \
-               limit_size_of_each_block
+        loop = (total_channel * shape_y[2] * shape_y[3]) // limit_size_of_each_block
         mod_channel = ((total_channel * shape_y[2] * shape_y[3]) % \
                        limit_size_of_each_block) // (shape_y[2] * shape_y[3])
         if loop <= block_num:
@@ -144,8 +145,7 @@ class ShuffleChannel:
             inner_loop_mod = mod_channel
         else:
             inner_loop = (loop // block_num) * limit_channel_of_each_block
-            inner_loop_mod = (loop % block_num) * limit_channel_of_each_block \
-                             + mod_channel
+            inner_loop_mod = (loop % block_num) * limit_channel_of_each_block + mod_channel
             if inner_loop_mod > block_num:
                 inner_loop = inner_loop + inner_loop_mod // block_num
                 inner_loop_mod = inner_loop_mod % block_num
@@ -175,10 +175,9 @@ class ShuffleChannel:
             thread_num = 1
             if inner_loop > 1:
                 thread_num = 2
-        with self.instance.for_range(0, block_num, block_num=block_num) \
-                as block_id:
+        with self.instance.for_range(0, block_num, block_num=block_num) as block_id:
             ub_tmp = self.instance.Tensor(self.dtype, (256,),
-                                          name="ub_tmp", scope=tik.scope_ubuf)
+                                          name="ub_tmp", scope=tbe_platform.scope_ubuf)
             loop = self.instance.Scalar("int32")
             tmp_offset = self.instance.Scalar("int32")
             tmp_offset.set_as(0)
@@ -186,12 +185,11 @@ class ShuffleChannel:
                                          inner_loop,
                                          thread_num=thread_num) as inner_cycle:
                 x_ub = self.instance.Tensor(self.dtype, (self.one_max_size,),
-                                            name="x_ub", scope=tik.scope_ubuf)
+                                            name="x_ub", scope=tbe_platform.scope_ubuf)
                 loop.set_as(block_id * inner_loop + inner_cycle)
                 with self.instance.if_scope(tail > 0):
                     with self.instance.if_scope(block_id < tail):
-                        loop.set_as(block_id * inner_loop + \
-                                    inner_cycle + block_id)
+                        loop.set_as(block_id * inner_loop + inner_cycle + block_id)
                     with self.instance.else_scope():
                         loop.set_as(block_id * inner_loop + inner_cycle + tail)
 
@@ -224,12 +222,11 @@ class ShuffleChannel:
                     x_ub = self.instance.Tensor(self.dtype,
                                                 (self.one_max_size,),
                                                 name="x_ub",
-                                                scope=tik.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
                     loop.set_as(loop + 1)
                     src_start, dest_start = self.get_start_address(loop)
 
-                    with self.instance.if_scope((hw * self.dsize) >= \
-                                                constant.BLOCK_SIZE):
+                    with self.instance.if_scope((hw * self.dsize) >= constant.BLOCK_SIZE):
                         input_dict = {
                             "x_ub": x_ub,
                             "src_start": src_start,
@@ -258,15 +255,15 @@ class ShuffleChannel:
 
     def get_start_address(self, loop):
         """
-      get the start address of the source and dest tensor
+        get the start address of the source and dest tensor
 
-      Parameters
-      ----------
+        Parameters
+        ----------
         loop: loop times
-      Returns
-      -------
-      None
-      """
+        Returns
+        -------
+        src_start, dest_start
+        """
         shape_out = self.input_dict.get("y").get("shape")
         channel = shape_out[1]
         group = self.input_dict.get("group")
@@ -283,10 +280,10 @@ class ShuffleChannel:
 
     def move_out_less_than32b(self, input_dict):
         """
-      move data from ub to gm
+        move data from ub to gm
 
-      Parameters
-      ----------
+        Parameters
+        ----------
         input_dict: input_dict is a dict, the keys as follow:
                 x_ub: x_ub is a tensor,store data from gm
                 ub_tmp: ub_tmp is a tensor,store last loop 32b data from gm
@@ -296,10 +293,10 @@ class ShuffleChannel:
                 each_loop: loop times
                 total_loop: total loop of each block
                 tmp_offset: the offset of ub_tmp
-      Returns
-      -------
-      None
-      """
+        Returns
+        -------
+        None
+        """
         x_ub = input_dict.get("x_ub")
         ub_tmp = input_dict.get("ub_tmp")
         src_start = input_dict.get("src_start")
@@ -348,25 +345,25 @@ class ShuffleChannel:
 
     def data_move(self, input_dict):
         """
-      move data from ub to gm
+        move data from ub to gm
 
-      Parameters
-      ----------
+        Parameters
+        ----------
         input_dict: input_dict is a dict, the keys as follow:
                 x_ub: x_ub is a tensor,store data from gm
                 src_start: the start address of src tensor
                 dest_start: the start address of dest tensor
                 element_num: each continuous segment
                 block_num: blcok number
-      Returns
-      -------
-      None
-      """
+        Returns
+        -------
+        None
+        """
         x_ub = input_dict.get("x_ub")
         element_num = input_dict.get("element_num")
         block_num = input_dict.get("block_num")
-        loop_num, last_ub_num = get_loop_param(element_num,
-                                               self.one_max_size)
+        loop_num, last_ub_num = _get_loop_param(element_num,
+                                                self.one_max_size)
         cur_size = self.instance.Scalar("int32")
         cur_size.set_as(self.one_max_size * self.dsize)
         ub_num = self.instance.Scalar("int32")
@@ -387,7 +384,7 @@ class ShuffleChannel:
                     tik.all(cycle == loop_num - 1, mod != 0, block_num > 1)):
                 x_ub_tail = self.instance.Tensor(self.dtype, (32,),
                                                  name="x_ub_tail",
-                                                 scope=tik.scope_ubuf)
+                                                 scope=tbe_platform.scope_ubuf)
                 self.instance.data_move(x_ub_tail,
                                         self.x_gm[offset_in +
                                                   ub_num - each_burst_num],
@@ -433,7 +430,7 @@ class ShuffleChannel:
             offset_out.set_as(offset_out + ub_num)
 
 
-def get_loop_param(length, max_ub_num):
+def _get_loop_param(length, max_ub_num):
     """
     get loop parameters
 
@@ -457,7 +454,7 @@ def get_loop_param(length, max_ub_num):
     return loop_cycle, last_ub_num
 
 
-def check_param(input_dict):
+def _check_param(input_dict):
     """
     check the parameters is valid
 
@@ -479,17 +476,17 @@ def check_param(input_dict):
     y_dtype = input_dict.get("y").get("dtype").lower()
     y_shape = input_dict.get("y").get("shape")
 
-    op_utils.check_shape(x_shape, param_name="input_x")
-    op_utils.check_dtype(x_dtype,
-                         ["int8", "uint8", "int16", "uint16", "int32",
-                          "uint32", "int64", "uint64", "float16", "float32"],
-                         param_name="input_x")
+    para_check.check_shape(x_shape, param_name="input_x")
+    para_check.check_dtype(x_dtype,
+                           ["int8", "uint8", "int16", "uint16", "int32",
+                            "uint32", "int64", "uint64", "float16", "float32"],
+                           param_name="input_x")
 
-    op_utils.check_shape(y_shape, param_name="output_y")
-    op_utils.check_dtype(y_dtype,
-                         ["int8", "uint8", "int16", "uint16", "int32",
-                          "uint32", "int64", "uint64", "float16", "float32"],
-                         param_name="output_y")
+    para_check.check_shape(y_shape, param_name="output_y")
+    para_check.check_dtype(y_dtype,
+                           ["int8", "uint8", "int16", "uint16", "int32",
+                            "uint32", "int64", "uint64", "float16", "float32"],
+                           param_name="output_y")
     error_info = {}
     if x_dtype != y_dtype:
         error_info['errCode'] = 'E80018'
@@ -546,7 +543,7 @@ def check_param(input_dict):
         y_shape = list((y_shape[0], y_shape[1], 1, 1))
     input_dict["y"]["shape"] = y_shape
 
-    if not check_same_dim(y_shape, x_shape):
+    if not _check_same_dim(y_shape, x_shape):
         error_info['errCode'] = 'E80019'
         error_info['opname'] = 'shuffle_channel'
         error_info['input1_name'] = 'x'
@@ -560,7 +557,6 @@ def check_param(input_dict):
             % (error_info['opname'], error_info['input1_name'],
                error_info['input2_name'], error_info['input1_shape'],
                error_info['input2_shape']))
-
 
     group = input_dict.get("group")
     if group <= 0:
@@ -593,7 +589,7 @@ def check_param(input_dict):
             % (error_info['real_channel'], error_info['real_group']))
 
 
-def get_shape_total_number(shape):
+def _get_shape_total_number(shape):
     """
     get the number of element from the shape
 
@@ -612,7 +608,7 @@ def get_shape_total_number(shape):
     return total_number
 
 
-def check_same_dim(shape_x, shape_y):
+def _check_same_dim(shape_x, shape_y):
     """
     check shape_x is the same shape as shape_y
 

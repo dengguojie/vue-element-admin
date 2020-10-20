@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 acos
 
   Op_description :
@@ -31,14 +31,11 @@ acos
     [1] All : shape size limit is 2147483648.
 
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.platform.cce_conf import api_check_support
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+from te.utils import para_check
+from te.utils import shape_util
 from impl.util import util_compute
 
 
@@ -80,21 +77,21 @@ def _taylor_compute(data_x, x_square=None):
     """
 
     if x_square is None:
-        x_square = te.lang.cce.vmul(data_x, data_x)
+        x_square = tbe.vmul(data_x, data_x)
 
-    res = te.lang.cce.vmuls(x_square, tvm.const(COEF[TAYLOR_COUNT], "float32"))
+    res = tbe.vmuls(x_square, tvm.const(COEF[TAYLOR_COUNT], "float32"))
     for temp in reversed(range(TAYLOR_COUNT)):
-        res = te.lang.cce.vadds(res, tvm.const(COEF[temp], "float32"))
+        res = tbe.vadds(res, tvm.const(COEF[temp], "float32"))
         if temp == 0:
-            res = te.lang.cce.vmul(res, data_x)
+            res = tbe.vmul(res, data_x)
         else:
-            res = te.lang.cce.vmul(x_square, res)
+            res = tbe.vmul(x_square, res)
 
     return res
 
 
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("acos")
+@tbe_platform.fusion_manager.fusion_manager.register("acos")
 def acos_compute(x, y, kernel_name="acos"):
     """
     do element-wise acos compute using asin op
@@ -123,66 +120,66 @@ def acos_compute(x, y, kernel_name="acos"):
     has_improve_precision = False
     # Change dtype to float32
     if dtype == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
+       tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        x = tbe.cast_to(x, "float32")
         has_improve_precision = True
 
     # to fix bug for input data is 1.0
-    x = te.lang.cce.vadds(x, NEG_MIN_FP16)
+    x = tbe.vadds(x, NEG_MIN_FP16)
     # Sign mask
     sign = util_compute.sign(x)
 
     # All positive
-    x = te.lang.cce.vmul(x, sign)
+    x = tbe.vmul(x, sign)
 
     # x belongs to (0, 2^(-0.5))
-    if api_check_support("te.lang.cce.vmins", x.dtype):
-        choice_1 = te.lang.cce.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", x.dtype):
+        choice_1 = tbe.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
     else:
-        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
-        choice_1 = te.lang.cce.vmin(x, boundary_mask1)
+        boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
+        choice_1 = tbe.vmin(x, boundary_mask1)
 
-    if api_check_support("te.lang.cce.vsubs", choice_1.dtype):
-        choice_1 = te.lang.cce.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
+        choice_1 = tbe.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
     else:
-        boundary_mask1 = te.lang.cce.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)
-        choice_1 = te.lang.cce.vsub(choice_1, boundary_mask1)
+        boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)
+        choice_1 = tbe.vsub(choice_1, boundary_mask1)
 
-    choice_1 = te.lang.cce.vmuls(te.lang.cce.floor(choice_1), NEG_NUM_ONE)
+    choice_1 = tbe.vmuls(tbe.floor(choice_1), NEG_NUM_ONE)
 
     res_1 = _taylor_compute(x)
-    res_1 = te.lang.cce.vmul(res_1, choice_1)
+    res_1 = tbe.vmul(res_1, choice_1)
 
     # x belongs to (2^(-0.5), 1)
-    choice_2 = te.lang.cce.vmuls(choice_1, tvm.const(NEG_NUM_ONE, x.dtype))
-    choice_2 = te.lang.cce.vadds(choice_2, tvm.const(NUM_ONE, x.dtype))
+    choice_2 = tbe.vmuls(choice_1, tvm.const(NEG_NUM_ONE, x.dtype))
+    choice_2 = tbe.vadds(choice_2, tvm.const(NUM_ONE, x.dtype))
 
     # to fix bug for input data is 1.0
-    x = te.lang.cce.vadds(x, TWO_MIN_FP16)
-    res_2 = te.lang.cce.vmul(x, x)
-    res_2 = te.lang.cce.vmuls(res_2, tvm.const(NEG_NUM_ONE, x.dtype))
-    res_2 = te.lang.cce.vadds(res_2, tvm.const(NUM_ONE, x.dtype))
-    res_2_sqrt = te.lang.cce.vsqrt(res_2, 1)
+    x = tbe.vadds(x, TWO_MIN_FP16)
+    res_2 = tbe.vmul(x, x)
+    res_2 = tbe.vmuls(res_2, tvm.const(NEG_NUM_ONE, x.dtype))
+    res_2 = tbe.vadds(res_2, tvm.const(NUM_ONE, x.dtype))
+    res_2_sqrt = tbe.vsqrt(res_2, 1)
 
     res_2 = _taylor_compute(res_2_sqrt, res_2)
-    res_2 = te.lang.cce.vmuls(res_2, tvm.const(NEG_NUM_ONE, x.dtype))
-    res_2 = te.lang.cce.vadds(res_2, tvm.const(HALF_PI, x.dtype))
-    res_2 = te.lang.cce.vmul(res_2, choice_2)
+    res_2 = tbe.vmuls(res_2, tvm.const(NEG_NUM_ONE, x.dtype))
+    res_2 = tbe.vadds(res_2, tvm.const(HALF_PI, x.dtype))
+    res_2 = tbe.vmul(res_2, choice_2)
 
     # Restore sign of asin
-    res_1 = te.lang.cce.vadd(res_1, res_2)
-    res_1 = te.lang.cce.vmul(res_1, sign)
-    res_1 = te.lang.cce.vmuls(res_1, tvm.const(NEG_NUM_ONE, x.dtype))
-    res_1 = te.lang.cce.vadds(res_1, tvm.const(HALF_PI, x.dtype))
+    res_1 = tbe.vadd(res_1, res_2)
+    res_1 = tbe.vmul(res_1, sign)
+    res_1 = tbe.vmuls(res_1, tvm.const(NEG_NUM_ONE, x.dtype))
+    res_1 = tbe.vadds(res_1, tvm.const(HALF_PI, x.dtype))
 
     # Restore dtype
     if has_improve_precision:
-        res_1 = te.lang.cce.cast_to(res_1, "float16")
+        res_1 = tbe.cast_to(res_1, "float16")
 
     return res_1
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def acos(x, y, kernel_name="acos"):
     """
     ----------
@@ -202,11 +199,11 @@ def acos(x, y, kernel_name="acos"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
 
-    check_shape(shape_input, param_name="x")
-    shape_input, _ = refine_shape_axes(shape_input, [])
+    para_check.check_shape(shape_input, param_name="x")
+    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="x")
+    para_check.check_dtype(dtype_input, check_list, param_name="x")
 
     inp_dtype = dtype_input.lower()
     data_input = tvm.placeholder(shape_input, dtype=inp_dtype,
@@ -215,11 +212,11 @@ def acos(x, y, kernel_name="acos"):
     res = acos_compute(data_input, y, kernel_name)
 
     with tvm.target.cce():
-        auto_sch = topi.generic.auto_schedule(res)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": (data_input, res),
               "bool_storage_as_1bit": False}
 
-    te.lang.cce.cce_build_code(auto_sch, config)
+    tbe.cce_build_code(auto_sch, config)

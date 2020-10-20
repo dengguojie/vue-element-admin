@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-trans_data_2d_to_5d
+trans_data_2d
 """
-
 from te.platform.fusion_manager import fusion_manager
 from topi.cce import util
 import te.platform.cce_params as cce_params
@@ -87,6 +86,8 @@ class TransData2D():
         self.src_format = src_format
         self.dst_shape = dst.get("shape")
         self.dst_dtype = dst.get("dtype").lower()
+        if self.dst_dtype == "bool":
+            self.dst_dtype = "int8"
         self.dst_format = dst_format
         self.data_size = util.check_tensor_shape_size(list(self.dst_shape))
         # get dtype size, float16 size = 2 byte   / float32 size = 4 byte

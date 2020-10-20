@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 Define the main function of generate schedule by cheque
 """
 from ast import literal_eval as make_tuple
@@ -606,12 +606,18 @@ def proc_reused_by(stage_index, primitive, args, sch_targets, sch, mode, code_li
     if primitive == 19:
         sch_target = sch_targets[stage_index]
         reused_sch_target = sch_targets[args[0]]
-
-        # gen code
-        code_lines.append("sch[%s].reused_by(%s)" % (sch_target.name, reused_sch_target.name))
+        reuse_data = False
+        if len(args) > 1:
+            reuse_data = bool(args[1])
+        if reused_sch_target == -1:
+            # gen code
+            code_lines.append("sch[%s].reused_by(reuse_data=%s)" % (sch_target.name, reuse_data))
+        else:
+            # gen code
+            code_lines.append("sch[%s].reused_by(%s)" % (sch_target.name, reused_sch_target.name))
 
         if mode == MODE_RUNTIME:
-            sch[sch_target.obj].reused_by(reused_sch_target.obj)
+            sch[sch_target.obj].reused_by(reused_sch_target.obj, reuse_data=reuse_data)
 
 
 def proc_insert_param(primitive, args, mode, code_lines):  # pylint: disable=too-many-locals, too-many-arguments

@@ -1,28 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 population_count
 """
+import functools
 
-from functools import reduce as functools_reduce
-from topi.cce import util
-from impl import common_util
-import impl.constant_util as constant
+from te.utils import para_check
 from te import tik
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+from impl import common_util
+from impl import constant_util
 
 # Considering the efficiency of data parallel processing,
 # set the number of multicores to 32
@@ -58,11 +56,11 @@ def _check_param(input_x, kernel_name):
     """
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
-    check_shape(input_shape, param_name="x")
-    check_dtype(input_dtype, ("int16", "uint16"), param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
+    para_check.check_dtype(input_dtype, ("int16", "uint16"), param_name="x")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def population_count(x, y, kernel_name="population_count"):
     """
     the main function of population_count
@@ -160,15 +158,15 @@ class PopulationCount(PopulationCountBase):
         None
         """
         super(PopulationCount, self).__init__(input_x, output_y)
-        self.once_repeat_element_number = (constant.VECTOR_BYTE_SIZE
+        self.once_repeat_element_number = (constant_util.VECTOR_BYTE_SIZE
                                            // self.input_data_size)
-        self.once_burst_element_number = (constant.BLOCK_SIZE
+        self.once_burst_element_number = (constant_util.BLOCK_SIZE
                                           // self.input_data_size)
         self.gm_element_num = self.get_gm_element()
         self.core_num = self.get_core_num()
         self.first_core_num, self.not_first_core_num = self.get_core_param()
         self.loop_cycle = self.get_loop_cycle_num()
-        self.not_last_loop_num = constant.BLOCK_SIZE
+        self.not_last_loop_num = constant_util.BLOCK_SIZE
         self.last_loop_num = self.get_first_core_last_loop_param()
 
         self.input_x_gm = self.tik_instance.Tensor(self.input_dtype,
@@ -191,7 +189,7 @@ class PopulationCount(PopulationCountBase):
         -------
         gm_element_number: the size of input data
         """
-        gm_element_number = int(functools_reduce(lambda i, j: i * j,
+        gm_element_number = int(functools.reduce(lambda i, j: i * j,
                                                  self.input_shape))
 
         return gm_element_number
@@ -210,7 +208,7 @@ class PopulationCount(PopulationCountBase):
         target_core_number = 1
         if self.gm_element_num // (MAX_CORE_NUM *
                                    self.once_burst_element_number *
-                                   constant.DATA_SIZE_TWO) != 0:
+                                   constant_util.DATA_SIZE_TWO) != 0:
             target_core_number = MAX_CORE_NUM
 
         return target_core_number
@@ -254,7 +252,7 @@ class PopulationCount(PopulationCountBase):
         if self.first_core_num >= 64:
             loop_cycle = self.first_core_num \
                          // (self.once_burst_element_number *
-                             constant.DATA_SIZE_TWO)
+                             constant_util.DATA_SIZE_TWO)
 
         return int(loop_cycle)
 
@@ -298,12 +296,12 @@ class PopulationCount(PopulationCountBase):
                                               name="input_x_ub",
                                               scope=tik.scope_ubuf)
         data_move_repeats_mte2 = int(ub_size * self.input_data_size
-                                     / constant.BLOCK_SIZE)
+                                     / constant_util.BLOCK_SIZE)
         self.tik_instance.data_move(input_x_ub, self.input_x_gm[loop_input],
-                                    constant.SID, constant.DEFAULT_NBURST,
+                                    constant_util.SID, constant_util.DEFAULT_NBURST,
                                     data_move_repeats_mte2,
-                                    constant.STRIDE_ZERO,
-                                    constant.STRIDE_ZERO)
+                                    constant_util.STRIDE_ZERO,
+                                    constant_util.STRIDE_ZERO)
 
         return ub_size, input_x_ub
 
@@ -326,12 +324,12 @@ class PopulationCount(PopulationCountBase):
                                               name="input_x_ub",
                                               scope=tik.scope_ubuf)
         data_move_repeats_mte2 = int(ub_size * self.input_data_size
-                                     / constant.BLOCK_SIZE)
+                                     / constant_util.BLOCK_SIZE)
         self.tik_instance.data_move(input_x_ub, self.input_x_gm[loop_input],
-                                    constant.SID, constant.DEFAULT_NBURST,
+                                    constant_util.SID, constant_util.DEFAULT_NBURST,
                                     data_move_repeats_mte2,
-                                    constant.STRIDE_ZERO,
-                                    constant.STRIDE_ZERO)
+                                    constant_util.STRIDE_ZERO,
+                                    constant_util.STRIDE_ZERO)
 
         return ub_size, input_x_ub
 
@@ -351,31 +349,31 @@ class PopulationCount(PopulationCountBase):
         None
         """
         if loop_element_num % (self.once_burst_element_number *
-                               constant.DATA_SIZE_TWO) != 0:
+                               constant_util.DATA_SIZE_TWO) != 0:
             one_burst_byte_size = self.once_burst_element_number *\
-                                  constant.DATA_SIZE_TWO
+                                  constant_util.DATA_SIZE_TWO
             first_burst_element = (loop_element_num // one_burst_byte_size + 1)\
                                   * one_burst_byte_size
 
             data_move_repeats_mte3 = int(first_burst_element *
                                          self.output_data_size
-                                         / constant.BLOCK_SIZE)
+                                         / constant_util.BLOCK_SIZE)
             self.tik_instance.data_move(self.output_y_gm[loop_input],
                                         output_y_ub_int8,
-                                        constant.SID,
-                                        constant.DEFAULT_NBURST,
+                                        constant_util.SID,
+                                        constant_util.DEFAULT_NBURST,
                                         data_move_repeats_mte3,
-                                        constant.STRIDE_ZERO,
-                                        constant.STRIDE_ZERO)
+                                        constant_util.STRIDE_ZERO,
+                                        constant_util.STRIDE_ZERO)
         else:
             data_move_repeats_mte3 = int(loop_element_num*self.output_data_size
-                                         / constant.BLOCK_SIZE)
+                                         / constant_util.BLOCK_SIZE)
             self.tik_instance.data_move(self.output_y_gm[loop_input],
-                                        output_y_ub_int8, constant.SID,
-                                        constant.DEFAULT_NBURST,
+                                        output_y_ub_int8, constant_util.SID,
+                                        constant_util.DEFAULT_NBURST,
                                         data_move_repeats_mte3,
-                                        constant.STRIDE_ZERO,
-                                        constant.STRIDE_ZERO)
+                                        constant_util.STRIDE_ZERO,
+                                        constant_util.STRIDE_ZERO)
 
     def multicore_data_move_mte3_function(self, loop_input, output_y_ub_int8,
                                           loop_element_num):
@@ -393,13 +391,13 @@ class PopulationCount(PopulationCountBase):
         None
         """
         data_move_repeats_mte3 = int(loop_element_num*self.output_data_size
-                                     / constant.BLOCK_SIZE)
+                                     / constant_util.BLOCK_SIZE)
         self.tik_instance.data_move(self.output_y_gm[loop_input],
-                                    output_y_ub_int8, constant.SID,
-                                    constant.DEFAULT_NBURST,
+                                    output_y_ub_int8, constant_util.SID,
+                                    constant_util.DEFAULT_NBURST,
                                     data_move_repeats_mte3,
-                                    constant.STRIDE_ZERO,
-                                    constant.STRIDE_ZERO)
+                                    constant_util.STRIDE_ZERO,
+                                    constant_util.STRIDE_ZERO)
 
     def get_src_tensor(self):
         """
@@ -424,14 +422,14 @@ class PopulationCount(PopulationCountBase):
         src1_ub = self.tik_instance.Tensor("float16",
                                            (self.once_repeat_element_number,),
                                            name="src1_ub", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(constant.MASK128, src0_ub, one_scalar,
-                                     constant.DEFAULT_REPEAT_TIME,
-                                     constant.STRIDE_ONE,
-                                     constant.REPEAT_STRIDE_EIGHT)
-        self.tik_instance.vector_dup(constant.MASK128, src1_ub, zero_scalar,
-                                     constant.DEFAULT_REPEAT_TIME,
-                                     constant.STRIDE_ONE,
-                                     constant.REPEAT_STRIDE_EIGHT)
+        self.tik_instance.vector_dup(constant_util.MASK128, src0_ub, one_scalar,
+                                     constant_util.DEFAULT_REPEAT_TIME,
+                                     constant_util.STRIDE_ONE,
+                                     constant_util.REPEAT_STRIDE_EIGHT)
+        self.tik_instance.vector_dup(constant_util.MASK128, src1_ub, zero_scalar,
+                                     constant_util.DEFAULT_REPEAT_TIME,
+                                     constant_util.STRIDE_ONE,
+                                     constant_util.REPEAT_STRIDE_EIGHT)
 
         return src0_ub, src1_ub
 
@@ -480,32 +478,32 @@ class PopulationCount(PopulationCountBase):
         with self.tik_instance.for_range(0, ub_size / MAX_SINGLE_REPEAT_NUM) \
                 as sub_cycle:
             cmp_mask = self.tik_instance.mov_tensor_to_cmpmask(
-                cmp_mask_tensor[constant.DATA_SIZE_TWO * sub_cycle])
+                cmp_mask_tensor[constant_util.DATA_SIZE_TWO * sub_cycle])
 
-            self.tik_instance.vsel(constant.MASK128, VSEL_MODE, cmp_mask_dst_ub,
+            self.tik_instance.vsel(constant_util.MASK128, VSEL_MODE, cmp_mask_dst_ub,
                                    cmp_mask,
                                    src0_ub, src1_ub,
-                                   constant.DEFAULT_REPEAT_TIME,
-                                   constant.STRIDE_ONE, constant.STRIDE_ONE,
-                                   constant.STRIDE_ONE,
-                                   constant.REPEAT_STRIDE_EIGHT,
-                                   constant.REPEAT_STRIDE_EIGHT,
-                                   constant.REPEAT_STRIDE_EIGHT)
-            self.tik_instance.vcgadd(constant.MASK128, output_ub_float16[
+                                   constant_util.DEFAULT_REPEAT_TIME,
+                                   constant_util.STRIDE_ONE, constant_util.STRIDE_ONE,
+                                   constant_util.STRIDE_ONE,
+                                   constant_util.REPEAT_STRIDE_EIGHT,
+                                   constant_util.REPEAT_STRIDE_EIGHT,
+                                   constant_util.REPEAT_STRIDE_EIGHT)
+            self.tik_instance.vcgadd(constant_util.MASK128, output_ub_float16[
                 MAX_SINGLE_REPEAT_NUM * sub_cycle],
                                      cmp_mask_dst_ub,
-                                     constant.DEFAULT_REPEAT_TIME,
-                                     constant.STRIDE_ONE,
-                                     constant.STRIDE_ONE,
-                                     constant.REPEAT_STRIDE_EIGHT)
+                                     constant_util.DEFAULT_REPEAT_TIME,
+                                     constant_util.STRIDE_ONE,
+                                     constant_util.STRIDE_ONE,
+                                     constant_util.REPEAT_STRIDE_EIGHT)
         self.tik_instance.vconv(ub_size, '',
                                 output_ub_int8[0],
                                 output_ub_float16[0],
-                                constant.STRIDE_ONE,
-                                constant.STRIDE_ONE,
-                                constant.STRIDE_ONE,
-                                constant.REPEAT_STRIDE_FOUR,
-                                constant.REPEAT_STRIDE_EIGHT)
+                                constant_util.STRIDE_ONE,
+                                constant_util.STRIDE_ONE,
+                                constant_util.STRIDE_ONE,
+                                constant_util.REPEAT_STRIDE_FOUR,
+                                constant_util.REPEAT_STRIDE_EIGHT)
 
         return output_ub_int8
 

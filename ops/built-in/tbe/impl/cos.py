@@ -1,34 +1,33 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 cos
 """
-from functools import reduce as functools_reduce
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # 2pi, the cycle of cosin
 TWO_PI = 2*3.14159265358979
 
 # pylint: disable=locally-disabled, unused-argument
-@fusion_manager.register("cos")
+@tbe_platform.fusion_manager.fusion_manager.register("cos")
 def cos_compute(input_x, output_y, kernel_name="cos"):
     """
     algorithm: cos
@@ -50,46 +49,42 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
     """
 
     dtype = input_x.dtype
-    shape = te.lang.cce.util.shape_to_list(input_x.shape)
+    shape = shape_util.shape_to_list(input_x.shape)
 
     # cast to type float32 when type is float16
     has_improve_precision = False
     if dtype.lower() == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul",
-                                                    "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
         dtype = "float32"
         has_improve_precision = True
 
     # round the input
-    round_fp16 = te.lang.cce.round(te.lang.cce.vmuls(input_x, 1.0/TWO_PI))
-    round_fp32 = te.lang.cce.cast_to(round_fp16, dtype)
-    input_x_round = te.lang.cce.vsub(input_x,
-                                     te.lang.cce.vmuls(round_fp32, TWO_PI))
+    round_fp16 = tbe.round(tbe.vmuls(input_x, 1.0/TWO_PI))
+    round_fp32 = tbe.cast_to(round_fp16, dtype)
+    input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, TWO_PI))
 
     # the initial value one
     const_res = tvm.const(1.0, dtype=dtype)
-    res = te.lang.cce.broadcast(const_res, shape)
+    res = tbe.broadcast(const_res, shape)
     # compute the rank 2
-    input_x_power = te.lang.cce.vmul(input_x_round, input_x_round)
-    iter_value = te.lang.cce.vmuls(input_x_power, -1.0/2.0)
-    res = te.lang.cce.vadd(res, iter_value)
+    input_x_power = tbe.vmul(input_x_round, input_x_round)
+    iter_value = tbe.vmuls(input_x_power, -1.0/2.0)
+    res = tbe.vadd(res, iter_value)
     # compute the rank 4~14
     iter_list = (4, 6, 8, 10, 12, 14)
     for i in iter_list:
-        iter_value = te.lang.cce.vmuls(te.lang.cce.vmul(input_x_power,
-                                                        iter_value),
-                                       -1.0/(i*(i-1)))
-        res = te.lang.cce.vadd(res, iter_value)
+        iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0/(i*(i-1)))
+        res = tbe.vadd(res, iter_value)
 
     # cast the dtype to float16
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def cos(input_x, output_y, kernel_name="cos"):
     """
     algorithm: cos
@@ -111,17 +106,17 @@ def cos(input_x, output_y, kernel_name="cos"):
     shape_input = input_x.get("shape")
     dtype_input = input_x.get("dtype").lower()
 
-    check_shape(shape_input, param_name="input_x")
+    para_check.check_shape(shape_input, param_name="input_x")
     check_list = ("float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_input, check_list, param_name="input_x")
 
-    reshape_input = (functools_reduce(lambda x, y: x * y, shape_input[:]),)
+    reshape_input = (functools.reduce(lambda x, y: x * y, shape_input[:]),)
     data_input = tvm.placeholder(reshape_input,
                                  name="data_input", dtype=dtype_input)
     res = cos_compute(data_input, output_y, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

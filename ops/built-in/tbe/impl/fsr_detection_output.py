@@ -1,33 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 fsr_detection_output
 """
-
+import te.platform as tbe_platform
 from te import tik
-from te import platform as cce
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import OPTION_INPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import OPTION_ATTR_INT
-from te.utils.op_utils import OP_ERROR_CODE_002
-from te import platform as tbe_platform
-from topi.cce import util
+from te.utils import para_check
+
 from impl import nms
 from impl import topk
 from impl import constant_util as constant
@@ -538,7 +529,7 @@ def get_ub_size():
     """
     :return:
     """
-    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     return ub_size
 
 
@@ -547,7 +538,7 @@ def filter_device_core(batch):
     :param batch:
     :return:
     """
-    device_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if batch >= device_core_num:
         batch_factor = batch//device_core_num
         batch_factor_tail = batch - batch_factor*device_core_num
@@ -2078,7 +2069,7 @@ class FsrProcess:
                                DATA_EIGHT),
             name="mem_swap", scope=tik.scope_gm, is_workspace=True)
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
             self.pre_nms_topn = 3000
         else:
             if self.input_dtype == "float32":
@@ -2276,15 +2267,15 @@ def check_datatype(tik_name, dtype):
     :param dtype:
     :return:
     """
-    if not tbe_platform.cce_conf.api_check_support("te.lang.cce.vrelu", "float32"):
-        check_dtype(dtype.lower(), ["float16"], param_name="roidic")
+    if not tbe_platform.api_check_support("te.lang.cce.vrelu", "float32"):
+        para_check.check_dtype(dtype.lower(), ["float16"], param_name="roidic")
     else:
-        check_dtype(dtype.lower(), ["float16", "float32"], param_name="roidic")
+        para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="roidic")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, REQUIRED_ATTR_FLOAT,
-                 REQUIRED_ATTR_FLOAT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                 para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,
+                 para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                          actual_rois_num_dic, actual_bbox_num_dic, box_dic,
                          num_classes, score_threshold, iou_threshold, batch_rois=1,
@@ -2306,31 +2297,24 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     """
 
     tik_instance = tik.Tik(tik.Dprofile())
-    tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tik_name = tbe_platform.get_soc_spec("SOC_VERSION")
     input_dtype = rois_dic.get('dtype')
     check_datatype(tik_name, input_dtype)
     batch_rois = rois_dic.get("shape")[0]
 
     if im_info_dic.get("shape")[0] != batch_rois:
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'im_info_dic'
-        error_info['excepted_value'] = str(batch_rois)
-        error_info['real_value'] = str(im_info_dic.get("shape")[0])
+        error_info = {'errCode': 'E80000', 'op_name': 'fsr_dection_output', 'param_name': 'im_info_dic',
+                      'excepted_value': str(batch_rois), 'real_value': str(im_info_dic.get("shape")[0])}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be"
                            " [%s], but actually is [%s]." %
                            (error_info['op_name'], error_info['param_name'],
                             error_info['excepted_value'], error_info['real_value']))
     if num_classes > score_dic.get("shape")[1] * score_dic.get("shape")[4]:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'num_classes'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = str(score_dic.get("shape")[1] * score_dic.get("shape")[4])
-        error_info['real_value'] = num_classes
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
+                      'param_name': 'num_classes', 'min_value': '0',
+                      'max_value': str(score_dic.get("shape")[1] * score_dic.get("shape")[4]),
+                      'real_value': num_classes}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range of"
                            " [%s, %s], but actually is [%s]." %
@@ -2338,14 +2322,11 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
     if num_classes > bbox_delta_dic.get("shape")[1] * bbox_delta_dic.get("shape")[4] // 4:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'num_classes'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = str(bbox_delta_dic.get("shape")[1] *
-                                      bbox_delta_dic.get("shape")[4] // 4)
-        error_info['real_value'] = num_classes
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
+                      'param_name': 'num_classes', 'min_value': '0', 'max_value': str(bbox_delta_dic.get("shape")[1] *
+                                                                                      bbox_delta_dic.get("shape")[
+                                                                                          4] // 4),
+                      'real_value': num_classes}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the"
                            " range of [%s, %s], but actually is [%s]." %
@@ -2354,13 +2335,9 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                             error_info['real_value']))
 
     if iou_threshold <= 0.0 or iou_threshold >= 1.0:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'iou_threshold'
-        error_info['min_value'] = '0.0'
-        error_info['max_value'] = '1.0'
-        error_info['real_value'] = iou_threshold
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
+                      'param_name': 'iou_threshold', 'min_value': '0.0', 'max_value': '1.0',
+                      'real_value': iou_threshold}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %
@@ -2368,13 +2345,9 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
     if score_threshold < 0.0 or score_threshold > 1.0:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'score_threshold'
-        error_info['min_value'] = '0.0'
-        error_info['max_value'] = '1.0'
-        error_info['real_value'] = score_threshold
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
+                      'param_name': 'score_threshold', 'min_value': '0.0', 'max_value': '1.0',
+                      'real_value': score_threshold}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %
@@ -2382,13 +2355,8 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
     if num_classes < 1:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'fsr_dection_output'
-        error_info['param_name'] = 'num_classes'
-        error_info['min_value'] = '1'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = num_classes
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
+                      'param_name': 'num_classes', 'min_value': '1', 'max_value': 'inf', 'real_value': num_classes}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %

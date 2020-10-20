@@ -1,32 +1,34 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 conv2d tiling case
 """
 import copy
-import itertools
 from collections import OrderedDict
 
-import te.lang.cce
 from te.domain.tiling.get_tiling import get_tiling
+
 from te.platform.operation import register_tiling_case
 from te.platform.operation import get_te_var
 
-from .cube_tilingcase import CubeTilingSelection
-from .cube_tilingcase import TilingUtils as utils
-from . import Pattern
+from te.lang.cce.te_compute.conv_compute import ConvParam
+from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
+from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
+from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
+from te.lang.dynamic.schedule.constants import Pattern
+
 
 H_RANGE = 4000
 W_RANGE = 4000
@@ -49,57 +51,36 @@ def calc_conv2d(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    mode = te.lang.cce.ConvParam.dynamic_mode
-    var_names = {'dynamic_batch': ('batch_n', ),
-                 'dynamic_hw': ('fmap_h', 'fmap_w')}
+    mode = ConvParam.dynamic_mode
+    var_names = {'dynamic_batch': ('batch_n', ), 'dynamic_hw': ('fmap_h', 'fmap_w')}
     tgt_area = [get_te_var(v).get_bound() for v in var_names[mode]]
-    conv_info = te.lang.cce.ConvParam.tiling_info_dict
+    conv_info = ConvParam.tiling_info_dict
 
     # check fusion
     if outs[-1].op.tag == 'elewise_single_relu':
         conv_info['fusion_type'] = 3
         conv_info['fused_coefficient'] = [0, 0, 1]
 
-    tiling_cases = Conv2dTilingSelection(conv_info, mode).calc_tiling(tgt_area)
+    tiling_op = Conv2dTiling(conv_info, mode)
+
+    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area)
     return tiling_cases
 
 
-class Conv2dTilingSelection(CubeTilingSelection):
-
+class Conv2dTiling(CubeTilingOp):
     def __init__(self, tiling_info, dynamic_mode):
         super().__init__(tiling_info, dynamic_mode)
         self.a_info = tiling_info['a_shape']
         self.b_info = tiling_info['b_shape']
         self.c_info = tiling_info['c_shape']
         self._get_calc_info()
-        self._key = 'A_shape'
+        self.key = 'A_shape'
 
-    def _get_calc_info(self):
-        self._convert_type(self.a_info, self.b_info, self.c_info)
-        self.k_h, self.k_w = self.b_info[2:4]
-        self.k_cin = self.b_info[1] * self.b_info[4]
-        self.k_cout = self.b_info[0]
-        self.padl, self.padr, self.padt, self.padb = self.tiling_info["pad"]
-        self.stride_h, self.stride_w = self.tiling_info["stride"]
-        self.dilate_h, self.dilate_w = self.tiling_info["dilation"]
+    def get_repo_tiling(self):
+        tiling_list = get_tiling(self.tiling_info)
+        return tiling_list
 
-    def _get_output_h(self, h_in):
-        return (h_in + self.padt + self.padb - self.dilate_h * \
-            (self.k_h - 1) - 1) // self.stride_h + 1
-
-    def _get_output_w(self, w_in):
-        return (w_in + self.padl + self.padr - self.dilate_w * \
-            (self.k_w - 1) - 1) // self.stride_w + 1
-
-    def _get_input_h(self, h_out):
-        return ((h_out - 1) + 1) * self.stride_h - self.padt - self.padb \
-            + self.dilate_h * (self.k_h - 1) + 1
-
-    def _get_input_w(self, w_out):
-        return ((w_out - 1) + 1) * self.stride_w - self.padl - self.padr \
-            + self.dilate_w * (self.k_w - 1) + 1
-
-    def _use_cost_model(self, shape):
+    def get_costmodel_tiling(self, shape):
         """
         get tiling using cost model
 
@@ -124,7 +105,7 @@ class Conv2dTilingSelection(CubeTilingSelection):
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
 
-    def _get_tiling_range(self, tiling_in, a_shape):
+    def get_tiling_range(self, tiling_in, a_shape):
         """
         get the covered area of a tiling
         """
@@ -168,8 +149,9 @@ class Conv2dTilingSelection(CubeTilingSelection):
         if not tiling['AL1_shape']:
             perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
         else:
-            bool_check_case = utils.icd(utils.icd(utils.icd(h_o * w_o, tiling["block_dim"][2]),
-                utils.FP16_M), tiling["AL0_matrix"][0]) <= tiling["AL1_shape"][1]
+            bool_check_case = utils.icd(
+                utils.icd(utils.icd(h_o * w_o, tiling["block_dim"][2]), utils.FP16_M),
+                tiling["AL0_matrix"][0]) <= tiling["AL1_shape"][1]
             if not bool_check_case:
                 perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
             else:
@@ -188,19 +170,20 @@ class Conv2dTilingSelection(CubeTilingSelection):
         perf_range = [int(v) for v in perf_range]
         return perf_range
 
-    def _preprocess_tiling(self, tiling_in):
-        """
-        preprocess tiling for get tiling range
-        """
+    def assembly_case(self, tiling, coverage, cnt):
+        var_range = OrderedDict()
+        if self.dynamic_mode == "dynamic_hw":
+            var_range['fmap_h'] = (int(coverage[0]), int(coverage[1]))
+            var_range['fmap_w'] = (int(coverage[2]), int(coverage[3]))
+            var_range['ho'] = (self._get_output_h(var_range['fmap_h'][0]),
+                               self._get_output_h(var_range['fmap_h'][1]))
+            var_range['wo'] = (self._get_output_w(var_range['fmap_w'][0]),
+                               self._get_output_w(var_range['fmap_w'][1]))
 
-        tiling = copy.deepcopy(tiling_in)
-        if tiling["AL1_shape"]:
-            tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
-        if tiling["BL1_shape"]:
-            tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
-        return tiling
+        elif self.dynamic_mode == "dynamic_batch":
+            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+
+        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
 
     def _get_al1_bound(self, tiling, curent_size):
         """
@@ -232,7 +215,7 @@ class Conv2dTilingSelection(CubeTilingSelection):
 
         # load2d ::
         if (self.padl + self.padr + self.padt + self.padb == 0) \
-            and (self.stride_h * self.stride_w==1) \
+            and (self.stride_h * self.stride_w == 1) \
             and (self.k_h * self.k_w == 1):
             return al1_m_data
 
@@ -254,7 +237,7 @@ class Conv2dTilingSelection(CubeTilingSelection):
 
         return li_hi * w_i
 
-    def _check_tiling_match(self, tiling, curent_w, curent_h):
+    def _check_tiling_match(self, tiling, current_w, current_h):
         """
 
         check whether this tiling matches the shape
@@ -273,17 +256,18 @@ class Conv2dTilingSelection(CubeTilingSelection):
         """
 
         # shape info
-        h_i, w_i = curent_h, curent_w
+        h_i, w_i = current_h, current_w
 
         # fmap size
         if tiling['AL1_shape']:
-            al1_bound = self._get_al1_bound(tiling, curent_w)
+            al1_bound = self._get_al1_bound(tiling, current_w)
 
             # fmap size in L1
             fmap_l1_size = utils.FP16_SIZE * al1_bound * tiling['AL1_shape'][0] * \
                 utils.FP16_K * tiling['manual_pingpong_buffer']['AL1_pbuffer']
         else:
-            fmap_l1_size = utils.FP16_SIZE * h_i * w_i * self.k_cin / tiling['block_dim'][2]
+            fmap_l1_size = utils.FP16_SIZE * h_i * w_i * self.k_cin / \
+                tiling['block_dim'][2]
 
         # filter size
         if tiling['BL1_shape'] is None:
@@ -299,17 +283,41 @@ class Conv2dTilingSelection(CubeTilingSelection):
 
         return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
 
-    def _assembly_case(self, tiling, coverage, cnt):
-        var_range = OrderedDict()
-        if self.dynamic_mode == "dynamic_hw":
-            var_range['fmap_h'] = (int(coverage[0]), int(coverage[1]))
-            var_range['fmap_w'] = (int(coverage[2]), int(coverage[3]))
-            var_range['ho'] = (self._get_output_h(var_range['fmap_h'][0]),
-                               self._get_output_h(var_range['fmap_h'][1]))
-            var_range['wo'] = (self._get_output_w(var_range['fmap_w'][0]),
-                               self._get_output_w(var_range['fmap_w'][1]))
+    def _get_calc_info(self):
+        self._convert_type(self.a_info, self.b_info, self.c_info)
+        self.k_h, self.k_w = self.b_info[2:4]
+        self.k_cin = self.b_info[1] * self.b_info[4]
+        self.k_cout = self.b_info[0]
+        self.padl, self.padr, self.padt, self.padb = self.tiling_info["pad"]
+        self.stride_h, self.stride_w = self.tiling_info["stride"]
+        self.dilate_h, self.dilate_w = self.tiling_info["dilation"]
 
-        elif self.dynamic_mode == "dynamic_batch":
-            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+    def _preprocess_tiling(self, tiling_in):
+        """
+        preprocess tiling for get tiling range
+        """
 
-        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
+        tiling = copy.deepcopy(tiling_in)
+        if tiling["AL1_shape"]:
+            tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
+                (self.k_h * self.k_w * utils.CUBE_SIZE)
+        if tiling["BL1_shape"]:
+            tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
+                (self.k_h * self.k_w * utils.CUBE_SIZE)
+        return tiling
+
+    def _get_output_h(self, h_in):
+        return (h_in + self.padt + self.padb - self.dilate_h *
+                (self.k_h - 1) - 1) // self.stride_h + 1
+
+    def _get_output_w(self, w_in):
+        return (w_in + self.padl + self.padr - self.dilate_w *
+                (self.k_w - 1) - 1) // self.stride_w + 1
+
+    def _get_input_h(self, h_out):
+        return ((h_out - 1) + 1) * self.stride_h - self.padt - self.padb \
+            + self.dilate_h * (self.k_h - 1) + 1
+
+    def _get_input_w(self, w_out):
+        return ((w_out - 1) + 1) * self.stride_w - self.padl - self.padr \
+            + self.dilate_w * (self.k_w - 1) + 1

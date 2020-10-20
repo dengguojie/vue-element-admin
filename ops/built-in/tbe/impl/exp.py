@@ -1,28 +1,28 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 exp
 """
 import math
-from functools import reduce as reduceIns
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
 from te import tvm
+import te.platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -32,7 +32,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
-@fusion_manager.register("exp")
+@tbe_platform.fusion_manager.fusion_manager.register("exp")
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     """
     algorithm: exp
@@ -61,21 +61,23 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     else:
         scale_const = tvm.const(scale, dtype=input_x_dtype)
         shift_const = tvm.const(shift, dtype=input_x_dtype)
-        input_x_vmuls = te.lang.cce.vmuls(input_x, scale_const)
-        input_x_vadds = te.lang.cce.vadds(input_x_vmuls, shift_const)
+        input_x_vmuls = tbe.vmuls(input_x, scale_const)
+        input_x_vadds = tbe.vadds(input_x_vmuls, shift_const)
     if base > 0:
         base_const = tvm.const(math.log(base), dtype=input_x_dtype)
-        input_x_bases = te.lang.cce.vmuls(input_x_vadds, base_const)
-        res = te.lang.cce.vexp(input_x_bases)
+        input_x_bases = tbe.vmuls(input_x_vadds, base_const)
+        res = tbe.vexp(input_x_bases)
 
     # base is -1 value
     else:
-        res = te.lang.cce.vexp(input_x_vadds)
+        res = tbe.vexp(input_x_vadds)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     """
     algorithm: exp
@@ -101,12 +103,12 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
 
     # input_x' dtype check, only supports fp16 and fp32
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     if base <= 0 and (not isclose(base, -1.0)):
         error_info = {}
@@ -119,13 +121,13 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
                            % (error_info['op_name'], error_info['param_name'],
                               error_info['expect_value'], error_info['real_value']))
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
     res = exp_compute(data_input, output_y, base, scale, shift, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

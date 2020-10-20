@@ -1,22 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 batchnorm grad reduce schedule
 """
 import copy
 import math
+
 from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
@@ -68,6 +69,7 @@ NON_LAST_BROADCAST_UNIT_THRESHOLD = 20
 
 # 2048 * 256 * 256
 CHWDIM_OPTIMIZE_THRESHOLD = 134217728
+
 
 # pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
 class BnGradReduceSchedule(ElewiseSchedule):
@@ -127,7 +129,7 @@ class BnGradReduceSchedule(ElewiseSchedule):
              "vector_add": "vector_add_with_broadcast_enhance",
              "vector_sub": "vector_sub_with_broadcast_enhance",
              "vector_min": "vector_min_with_broadcast_enhance"
-            }
+             }
 
         # For (x <= 32, 100, 1, 4) to (x <= 32, 100, 2, 4) broadcasting
         self._less_32_core_middle_broadcast_scene = False
@@ -734,7 +736,6 @@ class BnGradReduceSchedule(ElewiseSchedule):
                     cce_emitinsn_params.cceEmitParamsIns.insert_param(
                         "broadcast_axis_offset", max_last_broadcast_axis_offset)
 
-
             if insn in SPECIAL_BROADCAST_INSN_MAP.keys():
                 if self._is_special_factor16_broadcast_tensor(tensor):
                     insn = SPECIAL_BROADCAST_INSN_MAP.get(insn)
@@ -798,7 +799,6 @@ class BnGradReduceSchedule(ElewiseSchedule):
 
         self._calculate_compute_inline()
         self._do_compute_inline()
-
 
         inner_loop = shape_out[ub_split_axis]
 
@@ -883,7 +883,6 @@ class BnGradReduceSchedule(ElewiseSchedule):
                         "broadcast_axis_offset")
                     cce_emitinsn_params.cceEmitParamsIns.insert_param(
                         "broadcast_axis_offset", max_last_broadcast_axis_offset)
-
 
             if insn in SPECIAL_BROADCAST_INSN_MAP.keys():
                 if self._is_special_factor16_broadcast_tensor(tensor):

@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 atan
 
   Op_description :
@@ -31,19 +31,12 @@ atan
     [1] All : shape size limit is 2147483648.
 
 """
-
-from impl.util import util_compute
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+from impl.util import util_compute
+from te.utils import para_check
+from te.utils import shape_util
 
 CONST_POS_ONE = 1.0
 CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
@@ -78,35 +71,35 @@ def _do_taylor(input_data):
     shape_input = input_data.shape
     dtype_input = input_data.dtype
 
-    tensor_offset = te.lang.cce.broadcast(tvm.const(TAN_PI_BY_EIGHT, dtype_input), shape_input)
-    denominator_data = te.lang.cce.vmuls(input_data, TAN_PI_BY_EIGHT)
-    denominator_data = te.lang.cce.vadds(denominator_data, CONST_POS_ONE)
-    molecule = te.lang.cce.vsub(input_data, tensor_offset)
-    data = te.lang.cce.vdiv(molecule, denominator_data)
-    data = te.lang.cce.vabs(data)
+    tensor_offset = tbe.broadcast(tvm.const(TAN_PI_BY_EIGHT, dtype_input), shape_input)
+    denominator_data = tbe.vmuls(input_data, TAN_PI_BY_EIGHT)
+    denominator_data = tbe.vadds(denominator_data, CONST_POS_ONE)
+    molecule = tbe.vsub(input_data, tensor_offset)
+    data = tbe.vdiv(molecule, denominator_data)
+    data = tbe.vabs(data)
 
-    square_data = te.lang.cce.vmul(data, data)
-    res = te.lang.cce.broadcast(tvm.const(TAYLOR[CONST_ITERTOR], dtype_input), shape_input)
+    square_data = tbe.vmul(data, data)
+    res = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR], dtype_input), shape_input)
     for i in reversed(range(CONST_ITERTOR)):
-        res = te.lang.cce.vmul(res, square_data)
-        res = te.lang.cce.vadds(res, TAYLOR[i])
-    res = te.lang.cce.vmul(res, data)
-    res = te.lang.cce.vadds(res, CONST_PI_BY_EIGHT)
+        res = tbe.vmul(res, square_data)
+        res = tbe.vadds(res, TAYLOR[i])
+    res = tbe.vmul(res, data)
+    res = tbe.vadds(res, CONST_PI_BY_EIGHT)
 
-    square_data = te.lang.cce.vmul(input_data, input_data)
-    res2 = te.lang.cce.broadcast(tvm.const(TAYLOR[CONST_ITERTOR2], dtype_input), shape_input)
+    square_data = tbe.vmul(input_data, input_data)
+    res2 = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR2], dtype_input), shape_input)
     for i in reversed(range(CONST_ITERTOR2)):
-        res2 = te.lang.cce.vmul(res2, square_data)
-        res2 = te.lang.cce.vadds(res2, TAYLOR[i])
-    res2 = te.lang.cce.vmul(res2, input_data)
+        res2 = tbe.vmul(res2, square_data)
+        res2 = tbe.vadds(res2, TAYLOR[i])
+    res2 = tbe.vmul(res2, input_data)
 
-    res = te.lang.cce.vmin(res, res2)
+    res = tbe.vmin(res, res2)
 
     return res
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("atan")
+@tbe_platform.fusion_manager.fusion_manager.register("atan")
 def atan_compute(x, y, kernel_name="atan"):
     """
     Algorithm: atan
@@ -130,36 +123,34 @@ def atan_compute(x, y, kernel_name="atan"):
     dtype = x.dtype
     shape = x.shape
 
-    if dtype == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
-    abs_data = te.lang.cce.vabs(x)
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        x = tbe.cast_to(x, "float32")
+    abs_data = tbe.vabs(x)
 
-    tensor_one = te.lang.cce.broadcast(tvm.const(CONST_POS_ONE, x.dtype),
-                                       shape)
+    tensor_one = tbe.broadcast(tvm.const(CONST_POS_ONE, x.dtype), shape)
 
-    abs_data_sub_one = te.lang.cce.vsub(abs_data, tensor_one)
-    abs_data_add_one = te.lang.cce.vadd(abs_data, tensor_one)
-    abs_data2 = te.lang.cce.vdiv(abs_data_sub_one, abs_data_add_one)
-    abs_data2 = te.lang.cce.vabs(abs_data2)
+    abs_data_sub_one = tbe.vsub(abs_data, tensor_one)
+    abs_data_add_one = tbe.vadd(abs_data, tensor_one)
+    abs_data2 = tbe.vdiv(abs_data_sub_one, abs_data_add_one)
+    abs_data2 = tbe.vabs(abs_data2)
 
     # calucate data less than one
     res = _do_taylor(abs_data)
     # calucate data more than one
     res_mt_one = _do_taylor(abs_data2)
-    res_mt_one = te.lang.cce.vadds(res_mt_one, CONST_PI_BY_FOUR)
+    res_mt_one = tbe.vadds(res_mt_one, CONST_PI_BY_FOUR)
 
-    res = te.lang.cce.vmin(res, res_mt_one)
+    res = tbe.vmin(res, res_mt_one)
 
     sign_mask = util_compute.sign(x)
-    res = te.lang.cce.vmul(res, sign_mask)
+    res = tbe.vmul(res, sign_mask)
 
     if dtype == "float16":
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def atan(x, y, kernel_name="atan"):
     """
     Algorithm: atan
@@ -182,21 +173,21 @@ def atan(x, y, kernel_name="atan"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    check_shape(shape, param_name="x")
-    shape, _ = refine_shape_axes(shape, [])
+    para_check.check_shape(shape, param_name="x")
+    shape, _ = shape_util.refine_shape_axes(shape, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     with tvm.target.cce():
         dtype = dtype.lower()
         input_data = tvm.placeholder(shape, dtype=dtype, name="input_data")
         res = atan_compute(input_data, y, kernel_name)
-        res = te.lang.cce.cast_to(res, dtype)
-        auto_sch = topi.generic.auto_schedule(res)
+        res = tbe.cast_to(res, dtype)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": (input_data, res)}
 
-    te.lang.cce.cce_build_code(auto_sch, config)
+    tbe.cce_build_code(auto_sch, config)

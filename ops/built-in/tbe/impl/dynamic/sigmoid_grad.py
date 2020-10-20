@@ -15,26 +15,24 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sigmoid_grad
 """
-import operator
 from functools import reduce as reduce_ins
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 import te.lang.dynamic
-import topi
 from topi import generic
-from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify, Mode
-from te.utils.op_utils import refine_shapes_for_broadcast
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 from te.utils.op_utils import broadcast_shapes
 from te.utils.op_utils import check_elewise_shape_range
+from te.utils.error_manager import error_manager_vector
+from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils.error_manager import error_manager_vector
 
 # General limitation of the reduce size for input shape: 2**30
 SHAPE_SIZE_LIMIT = 2 ** 30
@@ -65,8 +63,8 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     cast_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.cast_to", "f322f16")
     if dtype == "float32" and not cast_support:
-        raise RuntimeError(
-            "float32 transfer to float16 is only supported on mini and cloud platform")
+        error_detail = "float32 transfer to float16 is only supported on mini and cloud platform!"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", 'y', error_detail)
     vmul_support = tbe_platform.cce_conf.api_check_support(
         "te.lang.cce.vmul", "float32")
     vsub_support = tbe_platform.cce_conf.api_check_support(
@@ -116,33 +114,20 @@ def sigmoid_grad(x,
     check_list = ("float16", "float32")
     check_dtype(x_dtype, check_list, param_name="input_x")
     check_dtype(dx_dtype, check_list, param_name="input_dx")
-    check_elewise_shape_range([x, dx])
+    check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_018
-        error_info['op_name'] = 'sigmoid_grad'
-        error_info['param_name1'] = 'x_dtype'
-        error_info['param_name2'] = 'dx_dtype'
-        error_info['param1_dtype'] = str(x_dtype)
-        error_info['param2_dtype'] = str(dx_dtype)
-        raise RuntimeError("In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
-
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
+                                                              x_dtype, dx_dtype)
     ins = classify([x, dx], Mode.ELEWISE)
     schedules, tensors = [], []
-    for (sig, d) in ins:
+    for (sig, dx) in ins:
         with te.op.compute():
-            sig_shape = variable_shape([sig])
-            shape_sig = reduce_ins(lambda x, y: x * y, sig_shape[:])
-            tensor_x = tvm.placeholder(shape_sig, x_dtype, "tensor_x")
-            tensor_dx = tvm.placeholder(shape_sig, x_dtype, "tensor_dx")
-            res = sigmoid_grad_compute(tensor_x, tensor_dx, out, kernel_name)
-            tensors.append((tensor_x, tensor_dx, res))
+            shape_sig, shape_dx = variable_shape([sig, dx], support_broadcast=False)
+            shape_sig, shape_dx = refine_shapes_for_broadcast(shape_sig, shape_dx)
+            tensor_sig = tvm.placeholder(shape_sig, x_dtype, "tensor_x")
+            tensor_dx = tvm.placeholder(shape_dx, dx_dtype, "tensor_dx")
+            res = sigmoid_grad_compute(tensor_sig, tensor_dx, out, kernel_name)
+            tensors.append([tensor_sig, tensor_dx, res])
         with tvm.target.cce():
             sch = generic.auto_schedule(res)
         schedules.append(sch)

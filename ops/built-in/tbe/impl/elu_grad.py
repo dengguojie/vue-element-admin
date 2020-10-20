@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 elu_grad
 
   Op_description :
@@ -37,22 +35,19 @@ elu_grad
 import operator
 
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 
 NUM_ZERO = 0.0
 NUM_ONE = 1.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("elu_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("elu_grad")
 def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     """
     elu_grad_compute
@@ -76,26 +71,32 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     shape = grads.shape
 
     if dtype.lower() == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        grads = te.lang.cce.cast_to(grads, "float32")
-        activations = te.lang.cce.cast_to(activations, "float32")
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        grads = tbe.cast_to(grads, "float32")
+        activations = tbe.cast_to(activations, "float32")
 
-    input_border = tvm.const(NUM_ZERO, grads.dtype)
-    scalar_param_one = tvm.const(NUM_ONE, grads.dtype)
-    tensor_input_border = te.lang.cce.broadcast(input_border, shape)
-    tensor_scalar_param_one = te.lang.cce.broadcast(scalar_param_one, shape)
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", "float32"):
+        min_res = tbe.vmins(activations, NUM_ZERO)
+        add_res = tbe.vadds(min_res, NUM_ONE)
+        res = tbe.vmul(add_res, grads)
+    else:
+        input_border = tvm.const(NUM_ZERO, grads.dtype)
+        scalar_param_one = tvm.const(NUM_ONE, grads.dtype)
+        tensor_input_border = tbe.broadcast(input_border, shape)
+        tensor_scalar_param_one = tbe.broadcast(scalar_param_one, shape)
 
-    min_res = te.lang.cce.vmin(activations, tensor_input_border)
-    add_res = te.lang.cce.vadd(min_res, tensor_scalar_param_one)
-    res = te.lang.cce.vmul(add_res, grads)
+        min_res = tbe.vmin(activations, tensor_input_border)
+        add_res = tbe.vadd(min_res, tensor_scalar_param_one)
+        res = tbe.vmul(add_res, grads)
 
     if dtype.lower() == "float16":
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 # pylint: disable=invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     """
     do element-wise elu_grad operation
@@ -121,16 +122,16 @@ def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     dtype_activation = activations.get("dtype")
 
 
-    check_shape(shape_gradient, param_name="grads")
-    check_shape(shape_activation, param_name="activations")
+    para_check.check_shape(shape_gradient, param_name="grads")
+    para_check.check_shape(shape_activation, param_name="activations")
     if not operator.eq(shape_gradient, shape_activation):
         raise RuntimeError("all input shape must be equal")
-    shape_gradient, _ = refine_shape_axes(shape_gradient, [])
-    shape_activation, _ = refine_shape_axes(shape_activation, [])
+    shape_gradient, _ = shape_util.refine_shape_axes(shape_gradient, [])
+    shape_activation, _ = shape_util.refine_shape_axes(shape_activation, [])
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_gradient, check_list, param_name="grads")
-    check_dtype(dtype_activation, check_list, param_name="activations")
+    para_check.check_dtype(dtype_gradient, check_list, param_name="grads")
+    para_check.check_dtype(dtype_activation, check_list, param_name="activations")
     if dtype_gradient.lower() != dtype_activation.lower():
         raise RuntimeError("all input dtype must be same")
 
@@ -140,9 +141,9 @@ def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     res = elu_grad_compute(data_gradient, data_activation, y, kernel_name)
 
     with tvm.target.cce():
-        auto_sch = topi.generic.auto_schedule(res)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": [data_gradient, data_activation, res]}
-    te.lang.cce.cce_build_code(auto_sch, config)
+    tbe.cce_build_code(auto_sch, config)

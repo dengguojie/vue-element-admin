@@ -1,38 +1,35 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-caffe pooling
+dynamic reduce mean
 """
-from collections import Iterable
+import collections
 
-import te
-import te.lang.dynamic
+import te.lang.dynamic as dynamic
 from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform import operation
-from te.platform.operation import add_compile_info
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import variable_shape
-from topi import generic
 
 
 def fused_reduce_axis(shape, shape_range, reduce_axis):
+    # convert reduce axis
+    for idx, value in enumerate(reduce_axis):
+        if value < 0:
+            reduce_axis[idx] = len(shape) + value
+
     # if all reduce axis is 1, do not del axis which is 1
     is_del_axis = False
     for idx, _ in enumerate(shape):
@@ -136,7 +133,7 @@ def reduce_mean_d_compute(x,
     shape_x = x.shape
 
     reduce_elts = 1.0
-    if isinstance(axes, Iterable):
+    if isinstance(axes, collections.Iterable):
         for i in axes:
             if isinstance(shape_x[i], tvm.expr.IntImm):
                 reduce_elts *= shape_x[i].value
@@ -148,42 +145,48 @@ def reduce_mean_d_compute(x,
     dtype = x.dtype
     if dtype == "float32":
         calc_dtype = "float32"
-    else:
-        if impl_mode != "high_performance" and tbe_platform.cce_conf.\
-                api_check_support("te.lang.cce.sum", "float32"):
-            calc_dtype = "float32"
-        else:
+    elif dtype == "float16":
+        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        if not tbe_platform.api_check_support("te.lang.cce.sum",
+                                                       "float32"):
             calc_dtype = "float16"
+        elif cce_product == "Ascend310" and impl_mode == "high_performance":
+            calc_dtype = "float16"
+        else:
+            calc_dtype = "float32"
+    else:
+        # int8 and uint8
+        calc_dtype = "float16"
 
     if isinstance(reduce_elts, float):
         cof = reduce_elts ** (-1)
         cof = tvm.const(cof, dtype=calc_dtype)
     else:
-        cof = operation.var("cof", dtype=calc_dtype)
+        cof = tbe_platform.var("cof", dtype=calc_dtype)
         if calc_dtype == "float16":
-            operation.var("cof_empty", dtype=calc_dtype)
-        add_compile_info("reduce_mean_cof_dtype", calc_dtype)
+            tbe_platform.var("cof_empty", dtype=calc_dtype)
+        tbe_platform.add_compile_info("reduce_mean_cof_dtype", calc_dtype)
 
     if dtype != calc_dtype:
-        data_input_tmp = te.lang.dynamic.cast_to(x, calc_dtype)
+        data_input_tmp = dynamic.cast_to(x, calc_dtype)
     else:
         data_input_tmp = x
 
-    data_input_tmp = te.lang.dynamic.vmuls(data_input_tmp, cof)
-    res = te.lang.dynamic.sum(data_input_tmp, axis=axes, keepdims=keepdims)
+    data_input_tmp = dynamic.vmuls(data_input_tmp, cof)
+    res = dynamic.sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
     if dtype != calc_dtype:
         if dtype in ("int8", "uint8"):
-            res = te.lang.dynamic.cast_to(res, dtype, False)
+            res = dynamic.cast_to(res, dtype, False)
         else:
-            res = te.lang.dynamic.cast_to(res, dtype)
+            res = dynamic.cast_to(res, dtype)
 
     return res
 
 
-@te.op.register_operator("ReduceMeanD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@tbe_platform.register_operator("ReduceMeanD")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
                   keepdims=None, kernel_name="reduce_mean_d",
                   impl_mode="high_performance"):
@@ -212,9 +215,9 @@ def reduce_mean_d(input_x, output_y, axes,
     dtype = input_x["dtype"]
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8")
-    check_dtype(dtype_lower, check_list)
+    para_check.check_dtype(dtype_lower, check_list)
 
-    with te.op.compute():
+    with tbe_platform.compute():
         shape = input_x["shape"]
         shape_range = input_x["range"]
 
@@ -229,10 +232,10 @@ def reduce_mean_d(input_x, output_y, axes,
         shape_new, shape_range_new, axes_new, fused_rel_dic = \
             fused_reduce_axis(shape, shape_range, axes)
 
-        add_compile_info("fused_rel_dic", fused_rel_dic)
+        tbe_platform.add_compile_info("fused_rel_dic", fused_rel_dic)
         input_x["shape"] = shape_new
         input_x["range"] = shape_range_new
-        shape_var_new = variable_shape([input_x])[0]
+        shape_var_new = shape_util.variable_shape([input_x])[0]
 
         data_input = tvm.placeholder(shape_var_new, name="data_input",
                                      dtype=dtype_lower)
@@ -241,8 +244,8 @@ def reduce_mean_d(input_x, output_y, axes,
                                     is_5hdc=is_5hdc)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = dynamic.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.dynamic.build(sch, config)
+    dynamic.build(sch, config)

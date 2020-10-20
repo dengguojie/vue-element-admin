@@ -1,15 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
 auto_schedule distribution rules
 
 Add your rules here so cce auto_schedule can distribute your operators
 to corresponding schedule correctly
 """
-from te import platform
-from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
 from .cce_schedule_declarations import OpFlags
 from .util import _check_pattern_matched
@@ -33,6 +41,7 @@ from .op_pattern import truncate_div_tag_list
 from .op_pattern import floor_mod_tag_list
 from .op_pattern import threshold_grad_v2_d_tag_list
 from .op_pattern import cosine_embedding_loss_tag_list
+
 
 class OpPatternRules:
     """Rules for matching patterns"""
@@ -96,8 +105,8 @@ class OpPatternRules:
 
     @staticmethod
     def cosine_embedding_loss_pattern_rule(flags: dict, input_tensors: list,
-                             output_tensors: list, dfs_tensor_list: list,
-                             *args) -> bool:
+                                           output_tensors: list, dfs_tensor_list: list,
+                                           *args) -> bool:
         """softmax pattern rule"""
         # Use it once to avoid static checks
         [flags, input_tensors, args].clear()
@@ -168,7 +177,7 @@ class OpPatternRules:
         out_len_list = [3, 5, 6]
         input_data_len = 5
         if len(output_tensors) in out_len_list and \
-            len(output_tensors[0].shape) == input_data_len:
+                len(output_tensors[0].shape) == input_data_len:
             is_match = False
             for tag_list in bn_update_pattern_list:
                 if _check_pattern_matched(dfs_tensor_list, tag_list):
@@ -430,7 +439,7 @@ class OpSubPatternRules:  # pylint: disable=R0903
         flags.copy()  # Use it once to avoid static checks
         result = False
         is_support_atomic = pver().is_cloud_version() or \
-                            pver().is_1951_version()
+            pver().is_1951_version()
         if is_support_atomic:
             # Use atomic only when there is more than one reduce output tensors
             for output_tensor in output_tensors:
@@ -926,11 +935,11 @@ class OpSpecialRules:
                                        output_tensors):
         """Extracted to avoid static checks"""
         reduce_mean_requirement_fulfilled = len(output_tensors) == out_len and \
-                                            len(input_shape) in [input_data_len_2d,
-                                                                 input_data_len_3d] and \
-                                            int(input_shape[-1] % 16) == 0 and \
-                                            int(input_shape[-1]) < 48 and \
-                                            int(input_shape[-2]) > 8 and \
-                                            (len(input_shape) != 3 or input_shape[-3] <= 32) and \
-                                            input_dtype in ["float16", "float32"]
+            len(input_shape) in [input_data_len_2d,
+                                 input_data_len_3d] and \
+            int(input_shape[-1] % 16) == 0 and \
+            int(input_shape[-1]) < 48 and \
+            int(input_shape[-2]) > 8 and \
+            (len(input_shape) != 3 or input_shape[-3] <= 32) and \
+            input_dtype in ["float16", "float32"]
         return reduce_mean_requirement_fulfilled

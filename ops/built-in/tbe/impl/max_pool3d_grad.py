@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 max_pool3d_grad
 """
 # pylint: disable=too-many-lines,import-error
@@ -309,7 +311,6 @@ class MaxPool3DGradCompute(object):
     def _infer_map_return(self, do, ho, wo):
         # Only work in "SAME", return size of feature_map.
         # Because in "VALID", feature_map's size is as same as l1_in_buf.
-        # But in "SAME", feature_map >= l1_in_buf
 
         if self.kd >= self.sd:
             di = self.kd + (do-1) * self.sd
@@ -391,7 +392,6 @@ class MaxPool3DGradCompute(object):
         col_in_shape = [ho, wo, self.c0]
         col_in_size = _ceil_div(_prod(col_in_shape), 256) * 256
 
-        # forward_ou_shape = [do, ho, wo, self.c0]
         forward_ou_shape_last_do = [1, ho, wo, self.c0]
         forward_ou_shape_except_last = [do-1, ho, wo, self.c0]
         forward_ou_size = _ceil_div(_prod(forward_ou_shape_last_do), 128) * 128
@@ -713,10 +713,6 @@ class MaxPool3DGradCompute(object):
 
     def _ub2gm_split_do_ho_wo(self, tik_instance, src, src_idx, dst, dst_idx,
                               in_shape, hi_batch, wi_batch):
-        # ac_data: [di, hi, wi, c0] = in_shape
-        # vir_data:[di_batch, hi_batch, wi_batch, c0]
-        # relationship: xi_batch >= xi
-        # [hi, wi, c0] matrix per process
 
         c0 = in_shape[-1]
         c1 = self.c1
@@ -769,7 +765,6 @@ class MaxPool3DGradCompute(object):
                             ubuf, num_overlap, 0, "float32")
 
     def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
-        # in_shape is [do, ho, wo, c0]
         # Only split do, self.ho is equal to in_shape[1], self.wo is equal
         # to in_shape[2].
         # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
@@ -3014,7 +3009,6 @@ class MaxPool3DGradCompute(object):
                 di_value = min(0, self.overlap_d) + di
                 di_val = di_value
                 l1_idx = 0
-                # pad: used in gm2l1 and load3dv1
                 d_top, d_bottom = calc_pad(tik_instance, pad_d_top, pad_d_bottom,
                                            di_coordinate, di_value, self.d)
 
@@ -3312,7 +3306,6 @@ class MaxPool3DGradCompute(object):
                 hi_val = hi_value
                 l1_idx = 0
 
-                # pad: used in gm2l1 and load3dv1
                 d_top, d_bottom = calc_pad(tik_instance, pad_d_top, pad_d_bottom,
                                            di_coordinate, di_value, self.d)
                 h_top, h_bottom = calc_pad(tik_instance, pad_hw_top, pad_hw_bottom,
@@ -3662,7 +3655,6 @@ class MaxPool3DGradCompute(object):
                 hi_val = hi_value
                 wi_val = wi_value
 
-                # pad: used in gm2l1 and load3dv1
                 d_top, d_bottom = calc_pad(tik_instance, pad_d_top, pad_d_bottom,
                                            di_coordinate, di_value, self.d)
                 h_top, h_bottom = calc_pad(tik_instance, pad_hw_top, pad_hw_bottom,
@@ -3881,8 +3873,6 @@ class MaxPool3DGradCompute(object):
 
     def _split_core(self):
         # ============================
-        # in: [N,D,C1,H,W,C0]
-        # ou: [N,Do,C1,Ho,Wo,C0]
         # SPLIT Do,Ho,Wo for core_num
         # core_branch:
         # 0: "not_split"

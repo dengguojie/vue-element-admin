@@ -1,10 +1,24 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief LayerNormGrad fusion pass(LayerNormGrad --> LayerNormXBackprop & LayerNormBetaGammaBackprop)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file prelu_fusion_pass.cpp
+ * \brief LayerNormGrad fusion pass
+ *   (LayerNormGrad --> LayerNormXBackprop & LayerNormBetaGammaBackprop)
+ */
 #include "prelu_fusion_pass.h"
 
 #include <iostream>
@@ -66,113 +80,189 @@ before:
              MaxPool
 */
 
-vector<FusionPattern *> PReluFusionPass::DefinePatterns() {
+vector<FusionPattern*> PReluFusionPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
 
-    vector < FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("PReluFusionPass");
 
-    FusionPattern *pattern = new(std::nothrow) FusionPattern("PReluFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
 
-    FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+  pattern->AddOpDesc(PATTERN_RELU, {RELU_NODE})
+      .AddOpDesc(PATTERN_NEG, {NEG_NODE})
+      .AddOpDesc(PATTERN_RELU1, {RELU_NODE})
+      .AddOpDesc(PATTERN_NEG1, {NEG_NODE})
+      .AddOpDesc(PATTERN_MUL, {MUL_NODE})
+      .AddOpDesc(PATTERN_ADD, {ADD_NODE})
+      .SetInputs(PATTERN_RELU1, {PATTERN_NEG1})              // Neg_1->Relu_1
+      .SetInputs(PATTERN_MUL, {PATTERN_NEG, PATTERN_RELU1})  // Neg->mul,  Relu_1->mul
+      .SetInputs(PATTERN_ADD, {PATTERN_RELU, PATTERN_MUL})   // mul->add, Relu->add
+      .SetOutput(PATTERN_ADD);
 
-    pattern->AddOpDesc(PATTERN_RELU, {RELU_NODE})
-            .AddOpDesc(PATTERN_NEG, {NEG_NODE})
-            .AddOpDesc(PATTERN_RELU1, {RELU_NODE})
-            .AddOpDesc(PATTERN_NEG1, {NEG_NODE})
-            .AddOpDesc(PATTERN_MUL, {MUL_NODE})
-            .AddOpDesc(PATTERN_ADD, {ADD_NODE})
-            .SetInputs(PATTERN_RELU1, {PATTERN_NEG1})// Neg_1->Relu_1
-            .SetInputs(PATTERN_MUL, {PATTERN_NEG, PATTERN_RELU1})// Neg->mul,  Relu_1->mul
-            .SetInputs(PATTERN_ADD, {PATTERN_RELU, PATTERN_MUL})// mul->add, Relu->add
-            .SetOutput(PATTERN_ADD);
+  patterns.push_back(pattern);
 
-    patterns.push_back(pattern);
-
-    return patterns;
+  return patterns;
 }
 
-Status PReluFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) {
+Status PReluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter graph fusion PReluFusionPass!");
 
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter graph fusion PReluFusionPass!");
+  ge::NodePtr addNode = GetNodeFromMapping(PATTERN_ADD, mapping);
+  ge::NodePtr reluNode = GetNodeFromMapping(PATTERN_RELU, mapping);
+  ge::NodePtr negNode = GetNodeFromMapping(PATTERN_NEG, mapping);
+  ge::NodePtr relu1Node = GetNodeFromMapping(PATTERN_RELU1, mapping);
+  ge::NodePtr neg1Node = GetNodeFromMapping(PATTERN_NEG1, mapping);
+  ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
 
-    ge::NodePtr addNode = GetNodeFromMapping(PATTERN_ADD, mapping);
-    ge::NodePtr reluNode = GetNodeFromMapping(PATTERN_RELU, mapping);
-    ge::NodePtr negNode = GetNodeFromMapping(PATTERN_NEG, mapping);
-    ge::NodePtr relu1Node = GetNodeFromMapping(PATTERN_RELU1, mapping);
-    ge::NodePtr neg1Node = GetNodeFromMapping(PATTERN_NEG1, mapping);
-    ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
-    FUSION_PASS_CHECK(addNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "addNode is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(reluNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reluNode is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(negNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "negNode is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(relu1Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "relu1Node is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(neg1Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "neg1Node is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(addNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "addNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    int inputSize = 0;
-    inputSize = reluNode->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node size is [%lu], which not equal to 1.", inputSize), return NOT_CHANGED);
+  FUSION_PASS_CHECK(reluNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reluNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    inputSize = negNode->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "neg node size is [%lu], which not equal to 1.", inputSize), return NOT_CHANGED);
+  FUSION_PASS_CHECK(negNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "negNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    inputSize = relu1Node->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "relu1 node size is [%lu], which not equal to 1.", inputSize), return NOT_CHANGED);
+  FUSION_PASS_CHECK(relu1Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "relu1Node is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    inputSize = neg1Node->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "neg1 node size is [%lu], which not equal to 1.", inputSize), return NOT_CHANGED);
+  FUSION_PASS_CHECK(neg1Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "neg1Node is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    inputSize = mulNode->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 2, OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node size is [%lu], which not equal to 2.", inputSize), return NOT_CHANGED);
+  FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    inputSize = addNode->GetInDataNodes().size();
-    FUSION_PASS_CHECK(inputSize != 2, OP_LOGI(FUSED_OP_TYPE.c_str(), "add node size is [%lu], which not equal to 2.", inputSize), return NOT_CHANGED);
+  // check all nodes input size
+  int inputSize = 0;
+  inputSize = reluNode->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node size is [%lu], which not equal to 1.", inputSize),
+                    return NOT_CHANGED);
 
-    std::string preluNodeName = addNode->GetName() + "_" + "prelu";
-    std::shared_ptr<ge::OpDesc> preluOpdesc = std::make_shared<ge::OpDesc>(preluNodeName, PRELU_NODE);
-    FUSION_PASS_CHECK(preluOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "preluOpdesc is null, fusion failed."), return PARAM_INVALID);
+  inputSize = negNode->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "neg node size is [%lu], which not equal to 1.", inputSize),
+                    return NOT_CHANGED);
 
-    ge::GeTensorDesc neg1InputDesc = neg1Node->GetOpDesc()->GetInputDesc(0);
-    FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(0, neg1InputDesc) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add neg1Node input desc failed."), return FAILED);
+  inputSize = relu1Node->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu1 node size is [%lu], which not equal to 1.", inputSize),
+                    return NOT_CHANGED);
 
-    ge::GeTensorDesc negInputDesc = negNode->GetOpDesc()->GetInputDesc(0);
-    FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(1, negInputDesc) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add negNode input desc failed."), return FAILED);
+  inputSize = neg1Node->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "neg1 node size is [%lu], which not equal to 1.", inputSize),
+                    return NOT_CHANGED);
 
-    ge::GeTensorDesc addOutputDesc = addNode->GetOpDesc()->GetOutputDesc(0);
-    FUSION_PASS_CHECK(preluOpdesc->AddOutputDesc(addOutputDesc) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add addNode output desc failed."), return FAILED);
+  inputSize = mulNode->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 2,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node size is [%lu], which not equal to 2.", inputSize),
+                    return NOT_CHANGED);
 
-    ge::NodePtr preluNode = graph.AddNode(preluOpdesc);
-    preluNode->GetOpDesc()->SetType(PRELU_NODE);
-    newNodes.push_back(preluNode);
+  inputSize = addNode->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 2,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "add node size is [%lu], which not equal to 2.", inputSize),
+                    return NOT_CHANGED);
 
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(
-        neg1Node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-        preluNode->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between neg1Node and preluNode failed."), return FAILED);
+  // check all nodes output size
+  int outputSize = 0;
+  outputSize = reluNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node output size is [%d], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
 
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(
-        negNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-        preluNode->GetInDataAnchor(1)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between negNode and preluNode failed."), return FAILED);
+  outputSize = negNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "neg node output size is [%d], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
 
-    for (auto inDataAnchor : addNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(addNode->GetOutDataAnchor(0),
-            inDataAnchor) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preluNode->GetOutDataAnchor(0),
-            inDataAnchor) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
-    }
+  outputSize = relu1Node->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu1 node output size is [%d], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
 
-    FUSION_PASS_CHECK(graph.RemoveNode(addNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove addNode failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(reluNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove reluNode failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(negNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove negNode failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(relu1Node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove relu1Node failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(neg1Node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove neg1Node failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove mulNode failed."), return FAILED);
+  outputSize = neg1Node->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "neg1 node output size is [%d], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
 
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Leave graph fusion PReluFusionPass!");
+  outputSize = mulNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node output size is [%d], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
 
-    return SUCCESS;
+  // check Neg1 and Relu node input are from the same Conv2D node
+  OutDataAnchorPtr neg1InputAnchor = neg1Node->GetInDataAnchor(0)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(neg1InputAnchor == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "neg1 node input anchor is null"),
+                    return NOT_CHANGED);
+  string neg1InputName = neg1InputAnchor->GetOwnerNode()->GetName();
+
+  OutDataAnchorPtr reluInputAnchor = reluNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(reluInputAnchor == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node input anchor is null"),
+                    return NOT_CHANGED);
+  string reluInputName = reluInputAnchor->GetOwnerNode()->GetName();
+
+  FUSION_PASS_CHECK(neg1InputName != reluInputName,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "neg1 node input name %s must equal to relu node input name %s.",
+                            neg1InputName.c_str(), reluInputName.c_str()),
+                    return NOT_CHANGED);
+
+  // create prelu node op description
+  std::string preluNodeName = addNode->GetName() + "_" + "prelu";
+  std::shared_ptr<ge::OpDesc> preluOpdesc = std::make_shared<ge::OpDesc>(preluNodeName, PRELU_NODE);
+  FUSION_PASS_CHECK(preluOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "preluOpdesc is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  ge::GeTensorDesc neg1InputDesc = neg1Node->GetOpDesc()->GetInputDesc(0);
+  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(0, neg1InputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add neg1Node input desc failed."), return FAILED);
+
+  ge::GeTensorDesc negInputDesc = negNode->GetOpDesc()->GetInputDesc(0);
+  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(1, negInputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add negNode input desc failed."), return FAILED);
+
+  ge::GeTensorDesc addOutputDesc = addNode->GetOpDesc()->GetOutputDesc(0);
+  FUSION_PASS_CHECK(preluOpdesc->AddOutputDesc(addOutputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add addNode output desc failed."), return FAILED);
+
+  // add prelu node into graph
+  ge::NodePtr preluNode = graph.AddNode(preluOpdesc);
+  preluNode->GetOpDesc()->SetType(PRELU_NODE);
+  newNodes.push_back(preluNode);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(neg1Node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                            preluNode->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between neg1Node and preluNode failed."), return FAILED);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(negNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                            preluNode->GetInDataAnchor(1)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between negNode and preluNode failed."), return FAILED);
+
+  for (auto &inDataAnchor : addNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(addNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preluNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+  }
+
+  FUSION_PASS_CHECK(graph.RemoveNode(addNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove addNode failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(reluNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove reluNode failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(negNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove negNode failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(relu1Node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove relu1Node failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(neg1Node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove neg1Node failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove mulNode failed."),
+                    return FAILED);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Leave graph fusion PReluFusionPass!");
+
+  return SUCCESS;
 }
 
 REGISTER_PASS("PReluFusionPass", BUILT_IN_GRAPH_PASS, PReluFusionPass);
 
-}
+}  // namespace fe

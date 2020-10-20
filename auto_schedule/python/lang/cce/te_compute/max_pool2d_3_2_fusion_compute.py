@@ -1,25 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 max_pool_v200
 """
-
 from __future__ import division
 import math
 from te import tvm
 from te.platform import cce_conf
+
 
 class MaxPoolParam:
     """
@@ -76,8 +76,9 @@ NAME = "pooling2d_max_"
 OP_TAG = "pooling2d_max_"
 C0_SIZE = 16
 
+
 @tvm.target.generic_func
-def max_pool_compute(input_data, # pylint: disable=too-many-arguments
+def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
                      ksize, strides, pad_mode="VALID",
                      padding=(0, 0, 0, 0), ceil_mode=0, data_mode=0):
     """
@@ -110,7 +111,7 @@ def max_pool_compute(input_data, # pylint: disable=too-many-arguments
         The result of max pooling
     """
 
-    def _compute_max_pooling(input_data, padding):
+    def _compute_max_pooling(input_data, padding, window):
         # compute max_pooling
         input_shape = shape_to_list(input_data.shape)
 
@@ -118,12 +119,13 @@ def max_pool_compute(input_data, # pylint: disable=too-many-arguments
             max_pooling_input(input_shape, width_in, padding)
         out_col_max, ret_out_list = \
             max_pooling(data_pad, row_max_shape, max_pool_res_shape)
-        trans_line_data = tvm.compute(input_5d_data.shape,
-                                      lambda *i: input_5d_data[i],
-                                      name=NAME + 'trans_line_data',
-                                      tag=OP_TAG + "trans_line_data")
+        if window[0] == 3:
+            trans_line_data = tvm.compute(input_5d_data.shape,
+                                          lambda *i: input_5d_data[i],
+                                          name=NAME + 'trans_line_data',
+                                          tag=OP_TAG + "trans_line_data")
+            MaxPoolParam.update_tensormap("trans_line_data", trans_line_data)
         MaxPoolParam.update_tensormap("max_pool_tensors", ret_out_list)
-        MaxPoolParam.update_tensormap("trans_line_data", trans_line_data)
 
         MaxPoolParam.update_tensormap("pooling_out",
                                       (max_pool_res_shape[2], max_pool_res_shape[3]))
@@ -146,25 +148,36 @@ def max_pool_compute(input_data, # pylint: disable=too-many-arguments
                                  name=NAME + 'ub_reshape',
                                  tag=OP_TAG + "ub_reshape")
         MaxPoolParam.update_tensormap("ub_reshape", ub_reshape)
-        trans_vn_node = tvm.compute(ub_reshape.shape,
-                                    lambda n, c1, h, w, c0:
-                                    ub_reshape[n, c1, h, w, c0] +
-                                    trans_line_data[n, 0, 0, 0, c1 * 16 + c0],
-                                    name=NAME + 'trans_vn_node',
-                                    tag=OP_TAG + "trans_vn_node")
-        MaxPoolParam.update_tensormap("trans_vn_node", trans_vn_node)
+        if window[0] == 3:
+            trans_vn_node = tvm.compute(ub_reshape.shape,
+                                        lambda n, c1, h, w, c0:
+                                        ub_reshape[n, c1, h, w, c0] +
+                                        trans_line_data[n, 0, 0, 0, c1 * 16 + c0],
+                                        name=NAME + 'trans_vn_node',
+                                        tag=OP_TAG + "trans_vn_node")
+            MaxPoolParam.update_tensormap("trans_vn_node", trans_vn_node)
         res_shape = (input_shape[0],
                      input_shape[1],
                      max_pool_res_shape[2] * max_pool_res_shape[3],
                      input_shape[3])
-        res = tvm.compute(res_shape,
-                          lambda n, c1, m, c0:
-                          trans_vn_node[n, c1,
-                                        m // max_pool_res_shape[3],
-                                        m % max_pool_res_shape[3],
-                                        c0],
-                          name=NAME + 'max_pool_res',
-                          tag=OP_TAG + "max_pool_res")
+        if window[0] == 3:
+            res = tvm.compute(res_shape,
+                              lambda n, c1, m, c0:
+                              trans_vn_node[n, c1,
+                                            m // max_pool_res_shape[3],
+                                            m % max_pool_res_shape[3],
+                                            c0],
+                              name=NAME + 'max_pool_res',
+                              tag=OP_TAG + "max_pool_res")
+        else:
+            res = tvm.compute(res_shape,
+                              lambda n, c1, m, c0:
+                              ub_reshape[n, c1,
+                                            m // max_pool_res_shape[3],
+                                            m % max_pool_res_shape[3],
+                                            c0],
+                              name=NAME + 'max_pool_res',
+                              tag=OP_TAG + "max_pool_res")
         MaxPoolParam.update_tensormap("max_pool_res", res)
 
         return res
@@ -187,7 +200,6 @@ def max_pool_compute(input_data, # pylint: disable=too-many-arguments
                                     name=NAME + 'input_5d_data',
                                     tag=OP_TAG + "input_5d_data")
         MaxPoolParam.update_tensormap("input_5d_data", input_5d_data)
-
 
         if data_mode == 0:
             h_out, w_out, padding = \
@@ -243,13 +255,14 @@ def max_pool_compute(input_data, # pylint: disable=too-many-arguments
     _check_para(ksize, strides)
 
     dtype = input_data.dtype
-
     # hard code to get conv_res attrs!!!
+
     conv_res = input_data.op.input_tensors[0]
     width_in = conv_res.op.attrs["width_out"].value
     MaxPoolParam.update_tensormap("conv_width", width_in)
-    res = _compute_max_pooling(input_data, padding)
+    res = _compute_max_pooling(input_data, padding, ksize)
     MaxPoolParam.update_tensormap("is_conv_pool_fused", False)
+    MaxPoolParam.update_tensormap("window_size", ksize[0])
     return res
 
 
@@ -258,8 +271,8 @@ def _check_para(window, strides):
     check the window and stride
     """
     window_h, window_w = window
-    if (window_h != 3) or (window_w != 3):
-        raise RuntimeError("pooling window size must be [3,3].")
+    if (window_h != 3 or window_w != 3) and (window_h != 2 or window_w != 2):
+        raise RuntimeError("pooling window size must be [3,3] or [2,2].")
 
     stride_h, stride_w = strides
     if (stride_h != 2) or (stride_w != 2):
@@ -341,7 +354,7 @@ def max_pooling_padding(input_data, padding, dtype):
                                zero_padding(n, c1, h, w, c0)
                                ),
                     zero_padding(n, c1, h, w, c0)
-                    ),
+                ),
                 name=NAME + "max_pooling_pad_data",
                 tag=OP_TAG + "max_pooling_pad_data")
 
@@ -370,7 +383,7 @@ def max_pooling_padding(input_data, padding, dtype):
                                                      ),
                                           ),
                                ),
-                    ),
+                ),
                 name=NAME + "max_pooling_pad_data",
                 tag=OP_TAG + "max_pooling_pad_data")
 
@@ -410,7 +423,6 @@ def max_pooling_padding(input_data, padding, dtype):
     else:
         pad_res = padding_v100()
 
-
     return pad_res, pad_shape
 
 
@@ -447,10 +459,10 @@ def get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
             raise RuntimeError("CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)")
     if ceil_mode == 0:
         pad_rows = (out_size_h - 1)*strides[0] \
-                   + ((ksize[0] - 1)*dilation[0] + 1) - input_5d_shape[2]
+            + ((ksize[0] - 1)*dilation[0] + 1) - input_5d_shape[2]
         pad_bottom = pad_rows - padding[0]
         pad_cols = (out_size_w - 1)*strides[1] \
-                   + ((ksize[1] - 1)*dilation[1] + 1) - input_5d_shape[3]
+            + ((ksize[1] - 1)*dilation[1] + 1) - input_5d_shape[3]
         pad_right = pad_cols - padding[2]
     else:
         pad_bottom = padding[1]
@@ -476,9 +488,9 @@ def get_tensorflow_out_size_and_pad(pad_mode, input_5d_shape,
         w_out = (input_5d_shape[3] + strides[1] - 1) // strides[1]
 
         padding_rows = (h_out - 1) * strides[0] + \
-                    ((ksize[0] - 1) * dilation[0] + 1) - input_5d_shape[2]
+            ((ksize[0] - 1) * dilation[0] + 1) - input_5d_shape[2]
         padding_cols = (w_out - 1) * strides[1] + \
-                    ((ksize[1] - 1) * dilation[1] + 1) - input_5d_shape[3]
+            ((ksize[1] - 1) * dilation[1] + 1) - input_5d_shape[3]
 
         padding_top = padding_rows // 2
         padding_bottom = padding_rows - padding_top
@@ -513,32 +525,50 @@ def compute_3_window(data, data_shape, is_row, stride, window):
     """
     max_tensors = []
     if is_row:
-        out_max = compute_tmp_max(stride[0], data_shape,
-                                  data, True, "row_temp_max")
-        max_tensors.append(out_max)
-        out_max = \
-            tvm.compute(data_shape,
-                        lambda i2, j2, h2, w2, c2:
-                        tvm.max(out_max(i2, j2, h2, w2, c2),
-                                data(i2, j2,
-                                     stride[0] * h2 + window[0] - 1,
-                                     w2, c2)),
-                        name=NAME + "row_max",
-                        tag=OP_TAG + "row_max")
+        if window[0] == 3:
+            out_max = compute_tmp_max(stride[0], data_shape,
+                                      data, True, "row_temp_max")
+            max_tensors.append(out_max)
+            out_max = \
+                tvm.compute(data_shape,
+                            lambda i2, j2, h2, w2, c2:
+                            tvm.max(out_max(i2, j2, h2, w2, c2),
+                                    data(i2, j2,
+                                         stride[0] * h2 + window[0] - 1,
+                                         w2, c2)),
+                            name=NAME + "row_max",
+                            tag=OP_TAG + "row_max")
+        else:
+          out_max = \
+              tvm.compute(data_shape,
+                          lambda i, j, h, w, c:
+                          tvm.max(data(i, j, h * stride[0], w, c),
+                                  data(i, j, h * stride[0] + 1, w, c)),
+                          name=NAME + "row_max",
+                          tag=OP_TAG + "row_max")
         max_tensors.append(out_max)
     else:
-        out_max = compute_tmp_max(stride[1], data_shape,
-                                  data, False, "col_temp_max")
-        max_tensors.append(out_max)
-        out_max = \
-            tvm.compute(data_shape,
-                        lambda i2, j2, h2, w2, c2:
-                        tvm.max(out_max(i2, j2, h2, w2, c2),
-                                data(i2, j2, h2,
-                                     stride[1] * w2 + window[1] - 1,
-                                     c2)),
-                        name=NAME + "col_max",
-                        tag=OP_TAG + "col_max")
+        if window[0] == 3:
+            out_max = compute_tmp_max(stride[1], data_shape,
+                                      data, False, "col_temp_max")
+            max_tensors.append(out_max)
+            out_max = \
+                tvm.compute(data_shape,
+                            lambda i2, j2, h2, w2, c2:
+                            tvm.max(out_max(i2, j2, h2, w2, c2),
+                                    data(i2, j2, h2,
+                                         stride[1] * w2 + window[1] - 1,
+                                         c2)),
+                            name=NAME + "col_max",
+                            tag=OP_TAG + "col_max")
+        else:
+            out_max = \
+              tvm.compute(data_shape,
+                          lambda i, j, h, w, c:
+                          tvm.max(data(i, j, h, w * stride[1], c),
+                                  data(i, j, h, w * stride[1] + 1, c)),
+                          name=NAME + "col_max",
+                          tag=OP_TAG + "col_max")
         max_tensors.append(out_max)
     return max_tensors, out_max
 

@@ -1,19 +1,25 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use
- * this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file single_plugin.cpp
+ * \brief
+ */
 #include "register/register.h"
 
-using namespace ge;
 namespace domi {
 
 // register AccumulatorApplyGradient op to GE
@@ -447,13 +453,6 @@ REGISTER_CUSTOM_OP("MirrorPad")
 REGISTER_CUSTOM_OP("MirrorPadGrad")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("MirrorPadGrad")
-    .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::AI_CPU);
-
-// register Multinomial op to GE
-REGISTER_CUSTOM_OP("Multinomial")
-    .FrameworkType(TENSORFLOW)
-    .OriginOpType("Multinomial")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
@@ -1213,6 +1212,13 @@ REGISTER_CUSTOM_OP("IsFinite")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register IsInf op to GE
+REGISTER_CUSTOM_OP("IsInf")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("IsInf")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register RFFT op to GE
 REGISTER_CUSTOM_OP("RFFT")
     .FrameworkType(TENSORFLOW)
@@ -1233,7 +1239,7 @@ REGISTER_CUSTOM_OP("IsNan")
     .OriginOpType("IsNan")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
-    
+
 // register MatrixDiagPartV2 op to GE
 REGISTER_CUSTOM_OP("MatrixDiagPartV2")
     .FrameworkType(TENSORFLOW)
@@ -1252,6 +1258,13 @@ REGISTER_CUSTOM_OP("MatrixSetDiagV2")
 REGISTER_CUSTOM_OP("MatrixDiagV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("MatrixDiagV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register BroadcastGradientArgs op to GE
+REGISTER_CUSTOM_OP("BroadcastGradientArgs")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("BroadcastGradientArgs")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
@@ -1307,6 +1320,13 @@ REGISTER_CUSTOM_OP("EmbeddingRankId")
 REGISTER_CUSTOM_OP("SparseSegmentMeanGrad")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("SparseSegmentMeanGrad")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register DeformableOffsets op to GE
+REGISTER_CUSTOM_OP("DeformableOffsets")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DeformableOffsets")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 

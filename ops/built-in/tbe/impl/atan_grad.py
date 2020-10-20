@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 atan_grad
 
   Op_description :
@@ -34,26 +32,19 @@ atan_grad
     [1] All : 'y' and 'dy' must have the same type and shape.
     [2] All : shape size limit is 2147483648.
 """
-
 import operator
 
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
-from topi import generic
-from topi.cce import util
+from te.utils import para_check
+from te.utils import shape_util
 
 CONST_ONE = 1
 
 
 # pylint: disable=unused-argument,invalid-name
-@fusion_manager.register("atan_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("atan_grad")
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """
     Calculation for backward gradient
@@ -77,22 +68,22 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     scalar_one = tvm.const(CONST_ONE, "float32")
     dtype = y.dtype
 
-    if dtype == "float16" and \
-       api_check_support("te.lang.cce.vadd", "float32"):
-        y = te.lang.cce.cast_to(y, "float32")
-        dy = te.lang.cce.cast_to(dy, "float32")
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        y = tbe.cast_to(y, "float32")
+        dy = tbe.cast_to(dy, "float32")
 
-    data_square = te.lang.cce.vmul(y, y)
-    sum_tmp = te.lang.cce.vadds(data_square, scalar_one)
-    res = te.lang.cce.vdiv(dy, sum_tmp)
+    data_square = tbe.vmul(y, y)
+    sum_tmp = tbe.vadds(data_square, scalar_one)
+    res = tbe.vdiv(dy, sum_tmp)
 
     if dtype == "float16":
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def atan_grad(y, dy, z, kernel_name="atan_grad"):
     """
     Gradient calculation for atan(x)
@@ -125,16 +116,16 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     # check whether kernel name is unique
 
     # check whether the shape is right
-    check_shape(shape, param_name="y")
-    check_shape(shape_grad, param_name="dy")
+    para_check.check_shape(shape, param_name="y")
+    para_check.check_shape(shape_grad, param_name="dy")
     if not operator.eq(shape, shape_grad):
         raise RuntimeError("all input shape must be the same")
-    shape, _ = refine_shape_axes(shape, [])
+    shape, _ = shape_util.refine_shape_axes(shape, [])
 
     # check whether dtypes are fp16,fp32 and whether they are the same
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list, param_name="y")
-    check_dtype(dtype_grad, check_list, param_name="dy")
+    para_check.check_dtype(dtype, check_list, param_name="y")
+    para_check.check_dtype(dtype_grad, check_list, param_name="dy")
     dtype = dtype.lower()
     if dtype != dtype_grad.lower():
         raise RuntimeError("all input dtype must be same")
@@ -147,8 +138,8 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     res = atan_grad_compute(data_input, grad, z, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, grad, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

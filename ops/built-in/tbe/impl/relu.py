@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 relu
 
   Op_description :
@@ -30,24 +32,18 @@ relu
     [1] All : shape size limit is 2147483648.
 
 """
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # const value
 CONST_ZERO = 0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("relu")
+@tbe_platform.fusion_manager.fusion_manager.register("relu")
 def relu_compute(x, y, kernel_name="relu"):
     """
     Algrithm : relu(x) = max(x, 0)
@@ -69,24 +65,21 @@ def relu_compute(x, y, kernel_name="relu"):
     shape = x.shape
     compatible_dtype = x.dtype
 
-    if inp_dtype == 'int8' and api_check_support('te.lang.cce.cast_to',
-                                                 's82f16'):
-        x = te.lang.cce.cast_to(x, 'float16')
+    if inp_dtype == 'int8' and tbe_platform.api_check_support('te.lang.cce.cast_to', 's82f16'):
+        x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if api_check_support('te.lang.cce.vrelu', compatible_dtype):
-        data_res = te.lang.cce.vrelu(x)
+    if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):
+        data_res = tbe.vrelu(x)
     else:
-        tensor_zero = te.lang.cce.broadcast(tvm.const(CONST_ZERO,
-                                                      compatible_dtype),
-                                            shape)
-        data_res = te.lang.cce.vmax(x, tensor_zero)
+        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, compatible_dtype), shape)
+        data_res = tbe.vmax(x, tensor_zero)
 
-    data_res = te.lang.cce.cast_to(data_res, inp_dtype)
+    data_res = tbe.cast_to(data_res, inp_dtype)
 
     return data_res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu(x, y, kernel_name="relu"):
     """
     Algrithm: relu(x) = max(x, 0)
@@ -111,22 +104,22 @@ def relu(x, y, kernel_name="relu"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    check_shape(shape, param_name="x")
-    shape, _ = refine_shape_axes(shape, [])
+    para_check.check_shape(shape, param_name="x")
+    shape, _ = shape_util.refine_shape_axes(shape, [])
 
     check_list = ("float16", "float32", "int8", "int32")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     dtype = dtype.lower()
     input_data = tvm.placeholder(shape, dtype, "input_data")
 
     with tvm.target.cce():
         res = relu_compute(input_data, y, kernel_name)
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_data, res],
               "print_ir": False,
              }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

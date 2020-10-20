@@ -1,23 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 spp_pooling
 """
-
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from topi.cce import util
-from te.utils import op_utils
-from te import platform as tbe_platform
+
 
 FP16_MINI = -65504
 FP32_MINI = -3.4 * (10**38)
@@ -48,65 +49,65 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
     y_shape_val = y_dic['shape']
     dtype_val = x_dic['dtype']
 
-    op_utils.check_shape(x_shape_val, param_name="input_x")
-    op_utils.check_shape(y_shape_val, param_name="input_y")
+    para_check.check_shape(x_shape_val, param_name="input_x")
+    para_check.check_shape(y_shape_val, param_name="input_y")
 
-    tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        op_utils.check_dtype(dtype_val.lower(), ["float16"], param_name="input_x")
+    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        para_check.check_dtype(dtype_val.lower(), ["float16"], param_name="input_x")
     else:
-        op_utils.check_dtype(dtype_val.lower(), ["float16", "float32"], param_name="input_x")
+        para_check.check_dtype(dtype_val.lower(), ["float16", "float32"], param_name="input_x")
 
     if param_dic['window'][0] < 1 or param_dic['window'][1] < 1:
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'spp_pooling'
-        error_info['param_name'] = 'window'
-        error_info['min_value'] = '1'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str(param_dic['window'])
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
+        error_info = {'errCode': 'E80002',
+                      'opname': 'spp_pooling',
+                      'param_name': 'window',
+                      'min_value': '1',
+                      'max_value': 'inf',
+                      'real_value': str(param_dic['window'])}
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s),"
+                                       " but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
                              
     if param_dic['stride'][0] < 1 or param_dic['stride'][1] < 1:
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'spp_pooling'
-        error_info['param_name'] = 'stride'
-        error_info['min_value'] = '1'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = str(param_dic['stride'])
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
+        error_info = {'errCode': 'E80002',
+                      'opname': 'spp_pooling',
+                      'param_name': 'stride',
+                      'min_value': '1',
+                      'max_value': 'inf',
+                      'real_value': str(param_dic['stride'])}
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s),"
+                                       " but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
 
     if param_dic['pad'][0] > param_dic['window'][0] or \
             param_dic['pad'][2] > param_dic['window'][1]:
-        error_info = {}
-        error_info['errCode'] = 'E81006'
-        error_info['opname'] = 'spp_pooling'
-        error_info['real_pad_value'] = str(param_dic['pad'])
-        error_info['real_window_value'] = str(param_dic['window'])
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[pad]'s value[%s] should be not greater than parameter[window]'s value[%s]."
+        error_info = {'errCode': 'E81006',
+                      'opname': 'spp_pooling',
+                      'real_pad_value': str(param_dic['pad']),
+                      'real_window_value': str(param_dic['window'])}
+        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[pad]'s value[%s] should be"
+                                       " not greater than parameter[window]'s value[%s]."
                            % (error_info['real_pad_value'], error_info['real_window_value']))
 
     if param_dic["mode"] != AVG_POOLING and \
             param_dic["mode"] != MAX_POOLING:
-        error_info = {}
-        error_info['errCode'] = 'E81007'
-        error_info['opname'] = 'spp_pooling'
-        error_info['real_mode'] = str(param_dic["mode"])
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[mode] only support AVG and MAX, but actually is [%s]."
+        error_info = {'errCode': 'E81007',
+                      'opname': 'spp_pooling',
+                      'real_mode': str(param_dic["mode"])}
+        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[mode] only support AVG and MAX,"
+                                       " but actually is [%s]."
                            % error_info['real_mode'])
 
     if param_dic["ceil_mode"] != POOLING_CEIL and \
             param_dic["ceil_mode"] != POOLING_FLOOR:
-        error_info = {}
-        error_info['errCode'] = 'E81008'
-        error_info['opname'] = 'spp_pooling'
-        error_info['real_ceil_mode'] = str(param_dic["ceil_mode"])
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[ceil_mode] only support CEIL and FLOOR, but actually is [%s]."
+        error_info = {'errCode': 'E81008',
+                      'opname': 'spp_pooling',
+                      'real_ceil_mode': str(param_dic["ceil_mode"])}
+        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[ceil_mode] only support CEIL and FLOOR,"
+                                       " but actually is [%s]."
                            % error_info['real_ceil_mode'])
 
 
@@ -156,7 +157,7 @@ class BaseParam:
         -------
         None
         """
-        self.ubuf['total'] = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ubuf['total'] = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         if double_buf_switch is True and double_buf_cond > 1:
             self.ubuf['avail'] = (self.ubuf['total'] - 2 * UB_RESERVED) // 2
         else:
@@ -298,13 +299,12 @@ class PoolingCompute(PoolingCommon):
         self.src_gm = base_param['src_gm']
         self.dst_gm = base_param['dst_gm']
 
-        self.src_ub = self.tik_inst.Tensor(self.dtype, (self.ubuf['avail'] //
-                                                        self.dtype_size, ),
-                                           scope=tik.scope_ubuf, name="src_ub")
-        self.dst_ub = self.tik_inst.Tensor(self.dtype, (512//self.dtype_size, ),
-                                           scope=tik.scope_ubuf, name="dst_ub")
-        self.res_ub = self.tik_inst.Tensor(self.dtype, (16, ),
-                                           scope=tik.scope_ubuf, name="res_ub")
+        self.src_ub = self.tik_inst.Tensor(self.dtype, (self.ubuf['avail'] // self.dtype_size,),
+                                           scope=tbe_platform.scope_ubuf, name="src_ub")
+        self.dst_ub = self.tik_inst.Tensor(self.dtype, (512 // self.dtype_size,),
+                                           scope=tbe_platform.scope_ubuf, name="dst_ub")
+        self.res_ub = self.tik_inst.Tensor(self.dtype, (16,),
+                                           scope=tbe_platform.scope_ubuf, name="res_ub")
 
     def data_load(self, load_size):
         """
@@ -319,8 +319,7 @@ class PoolingCompute(PoolingCommon):
         pooling_w = self.w_end - self.w_start
         burst_len = pooling_w * self.shape[4] * self.dtype_size // 32
         nburst = load_size // pooling_w
-        src_stride = (self.shape[3] - pooling_w) * \
-                     self.in_size['w'] * self.dtype_size // 32
+        src_stride = (self.shape[3] - pooling_w) * self.in_size['w'] * self.dtype_size // 32
         dst_stride = 0
 
         nburst_loop = load_size // pooling_w // 4095
@@ -419,17 +418,15 @@ class PoolingCompute(PoolingCommon):
                                  self.src_ub[compute_size*self.shape[4]],
                                  init_val, 1, 1, 8)
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310" \
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == tbe_platform.ASCEND_310 \
                 and self.dtype == "float32":
             run_loop = (compute_size * self.shape[4] *
                         self.dtype_size + 255) // 256
             with self.tik_inst.for_range(0, run_loop) as run_i:
                 self.pooling_vop_1(1, run_i * 256 // self.dtype_size)
         else:
-            repeats_loop = compute_size * self.shape[4] * \
-                           self.dtype_size // 65280
-            repeats_tail = compute_size * self.shape[4] * \
-                           self.dtype_size % 65280
+            repeats_loop = compute_size * self.shape[4] * self.dtype_size // 65280
+            repeats_tail = compute_size * self.shape[4] * self.dtype_size % 65280
 
             with self.tik_inst.for_range(0, repeats_loop) as loopi:
                 self.pooling_vop_2(255, loopi * 65280 // self.dtype_size)
@@ -439,7 +436,7 @@ class PoolingCompute(PoolingCommon):
                                    repeats_loop * 65280 // self.dtype_size)
 
         tmp_ub = self.tik_inst.Tensor(self.dtype, (256 // self.dtype_size, ),
-                                      scope=tik.scope_ubuf, name="tmp_ub")
+                                      scope=tbe_platform.scope_ubuf, name="tmp_ub")
         self.tik_inst.vector_dup(self.mask, tmp_ub, init_val, 1, 1, 8)
 
         cycle = 3 if (self.dtype == "float16") else 2
@@ -547,7 +544,7 @@ def compute_in_core(x_param, pooling_attr, base_param):
     compute_num = x_param['shape'][0] * x_param['shape'][1]
     tik_inst = base_param['tik_inst']
 
-    block_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if compute_num > block_num:
         core_div_num = block_num
         core_div_loops = compute_num // block_num
@@ -584,11 +581,11 @@ def pooling_compute(x_param, pooling_attr):
     pad = pooling_attr['pad']
     stride = pooling_attr['stride']
     if pooling_attr['ceil_mode'] == POOLING_CEIL:
-        out = {'h': (shape_in[2]+pad[0]*2-window[0]+stride[0]-1)//stride[0]+1,
-               'w': (shape_in[3]+pad[2]*2-window[1]+stride[1]-1)//stride[1]+1}
+        out = {'h': (shape_in[2] + pad[0] * 2 - window[0] + stride[0] - 1) // stride[0] + 1,
+               'w': (shape_in[3] + pad[2] * 2 - window[1] + stride[1] - 1) // stride[1] + 1}
     else:
-        out = {'h': (shape_in[2]+pad[0]*2-window[0])//stride[0]+1,
-               'w': (shape_in[3]+pad[2]*2-window[1])//stride[1]+1}
+        out = {'h': (shape_in[2] + pad[0] * 2 - window[0]) // stride[0] + 1,
+               'w': (shape_in[3] + pad[2] * 2 - window[1]) // stride[1] + 1}
 
     if pad[0] > 0 or pad[2] > 0:
         if (out['h'] - 1) * stride[0] >= shape_in[2] + pad[0]:
@@ -596,37 +593,37 @@ def pooling_compute(x_param, pooling_attr):
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
             out['w'] = out['w'] - 1
         if (out['h'] - 1) * stride[0] >= shape_in[2] + pad[0]:
-            error_info = {}
-            error_info['errCode'] = 'E81009'
-            error_info['op_name'] = 'spp_pooling'
-            error_info['image_size'] = str(shape_in[2])
-            error_info['stride'] = str(stride[0])
-            error_info['pad'] = str(pad[0])
-            raise RuntimeError(error_info, 
-                "In op[spp_pooling], the last pooling(height direction) must start strictly inside the image. Image height is %s, stride_h is %s, pad_h is %s.", 
-                (str(shape_in[2]), str(stride[0]), str(pad[0])))
+            error_info = {'errCode': 'E81009',
+                          'op_name': 'spp_pooling',
+                          'image_size': str(shape_in[2]),
+                          'stride': str(stride[0]),
+                          'pad': str(pad[0])}
+            raise RuntimeError(error_info,
+                               "In op[spp_pooling], the last pooling(height direction) must start strictly inside"
+                               " the image. Image height is %s, stride_h is %s, pad_h is %s.",
+                               (str(shape_in[2]), str(stride[0]), str(pad[0])))
             
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
-            error_info = {}
-            error_info['errCode'] = 'E81009'
-            error_info['op_name'] = 'spp_pooling'
-            error_info['image_size'] = str(shape_in[3])
-            error_info['stride'] = str(stride[1])
-            error_info['pad'] = str(pad[2])
+            error_info = {'errCode': 'E81009',
+                          'op_name': 'spp_pooling',
+                          'image_size': str(shape_in[3]),
+                          'stride': str(stride[1]),
+                          'pad': str(pad[2])}
             raise RuntimeError(error_info,
-                "In op[spp_pooling], the last pooling(width direction) must start strictly inside the image. Image width is %s, stride_w is %s, pad_w is %s.", 
-                (str(shape_in[3]), str(stride[1]), str(pad[2])))
+                               "In op[spp_pooling], the last pooling(width direction) must start strictly inside"
+                               " the image. Image width is %s, stride_w is %s, pad_w is %s.",
+                               (str(shape_in[3]), str(stride[1]), str(pad[2])))
 
     if pooling_attr['global_pooling'] is True:
         out = {'h': 1, 'w': 1}
 
-    vec_in_size = shape_in[0]*shape_in[1]*shape_in[2]*shape_in[3]*shape_in[4]
-    vec_out_size = shape_in[0]*shape_in[1]*out['h']*out['w']*shape_in[4]
+    vec_in_size = shape_in[0] * shape_in[1] * shape_in[2] * shape_in[3] * shape_in[4]
+    vec_out_size = shape_in[0] * shape_in[1] * out['h'] * out['w'] * shape_in[4]
 
     src_gm = tik_inst.Tensor(x_param['dtype'], (vec_in_size, ),
-                             scope=tik.scope_gm, name="src_gm")
+                             scope=tbe_platform.scope_gm, name="src_gm")
     dst_gm = tik_inst.Tensor(x_param['dtype'], (vec_out_size, ),
-                             scope=tik.scope_gm, name="dst_gm")
+                             scope=tbe_platform.scope_gm, name="dst_gm")
 
     base_param = {'tik_inst': tik_inst, 'out': out,
                   'src_gm': src_gm, 'dst_gm': dst_gm}
@@ -637,9 +634,11 @@ def pooling_compute(x_param, pooling_attr):
 
 
 # pylint: disable=too-many-arguments
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT, op_utils.REQUIRED_ATTR_BOOL, op_utils.REQUIRED_ATTR_INT, 
-                          op_utils.REQUIRED_ATTR_LIST_INT, op_utils.REQUIRED_ATTR_LIST_INT, op_utils.REQUIRED_ATTR_LIST_INT, 
-                          op_utils.REQUIRED_ATTR_INT, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def spp_pooling(x_dic, y_dic, global_pooling, mode, window, pad,
                 stride, ceil_mode, kernel_name="spp_pooling"):
     """

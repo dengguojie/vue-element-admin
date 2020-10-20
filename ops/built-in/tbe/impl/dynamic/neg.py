@@ -20,7 +20,8 @@ from __future__ import absolute_import
 import te.lang.dynamic
 from te import tvm
 from functools import reduce as functools_reduce
-from te.platform.shape_classifier import classify, Mode
+from te.platform.shape_classifier import classify
+from te.platform.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -28,6 +29,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 from te.utils.op_utils import broadcast_shapes
+from functools import reduce as reduceIns
 from topi import generic
 
 # define a scaler, value = -1
@@ -62,10 +64,12 @@ def neg_compute(input_x, output_y, kernel_name="neg"):
         data_tmp = te.lang.dynamic.broadcast(SCALER_NEGATIVE_ONE, shape)
         res = te.lang.dynamic.vmul(input_x, data_tmp)
     else:
+        if dtype == "int8":
+            input_x = te.lang.dynamic.cast_to(input_x, "float16")
         res = te.lang.dynamic.vmuls(input_x, SCALER_NEGATIVE_ONE_FLOAT)
 
     if dtype == "int8":
-        res = te.lang.dynamic.cast_to(res, dtype, f1628IntegerFlag=True)
+        res = te.lang.dynamic.cast_to(res, dtype)
 
     return res
 
@@ -79,7 +83,7 @@ def neg(input_x, output_y, kernel_name="neg"):
     Parameters
     ----------
     input_x: dict
-        shape and dtype of input, only support float16, float32, int32
+        shape and dtype of input, only support float16, float32, int32, int8
     output_y: dict
         shape and dtype of output, should be same type as input
     kernel_name: str
@@ -97,13 +101,11 @@ def neg(input_x, output_y, kernel_name="neg"):
     schedules, tensors = [], []
     for (input_x,) in ins:
         with te.op.compute():
-            x_shape, y_shape = variable_shape([input_x, output_y])
-            shape_input, y_shape, _ = broadcast_shapes(x_shape, y_shape,
-                                                       param_name_input1="input_x",
-                                                       param_name_input2="output_y")
-            shape_input = (
-                functools_reduce(lambda x, y: x * y, shape_input[:]),)
-            data_input = tvm.placeholder(shape_input, name="data_input",
+            x_shape = variable_shape([input_x])
+
+            fuse_shape = [1]
+            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            data_input = tvm.placeholder(fuse_shape, name="data_input",
                                          dtype=dtype_input)
             res = neg_compute(data_input, output_y, kernel_name)
 

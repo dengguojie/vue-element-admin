@@ -1,19 +1,20 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 decode_bbox
 """
-
 from functools import reduce
 from te import tik
 from te import platform as tbe_platform
@@ -57,7 +58,7 @@ class InitTikParam:
     None
     """
     def __init__(self):
-        self.product_name = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
         self.available_ub_size = (self.total_ub - RESERVED_UB) // CONFIG_TWO
         self.aicore_num = tik.Dprofile().get_aicore_num()
@@ -78,7 +79,7 @@ class InitTikParam:
         -------
         product name
         """
-        self.product_name = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
     def set_ub_buf(self):
         """

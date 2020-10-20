@@ -1,24 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 nms
 """
-
 import math
+
 from te import tik
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+
 
 # pylint: disable=R0914
 # pylint: disable=C0121
@@ -437,7 +438,7 @@ def post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub, repeat):
     :param repeat:
     :return:
     """
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend310",):
         with tik_instance.for_range(0, repeat*16) as offset:
             ret_ub[4, offset].set_as(select_proposal_ub[offset, 4])
     else:
@@ -459,8 +460,7 @@ def get_batch_id(tik_instance, ret_ub, dtype, batch_id, num):
     """
 
     with tik_instance.if_scope(True):
-        #if tik.Dprofile().get_product_name() in ["hisi-cs"]:
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
             src_scalar = tik_instance.Scalar(dtype="int32", init_value=batch_id)
             to_dst_scalar = tik_instance.Scalar(dtype="float32")
             dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -869,8 +869,7 @@ def nms_output_postproposal(input_data, post_nms_topn, selected_count,
             select_proposal_ub, temp_proposal_out[batch_index, 0, 0], 0, 1,
             ((post_nms_topn+15)//16*16*8*size)//32, 0, 0)
 
-        #if tik.Dprofile().get_product_name() in ["hisi-cs"]:
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
             src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
             to_dst_scalar = tik_instance.Scalar(dtype="float32")
             dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -938,22 +937,12 @@ def get_scale_factor(tik_instance, im_info, batch_id, scale_factor):
 
     tik_instance.vector_dup(16, a_ub, src_img_height, 1, 1, 8)
     tik_instance.vector_dup(16, b_ub, src_img_width, 1, 1, 8)
-
-    # scale_factor : sqrt(65404/(src_h*src_w*2)):sqrt(65404/2)*sqrt(1/(src_h*src_w))
-    #             : sqrt(65404/2)*((1/(src_h*src_w))**0.5):sqrt(65404/2)*exp(0.5*ln(1/(src_h*src_w))
-    #             : sqrt(65404/2)*exp((-0.5)*(ln(src_h)+ln(src_w))))
     const_factor = math.sqrt(65404/2.0)
-    # ln(src_h)
     tik_instance.vln(16, a_ub, a_ub, 1, 1, 1, 8, 8)
-    # ln(src_w)
     tik_instance.vln(16, b_ub, b_ub, 1, 1, 1, 8, 8)
-    # ln(src_h)+ln(src_w)
     tik_instance.vadd(16, c_ub, a_ub, b_ub, 1, 1, 1, 1, 8, 8, 8)
-    # (-0.5)ln(src_h)+ln(src_w)
     tik_instance.vmuls(16, c_ub, c_ub, (-0.5), 1, 1, 1, 8, 8)
-    # exp((-0.5)*(ln(src_h)+ln(src_w))))
     tik_instance.vexp(16, c_ub, c_ub, 1, 1, 1, 8, 8)
-    # sqrt(65404/2)*exp((-0.5)*(ln(src_h)+ln(src_w))))
     tik_instance.vmuls(16, c_ub, c_ub, const_factor, 1, 1, 1, 8, 8)
 
     scale_factor.set_as(c_ub[0, 0])
@@ -1130,26 +1119,26 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
             if dtype == "float16":
                 if used_in_proposal == True:
                     with tik_instance.new_stmt_scope():
-                        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):
                             get_scale_factor_lhisi(tik_instance, im_info, batch_index, scale_factor)
-                        elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):
+                        elif tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend310",):
                             get_scale_factor_mini(tik_instance, im_info, batch_index, scale_factor)
                         else:
                             get_scale_factor(tik_instance, im_info, batch_index, scale_factor)
                 else:
                     with tik_instance.new_stmt_scope():
-                        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):
                             get_scale_factor_lhisi(tik_instance, im_info, real_batch_index,
                                                    scale_factor)
-                        elif tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):
+                        elif tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend310",):
                             get_scale_factor_mini(tik_instance, im_info, real_batch_index,
                                                   scale_factor)
                         else:

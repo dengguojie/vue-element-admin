@@ -1,19 +1,23 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @brief mul add usion pass(mul --> add)
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file mul_add_fusion_pass.cpp
+ * \brief mul add usion pass(mul --> add)
+ */
 #include "mul_add_fusion_pass.h"
 
 #include <iostream>
@@ -35,34 +39,30 @@ namespace fe {
 
 static const string FUSION_NODE_PATTERN_ID_ADD = "FusedNodeAdd";
 static const string FUSION_NODE_PATTERN_ID_MUL = "FusedNodeMul";
-static const char *ADD = "Add";
-static const char *MUL = "Mul";
+static const char* ADD = "Add";
+static const char* MUL = "Mul";
 static const std::string PATTERN_INPUTS = "input";
 static const std::string STREAM_LABEL = "_stream_label";
 
 vector<FusionPattern*> MulAddFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
-  FusionPattern *pattern =
-      new (std::nothrow) FusionPattern("MulAddFusionPass");
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("MulAddFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
   pattern->AddOpDesc(FUSION_NODE_PATTERN_ID_ADD, {ADD})
       .AddOpDesc(FUSION_NODE_PATTERN_ID_MUL, {MUL})
-      .SetInputs(FUSION_NODE_PATTERN_ID_ADD,
-                 {FUSION_NODE_PATTERN_ID_MUL})
+      .SetInputs(FUSION_NODE_PATTERN_ID_ADD, {FUSION_NODE_PATTERN_ID_MUL})
       .SetOutput(FUSION_NODE_PATTERN_ID_ADD);
 
-  FusionPattern *pattern_ext =
-      new (std::nothrow) FusionPattern("MulAddFusionPass");
+  FusionPattern* pattern_ext = new (std::nothrow) FusionPattern("MulAddFusionPass");
   FUSION_PASS_CHECK(pattern_ext == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
   pattern_ext->AddOpDesc(FUSION_NODE_PATTERN_ID_ADD, {ADD})
       .AddOpDesc(FUSION_NODE_PATTERN_ID_MUL, {MUL})
       .AddOpDesc(PATTERN_INPUTS)
-      .SetInputs(FUSION_NODE_PATTERN_ID_ADD,
-                 {PATTERN_INPUTS, FUSION_NODE_PATTERN_ID_MUL})
+      .SetInputs(FUSION_NODE_PATTERN_ID_ADD, {PATTERN_INPUTS, FUSION_NODE_PATTERN_ID_MUL})
       .SetOutput(FUSION_NODE_PATTERN_ID_ADD);
 
   patterns.push_back(pattern);
@@ -70,51 +70,53 @@ vector<FusionPattern*> MulAddFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph,
-                                Mapping& mapping,
-                                vector<ge::NodePtr> &fusionNodes) {
+Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr add_node = GetNodeFromMapping(FUSION_NODE_PATTERN_ID_ADD, mapping);
   ge::NodePtr mul_node = GetNodeFromMapping(FUSION_NODE_PATTERN_ID_MUL, mapping);
 
-  FUSION_PASS_CHECK(add_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_node is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // exclude lamb and adam
   std::string mul_name = mul_node->GetName();
-  if (string::npos != mul_name.find("adam")
-      || string::npos != mul_name.find("lamb")
-      || string::npos == mul_name.find("bert")) {
+  if (string::npos != mul_name.find("adam") || string::npos != mul_name.find("lamb") ||
+      string::npos == mul_name.find("bert")) {
     return NOT_CHANGED;
   }
 
   ge::OpDescPtr mul_desc = mul_node->GetOpDesc();
   ge::OpDescPtr add_desc = add_node->GetOpDesc();
-  FUSION_PASS_CHECK(mul_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_desc is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(add_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_desc is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(mul_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_desc is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(add_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_desc is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // check input output and link relation
   FUSION_PASS_CHECK(mul_node->GetInDataNodes().size() != 2,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "Input node of Mul node size is [%lu], which not equal to 2.",
-                   mul_node->GetInDataNodes().size()),
-           return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Input node of Mul node size is [%lu], which not equal to 2.",
+                            mul_node->GetInDataNodes().size()),
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK(mul_node->GetOutDataNodes().size() != 1,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "Output node of Mul node size is [%d], which not equal to 1.",
-                   mul_node->GetOutDataNodes().size()),
-           return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Output node of Mul node size is [%d], which not equal to 1.",
+                            mul_node->GetOutDataNodes().size()),
+                    return NOT_CHANGED);
 
-  FUSION_PASS_CHECK(mul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() != 1,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "The Mul node should only have 1 output anchor that link to other nodes."),
-           return NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      mul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() != 1,
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "The Mul node should only have 1 output anchor that link to other nodes."),
+      return NOT_CHANGED);
 
   FUSION_PASS_CHECK(mul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetOwnerNode()->GetType() != ADD,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "The Mul node should only have 1 output anchor that link to Add"),
-           return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "The Mul node should only have 1 output anchor that link to Add"),
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK(add_node->GetInDataNodes().size() != 2,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "Input node of Add size is [%lu], which not equal to 2.",
-                   add_node->GetInDataNodes().size()),
-           return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Input node of Add size is [%lu], which not equal to 2.",
+                            add_node->GetInDataNodes().size()),
+                    return NOT_CHANGED);
 
   // check stream label
   string add_stream_label;
@@ -122,12 +124,12 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph,
   ge::AttrUtils::GetStr(add_node->GetOpDesc(), STREAM_LABEL, add_stream_label);
   ge::AttrUtils::GetStr(mul_node->GetOpDesc(), STREAM_LABEL, mul_stream_label);
   if (add_stream_label != mul_stream_label) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Node [%s] and node [%s] don't hava same stream label.",
-            add_node->GetName().c_str(), mul_node->GetName().c_str());
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Node [%s] and node [%s] don't hava same stream label.", add_node->GetName().c_str(),
+            mul_node->GetName().c_str());
     return NOT_CHANGED;
   }
 
-  //set mul node new name
+  // set mul node new name
   mul_desc->SetType("FusedMulAdd");
 
   // link changed
@@ -135,19 +137,19 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph,
   uint32_t add_input_index = 1;
 
   if (add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetType() == "FusedMulAdd") {
-      add_input_index = 0;
+    add_input_index = 0;
   }
   ge::NodePtr input_node_add = add_node->GetInDataAnchor(add_input_index)->GetPeerOutAnchor()->GetOwnerNode();
 
   if (input_node_add->GetAllOutDataAnchors().size() != 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "add pre-node has %lu output, do not fused", input_node_add->GetAllOutDataAnchors().size());
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "add pre-node has %lu output, do not fused",
+            input_node_add->GetAllOutDataAnchors().size());
     mul_desc->SetType("Mul");
     return NOT_CHANGED;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add pre-node has only 1 output, will fused it");
   FUSION_PASS_CHECK(mul_node->AddLinkFrom(input_node_add),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add add's input to mul failed."),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add add's input to mul failed."), return FAILED);
 
   // set name and output desc
   mul_desc->SetName(mul_desc->GetName() + "/FusedMulAdd");
@@ -155,16 +157,21 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph,
 
   // add_node output link to mul_node output
   if (add_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
-    for (ge::InDataAnchorPtr inAnchorPtr : add_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    for (ge::InDataAnchorPtr &inAnchorPtr : add_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(mul_node->GetOutDataAnchor(0), inAnchorPtr),
-               OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.", add_node->GetName().c_str(), add_node->GetName().c_str()),
-               return FAILED);
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.", add_node->GetName().c_str(), add_node->GetName().c_str());
+      FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(mul_node->GetOutDataAnchor(0), inAnchorPtr),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
+                  add_node->GetName().c_str(), add_node->GetName().c_str()),
+          return FAILED);
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
+              add_node->GetName().c_str(), add_node->GetName().c_str());
     }
   }
   add_node->GetOutDataAnchor(0)->UnlinkAll();
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node), OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", add_desc->GetName().c_str()), return FAILED);
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", add_desc->GetName().c_str()),
+                    return FAILED);
 
   // Record fusion nodes
   fusionNodes.push_back(mul_node);
@@ -173,4 +180,4 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph,
   return SUCCESS;
 }
 REGISTER_PASS("MulAddFusionPass", BUILT_IN_GRAPH_PASS, MulAddFusionPass);
-}
+}  // namespace fe

@@ -1,29 +1,32 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 stn_compute
 """
-
 import math
-from topi.cce import util
+import functools
+
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te import platform as cce
-from functools import reduce
-from te.utils.op_utils import *
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_LIST_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def stn_compute(input_x, input_theta, input_offset, output_y, size=(-1, -1, -1, -1), align_corners=False,
                 kernel_name="stn_compute"):
     """
@@ -50,12 +53,10 @@ def stn_compute(input_x, input_theta, input_offset, output_y, size=(-1, -1, -1, 
     -------
     None
     """
-
     shape = input_x.get("shape")
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
-    util.check_kernel_name(kernel_name)
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_kernel_name(kernel_name)
 
     stn_instance = SpatialTransformer(input_x, input_theta, input_offset, kernel_name)
     stn_instance.spatial_transformer_compute()
@@ -73,21 +74,19 @@ class SpatialTransformer:
 
         self.kernel_name = kernel_name
 
-        # product_name = tik_get_soc_name.get_soc_name()
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.ai_core_num = tik.Dprofile().get_aicore_num()
 
-        ub_size_bytes = cce.get_soc_spec(cce.cce_conf.UB_SIZE) // 2  # double buffer
-        self.d_type_bytes_size = cce.cce_intrin.get_bit_len(self.d_type_x) // 8
-        self.theta_type_bytes_size = cce.cce_intrin.get_bit_len(auxiliary_coefficients.get('dtype')) // 8
-        self.offset_type_bytes_size = cce.cce_intrin.get_bit_len(auxiliary_offset.get('dtype')) // 8
+        # double buffer
+        ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 2
+        self.d_type_bytes_size = tbe_platform.get_bit_len(self.d_type_x) // 8
+        self.theta_type_bytes_size = tbe_platform.get_bit_len(auxiliary_coefficients.get('dtype')) // 8
+        self.offset_type_bytes_size = tbe_platform.get_bit_len(auxiliary_offset.get('dtype')) // 8
         self.vec_compute_size = 256
 
-        # theta size output_h * output_w * 4 * n * c1
         self.theta_size = auxiliary_coefficients.get('shape')[0] * auxiliary_coefficients.get('shape')[1] * \
                           auxiliary_coefficients.get('shape')[2]
 
-        # output_h * output_w
         self.output_hw = self.theta_size // 4 // self.shape[0] // self.shape[1]
 
         # tiling policy
@@ -114,35 +113,32 @@ class SpatialTransformer:
         self.ub_theta_offset_size = min(theta_burst_len * 32 // self.theta_type_bytes_size,
                                         offset_burst_len * 32 // self.offset_type_bytes_size)
 
-        self.input_num = reduce(lambda x, y: x * y, input_x.get('shape'))
-        # self.input_num = self.theta_size * 4
+        self.input_num = functools.reduce(lambda x, y: x * y, input_x.get('shape'))
 
         # input data
         self.input_x_gm = self.tik_instance.Tensor(
-            self.d_type_x, (self.input_num,), name='input_x_gm', scope=tik.scope_gm
+            self.d_type_x, (self.input_num,), name='input_x_gm', scope=tbe_platform.scope_gm
         )
         # theta matrix
         self.input_theta_gm = self.tik_instance.Tensor(
-            auxiliary_coefficients.get('dtype'), (self.theta_size,), name='input_theta_gm', scope=tik.scope_gm
+            auxiliary_coefficients.get('dtype'), (self.theta_size,), name='input_theta_gm', scope=tbe_platform.scope_gm
         )
         # position offset matrix
         self.input_position_gm = self.tik_instance.Tensor(
-            auxiliary_offset.get('dtype'), (self.theta_size,), name='input_position_gm', scope=tik.scope_gm
+            auxiliary_offset.get('dtype'), (self.theta_size,), name='input_position_gm', scope=tbe_platform.scope_gm
         )
 
         # output data
         self.output_y_gm = self.tik_instance.Tensor(
             self.d_type_x, (self.output_hw * self.shape[0] * self.shape[1] * self.shape[4],),
-            name='output_y_gm', scope=tik.scope_gm
+            name='output_y_gm', scope=tbe_platform.scope_gm
         )
 
     def spatial_transformer_compute(self):
         # handle one C1 data
         if self.if_skip_read_ceof:
-            # self.ub_tensor_size = c1 * c0
-            # ceof and offset size = n * h * w * 4
             ceof_and_offset_size = self.theta_size // self.shape[1]
-            use_core_count = self._calc_loop_count(ceof_and_offset_size)
+            use_core_count = self.calc_loop_count(ceof_and_offset_size)
             each_core_need_process_ceof = ceof_and_offset_size // 4 // use_core_count * 4
             each_core_loop_count = each_core_need_process_ceof // self.ub_theta_offset_size
             if each_core_need_process_ceof > 0:
@@ -157,7 +153,7 @@ class SpatialTransformer:
                                      each_core_need_process_ceof * use_core_count)
 
         else:
-            use_core_count = self._calc_loop_count(self.theta_size)
+            use_core_count = self.calc_loop_count(self.theta_size)
             each_core_need_process_theta = self.theta_size // 4 // use_core_count * 4
             each_core_loop_count = each_core_need_process_theta // self.ub_theta_offset_size
             if each_core_need_process_theta > 0:
@@ -182,10 +178,11 @@ class SpatialTransformer:
             with self.tik_instance.for_range(0, each_core_loop_count) as move_theta_ub:
                 already_process_ceof = processed_theta + move_theta_ub * self.ub_theta_offset_size
                 input_theta_ub = self.tik_instance.Tensor(
-                    self.d_type_x, (self.ub_theta_offset_size,), name='input_theta_ub', scope=tik.scope_ubuf
+                    self.d_type_x, (self.ub_theta_offset_size,), name='input_theta_ub', scope=tbe_platform.scope_ubuf
                 )
                 input_position_ub = self.tik_instance.Tensor(
-                    self.position_dtype, (self.ub_theta_offset_size,), name='input_position_ub', scope=tik.scope_ubuf
+                    self.position_dtype, (self.ub_theta_offset_size,), name='input_position_ub',
+                    scope=tbe_platform.scope_ubuf
                 )
                 if self.if_skip_read_ceof:
                     self.move_ceof_and_offset_to_ub_2(already_process_ceof, input_position_ub, input_theta_ub,
@@ -212,10 +209,11 @@ class SpatialTransformer:
         if last_num > 0:
             already_process_ceof = processed_theta + each_core_need_process_theta - last_num
             input_theta_ub = self.tik_instance.Tensor(
-                self.d_type_x, (self.ub_theta_offset_size,), name='input_theta_ub', scope=tik.scope_ubuf
+                self.d_type_x, (self.ub_theta_offset_size,), name='input_theta_ub', scope=tbe_platform.scope_ubuf
             )
             input_position_ub = self.tik_instance.Tensor(
-                self.position_dtype, (self.ub_theta_offset_size,), name='input_position_ub', scope=tik.scope_ubuf
+                self.position_dtype, (self.ub_theta_offset_size,), name='input_position_ub',
+                scope=tbe_platform.scope_ubuf
             )
 
             # calc result
@@ -268,10 +266,10 @@ class SpatialTransformer:
         thread_num = 2 if hande_ceof_size // 4 >= 2 else 1
         with self.tik_instance.for_range(0, hande_ceof_size // 4, thread_num=thread_num) as i:
             tmp_res_ub = self.tik_instance.Tensor(
-                self.d_type_x, (self.ub_tensor_size,), name='tmp_res_ub', scope=tik.scope_ubuf
+                self.d_type_x, (self.ub_tensor_size,), name='tmp_res_ub', scope=tbe_platform.scope_ubuf
             )
             input_x_ub = self.tik_instance.Tensor(
-                self.d_type_x, (self.ub_tensor_size,), name='input_x_ub', scope=tik.scope_ubuf
+                self.d_type_x, (self.ub_tensor_size,), name='input_x_ub', scope=tbe_platform.scope_ubuf
             )
             with self.tik_instance.for_range(0, 4) as index:
                 # position
@@ -293,11 +291,13 @@ class SpatialTransformer:
                     # move input_x_ub
                     self.move_input_from_gm_2_ub(input_x_ub, src_start_index)
                     self.input_muls(need_hand_last, repeats, repeats_nums, theta_reg, input_x_ub, last_num)
-                    self.input_add(need_hand_last, repeats, repeats_nums, tmp_res_ub, input_x_ub, tmp_res_ub, last_num)
+                    self.input_add(need_hand_last, repeats, repeats_nums, tmp_res_ub, input_x_ub,
+                                   tmp_res_ub, last_num)
                 with self.tik_instance.if_scope(index == 3):
                     # move res to gm
                     output_start_index = batch_id * self.output_hw * self.shape[1] * self.shape[4] + \
-                                         ((move_input_times + already_process_ceof) // 4 - batch_id * self.output_hw) * 16
+                                         ((move_input_times + already_process_ceof) // 4 -
+                                          batch_id * self.output_hw) * 16
                     if self.output_stride < 65535:
                         self.tik_instance.data_move(
                             dst=self.output_y_gm[output_start_index], src=tmp_res_ub, sid=0,
@@ -336,7 +336,6 @@ class SpatialTransformer:
                 dst=ub_input, src=self.input_x_gm[start_index], sid=0,
                 nburst=self.shape[1], burst=self.shape[4] * self.d_type_bytes_size // 32,
                 src_stride=self.input_stride, dst_stride=0
-
             )
         else:
             with self.tik_instance.for_range(0, self.shape[1]) as c1_index:
@@ -352,19 +351,17 @@ class SpatialTransformer:
         """
         Multiply-add calculation based on theta and position offset
         """
-        # processed_c1_count = input_move_offset
-        # processed_c1_count = already_process_theta * self.shape[0] * self.shape[1] // self.theta_size * 16
-        # input ub
         input_move_offset = already_process_theta // 4 * self.ub_tensor_size
         tmp_res_ub = self.tik_instance.Tensor(
-            self.d_type_x, (self.ub_tensor_size,), name='tmp_res_ub', scope=tik.scope_ubuf
+            self.d_type_x, (self.ub_tensor_size,), name='tmp_res_ub', scope=tbe_platform.scope_ubuf
         )
         input_x_ub = self.tik_instance.Tensor(
-            self.d_type_x, (self.ub_tensor_size,), name='input_x_ub', scope=tik.scope_ubuf
+            self.d_type_x, (self.ub_tensor_size,), name='input_x_ub', scope=tbe_platform.scope_ubuf
         )
         with self.tik_instance.for_range(0, handle_theta_size, thread_num=1) as move_input_times:
             # Sequence number of the C1 that has been processed * each c1 data count
-            processed_c1_count = (already_process_theta + move_input_times) // (self.output_hw * 4) * self.input_hw * 16
+            processed_c1_count = (already_process_theta + move_input_times) // (self.output_hw * 4) * \
+                                 self.input_hw * 16
             # position
             index_reg = self.tik_instance.Scalar(dtype="int32")
             index_reg.set_as(input_position_ub[move_input_times])
@@ -389,14 +386,13 @@ class SpatialTransformer:
                 self.tik_instance.vec_add(16, tmp_res_ub, tmp_res_ub, input_x_ub, 1, 0, 0, 0)
             with self.tik_instance.if_scope((move_input_times + 1) % 4 == 0):
                 # move res to gm
-
                 self.tik_instance.data_move(
                     dst=self.output_y_gm[input_move_offset + (move_input_times // 4) * 16], src=tmp_res_ub, sid=0,
                     nburst=1, burst=self.ub_tensor_len, src_stride=0, dst_stride=0
                 )
 
     # calc first loop count
-    def _calc_loop_count(self, ceof_size):
+    def calc_loop_count(self, ceof_size):
         loop = ceof_size // 4 // self.ai_core_num
         return ceof_size // 4 % self.ai_core_num if loop < 1 else self.ai_core_num
 

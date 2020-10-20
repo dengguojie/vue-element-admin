@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 segment schedule, provide a schedule for segment compute
 """
 # pylint: disable=too-many-lines
@@ -177,10 +177,10 @@ class CceSegmentOp:
 
             first_axis = self._schedule[res].op.axis[0]
             reorder_axis_list = self._schedule[res].op.axis[1: self._split_axis] + \
-                                [self._ub_split_xo, ] + \
-                                [self._schedule[res].op.axis[0], ] + \
-                                [self._ub_split_xi, ] + \
-                                self._schedule[res].op.axis[self._split_axis + 1:]
+                [self._ub_split_xo, ] + \
+                [self._schedule[res].op.axis[0], ] + \
+                [self._ub_split_xi, ] + \
+                self._schedule[res].op.axis[self._split_axis + 1:]
             self._schedule[res].reorder(*reorder_axis_list)
 
             def do_cache_read_write():
@@ -230,15 +230,15 @@ class CceSegmentOp:
         in_shape = [i.value for i in self._op_list[self._segment_op_pos]["src_buffer"][1].shape]
         if len(in_shape) != 1:
             reorder_axis_list = self._schedule[res].op.axis[1: self._split_axis] + \
-                                [self._ub_split_xo, ] + \
-                                [self._schedule[res].op.axis[0], ] + \
-                                [self._ub_split_xi, ] + \
-                                self._schedule[res].op.axis[self._split_axis + 1:]
+                [self._ub_split_xo, ] + \
+                [self._schedule[res].op.axis[0], ] + \
+                [self._ub_split_xi, ] + \
+                self._schedule[res].op.axis[self._split_axis + 1:]
 
             self._schedule[res].reorder(*reorder_axis_list)
         res_ub = write_cache_list[0]
         recoder_axis_list_reduce = [self._schedule[res_ub].op.reduce_axis[0], ]\
-                                   + self._schedule[res_ub].op.axis[:]
+            + self._schedule[res_ub].op.axis[:]
         self._schedule[write_cache_list[0]].reorder(*recoder_axis_list_reduce)
 
         if self._need_block_tiling and not self._need_font_emit:
@@ -389,7 +389,6 @@ class CceSegmentOp:
                                           self._schedule[res_ub].op.axis[0])
             self._schedule[res_ub].emit_insn(self._schedule[res_ub].op.axis[1], op_name_emit)
 
-
     def split(self, res):
         """
         do segment ub tiing, and return split axis
@@ -487,7 +486,6 @@ class CceSegmentOp:
         self._schedule[res].bind(bind_axis, thread_block)
         return
 
-
     def get_max_ub_size(self, in_shape, max_ptr, align_factor):
         """
         when segment_ids is a tensor,
@@ -497,14 +495,13 @@ class CceSegmentOp:
         align_factor_ids = self.get_align_factor(datatype)
         transform_dtype = align_factor // align_factor_ids
         segment_id_size = (in_shape[0] + align_factor_ids - 1) // \
-                          align_factor_ids * align_factor_ids
+            align_factor_ids * align_factor_ids
         max_ub_size = int((max_ptr - transform_dtype * segment_id_size) //
                           (in_shape[0] + self._segment_nums))
         max_ub_size = int(max_ub_size // align_factor * align_factor)
         if max_ub_size < align_factor:
             raise RuntimeError("Too large, causing the max_ub_count to be less than 32B")
         return max_ub_size
-
 
     def get_tensor_split_axis_factor(self, in_shape, out_shape, max_ptr, align_factor):
         """
@@ -565,7 +562,6 @@ class CceSegmentOp:
             self._need_font_emit = False
 
         return split_axis, factor
-
 
     def segment_op_tensor_tiling(self):
         """
@@ -630,7 +626,6 @@ class CceSegmentOp:
             self._schedule[cache_tensor].emit_insn(
                 self._schedule[cache_tensor].op.axis[self._split_axis],
                 cceconf.dma_copy)
-
 
         # if the move element number once can not div align_factor,
         # we should backup for not covering the old result

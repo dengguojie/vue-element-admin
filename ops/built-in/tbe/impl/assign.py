@@ -1,38 +1,32 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 assign
 """
-
+import functools
 import operator
-from functools import reduce as functools_reduce
 
-import te.platform as cce
-from te.platform import insn_cmd
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.cce_build import build_config
-from topi.cce import util
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 # available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+UB_SIZE_B = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
 
 def _get_factor(ele_zero, ele_cnt, total_ele, no_remainder):
@@ -94,13 +88,13 @@ def _tilling_axis(shape, dtype, no_remainder):
     """
     ub_size_bytes = UB_SIZE_B - 32
     # 8 bit = 1byte, '8' below for this reason
-    dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
     total_ele = ub_size_bytes // dtype_bytes_size
     split_axis = 0
     split_factor = 1
 
     for i, _ in enumerate(shape):
-        ele_cnt = functools_reduce(lambda x, y: x*y, shape[i:])
+        ele_cnt = functools.reduce(lambda x, y: x*y, shape[i:])
         if ele_cnt <= total_ele:
             split_axis = i - 1
             split_factor = total_ele // ele_cnt
@@ -142,7 +136,7 @@ def _check_shape(ref_shape, value_shape):
     if operator.ne(list(ref_shape), list(value_shape)):
         raise RuntimeError("ref and value must have the same shape !")
 
-    check_shape(ref_shape, param_name="ref")
+    para_check.check_shape(ref_shape, param_name="ref")
 
 
 def _check_params(ref_shape, value_shape, dtype, kernel_name):
@@ -169,7 +163,7 @@ def _check_params(ref_shape, value_shape, dtype, kernel_name):
         "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32",
         "uint64",
         "float16", "float32")
-    check_dtype(dtype, check_list, param_name="ref")
+    para_check.check_dtype(dtype, check_list, param_name="ref")
 
     _check_shape(ref_shape, value_shape)
 
@@ -227,7 +221,8 @@ def _core_bind_axis(input_shape):
 # pylint: disable=locally-disabled,too-many-arguments,unnecessary-lambda
 # pylint: disable=locally-disabled,too-many-branches,too-many-locals
 # pylint: disable=locally-disabled,unused-argument,too-many-statements
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def assign(ref, value, output, kernel_name="assign"):
     """
     algorithm: assign
@@ -249,8 +244,8 @@ def assign(ref, value, output, kernel_name="assign"):
     -------
     None
     """
-    ref_shape = util.scalar2tensor_one(ref.get("shape"))
-    value_shape = util.scalar2tensor_one(value.get("shape"))
+    ref_shape = shape_util.scalar2tensor_one(ref.get("shape"))
+    value_shape = shape_util.scalar2tensor_one(value.get("shape"))
     dtype = ref.get("dtype").lower()
     _check_params(ref_shape, value_shape, dtype, kernel_name)
 
@@ -259,7 +254,7 @@ def assign(ref, value, output, kernel_name="assign"):
                             name='data_b_ub')
     data_a = tvm.compute(ref_shape, lambda *i: data_b_ub(*i), name='data_a')
     sch = tvm.create_schedule(data_a.op)
-    sch[data_b_ub].set_scope(cce.scope_ubuf)
+    sch[data_b_ub].set_scope(tbe_platform.scope_ubuf)
 
     split_axis, split_factor = _tilling_axis(ref_shape, dtype, True)
 
@@ -332,8 +327,8 @@ def assign(ref, value, output, kernel_name="assign"):
 
     sch[data_a].bind(axis_outer, tvm.thread_axis('blockIdx.x'))
     sch[data_b_ub].compute_at(sch[data_a], axis_inner)
-    sch[data_b_ub].emit_insn(data_b_ub.op.axis[split_axis], insn_cmd.DMA_COPY)
-    sch[data_a].emit_insn(tilling_axis_inner, insn_cmd.DMA_COPY)
+    sch[data_b_ub].emit_insn(data_b_ub.op.axis[split_axis], tbe_platform.insn_cmd.DMA_COPY)
+    sch[data_a].emit_insn(tilling_axis_inner, tbe_platform.insn_cmd.DMA_COPY)
 
-    with build_config:
+    with tbe_platform.cce_build.build_config:
         tvm.build(sch, [data_a, data_b], "cce", name=kernel_name)

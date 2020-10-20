@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 apply_power_sign
 
   Op_description :
@@ -38,20 +36,12 @@ apply_power_sign
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-
-
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
-import te.lang.cce
-from te.platform.cce_conf import api_check_support
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from topi.cce import util
-from impl.util.util_compute import sign
-from impl.util.util_apply_op_schedule import common_apply_op_process
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl.util import util_compute
+from impl.util import util_apply_op_schedule
 
 CONST_ONE = 1.0
 CONST_ONE_NA = -1.0
@@ -63,18 +53,16 @@ def _compute_m_t(m, beta, grad):
                            lambda *indice: m(*indice) * beta[0],
                            tag='elewise_single_VS_mul')
     beta_na = tvm.compute(beta.shape,
-                          lambda *indice: beta(*indice)
-                              * tvm.const(CONST_ONE_NA, beta.dtype),
+                          lambda *indice: beta(*indice) * tvm.const(CONST_ONE_NA, beta.dtype),
                           tag='elewise_single_VS_mul')
     beta_na = tvm.compute(beta_na.shape,
-                          lambda *indice: beta_na(*indice)
-                              + tvm.const(CONST_ONE, beta_na.dtype),
+                          lambda *indice: beta_na(*indice) + tvm.const(CONST_ONE, beta_na.dtype),
                           tag='elewise_single_VS_add')
     beta_sub_tmp = tvm.compute(grad.shape,
                                lambda *indice: grad(*indice) * beta_na[0],
                                tag='elewise_single_VS_mul')
 
-    m_t = te.lang.cce.vadd(beta_tmp, beta_sub_tmp)
+    m_t = tbe.vadd(beta_tmp, beta_sub_tmp)
     return m_t
 
 
@@ -85,8 +73,8 @@ def _compute_update(logbase, sign_decay, sign_gm, grad):
     vmul_tmp = tvm.compute(vmul_tmp.shape,
                            lambda *indice: vmul_tmp(*indice) * logbase[0],
                            tag='elewise_single_VS_mul')
-    exp_tmp = te.lang.cce.vexp(vmul_tmp)
-    update = te.lang.cce.vmul(exp_tmp, grad)
+    exp_tmp = tbe.vexp(vmul_tmp)
+    update = tbe.vmul(exp_tmp, grad)
     return update
 
 
@@ -94,7 +82,7 @@ def _compute_var(var, lr, update):
     lt_tmp = tvm.compute(update.shape,
                          lambda *indice: update(*indice) * lr[0],
                          tag='elewise_single_VS_mul')
-    var_t = te.lang.cce.vsub(var, lt_tmp)
+    var_t = tbe.vsub(var, lt_tmp)
     return var_t
 
 
@@ -105,7 +93,7 @@ def _compute_process(input_list):
 
     m_t = _compute_m_t(m, beta, grad)
 
-    sign_gm = te.lang.cce.vmul(sign(m_t), sign(grad))
+    sign_gm = tbe.vmul(util_compute.sign(m_t), util_compute.sign(grad))
 
     update = _compute_update(logbase, sign_decay, sign_gm, grad)
 
@@ -115,17 +103,17 @@ def _compute_process(input_list):
 
 
 # pylint: disable=locally-disabled, too-many-arguments, unused-argument
-@fusion_manager.register("apply_power_sign_d")
+@tbe_platform.fusion_manager.fusion_manager.register("apply_power_sign_d")
 def apply_power_sign_d_compute(var,
-                             m,
-                             lr,
-                             logbase,
-                             sign_decay,
-                             beta,
-                             grad,
-                             var_out,
-                             m_out,
-                             kernel_name="apply_power_sign_d"):
+                               m,
+                               lr,
+                               logbase,
+                               sign_decay,
+                               beta,
+                               grad,
+                               var_out,
+                               m_out,
+                               kernel_name="apply_power_sign_d"):
     """
     Calculate the algorithm
 
@@ -153,25 +141,25 @@ def apply_power_sign_d_compute(var,
     """
 
     dtype = var.dtype
-    if dtype == "float16" and api_check_support("te.lang.cce.vadd", "float32"):
-        var = te.lang.cce.cast_to(var, "float32")
-        m = te.lang.cce.cast_to(m, "float32")
-        lr = te.lang.cce.cast_to(lr, "float32")
-        logbase = te.lang.cce.cast_to(logbase, "float32")
-        sign_decay = te.lang.cce.cast_to(sign_decay, "float32")
-        beta = te.lang.cce.cast_to(beta, "float32")
-        grad = te.lang.cce.cast_to(grad, "float32")
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, "float32")
+        m = tbe.cast_to(m, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        logbase = tbe.cast_to(logbase, "float32")
+        sign_decay = tbe.cast_to(sign_decay, "float32")
+        beta = tbe.cast_to(beta, "float32")
+        grad = tbe.cast_to(grad, "float32")
 
     input_list = [var, m, lr, logbase, sign_decay, beta, grad]
     var_t, m_t = _compute_process(input_list)
-    res1 = te.lang.cce.vadds(var_t, tvm.const(0.0, dtype=dtype))
-    res2 = te.lang.cce.vadds(m_t, tvm.const(0.0, dtype=dtype))
+    res1 = tbe.vadds(var_t, tvm.const(0.0, dtype=dtype))
+    res2 = tbe.vadds(m_t, tvm.const(0.0, dtype=dtype))
 
     if dtype == "float16":
-        res1 = te.lang.cce.cast_to(res1, "float16")
-        res2 = te.lang.cce.cast_to(res2, "float16")
-        var_t = te.lang.cce.cast_to(var_t, "float16")
-        m_t = te.lang.cce.cast_to(m_t, "float16")
+        res1 = tbe.cast_to(res1, "float16")
+        res2 = tbe.cast_to(res2, "float16")
+        var_t = tbe.cast_to(var_t, "float16")
+        m_t = tbe.cast_to(m_t, "float16")
 
     #this compute is for muti output
     def _compute(*index):
@@ -180,19 +168,20 @@ def apply_power_sign_d_compute(var,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def apply_power_sign_d(var,
-                     m,
-                     lr,
-                     logbase,
-                     sign_decay,
-                     beta,
-                     grad,
-                     var_out,
-                     m_out,
-                     kernel_name="apply_power_sign_d"):
+                       m,
+                       lr,
+                       logbase,
+                       sign_decay,
+                       beta,
+                       grad,
+                       var_out,
+                       m_out,
+                       kernel_name="apply_power_sign_d"):
     """
     Update '*var' according to the AddSign update
 
@@ -224,16 +213,15 @@ def apply_power_sign_d(var,
 
     check_list = ('float16', 'float32')
     dtype = var.get('dtype')
-    check_dtype(dtype, check_list, param_name="var")
+    para_check.check_dtype(dtype, check_list, param_name="var")
     dtype = dtype.lower()
 
-    args = ApplyOpConfig.TensorArgs(input_dict, apply_power_sign_d_compute, [var_out, m_out],
-                                    6 if dtype == 'float32' else 10)
-    name = ApplyOpConfig.TensorName(all=('var', 'm', 'lr', 'logbase',
-                                         'sign_decay', 'beta', 'grad'),
-                                    scalar=('lr', 'logbase', 'sign_decay',
-                                            'beta'),
-                                    reuse=('m', 'var'))
+    args = util_apply_op_schedule.ApplyOpConfig.TensorArgs(input_dict, apply_power_sign_d_compute, [var_out, m_out],
+                                                           6 if dtype == 'float32' else 10)
+    name = util_apply_op_schedule.ApplyOpConfig.TensorName(all=('var', 'm', 'lr', 'logbase',
+                                                                'sign_decay', 'beta', 'grad'),
+                                                           scalar=('lr', 'logbase', 'sign_decay', 'beta'),
+                                                           reuse=('var', 'm'))
 
-    common_apply_op_process(ApplyOpConfig(args, name), kernel_name)
+    util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name), kernel_name)
 

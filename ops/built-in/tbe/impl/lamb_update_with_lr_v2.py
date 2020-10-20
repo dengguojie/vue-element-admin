@@ -1,26 +1,26 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 lamb_update_with_lr_v2
 """
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
+import te.platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 # min float32 value
 MIN_FP32 = 2**(-126)
@@ -49,15 +49,15 @@ def true_div_compute(x1, x2, kernel_name="true_div"):
     -------
     res : output of the data's divide
     """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
-                                                        param_name_input1="x1",
-                                                        param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vdiv(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+                                                                param_name_input1="x1",
+                                                                param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vdiv(data_x1, data_x2)
 
     return res
 
@@ -79,15 +79,15 @@ def mul_compute(x1, x2, kernel_name="mul"):
    -------
    res : output of the data's element-wise mul
    """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
-                                                     param_name_input1="x1",
-                                                     param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vmul(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+                                                                param_name_input1="x1",
+                                                                param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vmul(data_x1, data_x2)
 
     return res
 
@@ -109,15 +109,15 @@ def sub_compute(x1, x2, kernel_name="sub"):
    -------
    res : output of the data's sub
    """
-    shape_x1 = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
 
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2,
-                                                     param_name_input1="x1",
-                                                     param_name_input2="x2")
-    data_x1 = te.lang.cce.broadcast(x1, shape_max)
-    data_x2 = te.lang.cce.broadcast(x2, shape_max)
-    res = te.lang.cce.vsub(data_x1, data_x2)
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+                                                                param_name_input1="x1",
+                                                                param_name_input2="x2")
+    data_x1 = tbe.broadcast(x1, shape_max)
+    data_x2 = tbe.broadcast(x2, shape_max)
+    res = tbe.vsub(data_x1, data_x2)
 
     return res
 
@@ -143,37 +143,37 @@ def _greater_compare(data_x, data_y, shape, dtype, data_min):
     -------
     the compare result
     """
-    data_zero = te.lang.cce.broadcast(tvm.const(0, dtype), shape, dtype)
+    data_zero = tbe.broadcast(tvm.const(0, dtype), shape, dtype)
     if dtype == "int32":
-        data_one = te.lang.cce.broadcast(tvm.const(1, "float16"), shape,
+        data_one = tbe.broadcast(tvm.const(1, "float16"), shape,
                                          "float16")
     else:
-        data_one = te.lang.cce.broadcast(tvm.const(1, dtype), shape, dtype)
+        data_one = tbe.broadcast(tvm.const(1, dtype), shape, dtype)
 
-    res_sub = te.lang.cce.vsub(data_y, data_x)
+    res_sub = tbe.vsub(data_y, data_x)
     # to amend sub zero result
-    res_sub_zero = te.lang.cce.vadd(res_sub, data_min)
-    res_min = te.lang.cce.vmin(res_sub_zero, data_min)
-    res_max = te.lang.cce.vmax(res_min, data_zero)
+    res_sub_zero = tbe.vadd(res_sub, data_min)
+    res_min = tbe.vmin(res_sub_zero, data_min)
+    res_max = tbe.vmax(res_min, data_zero)
 
     if dtype == "float32":
         # max num of float32 is 2**126
         # but cce can only support 2**62, so use 62/62/2 to adaptor 126
         max_support_fp32 = tvm.const(2**62, dtype=dtype)
-        res_mul1 = te.lang.cce.vmuls(res_max, max_support_fp32)
-        res_mul2 = te.lang.cce.vmuls(res_mul1, max_support_fp32)
-        res_mul = te.lang.cce.vmuls(res_mul2, tvm.const(2**2, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, max_support_fp32)
+        res_mul2 = tbe.vmuls(res_mul1, max_support_fp32)
+        res_mul = tbe.vmuls(res_mul2, tvm.const(2**2, dtype=dtype))
     elif dtype == "float16":
         # max num of float16 is 2**24
         # but cce can only support 2**12, so use 12/12 to adaptor 24
         max_support_fp16 = tvm.const(2**12, dtype=dtype)
-        res_mul1 = te.lang.cce.vmuls(res_max, max_support_fp16)
-        res_mul = te.lang.cce.vmuls(res_mul1, max_support_fp16)
+        res_mul1 = tbe.vmuls(res_max, max_support_fp16)
+        res_mul = tbe.vmuls(res_mul1, max_support_fp16)
     else:
-        res_mul = te.lang.cce.cast_to(res_max, "float16")
-    res = te.lang.cce.vsub(data_one, res_mul)
+        res_mul = tbe.cast_to(res_max, "float16")
+    res = tbe.vsub(data_one, res_mul)
 
-    return te.lang.cce.cast_to(res, "uint8", True)
+    return tbe.cast_to(res, "uint8", True)
 
 
 def greater_compute(x, y, kernel_name="greater"):
@@ -193,31 +193,31 @@ def greater_compute(x, y, kernel_name="greater"):
     -------
     res : output of the result of comparison
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    shape_y = te.lang.cce.util.shape_to_list(y.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_y = shape_util.shape_to_list(y.shape)
     dtype = x.dtype.lower()
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
-                                                      param_name_input1="x",
-                                                      param_name_input2="y")
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                              param_name_input1="x",
+                                                              param_name_input2="y")
 
     if dtype in ("int8", "uint8"):
-        x = te.lang.cce.cast_to(x, "float16")
-        y = te.lang.cce.cast_to(y, "float16")
+        x = tbe.cast_to(x, "float16")
+        y = tbe.cast_to(y, "float16")
         dtype = "float16"
 
-    data_x = te.lang.cce.broadcast(x, shape_max)
-    data_y = te.lang.cce.broadcast(y, shape_max)
+    data_x = tbe.broadcast(x, shape_max)
+    data_y = tbe.broadcast(y, shape_max)
 
     if dtype == "float32":
         # minimun num of float32 2**(-126)
-        data_min = te.lang.cce.broadcast(tvm.const(MIN_FP32, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(MIN_FP32, dtype=dtype),
                                          shape_max, dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
-        data_min = te.lang.cce.broadcast(tvm.const(MIN_FP16, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(MIN_FP16, dtype=dtype),
                                          shape_max, dtype)
     else:
-        data_min = te.lang.cce.broadcast(tvm.const(1, dtype=dtype), shape_max,
+        data_min = tbe.broadcast(tvm.const(1, dtype=dtype), shape_max,
                                          dtype)
 
     return _greater_compare(data_x, data_y, shape_max, dtype, data_min)
@@ -242,44 +242,44 @@ def select_compute(condition, x1, x2, kernel_name="select"):
     -------
     res : output of the result of select compute
     """
-    shape = te.lang.cce.util.shape_to_list(x1.shape)
+    shape = shape_util.shape_to_list(x1.shape)
     x1_dtype = x1.dtype
-    con_shape = te.lang.cce.util.shape_to_list(condition.shape)
+    con_shape = shape_util.shape_to_list(condition.shape)
     bool_dtype = condition.dtype
 
     if x1_dtype in ("int8", "uint8"):
         x1_dtype = "float32"
-        ones = te.lang.cce.broadcast(tvm.const(1, dtype=x1_dtype),
-                                     shape,
-                                     output_dtype=x1_dtype)
-        x1 = te.lang.cce.cast_to(x1, "float32")
-        x2 = te.lang.cce.cast_to(x2, "float32")
+        ones = tbe.broadcast(tvm.const(1, dtype=x1_dtype),
+                                       shape,
+                                       output_dtype=x1_dtype)
+        x1 = tbe.cast_to(x1, "float32")
+        x2 = tbe.cast_to(x2, "float32")
     else:
-        ones = te.lang.cce.broadcast(tvm.const(1, dtype=x1_dtype),
-                                     shape,
-                                     output_dtype=x1_dtype)
+        ones = tbe.broadcast(tvm.const(1, dtype=x1_dtype),
+                                       shape,
+                                       output_dtype=x1_dtype)
 
     if bool_dtype == "int8":
         if x1_dtype == "int32":
-            condition_dtype = te.lang.cce.ceil(condition)
+            condition_dtype = tbe.ceil(condition)
         else:
-            condition_dtype = te.lang.cce.cast_to(condition, x1_dtype)
+            condition_dtype = tbe.cast_to(condition, x1_dtype)
     else:
         if x1_dtype == "int32":
             condition_dtype = condition
         else:
-            condition_dtype = te.lang.cce.cast_to(condition, x1_dtype)
+            condition_dtype = tbe.cast_to(condition, x1_dtype)
 
     if list(con_shape) != list(shape):
-        condition_dtype = te.lang.cce.broadcast(condition_dtype, shape)
+        condition_dtype = tbe.broadcast(condition_dtype, shape)
 
-    condition_opp = te.lang.cce.vsub(ones, condition_dtype)
+    condition_opp = tbe.vsub(ones, condition_dtype)
 
-    temp_x = te.lang.cce.vmul(x1, condition_dtype)
-    temp_y = te.lang.cce.vmul(x2, condition_opp)
-    res = te.lang.cce.vadd(temp_x, temp_y)
+    temp_x = tbe.vmul(x1, condition_dtype)
+    temp_y = tbe.vmul(x2, condition_opp)
+    res = tbe.vadd(temp_x, temp_y)
     if x1_dtype in ("int8", "uint8"):
-        res = te.lang.cce.cast_to(res, x1_dtype)
+        res = tbe.cast_to(res, x1_dtype)
 
     return res
 
@@ -299,82 +299,82 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4, greater_y,
     the list of inputs shape after broadcast
     """
     shape0 = input0.get("shape")
-    check_shape(shape0, param_name="input0")
+    para_check.check_shape(shape0, param_name="input0")
 
     shape1 = input1.get("shape")
-    check_shape(shape1, param_name="input1")
+    para_check.check_shape(shape1, param_name="input1")
 
     shape2 = input2.get("shape")
-    check_shape(shape2, param_name="input2")
+    para_check.check_shape(shape2, param_name="input2")
 
     shape3 = input3.get("shape")
-    check_shape(shape3, param_name="input3")
+    para_check.check_shape(shape3, param_name="input3")
 
     shape4 = input4.get("shape")
-    check_shape(shape4, param_name="input4")
+    para_check.check_shape(shape4, param_name="input4")
 
     shape_greatery = greater_y.get("shape")
-    check_shape(shape_greatery, param_name="greater_y")
+    para_check.check_shape(shape_greatery, param_name="greater_y")
 
     shape_selecte = select_e.get("shape")
-    check_shape(shape_selecte, param_name="select_e")
+    para_check.check_shape(shape_selecte, param_name="select_e")
 
     # broadcast input0,1,2 greater_y, select_e according to input3
-    shape2, shape3, shape_max_23 = broadcast_shapes(shape2, shape3,
-                                                    param_name_input1="input2",
-                                                    param_name_input2="input3")
-    shape0, shape3, shape_max_03 = broadcast_shapes(shape0, shape3,
-                                                    param_name_input1="input0",
-                                                    param_name_input2="input3")
-    shape1, shape3, shape_max_13 = broadcast_shapes(shape1, shape3,
-                                                    param_name_input1="input1",
-                                                    param_name_input2="input3")
-    shape_greatery, shape3, shape_max_3y = broadcast_shapes(shape_greatery, shape3,
-                                                            param_name_input1="greater_y",
-                                                            param_name_input2="input3")
-    shape_selecte, shape3, shape_max_select3 = broadcast_shapes(shape_selecte, shape3,
-                                                                param_name_input1="select_e",
-                                                                param_name_input2="input3")
+    shape2, shape3, shape_max_23 = shape_util.broadcast_shapes(shape2, shape3,
+                                                               param_name_input1="input2",
+                                                               param_name_input2="input3")
+    shape0, shape3, shape_max_03 = shape_util.broadcast_shapes(shape0, shape3,
+                                                               param_name_input1="input0",
+                                                               param_name_input2="input3")
+    shape1, shape3, shape_max_13 = shape_util.broadcast_shapes(shape1, shape3,
+                                                               param_name_input1="input1",
+                                                               param_name_input2="input3")
+    shape_greatery, shape3, shape_max_3y = shape_util.broadcast_shapes(shape_greatery, shape3,
+                                                                       param_name_input1="greater_y",
+                                                                       param_name_input2="input3")
+    shape_selecte, shape3, shape_max_select3 = shape_util.broadcast_shapes(shape_selecte, shape3,
+                                                                           param_name_input1="select_e",
+                                                                           param_name_input2="input3")
 
 
     # broadcast input0 greater_y
-    shape0, shape_greatery, shape_max_0y = broadcast_shapes(shape0, shape_greatery,
-                                                            param_name_input1="input0",
-                                                            param_name_input2="greater_y")
+    shape0, shape_greatery, shape_max_0y = shape_util.broadcast_shapes(shape0, shape_greatery,
+                                                                       param_name_input1="input0",
+                                                                       param_name_input2="greater_y")
 
-    shape0, shape1, shape_max_01 = broadcast_shapes(shape0, shape1,
-                                                    param_name_input1="input0",
-                                                    param_name_input2="input1")
+    shape0, shape1, shape_max_01 = shape_util.broadcast_shapes(shape0, shape1,
+                                                               param_name_input1="input0",
+                                                               param_name_input2="input1")
 
-    shape1, shape_greatery, shape_max_1y = broadcast_shapes(shape1, shape_greatery,
-                                                            param_name_input1="input1",
-                                                            param_name_input2="greater_y")
+    shape1, shape_greatery, shape_max_1y = shape_util.broadcast_shapes(shape1, shape_greatery,
+                                                                       param_name_input1="input1",
+                                                                       param_name_input2="greater_y")
 
-    shape_selecte, shape_max_1y, shape_max_select0 = broadcast_shapes(shape_selecte, shape_max_1y,
-                                                                      param_name_input1="select_e",
-                                                                      param_name_input2="shape_max_1y")
+    shape_selecte, shape_max_1y, shape_max_select0 = shape_util.broadcast_shapes(shape_selecte, shape_max_1y,
+                                                                                 param_name_input1="select_e",
+                                                                                 param_name_input2="shape_max_1y")
 
-    shape_selecte, shape_max_0y, shape_max_select1 = broadcast_shapes(shape_selecte, shape_max_0y,
-                                                                      param_name_input1="select_e",
-                                                                      param_name_input2="shape_max_0y")
+    shape_selecte, shape_max_0y, shape_max_select1 = shape_util.broadcast_shapes(shape_selecte, shape_max_0y,
+                                                                                 param_name_input1="select_e",
+                                                                                 param_name_input2="shape_max_0y")
 
-    shape2, shape_max_select1, shape_max_mul0 = broadcast_shapes(shape2, shape_max_select1,
-                                                                 param_name_input1="input2",
-                                                                 param_name_input2="shape_max_select1")
+    shape2, shape_max_select1, shape_max_mul0 = shape_util.broadcast_shapes(shape2, shape_max_select1,
+                                                                            param_name_input1="input2",
+                                                                            param_name_input2="shape_max_select1")
 
-    shape3, shape_max_mul0, shape_max_mul1 = broadcast_shapes(shape3, shape_max_mul0,
-                                                              param_name_input1="input3",
-                                                              param_name_input2="shape_max_mul0")
+    shape3, shape_max_mul0, shape_max_mul1 = shape_util.broadcast_shapes(shape3, shape_max_mul0,
+                                                                         param_name_input1="input3",
+                                                                         param_name_input2="shape_max_mul0")
 
-    shape4, shape_max_mul1, shape_max_sub0 = broadcast_shapes(shape4, shape_max_mul1,
-                                                              param_name_input1="input4",
-                                                              param_name_input2="shape_max_mul1")
+    shape4, shape_max_mul1, shape_max_sub0 = shape_util.broadcast_shapes(shape4, shape_max_mul1,
+                                                                         param_name_input1="input4",
+                                                                         param_name_input2="shape_max_mul1")
 
-    return shape0, shape1, shape2, shape3, shape4,\
+    return shape0, shape1, shape2, shape3, shape4, \
            shape_greatery, shape_selecte
 
 
-@fusion_manager.register("lamb_update_with_lr_v2")
+@tbe_platform.fusion_manager.fusion_manager.register("lamb_update_with_lr_v2")
 def lamb_update_with_lr_v2_compute(input0,
                                    input1,
                                    input2,
@@ -430,9 +430,11 @@ def lamb_update_with_lr_v2_compute(input0,
     return sub_0
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def lamb_update_with_lr_v2(input0,
                            input1,
                            input2,
@@ -502,7 +504,7 @@ def lamb_update_with_lr_v2(input0,
                                          input_selecte, output, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {
         "name":
@@ -511,4 +513,4 @@ def lamb_update_with_lr_v2(input0,
                         input_place4, input_greatery, input_selecte, res)
     }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

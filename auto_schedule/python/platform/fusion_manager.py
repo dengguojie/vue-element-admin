@@ -1,33 +1,30 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Compute Manager for fusion
 """
-
 import importlib
 import itertools
 import json
 import inspect
 
-from te import tvm
 from te.platform import operation
+from te.platform import cce_policy
 from te.platform.operation import get_operator as dyn_get_operator
-
-from .cce_policy import OpImplPolicy
+from te.tvm.schedule import create_schedule as _create_schedule
+from te.tvm._api_config import api_config
 
 
 # pylint: disable=useless-object-inheritance, too-many-instance-attributes
@@ -35,7 +32,6 @@ class FusionManager(object):
     """Manage computes which are registered
     Save and call compute function by their registered key
     """
-
     def __init__(self):
         """init"""
         self._build_cfg = "enable"
@@ -48,6 +44,9 @@ class FusionManager(object):
         self._op_compute = {}
         self.fusion_build_config = {}
         self.res_map = {}
+        self.tik_tensor_dict = {}
+        self.cheque_list = []
+        self.res_index = 0
 
     def clear(self):
         """clear"""
@@ -190,7 +189,7 @@ class FusionManager(object):
         args_type : string
             singlebuild or prebuild
         """
-        if get_build_cfg() == "enable" and self._current_op_name not in self.res_map:
+        if get_build_cfg() == "enable":
             res_op = []
             op_outputs = []
             if isinstance(res, list):
@@ -200,10 +199,9 @@ class FusionManager(object):
             else:
                 res_op.append(res.op)
                 op_outputs.append(res.op.name)
-            sch = tvm.create_schedule(res_op)
+            sch = _create_schedule(res_op)
             sch.cce_special = {"op_outputs": op_outputs}
-            self.res_map[self._current_op_name] = sch
-
+            self.res_map.setdefault(self._current_op_name, []).append(sch)
 
     def set_tensor_list(self, tensor_list):
         """save tensor_list
@@ -218,12 +216,46 @@ class FusionManager(object):
         if self._current_op_name not in self.res_map:
             return
 
-        sch = self.res_map[self._current_op_name]
+        sch = self.res_map[self._current_op_name][-1]
         if "tensor_list" in sch.cce_special:
             return
 
         sch.cce_special["tensor_list"] = tensor_list
 
+    def set_tik_tensor(self, input_tensor, output):
+        """Save tik op input&output tensor
+
+        Parameters
+        ----------
+        input_tensor : tik input tensor
+        output : tik output tensor
+        """
+        self.tik_tensor_dict[self._current_op_name] = [input_tensor, output]
+
+    def set_cheque_list(self, cheque_list):
+        """Save RL cheque_list
+
+        Parameters
+        ----------
+        cheque_list : RL cheque_list
+        """
+        self.cheque_list.append(cheque_list)
+
+    def clear_res_index(self):
+        """clear RL res_index
+
+        Parameters
+        ----------
+        """
+        self.res_index = 0
+
+    def clear_cheque_list(self):
+        """clear RL cheque_list
+
+        Parameters
+        ----------
+        """
+        self.cheque_list = []
 
     def get_op_res(self, key):
         """Get current op_name's build type
@@ -239,6 +271,50 @@ class FusionManager(object):
             current op_name's build type.
         """
         return self.res_map.get(key, None)
+
+    def get_tik_tensor(self, key):
+        """Get tik op input&output tensor
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        args
+            none
+        """
+        return self.tik_tensor_dict.get(key, None)
+
+    def get_cheque_list(self, res_index=None):
+        """Get RL cheque_list
+
+        Parameters
+        ----------
+        res_index:
+        Returns
+        -------
+        args
+            none
+        """
+        if res_index is None:
+            return self.cheque_list
+        if res_index >= len(self.cheque_list):
+            return None
+        return self.cheque_list[res_index]
+
+    def get_res_index(self):
+        """Get RL res_index
+
+        Parameters
+        ----------
+        Returns
+        -------
+        args
+            none
+        """
+        curr_res_index = self.res_index
+        self.res_index += 1
+        return curr_res_index
 
     def get_op_args(self, op_name):
         """Get current op_name's op_args
@@ -457,6 +533,45 @@ def set_tensor_list(tensor_list):
     fusion_manager.set_tensor_list(tensor_list)
 
 
+def set_tik_tensor(input_tensor, output):
+    """save tik_tensor
+
+    Parameters
+    ----------
+    input_tensor : tik input tensor
+    output : tik output tensor
+    """
+    fusion_manager.set_tik_tensor(input_tensor, output)
+
+
+def set_cheque_list(cheque_list):
+    """Save RL cheque_list
+
+    Parameters
+    ----------
+    cheque_list : RL cheque_list
+    """
+    fusion_manager.set_cheque_list(cheque_list)
+
+
+def clear_cheque_list():
+    """clear RL cheque_list
+
+    Parameters
+    ----------
+    """
+    fusion_manager.clear_cheque_list()
+
+
+def clear_res_index():
+    """clear RL res_index
+
+    Parameters
+    ----------
+    """
+    fusion_manager.clear_res_index()
+
+
 def get_op_res(key):
     """Get current op_name's op_args
 
@@ -471,6 +586,47 @@ def get_op_res(key):
         return current op_name's build type.
     """
     return fusion_manager.get_op_res(key)
+
+
+def get_tik_tensor(key):
+    """Get tik op input&output tensor
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    args
+        none
+    """
+    return fusion_manager.get_tik_tensor(key)
+
+
+def get_cheque_list(res_index=None):
+    """Get RL cheque_list
+
+    Parameters
+    ----------
+    res_index:
+    Returns
+    -------
+    args
+        none
+    """
+    return fusion_manager.get_cheque_list(res_index)
+
+
+def get_res_index():
+    """Get RL res_index
+
+    Parameters
+    ----------
+    Returns
+    -------
+    args
+        none
+    """
+    return fusion_manager.get_res_index()
 
 
 def op_build_cfg_en():
@@ -595,7 +751,14 @@ def range_padding(inputs, outputs):
     """
     pad range paramters if range and shape not match
     """
-    for item in (*inputs, *outputs):
+    inouts = []
+    for ele in itertools.chain(inputs, outputs):
+        if isinstance(ele, (list, tuple)):
+            inouts.extend(ele)
+        else:
+            inouts.append(ele)
+
+    for item in inouts:
         if not isinstance(item, dict):
             continue
         shape = item.get('shape', [])
@@ -611,6 +774,9 @@ def range_padding(inputs, outputs):
 
 def check_op_impl_mode(op_module, op_func_name, op_type,
                        inputs, outputs, unknown_shape):
+    """
+    check if op has impl_mode paramter
+    """
     dyn_opfunc = get_dyn_op(op_module, op_type, inputs, outputs, unknown_shape)
     if dyn_opfunc:
         opfunc = dyn_opfunc
@@ -629,19 +795,19 @@ def check_op_impl_mode(op_module, op_func_name, op_type,
 
 
 def build_single_op_from_c(op_module, op_func_name, op_type,
-                           build_mode, unknown_shape, op_args):
+                           build_mode, unknown_shape, op_args, int64_mode):
     """
     build single op from tefsuion c side
     """
     inputs, outputs, attrs = op_args
     return build_single_op(op_module, op_func_name, op_type, build_mode,
                            inputs=inputs, outputs=outputs, attrs=attrs,
-                           unknown_shape=unknown_shape)
+                           unknown_shape=unknown_shape, int64_mode=int64_mode)
 
 
 def build_single_op(op_module, op_func_name, op_type, build_mode, *op_args,
                     inputs=None, outputs=None, attrs=None,
-                    unknown_shape=False):
+                    unknown_shape=False, int64_mode=False):
     """Prebuild Op
 
     Parameters
@@ -676,7 +842,7 @@ def build_single_op(op_module, op_func_name, op_type, build_mode, *op_args,
     else:
         op_build_cfg_en()
 
-    kwargs = OpImplPolicy.get_op_impl_mode(opfunc, op_type)
+    kwargs = cce_policy.OpImplPolicy.get_op_impl_mode(opfunc, op_type)
 
     def call_op():
         _compile_info = None
@@ -697,7 +863,12 @@ def build_single_op(op_module, op_func_name, op_type, build_mode, *op_args,
                 opfunc(*op_args, **kwargs)
         return _compile_info
 
-    compile_info = call_op()
+    if int64_mode:
+        with api_config.bit_width_64():
+            compile_info = call_op()
+    else:
+        with api_config.bit_width_32():
+            compile_info = call_op()
 
     if build_mode == 'prebuild':
         op_build_cfg_en()

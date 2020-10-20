@@ -1,10 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief TopK fusion pass(TopK --> TopKD)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file top_k_fusion_pass.cpp
+ * \brief TopK fusion pass(TopK --> TopKD)
+ */
 #include "top_k_fusion_pass.h"
 #include "op_log.h"
 #include "fp16_t.hpp"
@@ -56,7 +69,7 @@ vector<FusionPattern*> TopKFusionPass::DefinePatterns() {
   // TopK->TopKD
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TopKFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(kPatternTopK, {kTopK}).SetOutput(kPatternTopK);
 
@@ -65,14 +78,13 @@ vector<FusionPattern*> TopKFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                              vector<ge::NodePtr>& fusionNodes) {
+Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr topk_node = GetNodeFromMapping(kPatternTopK, mapping);
   FUSION_PASS_CHECK(topk_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "topk_node is null, fusion failed."),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
   ge::OpDescPtr topk_desc = topk_node->GetOpDesc();
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "topk_desc is null, fusion failed."),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
 
   // first input of topkv2 is non-constant, second is constant
   ge::InDataAnchorPtr topk_anchor_ptr0 = topk_node->GetInDataAnchor(0);
@@ -89,19 +101,16 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   ge::OutDataAnchorPtr topk_anchor_out_ptr0 = topk_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(topk_anchor_out_ptr0 == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "topk_anchor_out_ptr0 is null, fusion failed."),
-           return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "topk_anchor_out_ptr0 is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::NodePtr data_node_out = topk_anchor_out_ptr0->GetOwnerNode();
-  FUSION_PASS_CHECK(data_node_out == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "data_node_out is null, fusion failed."),
-           return PARAM_INVALID);
-  ge::GeTensorDesc topk_data_out_tensor =
-      data_node_out->GetOpDesc()->GetOutputDesc(0);
+  FUSION_PASS_CHECK(data_node_out == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "data_node_out is null, fusion failed."),
+                    return PARAM_INVALID);
+  ge::GeTensorDesc topk_data_out_tensor = data_node_out->GetOpDesc()->GetOutputDesc(0);
   ge::GeShape topk_data_out_shape = topk_data_out_tensor.GetShape();
   vector<int64_t> dim_info_out = topk_data_out_shape.GetDims();
-  FUSION_PASS_CHECK(dim_info_out.size() == 0,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_info_out size is 0, fusion failed."),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(dim_info_out.size() == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_info_out size is 0, fusion failed."),
+                    return PARAM_INVALID);
   int64_t last_out_dim = dim_info_out[dim_info_out.size() - 1];
   if (last_out_dim == UNKNOWN_DIM) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "It's unkown shape, graph not changed.");
@@ -153,11 +162,10 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   in_desc1.SetDataType(ge::DT_FLOAT16);
   fusion_desc_ptr->AddInputDesc("assic_seq", in_desc1);
   FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc_ptr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
-           return NOT_CHANGED);
+                    return NOT_CHANGED);
 
   ge::NodePtr fusionNode = nullptr;
-  Status ret = PatternFusionUtil::ConstToAttrWithNode(
-      graph, topk_node, fusion_op_type, topk_attr_info, fusionNode);
+  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, topk_node, fusion_op_type, topk_attr_info, fusionNode);
   fusionNodes.push_back(fusionNode);
   for (auto node : graph.GetDirectNode()) {
     if (node_name == node->GetName()) {
@@ -167,11 +175,11 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     }
   }
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "FusionNode is null, fusion failed."),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
   ge::GeTensorPtr assit_ptr = nullptr;
   unique_ptr<uint16_t> inputAssit(new (std::nothrow) uint16_t[last_dim * 2]());
   FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
   ret = AssitHelp(last_dim, inputAssit.get());
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
 
@@ -182,11 +190,11 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   ge::GeTensorDesc tensor_desc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
   tensor_desc.SetShape(assit_shape);
   tensor_desc.SetFormat(ge::FORMAT_NCHW);
-  FUSION_PASS_MAKE_SHARED((assit_ptr = std::make_shared<ge::GeTensor>(
-                      tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
-                      last_dim * 2 * sizeof(uint16_t))),
-                 assit_ptr = nullptr;
-                 return PARAM_INVALID);
+  FUSION_PASS_MAKE_SHARED(
+      (assit_ptr = std::make_shared<ge::GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                                  last_dim * 2 * sizeof(uint16_t))),
+      assit_ptr = nullptr;
+      return PARAM_INVALID);
 
   vector<ge::GeTensorPtr> weights = {assit_ptr};
   (void)ge::OpDescUtils::SetWeights(fusion_node, weights);

@@ -1,26 +1,29 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 lrn
 """
 import math
-from functools import reduce as functools_reduce
-from topi.cce import util
+import functools
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
+from te.utils import para_check
+
 import impl.constant_util as constant
 from impl import common_util
-from te.utils.op_utils import *
 
 DEPTH_RADIUS_SIZE_LIMIT = 48
 MAX_CORE_NUMBER = 32
@@ -28,47 +31,38 @@ MAX_REPEAT_NUM = 255
 PAR_COUNT_FP16 = 128
 PAR_COUNT_FP32 = 64
 MAX_HW_NUM = 65536
+CUT_C_HW_SIZE = 128
+C0_SIZE = 16
 
 
 def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype").lower()
-    check_shape(shape_input, param_name="x")
-    check_dtype(dtype_input, ("float16", "float32"), param_name="x")
+    para_check.check_shape(shape_input, param_name="x")
+    para_check.check_dtype(dtype_input, ("float16", "float32"), param_name="x")
 
-    check_shape(shape_input, min_rank=4, max_rank=4, param_name="x")
+    para_check.check_shape(shape_input, min_rank=4, max_rank=5, param_name="x")
 
     if depth_radius > DEPTH_RADIUS_SIZE_LIMIT:
-        error_info = {}
-        error_info['errCode'] = 'E81000'
-        error_info['param_name'] = 'depth_radius'
-        error_info['op_name'] = 'lrn'
-        error_info['expect_value'] = "less than "+str(DEPTH_RADIUS_SIZE_LIMIT)
-        error_info['real_value'] = "too large to calculate"
+        error_info = {'errCode': 'E81000', 'param_name': 'depth_radius', 'op_name': 'lrn',
+                      'expect_value': "less than " + str(DEPTH_RADIUS_SIZE_LIMIT),
+                      'real_value': "too large to calculate"}
         raise ValueError(error_info, "In op[%s], the parameter [%s] is not right, it should be [%s],"
                                      "but actually is [%s]."
                          % (error_info['op_name'], error_info['param_name'],
                             error_info['expect_value'], error_info['real_value']))
 
     if norm_region != "ACROSS_CHANNELS":
-        error_info = {}
-        error_info['errCode'] = 'E81001'
-        error_info['param_name'] = 'norm_region'
-        error_info['op_name'] = 'lrn'
-        error_info['expect_value'] = "ACROSS_CHANNELS"
-        error_info['real_value'] = norm_region
+        error_info = {'errCode': 'E81001', 'param_name': 'norm_region', 'op_name': 'lrn',
+                      'expect_value': "ACROSS_CHANNELS", 'real_value': norm_region}
         raise ValueError(error_info, "In op[%s], the parameter [%s] only support [%s] mode, "
                                      "but actually is [%s]."
                          % (error_info['op_name'], error_info['param_name'],
                             error_info['expect_value'], error_info['real_value']))
 
     if depth_radius < 0:
-        error_info = {}
-        error_info['errCode'] = 'E81000'
-        error_info['param_name'] = 'depth_radius'
-        error_info['op_name'] = 'lrn'
-        error_info['expect_value'] = "greater equal than 0"
-        error_info['real_value'] = depth_radius
+        error_info = {'errCode': 'E81000', 'param_name': 'depth_radius', 'op_name': 'lrn',
+                      'expect_value': "greater equal than 0", 'real_value': depth_radius}
         raise ValueError(error_info, "In op[%s], the parameter [%s] is not right, it should be [%s],"
                                      "but actually is [%s]."
                          % (error_info['op_name'], error_info['param_name'],
@@ -76,9 +70,9 @@ def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments,unused-argument, invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_STR, KERNEL_NAME,
-                 OPTION_ATTR_STR)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
         norm_region="ACROSS_CHANNELS", kernel_name="lrn", impl_mode="high_performance"):
     """ Local Response Normalization.
@@ -118,167 +112,33 @@ def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
     None.
     """
     _lrn_parameter_check(x, depth_radius, norm_region, kernel_name)
-    lrn_d_obj = LRNBase(x, depth_radius, bias, alpha, beta, kernel_name, impl_mode)
-    if lrn_d_obj.dtype_real_in_out == lrn_d_obj.input_dtype:
-        # cast is not needed
-        lrn_d_obj.alignment_standards = lrn_d_obj.one_block_ele_num_input
+    if x.get("format") == "NCHW":
+        lrn_d_obj = LRNBase4HD(x, depth_radius, bias, alpha, beta, kernel_name,
+                               impl_mode)
+        if lrn_d_obj.dtype_real_in_out == lrn_d_obj.input_dtype:
+            # cast is not needed
+            lrn_d_obj.alignment_standards = lrn_d_obj.one_block_ele_num_input
 
-    if lrn_d_obj.one_column_size % lrn_d_obj.alignment_standards != 0:
-        return lrn_d_obj.tik_instance_function_not_align()
+        if lrn_d_obj.one_column_size % lrn_d_obj.alignment_standards != 0:
+            return lrn_d_obj.tik_instance_function_not_align()
+        return lrn_d_obj.tik_instance_function()
+    elif x.get("format") == "NC1HWC0":
+        # only support float16
+        lrn_d_obj = LRNBase5HD(x, depth_radius, bias, alpha, beta,
+                               kernel_name, impl_mode)
+        return lrn_d_obj.tik_instance_function()
 
-    return lrn_d_obj.tik_instance_function()
 
-
-# pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
-# pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
 class LRNBase(object):
-    """
-    Function: use to store LRN compute parameters
-    """
-    def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name, impl_mode):
-        self.input_shape = x.get("shape")
-        self.dtype_real_in_out = x.get("dtype").lower()
-        self.impl_mode = impl_mode
-        self.input_dtype = self._get_compute_dtype()
-        self.depth_radius = depth_radius
-        self.bias = bias
-        self.alpha = alpha
-        self.beta = beta
-        self.kernel_name = kernel_name
-        self.alpha_sqrt = math.sqrt(self.alpha)
-        self.input_data_size = common_util.get_data_size(self.input_dtype)
-        self.one_block_ele_num_input =\
-            constant.BLOCK_SIZE // self.input_data_size
-        self.one_batch_size =\
-            self.input_shape[1]*self.input_shape[2]*self.input_shape[3]
-        self.one_column_size = self.input_shape[2]*self.input_shape[3]
-        self.N = self.input_shape[0]
-        self.C = self.input_shape[1]
-        self.H = self.input_shape[2]
-        self.W = self.input_shape[3]
-        self.core_num = self._get_target_core_num()
-        self.batch_num_each_core, self.threshold_multi_core,\
-        self.batch_num_front_core = self._get_multi_cores_param()
-        self.ub_byte_size =\
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-        self.ub_max_ele_num = self.ub_byte_size // self.input_data_size
-        self.pre_square_sum_ub = None
-        self.right_square_sum_ub = None
-        self.data_cast_ub = None
-        self.data_output_ub = None
-        self.data_square_ub = None
-        self.data_input_ub = None
-        self.alignment_standards = 16
-        self.is_cloud = False
-        self.one_repeat_ele_num =\
-            constant.REPEAT_STRIDE_EIGHT*self.one_block_ele_num_input
-        self.cast_ub_data_size =\
-            common_util.get_data_size(self.dtype_real_in_out)
-        self.one_block_ele_num_cast =\
-            constant.BLOCK_SIZE // self.cast_ub_data_size
-
-        self.tik_instance = tik.Tik()
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910",):
-            self.is_cloud = True
-
-        self.is_alpha_sqrt_flag = self._check_alpha_sqrt()
-        self.device_aicore_num = self.tik_instance.d_profiling.get_aicore_num()
-
-        self.input_gm =\
-            self.tik_instance.Tensor(self.dtype_real_in_out,
-                                     (self._get_shape_size(self.input_shape),),
-                                     name="input_gm", scope=tik.scope_gm)
-        # the output has the same dtype and shape with input
-        self.output_gm =\
-            self.tik_instance.Tensor(self.dtype_real_in_out,
-                                     (self._get_shape_size(self.input_shape),),
-                                     name="output_gm", scope=tik.scope_gm)
-
-    def _get_compute_dtype(self):
-        # check whether the platform is mini or not
-        is_mini_flag = (not tbe_platform.cce_conf.api_check_support("tik.vln", "float32") or
-                        tbe_platform.cce_conf.api_check_support("tik.vbi", "float16"))
-        # only when mini platform and input dtype is float16 support impl_mode parameter
-        if is_mini_flag and self.dtype_real_in_out == constant.DATA_TYPE_FP16:
-            vln_support_fp32_flag = (tbe_platform.cce_conf.api_check_support("tik.vln", "float32")
-                                     and self.impl_mode == "high_precision")
-        else:
-            vln_support_fp32_flag = tbe_platform.cce_conf.api_check_support("tik.vln", "float32")
-
-        compute_dtype = self.dtype_real_in_out
-        if vln_support_fp32_flag and\
-                (self.dtype_real_in_out == constant.DATA_TYPE_FP16):
-            compute_dtype = constant.DATA_TYPE_FP32
-        if (not vln_support_fp32_flag) and\
-                (self.dtype_real_in_out == constant.DATA_TYPE_FP32):
-            compute_dtype = constant.DATA_TYPE_FP16
-
-        return compute_dtype
-
-    def _check_alpha_sqrt(self):
-        alpha_sqrt_flag = False
-        if (0 < self.alpha < 0.001) and (not self.is_cloud):
-            alpha_sqrt_flag = True
-
-        return alpha_sqrt_flag
+    def __init__(self, tik_instance):
+        self.tik_instance = tik_instance
 
     def _get_shape_size(self, data_shape):
-        data_size = int(functools_reduce(lambda i, j: i * j, data_shape))
+        data_size = int(functools.reduce(lambda i, j: i * j, data_shape))
         return data_size
 
-    def _get_target_core_num(self):
-        if self.N < MAX_CORE_NUMBER:
-            return self.N
-
-        return MAX_CORE_NUMBER
-
-    def _get_multi_cores_param(self):
-        if self.core_num < MAX_CORE_NUMBER:
-            batch_num_each_core = 1
-            threshold_multi_core = 0
-            batch_num_front_core = 1
-        else:
-            batch_num_each_core = self.N // MAX_CORE_NUMBER
-            threshold_multi_core = self.N % MAX_CORE_NUMBER
-            batch_num_front_core = batch_num_each_core + 1
-
-        return batch_num_each_core, threshold_multi_core, batch_num_front_core
-
-    def _allocate_cast_ub(self):
-        if self.dtype_real_in_out == constant.DATA_TYPE_FP16 and\
-                self.input_dtype == constant.DATA_TYPE_FP32:
-            byte_size_cast_ub = self.ub_byte_size // 7
-        else:
-            byte_size_cast_ub = (self.ub_byte_size // 5)*2
-
-        ele_cast_ub = byte_size_cast_ub // self.cast_ub_data_size
-        ele_cast_ub = self._get_align_size(ele_cast_ub)
-        byte_size_remaining_ub =\
-            self.ub_byte_size - ele_cast_ub*self.cast_ub_data_size
-        self.ub_max_ele_num = byte_size_remaining_ub // self.input_data_size
-
-        self.data_cast_ub =\
-            self.tik_instance.Tensor(self.dtype_real_in_out, (ele_cast_ub,),
-                                     name="data_cast_ub", scope=tik.scope_ubuf)
-
-    def _allocate_ub_buffer(self):
-        self.data_input_ub =\
-            self.tik_instance.Tensor(self.input_dtype,
-                                     (self._get_shape_size(self.input_shape),),
-                                     name="data_input_ub", scope=tik.scope_ubuf)
-        self.data_square_ub =\
-            self.tik_instance.Tensor(self.input_dtype,
-                                     (self._get_shape_size(self.input_shape),),
-                                     name="data_square_ub",
-                                     scope=tik.scope_ubuf)
-        self.data_output_ub =\
-            self.tik_instance.Tensor(self.input_dtype,
-                                     (self._get_shape_size(self.input_shape),),
-                                     name="data_output_ub",
-                                     scope=tik.scope_ubuf)
-
     def _get_mask_and_repeat(self, data_shape, data_type):
-        data_size = int(functools_reduce(lambda i, j: i * j, data_shape))
+        data_size = int(functools.reduce(lambda i, j: i * j, data_shape))
         data_byte_num = common_util.get_data_size(data_type)
         one_block_num = constant.BLOCK_SIZE // data_byte_num
 
@@ -299,28 +159,45 @@ class LRNBase(object):
 
         return front_mask, last_mask, repeat_times
 
-    def _double_vector_func(self, func_name, dest, src0, src1, compute_shape):
-        front_mask, last_mask, repeat_times =\
+    def _double_vector_func(self, func_name, dest, src0, src1, compute_shape,
+                            dest_offset=0, src0_offset=0, src1_offset=0):
+        front_mask, last_mask, repeat_times = \
             self._get_mask_and_repeat(compute_shape, dest.dtype)
         if repeat_times == 1:
-            func_name(front_mask, dest, src0, src1, constant.REPEAT_TIME_ONCE,
+            func_name(front_mask, dest[dest_offset],
+                      src0[src0_offset], src1[src1_offset],
+                      constant.REPEAT_TIME_ONCE,
                       constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT)
         elif repeat_times <= MAX_REPEAT_NUM:
-            func_name(front_mask, dest, src0, src1, repeat_times - 1,
-                      constant.STRIDE_ONE, constant.STRIDE_ONE,
-                      constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
-                      constant.REPEAT_STRIDE_EIGHT,
-                      constant.REPEAT_STRIDE_EIGHT)
-            vector_offset = (repeat_times - 1)*front_mask
-            func_name(last_mask, dest[vector_offset], src0[vector_offset],
-                      src1[vector_offset], constant.REPEAT_TIME_ONCE,
-                      constant.STRIDE_ONE, constant.STRIDE_ONE,
-                      constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
-                      constant.REPEAT_STRIDE_EIGHT,
-                      constant.REPEAT_STRIDE_EIGHT)
+            if front_mask == last_mask:
+                func_name(front_mask, dest[dest_offset],
+                          src0[src0_offset], src1[src1_offset],
+                          repeat_times,
+                          constant.STRIDE_ONE, constant.STRIDE_ONE,
+                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT)
+            else:
+                func_name(front_mask, dest[dest_offset],
+                          src0[src0_offset], src1[src1_offset],
+                          repeat_times - 1,
+                          constant.STRIDE_ONE, constant.STRIDE_ONE,
+                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT)
+                vector_offset = (repeat_times - 1)*front_mask
+                func_name(last_mask, dest[dest_offset + vector_offset],
+                          src0[src0_offset + vector_offset],
+                          src1[src1_offset + vector_offset],
+                          constant.REPEAT_TIME_ONCE,
+                          constant.STRIDE_ONE, constant.STRIDE_ONE,
+                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT,
+                          constant.REPEAT_STRIDE_EIGHT)
+
         else:
             rest_repeat_num = repeat_times
             count = 0
@@ -526,13 +403,17 @@ class LRNBase(object):
                                     constant.STRIDE_ONE,
                                     dst_rep_stride, src_rep_stride)
 
-    def _vmul_func(self, dest, src0, src1, compute_shape):
+    def _vmul_func(self, dest, src0, src1, compute_shape, dest_offset=0,
+                   src0_offset=0, src1_offset=0):
         self._double_vector_func(self.tik_instance.vmul, dest, src0, src1,
-                                 compute_shape)
+                                 compute_shape, dest_offset, src0_offset,
+                                 src1_offset)
 
-    def _vadd_func(self, dest, src0, src1, compute_shape):
+    def _vadd_func(self, dest, src0, src1, compute_shape, dest_offset=0,
+                   src0_offset=0, src1_offset=0):
         self._double_vector_func(self.tik_instance.vadd, dest, src0, src1,
-                                 compute_shape)
+                                 compute_shape, dest_offset, src0_offset,
+                                 src1_offset)
 
     def _vsub_func(self, dest, src0, src1, compute_shape):
         self._double_vector_func(self.tik_instance.vsub, dest, src0, src1,
@@ -554,10 +435,676 @@ class LRNBase(object):
         self._single_vector_func(self.tik_instance.vexp, dest, src,
                                  compute_shape)
 
+
+# pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
+# pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
+class LRNBase5HD(LRNBase):
+    """
+    Function: use to store LRN compute parameters
+    """
+    def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
+                 impl_mode):
+        self.tik_instance = tik.Tik()
+        super(LRNBase5HD, self).__init__(self.tik_instance)
+        self.input_shape = x.get("shape")
+        self.input_dtype = x.get("dtype").lower()
+        self.impl_mode = impl_mode
+        self.depth_radius = depth_radius
+        self.bias = bias
+        self.alpha = alpha
+        self.beta = beta
+        self.kernel_name = kernel_name
+        self.alpha_sqrt = math.sqrt(self.alpha)
+        self.n_size = self.input_shape[0]
+        self.c1_size = self.input_shape[1]
+        self.c_size = self.input_shape[1] * self.input_shape[4]
+        self.hw_size = self.input_shape[2] * self.input_shape[3]
+        self.input_data_size = common_util.get_data_size(self.input_dtype)
+        self.one_block_ele_num_input = \
+            constant.BLOCK_SIZE // self.input_data_size
+        # NC1HWC0
+        self.hw_align_size = math.ceil(self.hw_size / 16) * 16
+        self.depth_radius_align = math.ceil(self.depth_radius / 16) * 16
+        self.alignment_standards = 16
+        self.one_batch_size = self.c_size * self.hw_size
+        self.ub_byte_size = \
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        self.ub_max_ele_num = self.ub_byte_size // self.input_data_size
+        self.is_cloud = False
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend910",):
+            self.is_cloud = True
+        self.alpha_sqrt_flag = False
+        if (0 < self.alpha < 0.001) and (not self.is_cloud):
+            self.alpha_sqrt_flag = True
+        self.device_aicore_num = self.tik_instance.d_profiling.get_aicore_num()
+        self.input_gm = self.tik_instance.Tensor(
+            self.input_dtype,
+            (self._get_shape_size(self.input_shape),),
+            name="input_gm", scope=tik.scope_gm)
+        # the output has the same dtype and shape with input
+        self.output_gm = self.tik_instance.Tensor(
+            self.input_dtype,
+            (self._get_shape_size(self.input_shape),),
+            name="output_gm", scope=tik.scope_gm)
+        # five2four need align 256 ele
+        self.ub_split_size = ((self.ub_max_ele_num / 3 / 2) // 256) * 256
+        self.data_ub1 = []
+        self.data_ub2 = []
+        self.data_ub3 = []
+        for i in range(2):
+            self.data_ub1.append(self.tik_instance.Tensor(
+                self.input_dtype, (self.ub_split_size,),
+                name="data_input_ub", scope=tik.scope_ubuf))
+            self.data_ub2.append(self.tik_instance.Tensor(
+                self.input_dtype, (self.ub_split_size,),
+                name="data_square_ub", scope=tik.scope_ubuf))
+            self.data_ub3.append(self.tik_instance.Tensor(
+                self.input_dtype, (self.ub_split_size,),
+                name="data_output_ub", scope=tik.scope_ubuf))
+
+    def do_tiling(self):
+        """
+        generate tiling
+
+        Return
+        ----------
+        dict
+            tiling info
+        """
+        tiling = {}
+        tiling["batch_once"] = self.n_size // self.device_aicore_num \
+            if self.n_size > self.device_aicore_num else 1
+        tiling["batch_tail"] = self.n_size % tiling["batch_once"] \
+            if self.n_size % tiling["batch_once"] != 0 else \
+            tiling["batch_once"]
+        tiling["batch_loop"] = math.ceil(self.n_size / tiling["batch_once"])
+        if self.c_size * self.hw_align_size <= self.ub_split_size:
+            # one batch each time
+            tiling["type"] = "cut_n"
+            tiling["hw_once"] = self.hw_size
+            tiling["hw_tail"] = self.hw_size
+            tiling["hw_loop"] = 1
+            tiling["c_once"] = self.c_size
+            tiling["c_tail"] = self.c_size
+            tiling["c_loop"] = 1
+        elif self.c_size * CUT_C_HW_SIZE <= self.ub_split_size:
+            # cut hw
+            tiling["type"] = "cut_hw"
+            hw_once = self.ub_split_size // self.c_size
+            hw_once = hw_once if hw_once < self.hw_size else self.hw_size
+            tiling["hw_once"] = (hw_once // CUT_C_HW_SIZE) * CUT_C_HW_SIZE
+            tiling["hw_tail"] = self.hw_size % tiling["hw_once"] \
+                if self.hw_size % tiling["hw_once"] != 0 else tiling["hw_once"]
+            tiling["hw_loop"] = math.ceil(self.hw_size / tiling["hw_once"])
+            tiling["c_once"] = self.c_size
+            tiling["c_tail"] = self.c_size
+            tiling["c_loop"] = 1
+        else:
+            # cut c, get max c while hw == 128
+            tiling["type"] = "cut_c"
+            if self.hw_size > CUT_C_HW_SIZE:
+                tiling["hw_once"] = CUT_C_HW_SIZE
+                tiling["hw_tail"] = self.hw_size % CUT_C_HW_SIZE \
+                    if self.hw_size % CUT_C_HW_SIZE != 0 else CUT_C_HW_SIZE
+                tiling["hw_loop"] = math.ceil(self.hw_size / CUT_C_HW_SIZE)
+                max_c_with_overlap = self.ub_split_size // CUT_C_HW_SIZE
+            else:
+                tiling["hw_once"] = self.hw_size
+                tiling["hw_tail"] = self.hw_size
+                tiling["hw_loop"] = 1
+                max_c_with_overlap = self.ub_split_size // self.hw_align_size
+            max_c_with_overlap = \
+                (max_c_with_overlap // self.alignment_standards) * \
+                self.alignment_standards
+            tiling["c_once"] = max_c_with_overlap - self.depth_radius_align * 2
+            tiling["c_tail"] = self.c_size % tiling["c_once"] \
+                if self.c_size % tiling["c_once"] != 0 else tiling["c_once"]
+            tiling["c_loop"] = math.ceil(self.c_size / tiling["c_once"])
+        return tiling
+
+    def do_cut_n(self, tiling):
+        """
+        cut c tiling
+        """
+        core_num = tiling["batch_loop"]
+        with self.tik_instance.for_range(
+                0, core_num,
+                block_num=core_num) as block_idx:
+            in_gm_offset = \
+                block_idx * tiling["batch_once"] * self.one_batch_size
+            out_gm_offset = \
+                block_idx * tiling["batch_once"] * self.one_batch_size
+            batch_loop_in_core = tiling["batch_once"]
+            with self.tik_instance.if_scope(
+                    block_idx == tiling["batch_loop"] - 1):
+                batch_loop_in_core = tiling["batch_tail"]
+            # gm -> data_ub1
+            self.move_data(self.data_ub1[0],
+                           self.input_gm[in_gm_offset],
+                           self.input_dtype, self.one_batch_size)
+            in_gm_offset += self.one_batch_size
+            for batch_idx in range(batch_loop_in_core):
+                # gm -> data_ub1
+                if batch_idx < batch_loop_in_core - 1:
+                    self.move_data(self.data_ub1[(batch_idx + 1) % 2],
+                                   self.input_gm[in_gm_offset],
+                                   self.input_dtype, self.one_batch_size)
+                    in_gm_offset += self.one_batch_size
+                out_ub = self.do_operation(self.data_ub1[batch_idx % 2],
+                                           self.data_ub2[batch_idx % 2],
+                                           self.data_ub3[batch_idx % 2],
+                                           tiling["hw_once"],
+                                           tiling["c_once"])
+                # data_ub2 -> gm
+                self.move_data(self.output_gm[out_gm_offset], out_ub,
+                               self.input_dtype, self.one_batch_size)
+                out_gm_offset += self.one_batch_size
+
+    def do_cut_hw(self, tiling, batch_gm_offset):
+        buffer_idx = 0
+        in_gm_offset = batch_gm_offset
+        out_gm_offset = batch_gm_offset
+        self.move_data_stride_in(self.data_ub1[buffer_idx % 2],
+                                 self.input_gm,
+                                 tiling["hw_once"], self.c_size,
+                                 in_gm_offset)
+        in_gm_offset += tiling["hw_once"] * C0_SIZE
+        for hw_idx in range(tiling["hw_loop"]):
+            if hw_idx < tiling["hw_loop"] - 1:
+                hw_inner = tiling["hw_once"] \
+                    if hw_idx < tiling["hw_loop"] - 2 \
+                    else tiling["hw_tail"]
+                self.move_data_stride_in(
+                    self.data_ub1[(buffer_idx+1) % 2],
+                    self.input_gm,
+                    hw_inner, self.c_size,
+                    in_gm_offset)
+                in_gm_offset += hw_inner * C0_SIZE
+            hw_inner = tiling["hw_once"] \
+                if hw_idx < tiling["hw_loop"] - 1 \
+                else tiling["hw_tail"]
+            out_ub = self.do_operation(self.data_ub1[buffer_idx % 2],
+                                       self.data_ub2[buffer_idx % 2],
+                                       self.data_ub3[buffer_idx % 2],
+                                       hw_inner, self.c_size)
+            self.move_data_stride_out(self.output_gm, out_ub, hw_inner,
+                                      self.c_size, out_gm_offset)
+            out_gm_offset += hw_inner * C0_SIZE
+            buffer_idx += 1
+
+    def do_cut_c(self, tiling, batch_gm_offset):
+        buffer_idx = 0
+        hw_gm_offset = batch_gm_offset
+        for hw_idx in range(tiling["hw_loop"]):
+            hw_inner = tiling["hw_once"] \
+                if hw_idx < tiling["hw_loop"] - 1 else tiling["hw_tail"]
+            in_gm_offset = hw_gm_offset
+            out_gm_offset = hw_gm_offset
+            c_top = 0
+            c_bottom = 0
+            self.move_data_stride_in(self.data_ub1[buffer_idx % 2],
+                                     self.input_gm,
+                                     hw_inner,
+                                     tiling["c_once"] +
+                                     self.depth_radius_align,
+                                     in_gm_offset)
+            in_gm_offset += \
+                (tiling["c_once"] - self.depth_radius_align) * self.hw_size
+
+            c_bottom = self.depth_radius_align
+            for c_idx in range(tiling["c_loop"]):
+                if c_idx < tiling["c_loop"] - 1:
+                    c_inner = tiling["c_once"] + 2 * self.depth_radius_align
+                    if c_idx == tiling["c_loop"] - 2:
+                        c_inner = tiling["c_tail"] + self.depth_radius_align
+                    self.move_data_stride_in(
+                        self.data_ub1[(buffer_idx+1) % 2],
+                        self.input_gm,
+                        hw_inner, c_inner, in_gm_offset)
+                    in_gm_offset += tiling["c_once"] * self.hw_size
+                else:
+                    c_bottom = 0
+                c_real = tiling["c_once"] \
+                    if c_idx < tiling["c_loop"] - 1 else tiling["c_tail"]
+                out_ub = self.do_operation(self.data_ub1[buffer_idx % 2],
+                                           self.data_ub2[buffer_idx % 2],
+                                           self.data_ub3[buffer_idx % 2],
+                                           hw_inner, c_real, c_top, c_bottom)
+                self.move_data_stride_out(self.output_gm, out_ub, hw_inner,
+                                          c_real, out_gm_offset)
+                out_gm_offset += c_real * self.hw_size
+                buffer_idx += 1
+                c_top = self.depth_radius_align
+            hw_gm_offset += tiling["hw_once"] * C0_SIZE
+        return buffer_idx
+
+    def move_data_stride_in(self, dest, src, hw_size, c_size, in_gm_offset):
+        nburst = int(c_size // 16)
+        burst = int(hw_size)
+        src_stride = int(self.hw_size - hw_size)
+        if src_stride < MAX_HW_NUM:
+            self.tik_instance.data_move(dest, src[in_gm_offset], constant.SID,
+                                        nburst, burst,
+                                        src_stride, constant.STRIDE_ZERO)
+        else:
+            with self.tik_instance.for_range(0, nburst) as idx:
+                self.tik_instance.data_move(
+                    dest[idx * burst * C0_SIZE],
+                    src[in_gm_offset +
+                        idx * self.hw_size * C0_SIZE],
+                    constant.SID, constant.DEFAULT_NBURST, burst,
+                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+    def move_data_stride_out(self, dest, src, hw_size, c_size, out_gm_offset):
+        nburst = int(c_size // 16)
+        burst = int(hw_size)
+        dst_stride = int(self.hw_size - hw_size)
+        if dst_stride < MAX_HW_NUM:
+            self.tik_instance.data_move(dest[out_gm_offset], src, constant.SID,
+                                        nburst, burst,
+                                        constant.STRIDE_ZERO, dst_stride)
+        else:
+            with self.tik_instance.for_range(0, nburst) as idx:
+                self.tik_instance.data_move(
+                    dest[out_gm_offset +
+                         idx * self.hw_size * C0_SIZE],
+                    src[idx * burst * C0_SIZE],
+                    constant.SID, constant.DEFAULT_NBURST, burst,
+                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+    def do_operation(self, data_ub1, data_ub2, data_ub3, hw_size, c_size,
+                     c_top=0, c_bottom=0):
+        hw_align_size = math.ceil(hw_size / 16) * 16
+        compute_shape = (hw_align_size, c_size + c_top + c_bottom)
+
+        # nc1hwc0 -> nchw
+        self.five2four(data_ub2, data_ub1, hw_size, c_size + c_top + c_bottom)
+
+        # x^2
+        self.do_squared(data_ub2, compute_shape)
+
+        # sum cross c-axis
+        self.do_depth_operation(data_ub3, data_ub2, int(hw_align_size),
+                                int(c_size), c_top, c_bottom)
+
+        compute_shape = (hw_align_size, c_size)
+        # *alpha
+        if not self.alpha_sqrt_flag:
+            self._vmuls_func(data_ub3, data_ub3, self.alpha, compute_shape)
+
+        # + k
+        self._vadds_func(data_ub3, data_ub3, self.bias, compute_shape)
+
+        # ln
+        self._vln_func(data_ub3, data_ub3, compute_shape)
+
+        # *beta
+        self._vmuls_func(data_ub3, data_ub3, self.beta*(-1), compute_shape)
+
+        # exp
+        self._vexp_func(data_ub3, data_ub3, compute_shape)
+
+        # nchw -> nc1hwc0
+        self.four2five(data_ub2, data_ub3, hw_size, c_size)
+
+        # x * res
+        self._vmul_func(data_ub2, data_ub1, data_ub2, compute_shape,
+                        src0_offset=int(c_top * hw_size))
+
+        return data_ub2
+
+    def do_depth_operation(self, dest, src, hw_size, c_size, c_top, c_bottom):
+        zero_scalar = self.tik_instance.Scalar(dtype=self.input_dtype,
+                                               name="zero_scalar",
+                                               init_value=0.0)
+        self._vector_dup_func(dest, zero_scalar, dest.shape)
+        if c_top == 0 and c_bottom == 0:
+            self.do_depth_operation_all(dest, src, int(hw_size), int(c_size))
+        elif c_top == 0 and c_bottom != 0:
+            self.do_depth_operation_top(dest, src, int(hw_size), int(c_size))
+        elif c_top != 0 and c_bottom != 0:
+            self.do_depth_operation_mid(dest, src, int(hw_size), int(c_size),
+                                        c_top)
+        elif c_top != 0 and c_bottom == 0:
+            self.do_depth_operation_bottom(dest, src, int(hw_size),
+                                           int(c_size), c_top)
+
+    def do_depth_operation_bottom(self, dest, src, hw_size, c_size, c_top):
+        # add next
+        first_flag = True
+        top_offset = c_top * hw_size
+        src_last_offset = hw_size * (c_size + c_top - 1)
+        dst_last_offset = hw_size * (c_size - 1)
+        src_ub_offset = top_offset + hw_size
+        src1_ub_offset = top_offset - hw_size
+        down_compute_size = hw_size * (c_size - 1)
+        up_compute_size = hw_size * c_size
+        for radius_idx in range(self.depth_radius):
+            if first_flag:
+                self._vadd_func(dest, src, src, (down_compute_size,),
+                                src0_offset=top_offset,
+                                src1_offset=src_ub_offset)
+                # fill last line
+                self._vadd_func(dest, dest, src, (hw_size,), dst_last_offset,
+                                dst_last_offset, src_last_offset)
+                first_flag = False
+            else:
+                self._vadd_func(dest, dest, src, (down_compute_size,),
+                                src1_offset=src_ub_offset)
+            # add pre c
+            self._vadd_func(dest, dest, src, (up_compute_size,),
+                            src1_offset=src1_ub_offset)
+            down_compute_size -= hw_size
+            src_ub_offset += hw_size
+            src1_ub_offset -= hw_size
+
+    def do_depth_operation_mid(self, dest, src, hw_size, c_size, c_top):
+        first_flag = True
+        top_offset = c_top * hw_size
+        src_ub_offset = hw_size + top_offset
+        src1_ub_offset = top_offset - hw_size
+        compute_size = hw_size * c_size
+        for radius_idx in range(self.depth_radius):
+            if first_flag:
+                self._vadd_func(dest, src, src, (compute_size,),
+                                src0_offset=top_offset,
+                                src1_offset=src_ub_offset)
+                first_flag = False
+            else:
+                self._vadd_func(dest, dest, src, (compute_size,),
+                                src1_offset=src_ub_offset)
+            # add pre c
+            self._vadd_func(dest, dest, src, (compute_size,),
+                            src1_offset=src1_ub_offset)
+            src_ub_offset += hw_size
+            src1_ub_offset -= hw_size
+
+    def do_depth_operation_top(self, dest, src, hw_size, c_size):
+        first_flag = True
+        src_ub_offset = hw_size
+        dst_ub_offset = hw_size
+
+        down_compute_size = hw_size * c_size
+        up_compute_size = hw_size * (c_size - 1)
+        for radius_idx in range(self.depth_radius):
+            # add down c
+            if first_flag:
+                self._vadd_func(dest, src, src, (down_compute_size,),
+                                src1_offset=src_ub_offset)
+                first_flag = False
+            else:
+                self._vadd_func(dest, dest, src, (down_compute_size,),
+                                src1_offset=src_ub_offset)
+            # add up c
+            self._vadd_func(dest, dest, src, (up_compute_size,),
+                            dest_offset=dst_ub_offset,
+                            src0_offset=dst_ub_offset)
+
+            src_ub_offset += hw_size
+            dst_ub_offset += hw_size
+            up_compute_size -= hw_size
+
+    def do_depth_operation_all(self, dest, src, hw_size, c_size):
+        # add next
+        src_ub_offset = hw_size
+        first_flag = True
+        last_offset = hw_size * (c_size - 1)
+        dst_ub_offset = hw_size
+        compute_size = hw_size * (c_size - 1)
+        for radius_idx in range(self.depth_radius):
+            if first_flag:
+                self._vadd_func(dest, src, src,
+                                (compute_size,), src1_offset=src_ub_offset)
+                # fill last line
+                self._vadd_func(dest, dest, src, (hw_size,),
+                                last_offset, last_offset, last_offset)
+                first_flag = False
+            else:
+                self._vadd_func(dest, dest, src, (compute_size,),
+                                src1_offset=src_ub_offset)
+            # add pre c
+            self._vadd_func(dest, dest, src, (compute_size,),
+                            dst_ub_offset, dst_ub_offset)
+            src_ub_offset += hw_size
+            dst_ub_offset += hw_size
+            compute_size -= hw_size
+
+    def do_squared(self, data_ub, compute_shape):
+        if self.alpha_sqrt_flag:
+            # do square operation
+            self._vmuls_func(data_ub, data_ub, self.alpha_sqrt, compute_shape)
+            self._vmul_func(data_ub, data_ub, data_ub, compute_shape)
+        else:
+            self._vmul_func(data_ub, data_ub, data_ub, compute_shape)
+
+    def five2four(self, dest, src, hw_size, c_size):
+        hw_size = int(hw_size)
+        c_loop = int(c_size // 16)
+        repeat = math.ceil(hw_size / 16)
+        hw_align_size = int(math.ceil(hw_size / 16) * 16)
+        # repeat_times 1
+        #     real_src[0]/dst[0] address = src/dst_list + src/dst_rep_strie
+        # repeat_times > 1
+        #     real_src[0]/dst[0] address = src/dst_list
+        src_stride = 16 if repeat > 1 else 0
+        dst_stride = 1 if repeat > 1 else 0
+
+        with self.tik_instance.for_range(0, c_loop) as c_idx:
+            src_list = [src[16 * hw_size * c_idx + 16 * i] for i in range(16)]
+            dst_list = \
+                [dest[16 * hw_align_size * c_idx + hw_align_size * i]
+                 for i in range(16)]
+            self.tik_instance.vnchwconv(False, False, dst_list, src_list,
+                                        repeat, dst_stride, src_stride)
+
+    def four2five(self, dest, src, hw_size, c_size):
+        hw_size = int(hw_size)
+        c_loop = int(c_size // 16)
+        repeat = math.ceil(hw_size / 16)
+        hw_align_size = int(math.ceil(hw_size / 16) * 16)
+        src_stride = 1 if repeat > 1 else 0
+        dst_stride = 16 if repeat > 1 else 0
+        with self.tik_instance.for_range(0, c_loop) as c_idx:
+            src_list = \
+                [src[16 * hw_align_size * c_idx + hw_align_size * i]
+                 for i in range(16)]
+            dst_list = [dest[16 * hw_size * c_idx + 16 * i] for i in range(16)]
+            self.tik_instance.vnchwconv(False, False, dst_list, src_list,
+                                        repeat, dst_stride, src_stride)
+
+    def move_data(self, dest, src, data_type, copy_size):
+        byte_num_one = common_util.get_data_size(data_type)
+        one_block_ele_num = constant.BLOCK_SIZE // byte_num_one
+        block_num = copy_size // one_block_ele_num
+        self.tik_instance.data_move(dest, src, constant.SID,
+                                    constant.DEFAULT_NBURST, block_num,
+                                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+    def tik_instance_function(self):
+        """
+        do the LRN operation when H*W is 32B align
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        tiling = self.do_tiling()
+        if tiling["type"] == "cut_n":
+            self.do_cut_n(tiling)
+        else:
+            with self.tik_instance.for_range(
+                    0, self.n_size, block_num=self.n_size) as block_idx:
+                batch_gm_offset = block_idx * self.one_batch_size
+                if tiling["type"] == "cut_hw":
+                    self.do_cut_hw(tiling, batch_gm_offset)
+                else:
+                    self.do_cut_c(tiling, batch_gm_offset)
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_gm],
+                                   outputs=[self.output_gm])
+        return self.tik_instance
+
+
+# pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
+# pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
+class LRNBase4HD(LRNBase):
+    """
+    Function: use to store LRN compute parameters
+    """
+    def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
+                 impl_mode):
+        self.tik_instance = tik.Tik()
+        super(LRNBase4HD, self).__init__(self.tik_instance)
+        self.input_shape = x.get("shape")
+        self.dtype_real_in_out = x.get("dtype").lower()
+        self.impl_mode = impl_mode
+        self.input_dtype = self._get_compute_dtype()
+        self.depth_radius = depth_radius
+        self.bias = bias
+        self.alpha = alpha
+        self.beta = beta
+        self.kernel_name = kernel_name
+        self.alpha_sqrt = math.sqrt(self.alpha)
+        self.input_data_size = common_util.get_data_size(self.input_dtype)
+        self.one_block_ele_num_input =\
+            constant.BLOCK_SIZE // self.input_data_size
+        self.one_batch_size =\
+            self.input_shape[1]*self.input_shape[2]*self.input_shape[3]
+        self.one_column_size = self.input_shape[2]*self.input_shape[3]
+        self.N = self.input_shape[0]
+        self.C = self.input_shape[1]
+        self.H = self.input_shape[2]
+        self.W = self.input_shape[3]
+        self.core_num = self._get_target_core_num()
+        self.batch_num_each_core, self.threshold_multi_core,\
+        self.batch_num_front_core = self._get_multi_cores_param()
+        self.ub_byte_size =\
+            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        self.ub_max_ele_num = self.ub_byte_size // self.input_data_size
+        self.pre_square_sum_ub = None
+        self.right_square_sum_ub = None
+        self.data_cast_ub = None
+        self.data_output_ub = None
+        self.data_square_ub = None
+        self.data_input_ub = None
+        self.alignment_standards = 16
+        self.is_cloud = False
+        self.one_repeat_ele_num =\
+            constant.REPEAT_STRIDE_EIGHT*self.one_block_ele_num_input
+        self.cast_ub_data_size =\
+            common_util.get_data_size(self.dtype_real_in_out)
+        self.one_block_ele_num_cast =\
+            constant.BLOCK_SIZE // self.cast_ub_data_size
+
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend910",):
+            self.is_cloud = True
+
+        self.is_alpha_sqrt_flag = self._check_alpha_sqrt()
+        self.device_aicore_num = self.tik_instance.d_profiling.get_aicore_num()
+
+        self.input_gm =\
+            self.tik_instance.Tensor(self.dtype_real_in_out,
+                                     (self._get_shape_size(self.input_shape),),
+                                     name="input_gm", scope=tik.scope_gm)
+        # the output has the same dtype and shape with input
+        self.output_gm =\
+            self.tik_instance.Tensor(self.dtype_real_in_out,
+                                     (self._get_shape_size(self.input_shape),),
+                                     name="output_gm", scope=tik.scope_gm)
+
+    def _get_compute_dtype(self):
+        # check whether the platform is mini or not
+        is_mini_flag = \
+            (not tbe_platform.api_check_support("tik.vln",
+                                                         "float32") or
+             tbe_platform.api_check_support("tik.vbi", "float16"))
+        # only when mini platform and input dtype is float16
+        # support impl_mode parameter
+        if is_mini_flag and self.dtype_real_in_out == constant.DATA_TYPE_FP16:
+            vln_support_fp32_flag = \
+                (tbe_platform.api_check_support("tik.vln", "float32")
+                 and self.impl_mode == "high_precision")
+        else:
+            vln_support_fp32_flag = \
+                tbe_platform.api_check_support("tik.vln", "float32")
+
+        compute_dtype = self.dtype_real_in_out
+        if vln_support_fp32_flag and\
+                (self.dtype_real_in_out == constant.DATA_TYPE_FP16):
+            compute_dtype = constant.DATA_TYPE_FP32
+        if (not vln_support_fp32_flag) and\
+                (self.dtype_real_in_out == constant.DATA_TYPE_FP32):
+            compute_dtype = constant.DATA_TYPE_FP16
+
+        return compute_dtype
+
+    def _check_alpha_sqrt(self):
+        alpha_sqrt_flag = False
+        if (0 < self.alpha < 0.001) and (not self.is_cloud):
+            alpha_sqrt_flag = True
+
+        return alpha_sqrt_flag
+
+    def _get_target_core_num(self):
+        if self.N < MAX_CORE_NUMBER:
+            return self.N
+
+        return MAX_CORE_NUMBER
+
+    def _get_multi_cores_param(self):
+        if self.core_num < MAX_CORE_NUMBER:
+            batch_num_each_core = 1
+            threshold_multi_core = 0
+            batch_num_front_core = 1
+        else:
+            batch_num_each_core = self.N // MAX_CORE_NUMBER
+            threshold_multi_core = self.N % MAX_CORE_NUMBER
+            batch_num_front_core = batch_num_each_core + 1
+
+        return batch_num_each_core, threshold_multi_core, batch_num_front_core
+
+    def _allocate_cast_ub(self):
+        if self.dtype_real_in_out == constant.DATA_TYPE_FP16 and\
+                self.input_dtype == constant.DATA_TYPE_FP32:
+            byte_size_cast_ub = self.ub_byte_size // 7
+        else:
+            byte_size_cast_ub = (self.ub_byte_size // 5)*2
+
+        ele_cast_ub = byte_size_cast_ub // self.cast_ub_data_size
+        ele_cast_ub = self._get_align_size(ele_cast_ub)
+        byte_size_remaining_ub =\
+            self.ub_byte_size - ele_cast_ub*self.cast_ub_data_size
+        self.ub_max_ele_num = byte_size_remaining_ub // self.input_data_size
+
+        self.data_cast_ub =\
+            self.tik_instance.Tensor(self.dtype_real_in_out, (ele_cast_ub,),
+                                     name="data_cast_ub", scope=tik.scope_ubuf)
+
+    def _allocate_ub_buffer(self):
+        self.data_input_ub =\
+            self.tik_instance.Tensor(self.input_dtype,
+                                     (self._get_shape_size(self.input_shape),),
+                                     name="data_input_ub",
+                                     scope=tik.scope_ubuf)
+        self.data_square_ub =\
+            self.tik_instance.Tensor(self.input_dtype,
+                                     (self._get_shape_size(self.input_shape),),
+                                     name="data_square_ub",
+                                     scope=tik.scope_ubuf)
+        self.data_output_ub =\
+            self.tik_instance.Tensor(self.input_dtype,
+                                     (self._get_shape_size(self.input_shape),),
+                                     name="data_output_ub",
+                                     scope=tik.scope_ubuf)
+
     def _do_eltwise_operation_pre(self):
         if self.is_alpha_sqrt_flag:
-            self._vmuls_func(self.data_square_ub, self.data_input_ub, self.alpha_sqrt,
-                             self.data_input_ub.shape)
+            self._vmuls_func(self.data_square_ub, self.data_input_ub,
+                             self.alpha_sqrt, self.data_input_ub.shape)
 
             # do square operation
             self._vmul_func(self.data_square_ub, self.data_square_ub,

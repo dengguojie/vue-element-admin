@@ -1,28 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 square_sum_v1
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 
 MIN_FP32 = 2**(-126)
 # min float16 value
@@ -62,11 +59,10 @@ def reduce_sum_d_compute(x,
     dtype = x.dtype
 
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support(
-                "te.lang.cce.sum", "float32"):
-        x = te.lang.cce.cast_to(x, "float32")
-    res_sum = te.lang.cce.sum(x, axis=axis, keepdims=keepdims)
-    res = te.lang.cce.cast_to(res_sum, dtype)
+            tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+        x = tbe.cast_to(x, "float32")
+    res_sum = tbe.sum(x, axis=axis, keepdims=keepdims)
+    res = tbe.cast_to(res_sum, dtype)
 
     return res
 
@@ -90,11 +86,11 @@ def square_compute(input_x, output_y, kernel_name="square"):
     res : tvm.tensor
         the result of square
     """
-    res = te.lang.cce.vmul(input_x, input_x)
+    res = tbe.vmul(input_x, input_x)
     return res
 
 
-@fusion_manager.register("square_sum_v1")
+@tbe_platform.fusion_manager.fusion_manager.register("square_sum_v1")
 def square_sum_v1_compute(input_x,
                           output1,
                           attr1,
@@ -111,7 +107,7 @@ def square_sum_v1_compute(input_x,
     -------
     output tensor
     """
-    shape = te.lang.cce.util.shape_to_list(input_x.shape)
+    shape = shape_util.shape_to_list(input_x.shape)
     axis_d = []
     if not attr1:
         for i, _ in enumerate(shape):
@@ -128,7 +124,8 @@ def square_sum_v1_compute(input_x,
     return sum0
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def square_sum_v1(input_x,
                   output1,
                   attr1,
@@ -150,16 +147,16 @@ def square_sum_v1(input_x,
 
     input_dtype = dtype.lower()
 
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
 
     res = square_sum_v1_compute(data_input, output1, attr1, attr2, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)
 

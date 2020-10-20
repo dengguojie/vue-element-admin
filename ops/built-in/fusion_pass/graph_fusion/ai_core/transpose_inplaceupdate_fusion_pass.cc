@@ -1,19 +1,23 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @brief transpose inplaceupdate fusion pass
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file transpose_inplaceupdate_fusion_pass.cpp
+ * \brief transpose inplaceupdate fusion pass
+ */
 #include "transpose_inplaceupdate_fusion_pass.h"
 
 #include <iostream>
@@ -32,19 +36,18 @@
 
 using namespace ge;
 namespace fe {
-static const char *TRANSPOSE = "TransposeD";
-static const char *INPLACEUPDATE = "InplaceUpdate";
+static const char* TRANSPOSE = "TransposeD";
+static const char* INPLACEUPDATE = "InplaceUpdate";
 static const std::string PATTERN_TRANSPOSE0 = "FusedNodeTranspose0";
 static const std::string PATTERN_INPLACEUPDATE0 = "FusedNodeInplaceUpdate0";
 static const std::string PATTERN_TRANSPOSE1 = "FusedNodeTranspose1";
 static const std::string PATTERN_INPUT0 = "Input0";
 
 vector<FusionPattern*> TransposeInplaceUpdateFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
-  FusionPattern *pattern =
-      new (std::nothrow) FusionPattern("TransposeInplaceUpdateFusionPass");
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("TransposeInplaceUpdateFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_TRANSPOSE0, {TRANSPOSE})
       .AddOpDesc(PATTERN_INPLACEUPDATE0, {INPLACEUPDATE})
@@ -60,24 +63,30 @@ vector<FusionPattern*> TransposeInplaceUpdateFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
-                                Mapping& mapping,
-                                vector<ge::NodePtr> &fusionNodes) {
+Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                                vector<ge::NodePtr>& fusionNodes) {
   // get all nodes
   ge::NodePtr trans0_node = GetNodeFromMapping(PATTERN_TRANSPOSE0, mapping);
   ge::NodePtr inplace0_node = GetNodeFromMapping(PATTERN_INPLACEUPDATE0, mapping);
   ge::NodePtr trans1_node = GetNodeFromMapping(PATTERN_TRANSPOSE1, mapping);
-  FUSION_PASS_CHECK(trans0_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(inplace0_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inplaceupdate node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(trans1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(trans0_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose node is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(inplace0_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "inplaceupdate node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(trans1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // get input
   ge::OpDescPtr trans0_desc = trans0_node->GetOpDesc();
   ge::OpDescPtr inplace0_desc = inplace0_node->GetOpDesc();
   ge::OpDescPtr trans1_desc = trans1_node->GetOpDesc();
-  FUSION_PASS_CHECK(trans0_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose OpDesc is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(inplace0_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inplaceupdate OpDesc is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(trans1_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose OpDesc is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(trans0_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(inplace0_desc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "inplaceupdate OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(trans1_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transpose OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::GeTensorDesc input_desc = trans0_desc->GetInputDesc(0);
   ge::GeTensorDesc output_desc = trans1_desc->GetOutputDesc(0);
   std::vector<int64_t> input_dims = input_desc.GetShape().GetDims();
@@ -102,7 +111,7 @@ Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
   // verify
   if ((input_dims.size() == 4) && (perm0.size() == 4) && (perm1.size() == 4)) {
     if ((perm0[0] != 2) || (perm0[1] != 0) || (perm0[2] != 1) || (perm0[3] != 3)) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(),"the rule of transpose is not satisfied, not changed.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule of transpose is not satisfied, not changed.");
       return NOT_CHANGED;
     }
     if ((perm1[0] != 1) || (perm1[1] != 2) || (perm1[2] != 0) || (perm1[3] != 3)) {
@@ -115,66 +124,59 @@ Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
   }
 
   if ((inplace_dims0.size() != 4) || (inplace_dims1.size() != 1) || (inplace_dims2.size() != 4)) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule1 of inplaceupdate is not satisfied, not changed.");
-      return NOT_CHANGED;
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule1 of inplaceupdate is not satisfied, not changed.");
+    return NOT_CHANGED;
   }
 
   if ((inplace_dims1[0] != 1) || (inplace_dims2[0] != 1)) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule2 of inplaceupdate is not satisfied, not changed.");
-      return NOT_CHANGED;
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule2 of inplaceupdate is not satisfied, not changed.");
+    return NOT_CHANGED;
   }
 
-  if ((inplace_dims0[1] != inplace_dims2[1]) || (inplace_dims0[2] != inplace_dims2[2]) || (inplace_dims0[3] != inplace_dims2[3])) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule3 of inplaceupdate is not satisfied, not changed.");
-      return NOT_CHANGED;
+  if ((inplace_dims0[1] != inplace_dims2[1]) || (inplace_dims0[2] != inplace_dims2[2]) ||
+      (inplace_dims0[3] != inplace_dims2[3])) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule3 of inplaceupdate is not satisfied, not changed.");
+    return NOT_CHANGED;
   }
 
   if ((inplace_dims0[3] % 16 != 0) || (inplace_dims0[3] > 256)) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule4 of inplaceupdate is not satisfied, not changed.");
-      return NOT_CHANGED;
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the rule4 of inplaceupdate is not satisfied, not changed.");
+    return NOT_CHANGED;
   }
 
   // set input and output desc
   FUSION_PASS_CHECK(inplace0_desc->UpdateInputDesc(0, input_desc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "update inplaceupdate input desc failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "update inplaceupdate input desc failed."), return FAILED);
   FUSION_PASS_CHECK(inplace0_desc->UpdateOutputDesc(0, output_desc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "update inplaceupdate output desc failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "update inplaceupdate output desc failed."), return FAILED);
 
   // connect input edge
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(trans0_node->GetOutDataAnchor(0),
-                                inplace0_node->GetInDataAnchor(0)) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(
-               trans0_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-               inplace0_node->GetInDataAnchor(0)) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                   trans0_node->GetInDataAnchor(0)
-                       ->GetPeerOutAnchor()
-                       ->GetOwnerNode()
-                       ->GetName()
-                       .c_str(),
-                   inplace0_node->GetName().c_str()),
-           return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GraphUtils::RemoveEdge(trans0_node->GetOutDataAnchor(0), inplace0_node->GetInDataAnchor(0)) != SUCCESS,
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(trans0_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                            inplace0_node->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            trans0_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                            inplace0_node->GetName().c_str()),
+                    return FAILED);
 
   // connect output edge
-  for (auto inDataAnchor :
-       trans1_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(trans1_node->GetOutDataAnchor(0),
-                                        inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(inplace0_node->GetOutDataAnchor(0),
-                                     inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+  for (auto inDataAnchor : trans1_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(trans1_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(inplace0_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
 
   // delete fused nodes
   FUSION_PASS_CHECK(graph.RemoveNode(trans0_node) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove transpose node failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove transpose node failed."), return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(trans1_node) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove transpose node failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove transpose node failed."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "TransposeInplaceUpdateFusionPass graph fusion success!");
   return SUCCESS;
 }
 REGISTER_PASS("ZTransposeInplaceUpdateFusionPass", BUILT_IN_GRAPH_PASS, TransposeInplaceUpdateFusionPass);
-}
+}  // namespace fe

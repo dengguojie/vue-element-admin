@@ -1,29 +1,30 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 basic_rnn_cell
 """
 # pylint: disable=too-many-lines
 import math
 
+import te.platform as tbe_platform
 from te import tvm
-from te.platform import cce_conf
-from te.platform.cce_build import build_config
-import te.platform.cce_params as cce
-import topi
-from impl.tanh_compute import tanh_compute
-from topi.cce import util
-from te.utils.op_utils import *
+
+from te.utils import shape_util
+from te.utils import para_check
+
+from impl import tanh_compute
 
 MIN_FP32 = 2**(-126)
 NONETYPE = type(None)
@@ -183,7 +184,7 @@ class BasicRNNCell:
         self.dims = dims
 
         self.device = "mini"
-        if not cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        if not tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
             self.device = "hisi_es"
 
     def check_input_parameters(self, dtypes, shapes, dims):
@@ -204,22 +205,22 @@ class BasicRNNCell:
         None
         """
         # check dtypes
-        check_dtype(dtypes["x"].lower(), ("float16",), param_name="x")
-        check_dtype(dtypes["w_xh"].lower(), ("float16",), param_name="w_xh")
-        check_dtype(dtypes["w_ho"].lower(), ("float16",), param_name="w_ho")
-        check_dtype(dtypes["bias_h"].lower(),
+        para_check.check_dtype(dtypes["x"].lower(), ("float16",), param_name="x")
+        para_check.check_dtype(dtypes["w_xh"].lower(), ("float16",), param_name="w_xh")
+        para_check.check_dtype(dtypes["w_ho"].lower(), ("float16",), param_name="w_ho")
+        para_check.check_dtype(dtypes["bias_h"].lower(),
                     ("float16", "float32", "int16", "int32"), param_name="bias_h")
-        check_dtype(dtypes["bias_o"].lower(),
+        para_check.check_dtype(dtypes["bias_o"].lower(),
                     ("float16", "float32", "int16", "int32"), param_name="bias_o")
-        check_dtype(dtypes["o_t"].lower(), ("float16", "float32"), param_name="o_t")
-        check_dtype(dtypes["h_t"].lower(), ("float16", "float32"), param_name="h_t")
+        para_check.check_dtype(dtypes["o_t"].lower(), ("float16", "float32"), param_name="o_t")
+        para_check.check_dtype(dtypes["h_t"].lower(), ("float16", "float32"), param_name="h_t")
 
         # check shapes
         for key in shapes:
             if key in ("bias_h", "bias_o", "cont"):
-                check_shape(shapes[key], min_rank=2, max_rank=2)
+                para_check.check_shape(shapes[key], min_rank=2, max_rank=2)
             else:
-                check_shape(shapes[key], min_rank=4, max_rank=4)
+                para_check.check_shape(shapes[key], min_rank=4, max_rank=4)
 
         batch_dim = dims["batch_dim"]
         input_dim = dims["input_dim"]
@@ -235,16 +236,16 @@ class BasicRNNCell:
 
         if self.expose_hidden:
 
-            check_dtype(dtypes["h_0"].lower(),
+            para_check.check_dtype(dtypes["h_0"].lower(),
                         ("float16", "float32"), param_name="h_0")
-            check_dtype(dtypes["cont"].lower(), ("float16",), param_name="cont")
-            check_dtype(dtypes["w_hh"].lower(), ("float16",), param_name="w_hh")
+            para_check.check_dtype(dtypes["cont"].lower(), ("float16",), param_name="cont")
+            para_check.check_dtype(dtypes["w_hh"].lower(), ("float16",), param_name="w_hh")
             check_shapes(shapes["cont"], (batch_dim, 16), )
             check_shapes(shapes["h_0"], (hidden_dim, batch_dim, 16, 16))
             check_shapes(shapes["w_hh"], (hidden_dim, hidden_dim, 16, 16))
 
         if self.has_static:
-            check_dtype(dtypes["w_xh_x_static"].lower(),
+            para_check.check_dtype(dtypes["w_xh_x_static"].lower(),
                         ("float16", "float32"), param_name="w_xh_x_static")
             check_shapes(
                 shapes["w_xh_x_static"], (hidden_dim, batch_dim, 16, 16))
@@ -503,15 +504,15 @@ class BasicRNNCell:
                 name='ub_h_0')
             self.tensor_list1["ub_h_0"] = ub_h_0
             self.emit_cmd["ub_h_0"] = "dma_copy"
-            self.scope_list["ub_h_0"] = cce.scope_ubuf
+            self.scope_list["ub_h_0"] = tbe_platform.scope_ubuf
 
             h_0_fp16 = tvm.compute(
                 ub_h_0.shape,
-                lambda *i: topi.cast(ub_h_0(*i), "float16"),
+                lambda *i: shape_util.cast(ub_h_0(*i), "float16"),
                 name="h_0_fp16")
             self.tensor_list1["h_0_fp16"] = h_0_fp16
             self.emit_cmd["h_0_fp16"] = "vector_conv"
-            self.scope_list["h_0_fp16"] = cce.scope_ubuf
+            self.scope_list["h_0_fp16"] = tbe_platform.scope_ubuf
 
         l1_h_0 = tvm.compute(
             (self.dims["batch_dim"], self.dims["hidden_dim"], 16, 16),
@@ -519,12 +520,12 @@ class BasicRNNCell:
             name='l1_h_0')
         self.tensor_list1["l1_h_0"] = l1_h_0
         self.emit_cmd["l1_h_0"] = "dma_copy"
-        self.scope_list["l1_h_0"] = cce.scope_cbuf
+        self.scope_list["l1_h_0"] = tbe_platform.scope_cbuf
         l0a_h_0 = tvm.compute(
             l1_h_0.shape, lambda *i: l1_h_0(*i), name='l0a_w_hh')
         self.tensor_list1["l0a_h_0"] = l0a_h_0
         self.emit_cmd["l0a_h_0"] = "dma_copy"
-        self.scope_list["l0a_h_0"] = cce.scope_ca
+        self.scope_list["l0a_h_0"] = tbe_platform.scope_ca
 
         # Tensor w_hh from GM to L1, L0B
         l1_w_hh = tvm.compute(
@@ -533,12 +534,12 @@ class BasicRNNCell:
             name='l1_w_hh')
         self.tensor_list1["l1_w_hh"] = l1_w_hh
         self.emit_cmd["l1_w_hh"] = "dma_copy"
-        self.scope_list["l1_w_hh"] = cce.scope_cbuf
+        self.scope_list["l1_w_hh"] = tbe_platform.scope_cbuf
         l0b_w_hh = tvm.compute(
             l1_w_hh.shape, lambda *i: l1_w_hh(*i), name='l0b_h_0')
         self.tensor_list1["l0b_w_hh"] = l0b_w_hh
         self.emit_cmd["l0b_w_hh"] = "dma_copy"
-        self.scope_list["l0b_w_hh"] = cce.scope_cb
+        self.scope_list["l0b_w_hh"] = tbe_platform.scope_cb
 
         reduce_kb = tvm.reduce_axis((0, self.dims["hidden_dim"]),
                                     name='reduce_kb')
@@ -562,14 +563,14 @@ class BasicRNNCell:
                 name='l0c_whh_ht',
                 attrs={'input_order': 'positive'})
         self.tensor_list1["l0c_whh_ht"] = l0c_whh_ht
-        self.scope_list["l0c_whh_ht"] = cce.scope_cc
+        self.scope_list["l0c_whh_ht"] = tbe_platform.scope_cc
 
         # Move whh_ht to UB
         ub_whh_ht = tvm.compute(
             matmul_res_shape, lambda *i: l0c_whh_ht(*i), name='ub_whh_ht')
         self.tensor_list1["ub_whh_ht"] = ub_whh_ht
         self.emit_cmd["ub_whh_ht"] = "dma_copy"
-        self.scope_list["ub_whh_ht"] = cce.scope_ubuf
+        self.scope_list["ub_whh_ht"] = tbe_platform.scope_ubuf
 
         # Move cont to UB
         ub_cont = tvm.compute(
@@ -578,16 +579,16 @@ class BasicRNNCell:
             name='ub_cont')
         self.tensor_list1["ub_cont"] = ub_cont
         self.emit_cmd["ub_cont"] = "dma_copy"
-        self.scope_list["ub_cont"] = cce.scope_ubuf
+        self.scope_list["ub_cont"] = tbe_platform.scope_ubuf
 
         if ub_cont.dtype == "float16" and self.device != "hisi_es":
             ub_cont_fp32 = tvm.compute(
                 ub_cont.shape,
-                lambda *i: topi.cast(ub_cont(*i), "float32"),
+                lambda *i: shape_util.cast(ub_cont(*i), "float32"),
                 name="ub_cont_fp32")
             self.tensor_list1["ub_cont_fp32"] = ub_cont_fp32
             self.emit_cmd["ub_cont_fp32"] = "vector_conv"
-            self.scope_list["ub_cont_fp32"] = cce.scope_ubuf
+            self.scope_list["ub_cont_fp32"] = tbe_platform.scope_ubuf
         else:
             ub_cont_fp32 = ub_cont
         ub_whh_ht_cont = tvm.compute(
@@ -597,7 +598,7 @@ class BasicRNNCell:
             name='ub_whh_ht_cont')
         self.tensor_list1["ub_whh_ht_cont"] = ub_whh_ht_cont
         self.emit_cmd["ub_whh_ht_cont"] = "vector_mul"
-        self.scope_list["ub_whh_ht_cont"] = cce.scope_ubuf
+        self.scope_list["ub_whh_ht_cont"] = tbe_platform.scope_ubuf
 
         # Matmul accumulation wht_xt_bias_h + whh_ht_cont
         ub_ht_tmp1 = tvm.compute(
@@ -606,7 +607,7 @@ class BasicRNNCell:
             name="ub_ht_tmp1")
         self.tensor_list1["ub_ht_tmp1"] = ub_ht_tmp1
         self.emit_cmd["ub_ht_tmp1"] = "vector_add"
-        self.scope_list["ub_ht_tmp1"] = cce.scope_ubuf
+        self.scope_list["ub_ht_tmp1"] = tbe_platform.scope_ubuf
 
         return ub_ht_tmp1
 
@@ -637,12 +638,12 @@ class BasicRNNCell:
             name='l1_x')
         self.tensor_list1["l1_x"] = l1_x
         self.emit_cmd["l1_x"] = "dma_copy"
-        self.scope_list["l1_x"] = cce.scope_cbuf
+        self.scope_list["l1_x"] = tbe_platform.scope_cbuf
 
         l0a_x = tvm.compute(l1_x.shape, lambda *i: l1_x(*i), name='l0a_x')
         self.tensor_list1["l0a_x"] = l0a_x
         self.emit_cmd["l0a_x"] = "dma_copy"
-        self.scope_list["l0a_x"] = cce.scope_ca
+        self.scope_list["l0a_x"] = tbe_platform.scope_ca
 
         # Tensor w_xh from GM to L1, L0B
         l1_w_xh = tvm.compute(
@@ -651,13 +652,13 @@ class BasicRNNCell:
             name='l1_w_xh')
         self.tensor_list1["l1_w_xh"] = l1_w_xh
         self.emit_cmd["l1_w_xh"] = "dma_copy"
-        self.scope_list["l1_w_xh"] = cce.scope_cbuf
+        self.scope_list["l1_w_xh"] = tbe_platform.scope_cbuf
 
         l0b_w_xh = tvm.compute(
             l1_w_xh.shape, lambda *i: l1_w_xh(*i), name='l0b_w_xh')
         self.tensor_list1["l0b_w_xh"] = l0b_w_xh
         self.emit_cmd["l0b_w_xh"] = "dma_copy"
-        self.scope_list["l0b_w_xh"] = cce.scope_cb
+        self.scope_list["l0b_w_xh"] = tbe_platform.scope_cb
 
         # Copy bias from GM to UB
         ub_bias_h = tvm.compute(
@@ -666,7 +667,7 @@ class BasicRNNCell:
             name='ub_bias_h')
         self.tensor_list1["ub_bias_h"] = ub_bias_h
         self.emit_cmd["ub_bias_h"] = "dma_copy"
-        self.scope_list["ub_bias_h"] = cce.scope_ubuf
+        self.scope_list["ub_bias_h"] = tbe_platform.scope_ubuf
         if ub_bias_h.dtype == "float16" and self.device != "hisi_es":
             l0c_bias_h = tvm.compute(
                 matmul_res_shape,
@@ -679,7 +680,7 @@ class BasicRNNCell:
                 name='l0c_bias_h')
         self.tensor_list1["l0c_bias_h"] = l0c_bias_h
         self.emit_cmd["l0c_bias_h"] = "dma_copy"
-        self.scope_list["l0c_bias_h"] = cce.scope_cc
+        self.scope_list["l0c_bias_h"] = tbe_platform.scope_cc
 
         reduce_kb = tvm.reduce_axis((0, self.dims["input_dim"]),
                                     name='reduce_kb')
@@ -704,7 +705,7 @@ class BasicRNNCell:
                 name='l0c_wht_xt',
                 attrs={'input_order': 'positive'})
         self.tensor_list1["l0c_wht_xt"] = l0c_wht_xt
-        self.scope_list["l0c_wht_xt"] = cce.scope_cc
+        self.scope_list["l0c_wht_xt"] = tbe_platform.scope_cc
 
         # Matmul accumulation wht_xt + bias_h
         l0c_wht_xt_bias_h = tvm.compute(
@@ -713,7 +714,7 @@ class BasicRNNCell:
             name="l0c_wht_xt_bias_h")
         self.tensor_list1["l0c_wht_xt_bias_h"] = l0c_wht_xt_bias_h
         self.emit_cmd["l0c_wht_xt_bias_h"] = "phony_insn"
-        self.scope_list["l0c_wht_xt_bias_h"] = cce.scope_cc
+        self.scope_list["l0c_wht_xt_bias_h"] = tbe_platform.scope_cc
 
         # Move ht to UB
         ub_wht_xt_bias_h = tvm.compute(
@@ -722,7 +723,7 @@ class BasicRNNCell:
             name='ub_wht_xt_bias_h')
         self.tensor_list1["ub_wht_xt_bias_h"] = ub_wht_xt_bias_h
         self.emit_cmd["ub_wht_xt_bias_h"] = "dma_copy"
-        self.scope_list["ub_wht_xt_bias_h"] = cce.scope_ubuf
+        self.scope_list["ub_wht_xt_bias_h"] = tbe_platform.scope_ubuf
 
         if self.expose_hidden:
             ub_ht_tmp1 = self.compute_h_0_whh(ub_wht_xt_bias_h)
@@ -737,18 +738,18 @@ class BasicRNNCell:
                 name='ub_w_xh_x_static')
             self.tensor_list1["ub_w_xh_x_static"] = ub_w_xh_x_static
             self.emit_cmd["ub_w_xh_x_static"] = "dma_copy"
-            self.scope_list["ub_w_xh_x_static"] = cce.scope_ubuf
+            self.scope_list["ub_w_xh_x_static"] = tbe_platform.scope_ubuf
 
             if ub_w_xh_x_static.dtype == "float16" \
                 and self.device != "hisi_es":
                 ub_w_xh_x_static_fp32 = tvm.compute(
                     ub_w_xh_x_static.shape,
-                    lambda *i: topi.cast(ub_w_xh_x_static(*i), "float32"),
+                    lambda *i: shape_util.cast(ub_w_xh_x_static(*i), "float32"),
                     name="ub_w_xh_x_static_fp32")
                 self.tensor_list1[
                     "ub_w_xh_x_static_fp32"] = ub_w_xh_x_static_fp32
                 self.emit_cmd["ub_w_xh_x_static_fp32"] = "vector_conv"
-                self.scope_list["ub_w_xh_x_static_fp32"] = cce.scope_ubuf
+                self.scope_list["ub_w_xh_x_static_fp32"] = tbe_platform.scope_ubuf
             else:
                 ub_w_xh_x_static_fp32 = ub_w_xh_x_static
             ub_ht_tmp2 = tvm.compute(
@@ -757,22 +758,22 @@ class BasicRNNCell:
                 name="ub_ht_tmp2")
             self.tensor_list1["ub_ht_tmp2"] = ub_ht_tmp2
             self.emit_cmd["ub_ht_tmp2"] = "vector_add"
-            self.scope_list["ub_ht_tmp2"] = cce.scope_ubuf
+            self.scope_list["ub_ht_tmp2"] = tbe_platform.scope_ubuf
         else:
             ub_ht_tmp2 = ub_ht_tmp1
 
         tanh_ht_tensor, ht_tanh_op, ht_tanh_scope = \
-            tanh_compute(ub_ht_tmp2.shape, ub_ht_tmp2, "ht", self.impl_mode)
+            tanh_compute.tanh_compute(ub_ht_tmp2.shape, ub_ht_tmp2, "ht", self.impl_mode)
 
         if self.dtypes["h_t"] == "float16" and self.device != "hisi_es":
             ub_ht_fp16 = tvm.compute(
                 matmul_res_shape,
-                lambda *i: topi.cast(
+                lambda *i: shape_util.cast(
                     tanh_ht_tensor["ub_tanh_ht"](*i), "float16"),
                 name='ub_ht_fp16')
             tanh_ht_tensor["ub_ht_fp16"] = ub_ht_fp16
             ht_tanh_op["ub_ht_fp16"] = "vector_conv"
-            ht_tanh_scope["ub_ht_fp16"] = cce.scope_ubuf
+            ht_tanh_scope["ub_ht_fp16"] = tbe_platform.scope_ubuf
             ub_ht = ub_ht_fp16
         else:
             ub_ht = tanh_ht_tensor["ub_tanh_ht"]
@@ -785,7 +786,7 @@ class BasicRNNCell:
         gm_ht = tvm.compute(
             matmul_res_shape, lambda *i: ub_ht(*i), name='gm_ht')
         self.tensor_list1["gm_ht"] = gm_ht
-        self.scope_list["gm_ht"] = cce.scope_gm
+        self.scope_list["gm_ht"] = tbe_platform.scope_gm
 
         # Tensor ht from GM to L1, L0A
         if gm_ht.dtype == "float32":
@@ -793,14 +794,14 @@ class BasicRNNCell:
                 matmul_res_shape, lambda *i: gm_ht(*i), name='ub_ht_new')
             self.tensor_list2["ub_ht_new"] = ub_ht_new
             self.emit_cmd["ub_ht_new"] = "dma_copy"
-            self.scope_list["ub_ht_new"] = cce.scope_ubuf
+            self.scope_list["ub_ht_new"] = tbe_platform.scope_ubuf
             ub_ht_fp16 = tvm.compute(
                 ub_ht_new.shape,
-                lambda *i: topi.cast(ub_ht_new(*i), "float16"),
+                lambda *i: shape_util.cast(ub_ht_new(*i), "float16"),
                 name="ub_ht_fp16")
             self.tensor_list2["ub_ht_fp16"] = ub_ht_fp16
             self.emit_cmd["ub_ht_fp16"] = "vector_conv"
-            self.scope_list["ub_ht_fp16"] = cce.scope_ubuf
+            self.scope_list["ub_ht_fp16"] = tbe_platform.scope_ubuf
         else:
             ub_ht_fp16 = gm_ht
 
@@ -810,12 +811,12 @@ class BasicRNNCell:
             name='l1_ht')
         self.tensor_list2["l1_ht"] = l1_ht
         self.emit_cmd["l1_ht"] = "dma_copy"
-        self.scope_list["l1_ht"] = cce.scope_cbuf
+        self.scope_list["l1_ht"] = tbe_platform.scope_cbuf
 
         l0a_ht = tvm.compute(l1_ht.shape, lambda *i: l1_ht(*i), name='l0a_ht')
         self.tensor_list2["l0a_ht"] = l0a_ht
         self.emit_cmd["l0a_ht"] = "dma_copy"
-        self.scope_list["l0a_ht"] = cce.scope_ca
+        self.scope_list["l0a_ht"] = tbe_platform.scope_ca
 
         # Tensor w_ho from ub to L1, L0B
         l1_w_ho = tvm.compute(
@@ -824,12 +825,12 @@ class BasicRNNCell:
             name='l1_w_ho')
         self.tensor_list2["l1_w_ho"] = l1_w_ho
         self.emit_cmd["l1_w_ho"] = "dma_copy"
-        self.scope_list["l1_w_ho"] = cce.scope_cbuf
+        self.scope_list["l1_w_ho"] = tbe_platform.scope_cbuf
         l0b_w_ho = tvm.compute(
             l1_w_ho.shape, lambda *i: l1_w_ho(*i), name='l0b_w_ho')
         self.tensor_list2["l0b_w_ho"] = l0b_w_ho
         self.emit_cmd["l0b_w_ho"] = "dma_copy"
-        self.scope_list["l0b_w_ho"] = cce.scope_cb
+        self.scope_list["l0b_w_ho"] = tbe_platform.scope_cb
 
         # Copy bias from GM to UB
         ub_bias_o = tvm.compute(
@@ -838,7 +839,7 @@ class BasicRNNCell:
             name='ub_bias_o')
         self.tensor_list2["ub_bias_o"] = ub_bias_o
         self.emit_cmd["ub_bias_o"] = "dma_copy"
-        self.scope_list["ub_bias_o"] = cce.scope_ubuf
+        self.scope_list["ub_bias_o"] = tbe_platform.scope_ubuf
         if ub_bias_o.dtype == "float16" and self.device != "hisi_es":
             l0c_bias_o = tvm.compute(
                 matmul_res_shape,
@@ -851,7 +852,7 @@ class BasicRNNCell:
                 name='l0c_bias_o')
         self.tensor_list2["l0c_bias_o"] = l0c_bias_o
         self.emit_cmd["l0c_bias_o"] = "dma_copy"
-        self.scope_list["l0c_bias_o"] = cce.scope_cc
+        self.scope_list["l0c_bias_o"] = tbe_platform.scope_cc
 
         reduce_kb = tvm.reduce_axis((0, self.dims["hidden_dim"]),
                                     name='reduce_kb')
@@ -876,7 +877,7 @@ class BasicRNNCell:
                 name='l0c_who_ht',
                 attrs={'input_order': 'positive'})
         self.tensor_list2["l0c_who_ht"] = l0c_who_ht
-        self.scope_list["l0c_who_ht"] = cce.scope_cc
+        self.scope_list["l0c_who_ht"] = tbe_platform.scope_cc
 
         # Matmul accumulation whh_ht + bias_o
         l0c_who_ht_bias_o = tvm.compute(
@@ -885,7 +886,7 @@ class BasicRNNCell:
             name="l0c_who_ht_bias_o")
         self.tensor_list2["l0c_who_ht_bias_o"] = l0c_who_ht_bias_o
         self.emit_cmd["l0c_who_ht_bias_o"] = "phony_insn"
-        self.scope_list["l0c_who_ht_bias_o"] = cce.scope_cc
+        self.scope_list["l0c_who_ht_bias_o"] = tbe_platform.scope_cc
 
         # Move ub_whh_ht_bias_o to UB
         ub_who_ht_bias_o = tvm.compute(
@@ -894,21 +895,21 @@ class BasicRNNCell:
             name='ub_who_ht_bias_o')
         self.tensor_list2["ub_who_ht_bias_o"] = ub_who_ht_bias_o
         self.emit_cmd["ub_who_ht_bias_o"] = "dma_copy"
-        self.scope_list["ub_who_ht_bias_o"] = cce.scope_ubuf
+        self.scope_list["ub_who_ht_bias_o"] = tbe_platform.scope_ubuf
 
         tanh_ot_tensor, tanh_ot_operator, tanh_ot_scope = \
-            tanh_compute(ub_who_ht_bias_o.shape, ub_who_ht_bias_o, "ot",
+            tanh_compute.tanh_compute(ub_who_ht_bias_o.shape, ub_who_ht_bias_o, "ot",
                          self.impl_mode)
 
         if self.dtypes["o_t"] == "float16" and self.device != "hisi_es":
             ub_ot_fp16 = tvm.compute(
                 matmul_res_shape,
-                lambda *i: topi.cast(
+                lambda *i: shape_util.cast(
                     tanh_ot_tensor["ub_tanh_ot"](*i), "float16"),
                 name='ub_ot_fp16')
             tanh_ot_tensor["ub_ot_fp16"] = ub_ot_fp16
             tanh_ot_operator["ub_ot_fp16"] = "vector_conv"
-            tanh_ot_scope["ub_ot_fp16"] = cce.scope_ubuf
+            tanh_ot_scope["ub_ot_fp16"] = tbe_platform.scope_ubuf
             ub_ot = ub_ot_fp16
         else:
             ub_ot = tanh_ot_tensor["ub_tanh_ot"]
@@ -922,7 +923,7 @@ class BasicRNNCell:
             matmul_res_shape, lambda *i: ub_ot(*i), name='gm_ot')
         self.tensor_list2["gm_ot"] = gm_ot
         self.emit_cmd["gm_ot"] = "dma_copy"
-        self.scope_list["gm_ot"] = cce.scope_gm
+        self.scope_list["gm_ot"] = tbe_platform.scope_gm
 
         res_empty = tvm.compute(
             matmul_res_shape,
@@ -930,7 +931,7 @@ class BasicRNNCell:
             name='res_empty')
         self.tensor_list2["res_empty"] = res_empty
         self.emit_cmd["res_empty"] = "phony_insn"
-        self.scope_list["res_empty"] = cce.scope_ubuf
+        self.scope_list["res_empty"] = tbe_platform.scope_ubuf
 
         schedule_list = [res_empty.op]
         sch = self.basic_rnn_cell_schedule(schedule_list)
@@ -953,7 +954,7 @@ class BasicRNNCell:
                               self.datas["bias_h"], self.datas["w_ho"],
                               self.datas["bias_o"], gm_ot, gm_ht)
 
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, build_list, "cce", name=self.kernel_name)
 
     def set_scedule_scope(self, sch):
@@ -989,10 +990,10 @@ def get_tilling(m_dim, k_dim, n_dim):
     tilling_info: dict
         tilling parameters
     """
-    block_num = cce_conf.get_soc_spec(cce_conf.CORE_NUM)
-    l1_size = cce_conf.get_soc_spec(cce_conf.L1_SIZE)
+    block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
     l1_limit = l1_size // 4 // 2
-    ub_size = cce_conf.get_soc_spec(cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     ub_limit = ub_size // 2
 
     tilling_info = {}
@@ -1011,12 +1012,14 @@ def get_tilling(m_dim, k_dim, n_dim):
         k_l0_factor = 32
         one_mn_size = k_l0_factor * fracz_size
     ub_used = m_l0_factor * n_l0_factor * one_mn_size
-    while ub_used > ub_limit:
+    l1_used = max(one_mn_size * m_l0_factor, one_mn_size * n_l0_factor)
+    while ub_used > ub_limit or l1_used > l1_limit:
         if m_l0_factor > 1:
             m_l0_factor -= 1
         else:
             n_l0_factor -= 1
         ub_used = m_l0_factor * n_l0_factor * one_mn_size
+        l1_used = max(one_mn_size * m_l0_factor, one_mn_size * n_l0_factor)
 
     if m_l0_factor > 1:
         while m_dim % m_l0_factor != 0:
@@ -1046,6 +1049,7 @@ def get_tilling(m_dim, k_dim, n_dim):
 
     return tilling_info
 
+
 def matmul_schedule(sch, tensors, tilling_info, init_bias):
     """
     matmul schedule
@@ -1063,7 +1067,7 @@ def matmul_schedule(sch, tensors, tilling_info, init_bias):
     -------
     None
     """
-    mad_pattern = cce.GEMM_MODE
+    mad_pattern = tbe_platform.GEMM_MODE
     # matmul schedule for l0c_whh_ht
     l0c = tensors["l0c"]
     l1_left = tensors["l1_left"]
@@ -1129,13 +1133,8 @@ def check_shapes(input_shape, check_shape):
     None
     """
     if len(input_shape) != len(check_shape):
-        error_info = {}
-        error_info['errCode'] = 'E80017'
-        error_info['op_name'] = 'basicrnn_cell'
-        error_info['param_name1'] = "input_shape"
-        error_info['param_name2'] = "check_shape"
-        error_info['param1_shape'] = len(input_shape)
-        error_info['param2_shape'] = len(check_shape)
+        error_info = {'errCode': 'E80017', 'op_name': 'basicrnn_cell', 'param_name1': "input_shape",
+                      'param_name2': "check_shape", 'param1_shape': len(input_shape), 'param2_shape': len(check_shape)}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] "
                            "are not equal in shape with parameter[%s][%s]"
                            % (error_info['op_name'], error_info['param_name1'], \
@@ -1148,11 +1147,11 @@ def check_shapes(input_shape, check_shape):
 
 
 # pylint: disable=too-many-arguments, invalid-name
-@check_op_params(REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, OPTION_ATTR_INT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                 para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                 para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                 para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT,
+                 para_check.KERNEL_NAME)
 def basic_rnn_cell(x,
                    cont,
                    w_xh_x_static,

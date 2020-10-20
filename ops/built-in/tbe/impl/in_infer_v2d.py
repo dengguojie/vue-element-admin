@@ -1,20 +1,20 @@
-#!/usr/bin/env python
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-in_infer_v2
+in_infer_v2d
 """
-
 from __future__ import absolute_import
 from __future__ import division
 
@@ -61,11 +61,11 @@ def check_rule(data, rule_desc, param_name=PARAM_NAME):
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
     raise RuntimeError(error_info,
-                       "Op[%s] has rule: %s, but [%s] is [%s]."\
-                        % (error_info['op_name'],
-                        error_info['rule_desc'],
-                        error_info['param_name'],
-                        error_info['param_value']))
+                       "Op[%s] has rule: %s, but [%s] is [%s]." \
+                       % (error_info['op_name'],
+                          error_info['rule_desc'],
+                          error_info['param_name'],
+                          error_info['param_value']))
 
 
 def _check_dims_equal(shape_x, shape):
@@ -88,13 +88,14 @@ def _check_dims_equal(shape_x, shape):
     if shape_x[0] != shape[0] or \
             shape_x[1] != shape[1] or shape_x[4] != shape[4]:
         check_rule("{} and {}".format(shape_x, shape),
-                   "The dimensions N, C1, C0 of shape_x"\
+                   "The dimensions N, C1, C0 of shape_x" \
                    "and shape must be equal",
                    "shape_x and shape")
     if shape[2] != 1 or shape[3] != 1:
         check_rule("{} and {}".format(shape[2], shape[3]),
                    "Dimension H,W must be 1",
                    "H,W")
+
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
 def _output_data_y_compute(x, mean, scale, offset, y_sqrt):
@@ -107,7 +108,6 @@ def _output_data_y_compute(x, mean, scale, offset, y_sqrt):
         contains x data
     mean: TVM tensor
         contains mean data.
-s
     scale: TVM tensor
         contains scale data
     offset: TVM tensor
@@ -121,17 +121,20 @@ s
         the y of instance_norm_v2 compute
     """
     shape_x = te.lang.cce.util.shape_to_list(x.shape)
-
     var_sub = te.lang.cce.vsub(x, mean)
-    y_norm = te.lang.cce.vdiv(var_sub, y_sqrt)
+
     if scale is not None and offset is not None:
-        scale_broad = te.lang.cce.broadcast(scale, shape_x)
+
+        scale_sqrt = te.lang.cce.vdiv(scale, y_sqrt)
+        scale_broad = te.lang.cce.broadcast(scale_sqrt, shape_x)
         offset_broad = te.lang.cce.broadcast(offset, shape_x)
-        res = te.lang.cce.vadd(te.lang.cce.vmul(scale_broad, y_norm),
+        res = te.lang.cce.vadd(te.lang.cce.vmul(scale_broad, var_sub),
                                offset_broad)
     else:
-        res = y_norm
+        sqrt_broadcast = te.lang.cce.broadcast(y_sqrt, shape_x)
+        res = te.lang.cce.vdiv(var_sub, sqrt_broadcast)
     return res
+
 
 # pylint: disable=locally-disabled,too-many-locals
 @fusion_manager.register("in_infer_v2d")
@@ -179,9 +182,8 @@ def instance_norm_inf_compute(x, scale, offset, mean, variance,
 
     mean_broadcast = te.lang.cce.broadcast(mean, shape_x)
     var_broadcast = te.lang.cce.broadcast(variance, shape_x)
-    var_sqrt_broadcast = te.lang.cce.broadcast(y_sqrt, shape_x)
     res_y = _output_data_y_compute(x, mean_broadcast,
-                                   scale, offset, var_sqrt_broadcast)
+                                   scale, offset, y_sqrt)
     if is_cast:
         res_y = te.lang.cce.cast_to(res_y, "float16")
 
@@ -247,7 +249,7 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
                               dtype=dtype_x.lower())
 
     gamma_input, beta_input, mean_input, variance_input, \
-        variance_sqrt_input = \
+    variance_sqrt_input = \
         None, None, None, None, None
     if gamma is not None and beta is not None:
         affine = True

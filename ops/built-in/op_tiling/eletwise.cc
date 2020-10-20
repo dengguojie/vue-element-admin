@@ -1,92 +1,47 @@
-/*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#include "eletwise.hpp"
-#include <string>
+/*!
+ * \file eletwise.cpp
+ * \brief
+ */
+#include "eletwise.h"
+
 #include <algorithm>
-#include <nlohmann/json.hpp>
-#include "graph/debug/ge_log.h"
-#include "vector_tiling.hpp"
+#include <unordered_map>
+
+#include "error_log.h"
+#include "vector_tiling.h"
 
 namespace optiling {
 
 static std::unordered_map<int32_t, int32_t> split_factors{
-        {1, 32767},
-        {2, 32767},
-        {4, 16383},
-        {8, 8191},
+    {1, 32767},
+    {2, 32767},
+    {4, 16383},
+    {8, 8191},
+
 };
 
-bool ProduceShapes(const std::string &op_type,
-                   std::vector<int64_t> &input_shape_x,
-                   std::vector<int64_t> &input_shape_y,
-                   std::vector<int64_t> &output_shape) {
+static std::unordered_map<int32_t, Pattern> special_pattern{
+    {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
+    {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
+};
 
-  size_t shape_len_x = input_shape_x.size();
-  size_t shape_len_y = input_shape_y.size();
-  size_t max_len = shape_len_x > shape_len_y ? shape_len_x : shape_len_y;
-
-  std::vector<int64_t> output(max_len, 1);
-  if (shape_len_x < max_len) {
-    input_shape_x.insert(input_shape_x.begin(),
-                       output.begin(), output.begin() + (max_len - shape_len_x));
-  } else {
-    input_shape_y.insert(input_shape_y.begin(),
-                       output.begin(), output.begin() + (max_len - shape_len_y));
-  }
-
-  for (size_t i = 0; i < max_len; i++) {
-    if (input_shape_x[i] != input_shape_y[i] &&
-        input_shape_x[i] != 1 && input_shape_y[i] != 1) {
-      GE_LOGE("op [%s] : input shapes not match!", op_type.c_str());
-      return false;
-    }
-    output[i] = input_shape_x[i] == 1 ? input_shape_y[i] : input_shape_x[i];
-  }
-  output_shape = std::move(output);
-
-  return true;
-}
-
-bool RefineShapesForBroadcast(const std::string &op_type,
-                              std::vector<int64_t> &input_shape_x,
-                              std::vector<int64_t> &input_shape_y,
-                              std::vector<int64_t> &output_shape,
-                              const std::vector<std::vector<size_t>> &fusion_index) {
-  if (input_shape_x.size() != input_shape_y.size()) {
-    GE_LOGE("op [%s] : input shapes not match, can't broadcast!", op_type.c_str());
-    return false;
-  }
-  size_t fusion_len = fusion_index.size();
-  std::vector<int64_t> fused_shape_x(fusion_len);
-  std::vector<int64_t> fused_shape_y(fusion_len);
-  for (size_t i = 0; i < fusion_len; i++) {
-    int64_t fused_x = 1;
-    int64_t fused_y = 1;
-    for (size_t j = 0; j < fusion_index[i].size(); j++) {
-      fused_x *= input_shape_x[fusion_index[i][j]];
-      fused_y *= input_shape_y[fusion_index[i][j]];
-    }
-    fused_shape_x[i] = fused_x;
-    fused_shape_y[i] = fused_y;
-  }
-  bool ret = ProduceShapes(op_type, fused_shape_x, fused_shape_y, output_shape);
-  input_shape_x = std::move(fused_shape_x);
-  input_shape_y = std::move(fused_shape_y);
-  return ret;
-}
-
-int32_t GetTypeSize(const std::string dtype) {
+int32_t GetTypeSize(const std::string& dtype) {
   int32_t type_size = 2;
   if (dtype == "int8" || dtype == "uint8") {
     type_size = 1;
@@ -100,22 +55,232 @@ int32_t GetTypeSize(const std::string dtype) {
   return type_size;
 }
 
-int32_t GetBlockTiling(std::vector<int64_t> &output_shape,
-                       const int32_t core_num,
-                       std::unordered_map<std::string, int32_t> &var_names,
-                       int32_t &block_axis,
-                       const std::string &dtype) {
-  int32_t cur_core = core_num;
+bool Eletwise::Init() {
+  CHECK((!op_paras.inputs.empty() && !op_paras.inputs[0].tensor.empty()), "op [%s] : input shape cannot be empty",
+        op_type.c_str());
+  in_type = op_paras.inputs[0].tensor[0].dtype;
+  CHECK((!op_paras.outputs.empty() && !op_paras.outputs[0].tensor.empty()), "op [%s] : output shape cannot be empty",
+        op_type.c_str());
+  out_type = op_paras.outputs[0].tensor[0].dtype;
+  CHECK((op_info.count("_is_support_broadcast") > 0), "op [%s] : compile info not contain [_is_support_broadcast]",
+        op_type.c_str());
+  compileInfo.is_support_broadcast = op_info["_is_support_broadcast"].get<bool>();
+  compileInfo.is_support_absorbable_broadcast = op_info["_is_support_absorbable_broadcast"].get<bool>();
+  CHECK((op_info.count("_use_special_pattern") > 0), "op [%s] : compile info not contain [_use_special_pattern]",
+        op_type.c_str());
+  compileInfo.use_special_pattern = op_info["_use_special_pattern"].get<bool>();
+  CHECK((op_info.count("_is_const_shapes") > 0), "op [%s] : compile info not contain [_is_const_shapes]",
+        op_type.c_str());
+  is_const = op_info["_is_const_shapes"].get<bool>();
+  if (!is_const) {
+    CHECK((op_info.count("_ub_size") > 0), "op [%s] : compile info not contain [_ub_size]", op_type.c_str());
+    compileInfo.ub_size = op_info["_ub_size"].get<std::int32_t>();
+    CHECK((op_info.count("_max_dtype_bytes") > 0), "op [%s] : compile info not contain [_max_dtype_bytes]",
+          op_type.c_str());
+    compileInfo.max_dtype = op_info["_max_dtype_bytes"].get<std::int32_t>();
+    CHECK((op_info.count("_coexisting_quantity") > 0), "op [%s] : compile info not contain [_coexisting_quantity]",
+          op_type.c_str());
+    compileInfo.coexisting_quantity = op_info["_coexisting_quantity"].get<std::int32_t>();
+    CHECK((op_info.count("_core_num") > 0), "op [%s] : compile info not contain [_core_num]", op_type.c_str());
+    compileInfo.core_num = op_info["_core_num"].get<std::int32_t>();
+    CHECK((op_info.count("_fusion") > 0), "op [%s] : compile info not contain [_fusion]", op_type.c_str());
+    compileInfo.fusion_flag = op_info["_fusion"].get<std::int32_t>();
+  }
+  need_multi_core = true;
+  block_axis = -1;
+  ub_axis = -1;
+  block_dims = 1;
+  s_pattern = Pattern::ORIGINAL;
+  return true;
+}
+
+bool Eletwise::AddShapeInfo(const std::vector<int64_t>& input_shape_x, const std::vector<int64_t>& input_shape_y) {
+  CHECK_EQ(input_shape_x.size(), input_shape_y.size(),
+           "op [%s] : the length of the input shape is different from that of the output shape", op_type.c_str());
+  std::string suffix_x = "_0";
+  std::string suffix_y = "_1";
+  for (size_t i = 0; i < output_shape.size(); i++) {
+    std::string prefix = "dim_" + std::to_string(i);
+    var_names[prefix + suffix_x] = input_shape_x[i];
+    var_names[prefix + suffix_y] = input_shape_y[i];
+  }
+  return true;
+}
+
+bool Eletwise::TrySwitchToPerfPattern(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y) {
+  if (compileInfo.fusion_flag == 0 || !compileInfo.use_special_pattern) {
+    return true;
+  }
+  CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot fuse axis",
+           op_type.c_str());
+  CHECK((!input_shape_x.empty() && !input_shape_y.empty()), "op [%s] : input shapes cannot be empty", op_type.c_str());
+  std::vector<int64_t> fused_shape_x{input_shape_x[0]};
+  std::vector<int64_t> fused_shape_y{input_shape_y[0]};
+  bool state = (input_shape_x[0] == input_shape_y[0]);
+  size_t last = 0;
+  for (size_t i = 1; i < input_shape_x.size(); i++) {
+    if (input_shape_x[i] == 1 && input_shape_y[i] == 1) {
+      continue;
+    }
+    if (state && (input_shape_x[i] == input_shape_y[i])) {
+      fused_shape_x[fused_shape_x.size() - 1] *= input_shape_x[i];
+      fused_shape_y[fused_shape_y.size() - 1] *= input_shape_y[i];
+    } else if (((input_shape_x[i] == input_shape_x[last]) && input_shape_x[i] == 1) ||
+               ((input_shape_y[i] == input_shape_y[last]) && input_shape_y[i] == 1)) {
+      fused_shape_x[fused_shape_x.size() - 1] *= input_shape_x[i];
+      fused_shape_y[fused_shape_y.size() - 1] *= input_shape_y[i];
+      state = (input_shape_x[i] == input_shape_y[i]);
+    } else {
+      fused_shape_x.push_back(input_shape_x[i]);
+      fused_shape_y.push_back(input_shape_y[i]);
+      state = (input_shape_x[i] == input_shape_y[i]);
+    }
+    last = i;
+  }
+  if (fused_shape_x.size() > 3) {
+    return true;
+  }
+  int32_t pattern_key = 0;
+  int32_t base = 100;
+  for (size_t i = 0; i < fused_shape_x.size(); i++) {
+    if (fused_shape_x[i] == fused_shape_y[i]) {
+      pattern_key += base;
+    } else {
+      pattern_key += (base * 2);
+    }
+    base /= 10;
+  }
+  if (special_pattern.find(pattern_key) != special_pattern.end()) {
+    s_pattern = special_pattern[pattern_key];
+    if (s_pattern == BROADCAST && compileInfo.is_support_absorbable_broadcast) {
+      special_scalar_key = fused_shape_x[0] == 1 ? 120 : 210;
+    }
+    input_shape_x = std::move(fused_shape_x);
+    input_shape_y = std::move(fused_shape_y);
+    BroadcastShapes(input_shape_x, input_shape_y);
+  }
+  return true;
+}
+
+bool Eletwise::GenerateOutputShape() {
+  bool ret = true;
+  if (compileInfo.is_support_broadcast) {
+    bool verify_input =
+        op_paras.inputs.size() == 2 && !op_paras.inputs[0].tensor.empty() && !op_paras.inputs[1].tensor.empty();
+    CHECK(verify_input, "op [%s] : input shape cannot be empty", op_type.c_str());
+    std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
+    std::vector<int64_t> input_shape_y = op_paras.inputs[1].tensor[0].shape;
+    ret = BroadcastShapes(input_shape_x, input_shape_y);
+    ret = ret && TrySwitchToPerfPattern(input_shape_x, input_shape_y);
+    ret = ret && AddShapeInfo(input_shape_x, input_shape_y);
+    if (compileInfo.fusion_flag == 2 && s_pattern == Pattern::ORIGINAL) {
+      ret = ret && RefineShapesForBroadcast(input_shape_x, input_shape_y);
+    }
+    if (ret) {
+      CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot fuse axis",
+               op_type.c_str());
+      int32_t input_length = input_shape_x.size();
+      for (int32_t i = input_length - 1; i >= 0; i--) {
+        if ((input_shape_x[i] == 1 && input_shape_y[i] != 1) || (input_shape_y[i] == 1 && input_shape_x[i] != 1)) {
+          broadcast_aixs = i;
+          break;
+        }
+      }
+    }
+    string suffix_z = "_2";
+    for (size_t i = 0; i < output_shape.size(); i++) {
+      std::string prefix = "dim_" + std::to_string(i);
+      var_names[prefix + suffix_z] = output_shape[i];
+    }
+  } else {
+    const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
+    if (compileInfo.fusion_flag > 0 || shapes.size() == 1) {
+      int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1, std::multiplies<int64_t>());
+      output_shape.push_back(fused_output);
+      CHECK(!output_shape.empty(), "op [%s] : output shape cannot be empty", op_type.c_str());
+      var_names["dim_0_0"] = output_shape[0];
+      if (compileInfo.use_special_pattern) {
+        s_pattern = Pattern::COMMON;
+      }
+    } else {
+      string suffix = "_0";
+      for (size_t j = 0; j < shapes.size(); j++) {
+        std::string name = "dim_" + std::to_string(j) + suffix;
+        var_names[name] = shapes[j];
+      }
+      output_shape = shapes;
+    }
+  }
+  return ret;
+}
+
+bool Eletwise::BroadcastShapes(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y) {
+  size_t shape_len_x = input_shape_x.size();
+  size_t shape_len_y = input_shape_y.size();
+  size_t max_len = shape_len_x > shape_len_y ? shape_len_x : shape_len_y;
+
+  std::vector<int64_t> output(max_len, 1);
+  if (shape_len_x < max_len) {
+    input_shape_x.insert(input_shape_x.begin(), output.begin(), output.begin() + (max_len - shape_len_x));
+  } else {
+    input_shape_y.insert(input_shape_y.begin(), output.begin(), output.begin() + (max_len - shape_len_y));
+  }
+
+  for (size_t i = 0; i < max_len; i++) {
+    bool verify_broadcast = input_shape_x[i] != input_shape_y[i] && input_shape_x[i] != 1 && input_shape_y[i] != 1;
+    CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+          std::to_string(input_shape_x[i]).c_str(), std::to_string(input_shape_y[i]).c_str());
+    output[i] = input_shape_x[i] == 1 ? input_shape_y[i] : input_shape_x[i];
+  }
+  output_shape = std::move(output);
+  return true;
+}
+
+bool Eletwise::RefineShapesForBroadcast(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y) {
+  CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot broadcast",
+           op_type.c_str());
+  CHECK((op_info.count("_fusion_index") > 0), "op [%s] : compile info not contain [_fusion_index]", op_type.c_str());
+  compileInfo.fusion_index = op_info["_fusion_index"].get<std::vector<std::vector<size_t>>>();
+  size_t fusion_len = compileInfo.fusion_index.size();
+  std::vector<int64_t> fused_shape_x(fusion_len);
+  std::vector<int64_t> fused_shape_y(fusion_len);
+  for (size_t i = 0; i < fusion_len; i++) {
+    int64_t fused_x = 1;
+    int64_t fused_y = 1;
+    for (size_t j = 0; j < compileInfo.fusion_index[i].size(); j++) {
+      fused_x *= input_shape_x[compileInfo.fusion_index[i][j]];
+      fused_y *= input_shape_y[compileInfo.fusion_index[i][j]];
+    }
+    fused_shape_x[i] = fused_x;
+    fused_shape_y[i] = fused_y;
+  }
+  input_shape_x = std::move(fused_shape_x);
+  input_shape_y = std::move(fused_shape_y);
+  bool ret = BroadcastShapes(input_shape_x, input_shape_y);
+  return ret;
+}
+bool Eletwise::CalcTiling() {
+  max_available_ub =
+      (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
+  int64_t output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int64_t>());
+  CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
+  const int64_t multi_core_threshold = 1024;
+  if (output_size < multi_core_threshold) {
+    need_multi_core = false;
+  }
+  return true;
+}
+
+bool Eletwise::DoBlockTiling() {
+  int32_t cur_core = compileInfo.core_num;
   size_t len = output_shape.size();
-  const int32_t block_size = 32;
-  int32_t type_size = GetTypeSize(dtype);
-  int32_t ele_in_block = block_size / type_size;
-  int32_t block_dims = 1;
+  int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
   if (len == 1) {
     block_axis = 0;
     if (output_shape.empty()) {
       return -1;
     }
+    CHECK((output_shape.size() > 0), "op [%s] : output shape cannot be empty", op_type.c_str())
     int32_t block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     block_dims = std::ceil(output_shape[0] * 1.0 / block_factor);
@@ -137,35 +302,47 @@ int32_t GetBlockTiling(std::vector<int64_t> &output_shape,
       }
     }
   }
-  return block_dims;
+  return true;
 }
 
-int32_t GetUbTiling(const std::vector<int64_t> &output_shape,
-                    const int32_t ub_limit,
-                    std::unordered_map<std::string, int32_t> &var_names,
-                    int32_t &ub_axis,
-                    int32_t &block_axis,
-                    const int32_t &broadcast_axis,
-                    const std::string &dtype,
-                    const int32_t &max_dtype) {
-  int32_t limit = ub_limit;
-  int32_t ub_factor = 1;
+bool Eletwise::DoUbTiling() {
+  int32_t limit = max_available_ub;
   if (output_shape.size() == 1) {
     ub_axis = 0;
     ub_factor = static_cast<int32_t>(output_shape[0]);
+    limit = std::min(limit, split_factors[compileInfo.max_dtype]);
     if (limit < ub_factor) {
-      int32_t type_size = GetTypeSize(dtype);
-      int32_t ele_in_block = BLOCK_SIZE / type_size;
+      int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
       int32_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
       int32_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
       int32_t align_factor = std::ceil(adjust_factor * 1.0 / ele_in_block);
       ub_factor = align_factor * ele_in_block;
+      if (ub_factor > limit) {
+        ub_factor = std::floor(adjust_factor * 1.0 / ele_in_block) * ele_in_block;
+      }
     }
-    ub_factor = std::min(ub_factor, split_factors[max_dtype]);
     var_names["ub_factor_0"] = ub_factor;
   } else {
     int32_t shape_len = static_cast<int32_t>(output_shape.size()) - 1;
+    int64_t under_broadcast_shape = 1;
+    int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(in_type);
     for (int32_t i = shape_len; i >= block_axis; i--) {
+      if (broadcast_aixs == i && broadcast_aixs != shape_len) {
+        bool is_cut_under_b = (under_broadcast_shape > N_LAST_BROADCAST_THRESHOLD ||
+                               (under_broadcast_shape > (ele_in_block * 2) && output_shape[i] < ele_in_block)) &&
+                              under_broadcast_shape % ele_in_block != 0;
+        if (is_cut_under_b) {
+          ub_axis = i + 1;
+          ub_factor = output_shape[i + 1];
+          var_names["ub_factor_" + std::to_string(i + 1)] = ub_factor;
+          break;
+        } else if (output_shape[i] > (ele_in_block * 3) && under_broadcast_shape % ele_in_block != 0) {
+          ub_axis = i;
+          ub_factor = std::min(static_cast<int32_t>(output_shape[i]), limit);
+          var_names["ub_factor_" + std::to_string(i)] = ub_factor;
+          break;
+        }
+      }
       if (output_shape[i] >= limit) {
         ub_axis = i;
         ub_factor = limit;
@@ -173,6 +350,7 @@ int32_t GetUbTiling(const std::vector<int64_t> &output_shape,
         break;
       } else {
         limit /= output_shape[i];
+        under_broadcast_shape *= output_shape[i];
       }
     }
     if (ub_axis < 0) {
@@ -181,205 +359,74 @@ int32_t GetUbTiling(const std::vector<int64_t> &output_shape,
       var_names["ub_factor_" + std::to_string(ub_axis)] = ub_factor;
     }
   }
-  return ub_factor;
-}
-
-int32_t GetKey(const int32_t &ub_axis,
-               const int32_t &block_axis,
-               const int32_t &shape_size,
-               const int32_t &ub_factor,
-               const std::string &dtype) {
-  int32_t key = 100000000;
-  if (shape_size == 1) {
-    return key;
-  } else {
-    key = 10000000;
-    if (ub_axis == -1 && block_axis == -1) {
-      return 2;
-    } else {
-      return key + block_axis * shape_size + ub_axis;
-    }
-  }
-}
-
-bool AddShapeInfo(const std::vector<int64_t> &input_shape_x,
-                  const std::vector<int64_t> &input_shape_y,
-                  std::unordered_map<std::string, int32_t>& var_names) {
-  if (input_shape_x.size() != input_shape_y.size()) {
-    return false;
-  }
-  string suffix_x = "_0";
-  string suffix_y = "_1";
-  for (size_t i = 0; i < input_shape_x.size(); i++) {
-    std::string prefix = "dim_" + std::to_string(i);
-    var_names[prefix + suffix_x] = input_shape_x[i];
-    var_names[prefix + suffix_y] = input_shape_y[i];
-  }
   return true;
 }
 
-bool GetOutputShape(const std::string &op_type,
-                    const TeOpParas &op_paras,
-                    const nlohmann::json &op_info,
-                    bool &has_scalar,
-                    std::vector<int64_t> &output_shape,
-                    int32_t &broadcast_axis,
-                    std::unordered_map<std::string, int32_t>& var_names) {
-  size_t input_num = op_paras.inputs.size();
-
-  if (input_num == 2) {
-    bool valid_input = op_paras.inputs.size() == 2 &&
-                       op_paras.inputs[0].tensor.size() > 0 &&
-                       op_paras.inputs[1].tensor.size() > 0;
-    if (!valid_input) {
-      GE_LOGE("op [%s] : input shape error", op_type.c_str());
-      return false;
+void Eletwise::CalcKey() {
+  int32_t base_key = 0;
+  if (s_pattern != Pattern::ORIGINAL) {
+    if (s_pattern == BROADCAST && compileInfo.is_support_absorbable_broadcast) {
+      base_key = 300000000 + special_scalar_key * 100000;
+    } else {
+      base_key = 200000000 + s_pattern * 100000;
     }
+  }
+  if (output_shape.size() == 1) {
+    key = base_key;
+  } else {
+    if (ub_axis == -1 && block_axis == -1) {
+      key = base_key;
+    } else {
+      key = base_key + block_axis * output_shape.size() + ub_axis + 1;
+    }
+  }
+}
+
+bool Eletwise::CalcConstKey() {
+  int32_t key_index = 0;
+  CHECK((op_info.count("_const_block_dims") > 0), "op [%s] : compile info not contain [_const_block_dims]",
+        op_type.c_str());
+  const std::vector<int32_t>& const_block_dims = op_info["_const_block_dims"].get<std::vector<int32_t>>();
+  if (compileInfo.is_support_broadcast) {
+    bool verify_input =
+        op_paras.inputs.size() == 2 && !op_paras.inputs[0].tensor.empty() && !op_paras.inputs[1].tensor.empty();
+    CHECK(verify_input, "op [%s] : input shape cannot be empty", op_type.c_str());
     std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> input_shape_y = op_paras.inputs[1].tensor[0].shape;
-
-    bool ret = ProduceShapes(op_type, input_shape_x, input_shape_y, output_shape);
-    ret = ret && AddShapeInfo(input_shape_x, input_shape_y, var_names);
-    if (!ret) {
-      return ret;
+    BroadcastShapes(input_shape_x, input_shape_y);
+    CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shape must be same", op_type.c_str());
+    std::vector<int64_t> const_shapes(input_shape_x.size(), 0);
+    for (size_t i = 0; i < input_shape_x.size(); i++) {
+      const_shapes[i] = static_cast<uint64_t>(input_shape_x[i]) & static_cast<uint64_t>(input_shape_y[i]);
     }
-
-    const std::string &fusion_flag = op_info["_fusion"].get<std::string>();
-    if (fusion_flag != "disable") {
-      const std::vector<std::vector<size_t>>& fusion_index =
-              op_info["_fusion_index"].get<std::vector<std::vector<size_t>>>();
-
-      ret = RefineShapesForBroadcast(op_type, input_shape_x, input_shape_y, output_shape, fusion_index);
-
-      if (!ret) {
-        return ret;
+    CHECK((op_info.count("_const_shapes") > 0), "op [%s] : compile info not contain [_const_shapes]", op_type.c_str());
+    const std::vector<std::vector<int64_t>>& compile_const_shapes =
+        op_info["_const_shapes"].get<std::vector<std::vector<int64_t>>>();
+    for (size_t i = 0; i < compile_const_shapes.size(); i++) {
+      bool shape_equal = true;
+      CHECK_EQ(const_shapes.size(), compile_const_shapes[i].size(), "op [%s] : input shape and const shape not match",
+               op_type.c_str());
+      CHECK_EQ(const_block_dims.size(), compile_const_shapes.size(), "op [%s] : block dims and const shape not match",
+               op_type.c_str());
+      for (size_t j = 0; j < compile_const_shapes[i].size(); j++) {
+        if (const_shapes[j] != compile_const_shapes[i][j]) {
+          shape_equal = false;
+        }
       }
-
-      string suffix_z = "_2";
-      for (size_t i = 0; i < output_shape.size(); i++) {
-        std::string prefix = "dim_" + std::to_string(i);
-        var_names[prefix + suffix_z] = output_shape[i];
-      }
-      // operator is scalar
-      has_scalar = (input_shape_x.size() == 1 && input_shape_x[0] == 1) ||
-                   (input_shape_y.size() == 1 && input_shape_y[0] == 1);
-    }
-    for (int32_t i = static_cast<int32_t>(input_shape_x.size()) - 1; i >= 0; i--) {
-      if (input_shape_x[i] != input_shape_y[i] &&
-          (input_shape_x[i] == 1 || input_shape_y[i] == 1)) {
-        broadcast_axis = i;
+      if (shape_equal) {
+        key_index = i;
         break;
       }
     }
   } else {
-    size_t input_num = op_paras.inputs.size();
-    for (size_t i = 0; i < input_num; i++) {
-      string suffix = "_" + std::to_string(i);
-      if (op_paras.inputs[i].tensor.empty()){
-        GE_LOGE("op [%s] : inputs tensor of op_paras is empty", op_type.c_str());
-        return false;
-      }
-      const std::vector<int64_t> &shapes = op_paras.inputs[i].tensor[0].shape;
-      for (size_t j = 0; j < shapes.size(); j++) {
-        std::string name = "dim_" + std::to_string(j) + suffix;
-        var_names[name] = shapes[j];
-      }
-    }
-    if (op_paras.outputs.empty() || op_paras.outputs[0].tensor.empty()) {
-      GE_LOGE("op [%s] : output or output[0] tensor of op_paras is empty", op_type.c_str());
-      return false;
-    }
-    const std::vector<int64_t> &outputs = op_paras.outputs[0].tensor[0].shape;
-    int64_t fused_output = std::accumulate(outputs.begin(), outputs.end(),
-                                           1, std::multiplies<int64_t>());
-    output_shape.push_back(fused_output);
+    CHECK(!const_block_dims.empty(), "op [%s] : block dims and const shape not match", op_type.c_str());
   }
-
+  block_dims = const_block_dims[key_index];
+  key = 100000000 + key_index;
   return true;
 }
 
-bool CalcMultiCore(const std::string &op_type,
-                   const nlohmann::json &op_info,
-                   const std::vector<int64_t> &output_shape,
-                   bool &need_multi_core,
-                   int32_t &ub_limit) {
-  int32_t ub_size = op_info["_ub_size"].get<std::int32_t>();
-  int32_t max_dtype = op_info["_max_dtype_bytes"].get<std::int32_t>();
-  int32_t coex_quantity = op_info["_coexisting_quantity"].get<std::int32_t>();
-  ub_limit = (((ub_size / coex_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / max_dtype;
-  int64_t output_size = std::accumulate(output_shape.begin(), output_shape.end(),
-                                        1, std::multiplies<int64_t>());
-  if (output_size > INT32_MAX) {
-    GE_LOGE("[ERROR]op [%s] : The input shape is too large",
-            op_type.c_str());
-    return false;
-  }
-  const int32_t multi_core_threshold = 1024;
-  if (output_size < multi_core_threshold) {
-    need_multi_core = false;
-  }
-  return true;
-}
-
-bool EletwiseTiling(const std::string &op_type,
-                    const TeOpParas &op_paras,
-                    const nlohmann::json &op_info,
-                    OpRunInfo &run_info) {
-  GELOGI("op [%s]: tiling running", op_type.c_str());
-
-  if (op_paras.outputs.size() <= 0 ||
-      op_paras.outputs[0].tensor.size() <= 0) {
-    GE_LOGE("op [%s] : output shape error", op_type.c_str());
-    return false;
-  }
-  const std::string &dtype = op_paras.outputs[0].tensor[0].dtype;
-
-  std::unordered_map<std::string, int32_t> var_names;
-
-  bool has_scalar = false;
-  std::vector<int64_t> output_shape;
-  int32_t broadcast_axis = -2;
-  bool ret = GetOutputShape(op_type, op_paras, op_info,
-          has_scalar, output_shape, broadcast_axis, var_names);
-  if (!ret) {
-    return ret;
-  }
-
-  bool need_multi_core = true;
-  int32_t ub_limit;
-  ret = CalcMultiCore(op_type, op_info, output_shape, need_multi_core, ub_limit);
-  if (!ret) {
-    return ret;
-  }
-
-  int32_t key = -1;
-  int32_t block_axis = -1;
-  int32_t ub_axis = -1;
-  int32_t block_dims = 1;
-  int32_t ub_factor = 1;
-  if (need_multi_core) {
-    // cut block
-    int32_t core_num = op_info["_core_num"].get<std::int32_t>();
-    block_dims = GetBlockTiling(output_shape, core_num, var_names, block_axis, dtype);
-
-    // cut ub
-    int32_t max_dtype = op_info["_max_dtype_bytes"].get<std::int32_t>();
-    ub_factor = GetUbTiling(output_shape, ub_limit, var_names,
-            ub_axis, block_axis, broadcast_axis, dtype, max_dtype);
-  } else {
-    if (output_shape.size() == 1) {
-      var_names["block_factor_0"] = output_shape[0];
-      ub_factor = output_shape[0];
-      var_names["ub_factor_0"] = ub_factor;
-      block_axis = 0;
-      ub_axis = 0;
-    }
-  }
-  GELOGD("op [%s]: DoBlockTiling&GetUbTiling", op_type.c_str());
-
-  key = GetKey(ub_axis, block_axis, output_shape.size(), ub_factor, dtype);
-
-
+bool Eletwise::WriteTilingData(OpRunInfo& run_info) {
   GELOGD("op [%s] tiling key:%d", op_type.c_str(), key);
   GELOGD("op [%s] tiling block_dims:%d", op_type.c_str(), block_dims);
   GELOGD("op [%s] tiling ub_factor:%d", op_type.c_str(), ub_factor);
@@ -388,17 +435,52 @@ bool EletwiseTiling(const std::string &op_type,
 
   run_info.block_dim = block_dims;
   ByteBufferPut(run_info.tiling_data, key);
-
-  const auto& all_vars = op_info["_vars"][std::to_string(key)];
-  for (const auto& var: all_vars) {
-    if (var_names.count(var) == 0) {
-      GE_LOGE("op [%s] : Compile info error", op_type.c_str());
-      return false;
+  if (!is_const) {
+    CHECK((op_info.count("_vars") > 0), "op [%s] : compile info not contain [_vars]", op_type.c_str());
+    const auto& all_vars = op_info["_vars"][std::to_string(key)];
+    for (const auto& var : all_vars) {
+      CHECK((var_names.count(var) > 0), "op [%s] : Compile info error", op_type.c_str())
+      ByteBufferPut(run_info.tiling_data, var_names[var]);
     }
-    ByteBufferPut(run_info.tiling_data, var_names[var]);
   }
-
   return true;
 }
 
+bool Eletwise::DoTiling() {
+  GELOGI("op [%s]: tiling running", op_type.c_str());
+  bool ret = true;
+  ret = ret && Init();
+  if (is_const) {
+    ret = ret && CalcConstKey();
+  } else {
+    ret = ret && GenerateOutputShape();
+    ret = ret && CalcTiling();
+    if (need_multi_core) {
+      // cut block
+      ret = ret && DoBlockTiling();
+      ret = ret && DoUbTiling();
+    } else {
+      if (output_shape.size() == 1) {
+        var_names["block_factor_0"] = output_shape[0];
+        ub_factor = output_shape[0];
+        var_names["ub_factor_0"] = ub_factor;
+        block_axis = 0;
+        ub_axis = 0;
+      }
+    }
+    if (ret) {
+      CalcKey();
+    }
+  }
+  return ret;
 }
+
+bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                    OpRunInfo& run_info) {
+  Eletwise eletwise(op_type, op_paras, op_info);
+  bool ret = eletwise.DoTiling();
+  ret = ret && eletwise.WriteTilingData(run_info);
+  return ret;
+}
+
+}  // namespace optiling

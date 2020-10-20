@@ -1,24 +1,24 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 read_select
 """
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 
 READ_SELECT_TAG = "read_select"
 PARA_LIST_LEN = 5
@@ -40,7 +40,7 @@ def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
-@fusion_manager.register("read_select")
+@tbe_platform.fusion_manager.fusion_manager.register("read_select")
 def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
                         output_tensor_dim=4, kernel_name="read_select"):
     """
@@ -105,7 +105,7 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
 
 
 # pylint: disable=locally-disabled,unexpected-keyword-arg,unnecessary-lambda
-@util.check_input_type(dict, dict, (tuple, list), int, str)
+@para_check.check_input_type(dict, dict, (tuple, list), int, str)
 def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
                 output_tensor_dim=4, kernel_name="read_select"):
     """
@@ -133,12 +133,12 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
     valid_shape = input_x.get("valid_shape")
     slice_offset = input_x.get("slice_offset")
 
-    util.check_shape_rule(total_shape)
+    para_check.check_shape_rule(total_shape)
     if len(valid_shape) != EMPTY_LIST_LEN:
-        util.check_shape_rule(valid_shape)
-        util.check_tensor_shape_size(valid_shape)
-    util.check_tensor_shape_size(total_shape)
-    util.check_kernel_name(kernel_name)
+        para_check.check_shape_rule(valid_shape)
+        para_check.check_tensor_shape_size(valid_shape)
+    para_check.check_tensor_shape_size(total_shape)
+    para_check.check_kernel_name(kernel_name)
 
     _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list)
 
@@ -170,8 +170,8 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
                       name="res", tag=READ_SELECT_TAG)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_tensor, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

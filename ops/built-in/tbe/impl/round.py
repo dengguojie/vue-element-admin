@@ -1,34 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 round
 """
-from __future__ import absolute_import
+import functools
 
-from functools import reduce as functools_reduce
-
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("round")
+@tbe_platform.fusion_manager.fusion_manager.register("round")
 def round_compute(x, y, kernel_name="round"):
     """
     calculating data round, round to the nearst,tie to the even
@@ -49,19 +45,18 @@ def round_compute(x, y, kernel_name="round"):
     """
     dtype = x.dtype
     if dtype == "int32":
-        input_data_one = te.lang.cce.broadcast(tvm.const(0, dtype),
-                                               x.shape, dtype)
-        result = te.lang.cce.vadd(x, input_data_one)
+        input_data_one = tbe.broadcast(tvm.const(0, dtype), x.shape, dtype)
+        result = tbe.vadd(x, input_data_one)
         return result
 
-    result = te.lang.cce.round(x)
-    result = te.lang.cce.cast_to(result, dtype)
+    result = tbe.round(x)
+    result = tbe.cast_to(result, dtype)
 
     return result
 
 
 # pylint: disable=locally-disabled,redefined-builtin
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def round(x, y, kernel_name="round"):
     """
     algorithm: round
@@ -83,20 +78,20 @@ def round(x, y, kernel_name="round"):
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
 
-    check_shape(input_shape, param_name="x")
-    check_dtype(input_dtype, ("float16", "float32", "int32"), param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
+    para_check.check_dtype(input_dtype, ("float16", "float32", "int32"), param_name="x")
 
     up_shape = [1]
-    up_shape[0] = functools_reduce(lambda x, y: x * y, input_shape[:])
+    up_shape[0] = functools.reduce(lambda x, y: x * y, input_shape[:])
 
     input_data = tvm.placeholder(up_shape, name="input_data",
                                  dtype=input_dtype)
     result = round_compute(input_data, y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"name": kernel_name,
               "tensor_list": [input_data, result]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

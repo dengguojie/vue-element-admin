@@ -1,28 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# pylint: disable=too-many-lines
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-yolo_v3_detection_output
+yolo_v3_detection_output_d
 """
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from topi.cce import util
-from impl import common_util as common
+from impl import yolo_v3_cls_prob
+from impl import common_util
 from impl import constant_util as constant
-from impl import yolo_v3_cls_prob as cls
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 
 PRE_NMS_TOPN = 1024
 
@@ -31,15 +29,17 @@ UB_NUM = 10240
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments
 # pylint: disable=unused-argument
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_FLOAT,
-                 REQUIRED_ATTR_LIST_FLOAT, REQUIRED_ATTR_LIST_FLOAT,
-                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT,
-                 OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT, OPTION_ATTR_INT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.REQUIRED_ATTR_LIST_FLOAT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
                                coord_data_high_dic, obj_prob_low_dic,
                                obj_prob_mid_dic,
@@ -130,7 +130,7 @@ def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
         "kernel_name": kernel_name,
     }
 
-    cls.check_param(input_dict)
+    yolo_v3_cls_prob.check_param(input_dict)
     detection_output = DetectionOutput(input_dict)
     tik_instance = detection_output.compute_detection_output(kernel_name)
 
@@ -138,7 +138,7 @@ def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
 
 
 # pylint: disable=too-many-ancestors,too-many-public-methods
-class DetectionOutput(cls.ClsProbComputer):
+class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
     """
     Function: use to process DetectionOutput
     Modify : 2019-11-06
@@ -163,7 +163,7 @@ class DetectionOutput(cls.ClsProbComputer):
         """
         super(DetectionOutput, self).__init__(input_dict)
         self.max_ub_num = UB_NUM
-        if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 1024 < 200 \
+        if tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 1024 < 200 \
                 or self.dtype == constant.DATA_TYPE_FP32:
             self.max_ub_num = UB_NUM // 2
 
@@ -177,7 +177,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                              name="box_out_num",
                                              scope=tik.scope_gm)
         
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES") \
                 and self.obj_data.size // (8 * self.dsize) > self.max_ub_num:
             each_loop = (8 * self.dsize)
@@ -267,7 +267,7 @@ class DetectionOutput(cls.ClsProbComputer):
         None
         """
         index_ub = None
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
@@ -304,7 +304,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                             name="proposals_ub",
                                             scope=tik.scope_ubuf)
         mask = None
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             dtype = "uint16"
             if self.dtype == constant.DATA_TYPE_FP32:
@@ -328,7 +328,7 @@ class DetectionOutput(cls.ClsProbComputer):
             xyhw_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
                                            name="xyhw_ub",
                                            scope=tik.scope_ubuf)
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in (
+            if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES"):
                 self.filter_obj(mask, xyhw_ub, param)
             loop_cycle, ub_num, last_ub_num = self.get_loop_param(
@@ -337,7 +337,7 @@ class DetectionOutput(cls.ClsProbComputer):
             param["ub_num"] = ub_num
             param["last_ub_num"] = last_ub_num
             param["image_ub"] = image_ub
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES"):
                 self.get_xyhw_by_index(xyhw_ub, param)
             x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
@@ -346,7 +346,7 @@ class DetectionOutput(cls.ClsProbComputer):
             param["x1y1x2y2_ub"] = x1y1x2y2_ub
             with self.instance.if_scope(param["count"] > 0):
                 self.get_x1y1x2y2(xyhw_ub, x1y1x2y2_ub, param)
-                if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+                if tbe_platform.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES"):
                     self.concatx1y1x2y2(x1y1x2y2_ub, proposals_ub, param)
 
@@ -369,7 +369,7 @@ class DetectionOutput(cls.ClsProbComputer):
         None
         """
         obj_loop_times, ub_size, obj_last_ub_size = \
-            cls.get_loop_param(self.obj_num, self.max_ub_num)
+            yolo_v3_cls_prob.get_loop_param(self.obj_num, self.max_ub_num)
         offset = self.instance.Scalar("int32")
         offset.set_as(param["batch"] * self.obj_num)
         ub_num = self.instance.Scalar("int32")
@@ -391,7 +391,7 @@ class DetectionOutput(cls.ClsProbComputer):
         if self.obj_num % (8 * self.dsize) != 0:
             mask_total = mask_total + 1
         mask_loop, mask_size, mask_last_ub = \
-            cls.get_loop_param(mask_total, self.max_ub_num)
+            yolo_v3_cls_prob.get_loop_param(mask_total, self.max_ub_num)
         param["mask_size"] = mask_size
         param["mask_loop"] = mask_loop
         param["mask_last_ub"] = mask_last_ub
@@ -404,8 +404,8 @@ class DetectionOutput(cls.ClsProbComputer):
                 with self.instance.if_scope(cycle == obj_loop_times - 1):
                     param["obj_total"].set_as(obj_last_ub_size * self.dsize)
                     ub_num.set_as(obj_last_ub_size)
-                nburst = common.get_datamove_nburst(self.instance,
-                                                    param["obj_total"])
+                nburst = common_util.get_datamove_nburst(self.instance,
+                                                         param["obj_total"])
                 self.instance.data_move(obj_ub, self.obj_data[offset],
                                         constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -451,7 +451,7 @@ class DetectionOutput(cls.ClsProbComputer):
                 with self.instance.if_scope(
                         param["mask_loop"] - 1 == param["mask_cycle"]):
                     nburst.set_as(
-                        common.get_datamove_nburst(self.instance,
+                        common_util.get_datamove_nburst(self.instance,
                                                    param[
                                                        "mask_last_ub"] * self.dsize))
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
@@ -462,8 +462,8 @@ class DetectionOutput(cls.ClsProbComputer):
                 param["use_gm_mask"].set_as(1)
                 param["mask_cycle"].set_as(param["mask_cycle"] + 1)
                 param["mask_offset"].set_as(0)
-        repeats = common.get_vector_repeat_times(self.instance,
-                                                 param["obj_total"])
+        repeats = common_util.get_vector_repeat_times(self.instance,
+                                                      param["obj_total"])
         self.instance.vcmpvs_gt(mask[param["mask_offset"]], obj_ub[0],
                                 self.obj_threshold,
                                 repeats, 1, 8)
@@ -472,7 +472,7 @@ class DetectionOutput(cls.ClsProbComputer):
                     tik.all(param["obj_loop_times"] - 1 == param["cycle"],
                             param["mask_offset"] != 0)):
                 offset = param["mask_cycle"] * self.max_ub_num
-                nburst = common.get_datamove_nburst(self.instance,
+                nburst = common_util.get_datamove_nburst(self.instance,
                                                     param[
                                                         "mask_last_ub"] * self.dsize)
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
@@ -500,7 +500,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                   mask_mode="counter")
             with self.instance.if_scope(param["count"] + scalar > PRE_NMS_TOPN):
                 total_size = (PRE_NMS_TOPN - param["count"]) * self.dsize
-                nburst = common.get_datamove_nburst(self.instance, total_size)
+                nburst = common_util.get_datamove_nburst(self.instance, total_size)
                 self.instance.data_move(xyhw_ub[0, param["count"]], reduce_xyhw,
                                         0, 1,
                                         nburst, 0, 0)
@@ -696,7 +696,7 @@ class DetectionOutput(cls.ClsProbComputer):
         -------
         None
         """
-        nburst = common.get_datamove_nburst(self.instance, param["obj_total"])
+        nburst = common_util.get_datamove_nburst(self.instance, param["obj_total"])
         self.instance.data_move(coords_ub_xyhw[0, 0],
                                 self.inter_coords[param["index_offset_x"] +
                                                   param["loop_offset"]],
@@ -731,7 +731,7 @@ class DetectionOutput(cls.ClsProbComputer):
         -------
         None
         """
-        repeats = common.get_vector_repeat_times(self.instance,
+        repeats = common_util.get_vector_repeat_times(self.instance,
                                                  self.dsize * param["count"])
         self.instance.vec_muls(self.mask, xyhw_ub[2, 0], xyhw_ub[2, 0], 0.5,
                                repeats, constant.REPEAT_STRIDE_EIGHT,
@@ -949,7 +949,7 @@ class DetectionOutput(cls.ClsProbComputer):
                         param["obj_total"].set_as(
                             param["last_ub_num"] * self.dsize)
                         param["ub_num"].set_as(param["last_ub_num"])
-                    nburst = common.get_datamove_nburst(self.instance,
+                    nburst = common_util.get_datamove_nburst(self.instance,
                                                         param["obj_total"])
                     classes_ub = self.instance.Tensor(self.dtype,
                                                       (self.max_ub_num,),
@@ -972,7 +972,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                             param["class_cycle"] * self.obj_num
                     self.set_class_nms(param)
 
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES"):
                 self.instance.vconcat(param["proposals_ub"],
                                       param["classes_ub_nms"],
@@ -1012,7 +1012,7 @@ class DetectionOutput(cls.ClsProbComputer):
         image_w.set_as(image_ub[3])
         image_h = self.instance.Scalar(self.dtype)
         image_h.set_as(image_ub[2])
-        repeats = common.get_vector_repeat_times(self.instance,
+        repeats = common_util.get_vector_repeat_times(self.instance,
                                                  selected_count * self.dsize)
         self.instance.vec_adds(self.mask, ret_ub[0, 0], ret_ub[0, 0],
                                -1.0, repeats, constant.REPEAT_STRIDE_EIGHT,
@@ -1034,7 +1034,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                image_h, repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910"):
             threshold = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
                                              scope=tik.scope_ubuf,
@@ -1126,9 +1126,9 @@ class DetectionOutput(cls.ClsProbComputer):
         -------
         None
         """
-        repeats = common.get_vector_repeat_times(self.instance,
+        repeats = common_util.get_vector_repeat_times(self.instance,
                                                  param["obj_total"])
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             loop_start = self.instance.Scalar("int32")
             loop_start.set_as(param["count_offset"])
@@ -1156,7 +1156,7 @@ class DetectionOutput(cls.ClsProbComputer):
                         with self.instance.if_scope(
                                 param["mask_loop"] - 1 == param["mask_cycle"]):
                             nburst.set_as(
-                                common.get_datamove_nburst(self.instance, param[
+                                common_util.get_datamove_nburst(self.instance, param[
                                     "mask_last_ub"] * self.dsize))
                         self.instance.data_move(param["mask"], self.mask_gm[
                             param["batch"], param[
@@ -1184,7 +1184,7 @@ class DetectionOutput(cls.ClsProbComputer):
                                             > PRE_NMS_TOPN):
                     total_size = (PRE_NMS_TOPN - param["count_offset"]) \
                                  * self.dsize
-                    nburst = common.get_datamove_nburst(self.instance,
+                    nburst = common_util.get_datamove_nburst(self.instance,
                                                         total_size)
                     self.instance.data_move(
                         param["classes_ub_nms"][param["count_offset"]],
@@ -1245,7 +1245,7 @@ class DetectionOutput(cls.ClsProbComputer):
         self.instance.vec_dup(self.mask, selected_tmp, 0.0,
                               PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
         with self.instance.new_stmt_scope():
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES"):
                 self.class_filter(selected_tmp, proposals_ub, selected_class, param)
             else:
@@ -1450,7 +1450,7 @@ class DetectionOutput(cls.ClsProbComputer):
         None
         """
         iou_num = PRE_NMS_TOPN
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Hi3796CV300ES", "Hi3796CV300CS") or \
                 self.dtype == constant.DATA_TYPE_FP32:
             iou_num = iou_num // 2
@@ -1465,7 +1465,7 @@ class DetectionOutput(cls.ClsProbComputer):
         self.instance.vrpac(area, selected_tmp, cycle_roi)
         supvec_ub = self.instance.Tensor("uint16", (iou_num,), name="supVec_ub",
                                          scope=tik.scope_ubuf)
-        repeat_supvec = common.get_vector_repeat_times(self.instance,
+        repeat_supvec = common_util.get_vector_repeat_times(self.instance,
                                                        selected_class * 2)
         self.instance.vec_dup(self.mask, supvec_ub, 1, repeat_supvec,
                               constant.REPEAT_STRIDE_EIGHT)
@@ -1558,7 +1558,7 @@ class DetectionOutput(cls.ClsProbComputer):
         -------
         None
         """
-        nburst = common.get_datamove_nburst(self.instance,
+        nburst = common_util.get_datamove_nburst(self.instance,
                                             selected_count * self.dsize)
         offset = self.instance.Scalar(dtype="int32")
         offset.set_as(0)

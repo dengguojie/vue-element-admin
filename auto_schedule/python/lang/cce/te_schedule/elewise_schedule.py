@@ -1,19 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-# pylint: disable=too-many-lines
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 elewise schedule
 """
 # pylint: disable=unused-import
@@ -22,14 +21,10 @@ from math import ceil
 import math
 
 from te.platform import log
-from te.platform import get_soc_spec
-from te.platform import cce_conf
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import CceProductParams as pver
 from te import platform as cceconf
 from te import tvm
-# pylint: disable=unused-import
-from te.platform.cce_build import build_config
 from te.platform import cce_emitinsn_params
 import te.platform.cce_params as cce_params
 from . import util
@@ -37,7 +32,6 @@ from . import util
 # pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments
 # pylint: too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes
 # pylint: too-many-branches, no-member, consider-using-enumerate
-
 # the bit of dtype/16 map
 DTYPE_WIDTH_MAP = {"float16": 1,
                    "float32": 2,
@@ -261,7 +255,7 @@ class CceOp:
                                "elewise_multiple_maddrelu": "vector_multiple",
                                "elewise_multiple_sel": "vector_select_bool",
                                "elewise_binary_scalar_axpy": "vector_multiple",
-                               "elewise_binary_cmpsel": "vector_cmpsel"
+                               "elewise_binary_cmpsel": "vector_cmpsel",
                                }
         # pylint: disable=no-self-use
         self.init_opt_policy()
@@ -431,12 +425,11 @@ class CceOp:
                 return False
             return True
 
-
         vector_op_block_align = True
         dtype = self._res_tensor.dtype
         if (self._is_mix_reduce_nlast_and_nlast() or self._is_reduce_not_last_axis()) and \
                 self._is_after_last_reduce_axis_litter_ub() and \
-                (not (self._reduce_axis_num[0] == 0 and \
+                (not (self._reduce_axis_num[0] == 0 and
                       self._is_continuous_reduce(self._reduce_axis_num))):
             self._split_axis, self._last_num, ub_split_axis, _ = \
                 self._mix_reduce_nlast_and_nlast_tiling(
@@ -492,7 +485,7 @@ class CceOp:
             # Mixed scene with non-last axis and non-last axis,
             # multicore enabled contision:
             # finally the non-reduce axis is smaller than the ub size
-            elif (self._is_mix_reduce_nlast_and_nlast() or \
+            elif (self._is_mix_reduce_nlast_and_nlast() or
                   self._is_reduce_not_last_axis()) and \
                     self._is_after_last_reduce_axis_litter_ub():
                 if (self._is_nreduce_axis_not_bigger_than_block()) or \
@@ -778,7 +771,7 @@ class CceOp:
                 # vcompare use 2 temp buffer
                 elif tag.find("compare") != -1:
                     tmp_width = 2 * DTYPE_WIDTH_MAP[num_type.lower()]
-                #vcomsel use 3 temp buffer
+                # vcomsel use 3 temp buffer
                 elif tag.find("cmpsel") != -1:
                     tmp_width = 3 * DTYPE_WIDTH_MAP[num_type.lower()]
 
@@ -841,16 +834,16 @@ class CceOp:
         int : slice number
         """
         def _get_elewise_flag():
-            isElewise = False
+            is_elewise = False
             shape_list = [[1, 4, 1, 5, 3, 64, 2, 2],
-                         [2, 3, 655, 6, 2, 2],
-                         [4, 4, 546, 7, 2, 2],
-                         [3, 4, 4, 71, 12, 1, 2, 2],
-                         [1, 4, 93, 110, 2, 2],
-                         [96, 94, 2, 2]]
+                          [2, 3, 655, 6, 2, 2],
+                          [4, 4, 546, 7, 2, 2],
+                          [3, 4, 4, 71, 12, 1, 2, 2],
+                          [1, 4, 93, 110, 2, 2],
+                          [96, 94, 2, 2]]
             if shape in shape_list:
-                isElewise = True
-            return isElewise
+                is_elewise = True
+            return is_elewise
         max_ub_count = self.get_max_ub_count(_get_elewise_flag())
 
         # if the cmp mode is bit the res shape is 8 muti input shape,
@@ -1005,7 +998,7 @@ class CceOp:
         right_value = 1.0
 
         align_type = self._res_tensor.dtype
-        #bool is represented by int8
+        # bool is represented by int8
         if align_type == 'bool':
             align_type = 'int8'
         align_factor, _ = util.get_align_factor(align_type)
@@ -1083,7 +1076,7 @@ class CceOp:
             return False
 
         align_type = self._res_tensor.dtype
-        #bool is represented by int8
+        # bool is represented by int8
         if align_type == 'bool':
             align_type = 'int8'
         if align_type == 'float32':
@@ -1143,8 +1136,8 @@ class CceOp:
         # use_storage_align scene, recalculate ub size,
         # max_ub_count equal to reduce_axis_size * max_ub_count // reduce_axis_storage_align_size
         if use_storage_align:
-            max_ub_count = int(total_size_of_reduce / \
-                               (total_size_of_reduce + align_factor - \
+            max_ub_count = int(total_size_of_reduce /
+                               (total_size_of_reduce + align_factor -
                                 total_size_of_reduce % align_factor) * max_ub_count)
         size_load_to_ub = 1
         for index in reversed(reduce_axis):
@@ -1157,7 +1150,6 @@ class CceOp:
                         break
                     rfactor = rfactor - 1
                 return rfactor, index
-
 
         i = temp_reduce_axis[0] - 1
         while (i >= split_axis) and (size_load_to_ub < max_ub_count) and (i not in reduce_axis):
@@ -1204,8 +1196,8 @@ class CceOp:
                 if self._is_last_reduce:
                     if align_factor > shape[-1]:
                         if self._is_keepdims:
-                            max_ub_count = max_ub_count*temp_shape[-1] // \
-                                           align_factor
+                            max_ub_count = max_ub_count * temp_shape[-1] // \
+                                align_factor
                         else:
                             max_ub_count = max_ub_count // align_factor
                 else:
@@ -1216,10 +1208,9 @@ class CceOp:
                     non_align_count = self._shape_mul(
                         self._shape_before_reduce[a1_start_index:])
                     align_count = (self._shape_mul(
-                        self._shape_before_reduce[a1_start_index:]) //
-                                   align_factor + 1)*align_factor
-                    max_ub_count = max_ub_count * non_align_count // \
-                                   align_count
+                        self._shape_before_reduce[a1_start_index:]) // align_factor + 1) *\
+                                  align_factor
+                    max_ub_count = max_ub_count * non_align_count // align_count
 
             return max_ub_count
         max_ub_count = self.get_max_ub_count()
@@ -1333,7 +1324,7 @@ class CceOp:
                 fac_cnt = fac * behand_cnt
                 remainder_cnt = remainder * behand_cnt
                 if fac_cnt >= align_limit_cnt and fac_cnt <= ub_limit_cnt and \
-                        ((remainder_cnt >= align_limit_cnt and \
+                        ((remainder_cnt >= align_limit_cnt and
                           remainder_cnt <= ub_limit_cnt) or remainder_cnt == 0):
                     max_factor = fac
                     break
@@ -1409,7 +1400,7 @@ class CceOp:
             min_factor_at_start_axis * data_cnt_behand_split_axis
         if data_cnt_behand_reduce_axis <= max_ub_count or \
                 min_data_cnt_each_core < d_align_factor or aicore_count == 1:
-            #scne 1: (cut_b:n, cut_u:n)
+            # scne 1: (cut_b:n, cut_u:n)
             split_axis = beg_axis_no_behand_reduce_axis
             rfactor = dim_val_at_start_axis
             # ubtiling
@@ -1430,7 +1421,7 @@ class CceOp:
                     ub_tiling_axis = split_axis
                     ub_tiling_factor = min_factor_at_start_axis
                     return split_axis, min_factor_at_start_axis, \
-                           ub_tiling_axis, ub_tiling_factor
+                        ub_tiling_axis, ub_tiling_factor
 
                 max_devided_factor = \
                     get_max_divided_factor(dim_val_at_start_axis,
@@ -1458,14 +1449,14 @@ class CceOp:
                     ub_tiling_axis = split_axis
                     ub_tiling_factor = ub_factor
                     return split_axis, max_devided_factor, \
-                           ub_tiling_axis, ub_tiling_factor
+                        ub_tiling_axis, ub_tiling_factor
 
                 # scne 2.1.3:(cut_b:n, cut_u:y)
                 # ubtiling
                 ub_tiling_axis = split_axis
                 ub_tiling_factor = max_ub_count
                 return split_axis, dim_val_at_start_axis, \
-                       ub_tiling_axis, ub_tiling_factor
+                    ub_tiling_axis, ub_tiling_factor
 
             # 2，there is multi axises behend last reduce axis
             if min_data_cnt_each_core <= max_ub_count:
@@ -1474,7 +1465,7 @@ class CceOp:
                 ub_tiling_axis = split_axis
                 ub_tiling_factor = min_factor_at_start_axis
                 return split_axis, min_factor_at_start_axis, \
-                       ub_tiling_axis, ub_tiling_factor
+                    ub_tiling_axis, ub_tiling_factor
             max_devided_factor = \
                 get_max_divided_factor(dim_val_at_start_axis, aicore_count)
             ub_factor = get_factor(max_devided_factor, d_align_factor,
@@ -1486,7 +1477,7 @@ class CceOp:
                 ub_tiling_axis = split_axis
                 ub_tiling_factor = ub_factor
                 return split_axis, max_devided_factor, \
-                       ub_tiling_axis, ub_tiling_factor
+                    ub_tiling_axis, ub_tiling_factor
 
             # start_axis block_inner is a prime
             # k constraint max block_inner,  avoid too much loop
@@ -1497,7 +1488,7 @@ class CceOp:
                     ub_tiling_axis = split_axis
                     ub_tiling_factor = 1
                     return split_axis, min_factor_at_start_axis, \
-                           ub_tiling_axis, ub_tiling_factor
+                        ub_tiling_axis, ub_tiling_factor
 
                 # ub_tiling axis not eq block_tiling axis
                 # scne 2.2.3_2
@@ -1524,9 +1515,9 @@ class CceOp:
                             d_align_factor, max_ub_count)
                         break
                 return split_axis, min_factor_at_start_axis, \
-                       ub_tiling_axis, ub_tiling_factor
+                    ub_tiling_axis, ub_tiling_factor
 
-            #scne 2.2.4
+            # scne 2.2.4
             # ubtiling
             one_loop_data_cnt = 1
             ub_tiling_axis = beg_axis_no_behand_reduce_axis + 1
@@ -1547,7 +1538,7 @@ class CceOp:
                         max_ub_count // last_one_loop_data_cnt
                     break
             return split_axis, dim_val_at_start_axis, \
-                   ub_tiling_axis, ub_tiling_factor
+                ub_tiling_axis, ub_tiling_factor
 
         # shape: a1 a2 k1 a3 k2 a4 a5 a6 .. an
         # behand last reduce axis k2: a4*a5*..ak_o <= 32
@@ -1577,14 +1568,14 @@ class CceOp:
                                             data_cnt_behand_split_axis,
                                             max_ub_count)
             if ub_factor != 1:
-                #scne 3.1
+                # scne 3.1
                 # (cut_b:y, cut_u:n, fused:y)
                 # ubtiling
                 ub_tiling_axis = split_axis
                 ub_tiling_factor = ub_factor
                 return split_axis, max_devided_factor, \
-                       ub_tiling_axis, ub_tiling_factor
-            #scne 3.2
+                    ub_tiling_axis, ub_tiling_factor
+            # scne 3.2
             # ubtiling
             one_loop_data_cnt = 1
             last_one_loop_data_cnt = 1
@@ -1604,7 +1595,7 @@ class CceOp:
                         d_align_factor, max_ub_count)
                     break
             return split_axis - 1, 1, ub_tiling_axis, \
-                   ub_tiling_factor
+                ub_tiling_factor
 
         return split_axis, rfactor, ub_tiling_axis, ub_tiling_factor
 
@@ -1620,8 +1611,6 @@ class CceOp:
         -------
         int : slice number
         """
-        # for pylint, otherwise
-        reduce_axis = reduce_axis
         # new version
         max_ub_count = self.get_max_ub_count()
 
@@ -1786,7 +1775,7 @@ class CceOp:
         """
         # for pylint, add read_buffer, otherwise
         # "Arguments number differs from overridden method"
-        read_buffer = read_buffer
+        _ = read_buffer
         self._reduce_index = len(self._op)
         self._is_elewise_single_and_broadcast = \
             self._check_is_elewise_single_and_broadcast()
@@ -1834,7 +1823,7 @@ class CceOp:
         find the size of the last continue axes
         """
         if self._is_last_reduce:
-            #Find the last few reduce axes
+            # Find the last few reduce axes
             reduce_axis = self._reduce_axis_num
             temp_reduce_axis = self._reduce_axis_num
             if (reduce_axis[-1] - reduce_axis[0]) >= len(reduce_axis):
@@ -1872,7 +1861,7 @@ class CceOp:
         total_size_of_axis = self.find_last_continue_axes_size()
         max_ub_count = self.get_max_ub_count()
         max_ub_count = int(total_size_of_axis / (
-            total_size_of_axis + align_factor - \
+            total_size_of_axis + align_factor -
             total_size_of_axis % align_factor) * max_ub_count)
         if total_size_of_axis >= max_ub_count:
             return True
@@ -2028,7 +2017,7 @@ class CceOp:
         """
         # for pylint, add read_buffer, otherwise
         # "Arguments number differs from overridden method"
-        read_buffer = read_buffer
+        _ = read_buffer
         if isinstance(self._reduce_index, (list)):
             self._reduce_index = self._reduce_index[0]
         reduce_op = [self._op[self._reduce_index]]
@@ -2170,7 +2159,7 @@ class CceOp:
                 (len(self._schedule[reduce_sub_buffer].op.axis) -
                  self._split_axis)
 
-            #reorder
+            # reorder
             reduce_reorder_list = []
             reduce_res_axis_in_befor_shape = []
             for i in range(len(self._shape_before_reduce)):
@@ -2189,7 +2178,7 @@ class CceOp:
             self._schedule[reduce_sub_buffer].reorder(*(reduce_reorder_list))
 
             # before reduce:just compute at res tensor
-            #ub tiling split
+            # ub tiling split
             reduce_ub_split_axis = \
                 self._schedule[reduce_sub_buffer].op.axis[ub_split_axis]
             _, reduce_ub_split_i = \
@@ -2221,7 +2210,7 @@ class CceOp:
             self._compute_at_before_reduce_axis = reduce_axis[-1]
             self._compute_at_before_reduce_buffer = reduce_sub_buffer
 
-            #fused for bind
+            # fused for bind
             self._emit_before_reduce_axis = split_axis_no_in_before_shape
             fuse_list_outer = []
             last_reduce_axis_no = tmp_reduce_axis_num[-1]
@@ -2420,7 +2409,7 @@ class CceOp:
             block_split_outer_size = f_large
 
         block_split_inner_size = shape[block_split_axis] // \
-                                 block_split_outer_size
+            block_split_outer_size
 
         return block_split_axis, block_split_inner_size
 
@@ -2750,7 +2739,6 @@ class CceOp:
         right_value = 1.0
         gcd_value = align_factor
 
-
         for i in range(end_axis, begin_axis - 1, -1):
             left_value = 1.0
             if i != 0:
@@ -2883,7 +2871,7 @@ class CceOp:
         """
         # for pylint, add read_buffer, otherwise
         # "Arguments number differs from overridden method"
-        read_buffer = read_buffer
+        _ = read_buffer
         if isinstance(self._reduce_index, (list)):
             self._reduce_index = self._reduce_index[0]
         reduce_op = [self._op[self._reduce_index]]
@@ -2938,7 +2926,7 @@ class CceOp:
 
             self._schedule[reduce_sub_buffer].reorder(*(reordered_axis_list))
 
-            #ub tiling split
+            # ub tiling split
             is_ub_tiling_reduce_axis = True
             if ub_split_axis in tmp_reduce_axis_num:
                 for i in range(0, len(tmp_reduce_axis_num)):
@@ -3038,7 +3026,7 @@ class CceOp:
                     self._schedule[reduce_sub_buffer].op.axis[op_axis]]
 
             self._schedule[reduce_sub_buffer].reorder(*(reordered_axis_list))
-            #ub tiling split
+            # ub tiling split
             is_ub_tiling_reduce_axis = True
             reduce_after_ub_split_axis = ub_split_axis
             if ub_split_axis in tmp_reduce_axis_num:
@@ -3099,8 +3087,8 @@ class CceOp:
 
             self._need_compute_at_after = True
             if self._need_compute_at_after:
-                if (tmp_reduce_axis_num[0] == 0 and \
-                        self._is_continuous_reduce(tmp_reduce_axis_num) and \
+                if (tmp_reduce_axis_num[0] == 0 and
+                        self._is_continuous_reduce(tmp_reduce_axis_num) and
                         not self._is_block_align()):
                     # for {"shape":(1601, 161, 63),"dtype":"float16"}
                     self._compute_at_after_reduce_axis = self._multi_core_bind_axis
@@ -3139,7 +3127,7 @@ class CceOp:
         """
         # for pylint, add read_buffer, otherwise
         # "Arguments number differs from overridden method"
-        read_buffer = read_buffer
+        _ = read_buffer
         if isinstance(self._reduce_index, (list)):
             self._reduce_index = self._reduce_index[0]
         reduce_op = [self._op[self._reduce_index]]
@@ -3244,8 +3232,8 @@ class CceOp:
             ndim = len(
                 self._schedule[self._compute_at_before_reduce_buffer].op.axis)
 
-            self._schedule[self._compute_at_before_reduce_buffer].reorder( \
-                *(reduce_axis + list(self._schedule[ \
+            self._schedule[self._compute_at_before_reduce_buffer].reorder(
+                *(reduce_axis + list(self._schedule[
                     self._compute_at_before_reduce_buffer].op.axis)[self._split_axis:ndim]))
 
         # if keepdims the split_axis has plused the len(tmp_reduce_axis_num)
@@ -3388,7 +3376,7 @@ class CceOp:
                 lop["tensorize_axis"] = \
                     self._schedule[cache_buffer].op.axis[self._read_dma_axis]
                 lop["tensorize_shape"] = (min(tmp_shape[self._read_dma_axis], split_shape),) + \
-                                         tuple(tmp_shape[self._read_dma_axis + 1:])
+                    tuple(tmp_shape[self._read_dma_axis + 1:])
                 # the muti res has cache write and cache_read,
                 # this for remove the reducant cache read by emit an empyt stmt
                 # A_UB equal to compute_xxx()
@@ -3471,7 +3459,7 @@ class CceOp:
                     lop["cache_read_for_res"] = self._read_cache_muti_out[lop["dst_buffer"]]
                     if self._is_last_reduce:
                         lop["tensorize_axis_for_res"] = \
-                            self._schedule[lop["cache_read_for_res"]].op.axis[ \
+                            self._schedule[lop["cache_read_for_res"]].op.axis[
                                 self._res_tensorize_axis]
                     else:
                         if self._need_split_after:
@@ -3491,7 +3479,7 @@ class CceOp:
                 lop["tensorize_axis"] = \
                     self._schedule[cache_buffer].op.axis[self._read_dma_axis]
                 lop["tensorize_shape"] = (min(tmp_shape[self._read_dma_axis], split_shape),) + \
-                                         tuple(tmp_shape[self._read_dma_axis + 1:])
+                    tuple(tmp_shape[self._read_dma_axis + 1:])
                 if lop["dst_buffer"] in self._read_cache_muti_out.keys():
                     lop["cache_read_for_res"] = \
                         self._read_cache_muti_out[lop["dst_buffer"]]
@@ -3597,7 +3585,6 @@ class CceOp:
                         self._read_dma_axis],
                     'replace_output', self._reuse_buffer_index)
                 self._reuse_buffer_index = self._reuse_buffer_index + 1
-
 
     def local_double_buffer(self, read_buffer):
         """
@@ -3886,23 +3873,34 @@ class CceOp:
         """
         if self._check_dich_add_reduce_dim() and self._ub_tiling_axis == 1:
             if self._shape_before_reduce[-1] == 16 and \
-                self._shape_before_reduce[-2] == 16:
+                    self._shape_before_reduce[-2] == 16:
                 return True
         return False
 
-    def _check_nd_dich_add(self):
+    def _check_nd_dich_add(self, lop):
         """
         check dich add ND case
         """
-        dich_add_rep_size = 64
-        dich_add_type_size = 4
-        dich_last_shape = self._last_num
 
-        if self._check_dich_add_reduce_dim() and \
-                self._shape_before_reduce[-1] <= dich_add_rep_size and \
-                dich_last_shape <= dich_add_rep_size and \
-                dich_add_rep_size % dich_last_shape == 0 and \
-                dich_last_shape * dich_add_type_size % 32 == 0:
+        dtype = lop["cache_buffer"].dtype.lower()
+        if dtype == "float16":
+            dtype_size = 2
+        elif dtype == "float32":
+            dtype_size = 4
+        else:
+            return False
+
+        if self._ub_tiling_axis == len(self._shape_before_reduce) - 1:
+            return False
+
+        block_size = 32
+        vector_inst_one_repeat_size = 256
+        last_none_reduce_size = self._shape_before_reduce[-1] * dtype_size
+        if last_none_reduce_size > vector_inst_one_repeat_size or \
+                vector_inst_one_repeat_size % last_none_reduce_size != 0 or \
+                last_none_reduce_size % block_size != 0:
+            return False
+        if self._check_dich_add_reduce_dim():
             return True
         return False
 
@@ -3910,10 +3908,16 @@ class CceOp:
         if pver().is_mini_version() and \
                 lop["cache_buffer"].dtype.lower() == "float32":
             return False
-        if self._res_tensor.dtype.lower() == "float16" and \
-                lop["op"] == "reduce_sum":
+
+        # dichotomy_add conditions:
+        # 1.out_dtype is float16, operation is reduce_sum for bert-bias_add_grad
+        # 2.input_dtype is float16, out_dtype is float32, operation is reduce_sum for new bias_add_grad
+        condition_flag_one = self._res_tensor.dtype.lower() == "float16"
+        condition_flag_two = self._origin_tensor[0].dtype.lower() == "float16" and \
+                             self._res_tensor.dtype.lower() == "float32"
+        if (condition_flag_one or condition_flag_two) and lop["op"] == "reduce_sum":
             if self._check_fractal_dich_add() or \
-                    self._check_nd_dich_add():
+                    self._check_nd_dich_add(lop):
                 return True
         return False
 
@@ -4310,8 +4314,8 @@ class CceOp:
 
         # tiling
         shape = self._shape_to_list(self._origin_op[0]["src_buffer"][0].shape)
-        res_xo, res_xi = self._schedule[self._res_tensor].split(self._res_tensor.op.axis[0], \
-                                                                factor=shape[0] // \
+        res_xo, res_xi = self._schedule[self._res_tensor].split(self._res_tensor.op.axis[0],
+                                                                factor=shape[0] //
                                                                 self.device_core_num)
         self.xouter.append(res_xo)
         self.xinner.append(res_xi)
@@ -4333,18 +4337,18 @@ class CceOp:
         block = tvm.thread_axis("blockIdx.x")
         self._schedule[self._res_tensor].bind(self._multi_core_bind_axis, block)
         cce_emitinsn_params.cceEmitParamsIns.insert_param("thread_block", block)
-        cce_emitinsn_params.cceEmitParamsIns.insert_param("ub_max_enable_buff_size", \
+        cce_emitinsn_params.cceEmitParamsIns.insert_param("ub_max_enable_buff_size",
                                                           self._ub_max_buff)
 
         # emit_insn include double_buffer
         if self.dsl_type == DSL_REDUCE_TYPE_MAP["single_reduce_sum_float32"]:
-            self._schedule[self._res_tensor].emit_insn(self.xinner[0], \
+            self._schedule[self._res_tensor].emit_insn(self.xinner[0],
                                                        "reduce_2_3_axis_reduce_sum_optimal")
         elif self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum_4d"]:
-            self._schedule[self._res_tensor].emit_insn( \
+            self._schedule[self._res_tensor].emit_insn(
                 self.xinner[0], "reduce_2_3_axis_reduce_sum_cast_4D_optimal")
         elif self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_mean_4d"]:
-            self._schedule[self._res_tensor].emit_insn( \
+            self._schedule[self._res_tensor].emit_insn(
                 self.xinner[0], "reduce_2_3_axis_reduce_mean_cast_4D_optimal")
 
     # pylint: disable=too-many-boolean-expressions
@@ -4416,23 +4420,23 @@ class CceOp:
         # 5HD: copy to ub limitation UB_MAX_ENABLE_BUFF, copy command limitation 4096
         # vector compute 256B align
         verify_5d = len(shape) == 5 and \
-                    self.dsl_type == DSL_REDUCE_TYPE_MAP["single_reduce_sum_float32"] and \
-                    dtype == "float32" and shape[4] == block_width_fp16
+            self.dsl_type == DSL_REDUCE_TYPE_MAP["single_reduce_sum_float32"] and \
+            dtype == "float32" and shape[4] == block_width_fp16
         verify_buff_limit_5d = (buffer_size * 3) * type_len_map[dtype] * 2 < self._ub_max_buff
         verify_vector_align_5d = (buffer_size // shape[3]) % ELEMENTS_VECTOR_OP_FP16 == 0
         verify_nburst_limit_5d = (shape[0] // self.device_core_num) * shape[1] < nburst_limit
         check_result = verify_5d and verify_buff_limit_5d and \
-                       verify_vector_align_5d and verify_nburst_limit_5d and \
-                       verify_shape and verify_reduce_axis_num
+            verify_vector_align_5d and verify_nburst_limit_5d and \
+            verify_shape and verify_reduce_axis_num
         # check 5d ok, return ture
         if check_result:
             return True
 
         # 4d: 32B align need: buffer_size % 16(8 for fp32) == 0
         verify_4d = len(shape) == 4 and \
-                    (self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum_4d"] or \
-                     self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_mean_4d"]) and \
-                    dtype == "float16"
+            (self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum_4d"] or
+             self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_mean_4d"]) and \
+            dtype == "float16"
         verify_vector_align_4d = buffer_size % block_width == 0
         verify_buff_size_4d = buffer_size >= min_size
         verify_shape_4d = True
@@ -4443,7 +4447,7 @@ class CceOp:
                 < (shape[2] * shape[3] * type_len_map[dtype] // ELEMENTS_VECTOR_OP_FP16):
             verify_shape_4d = False
         check_result = verify_4d and verify_vector_align_4d and \
-                       verify_buff_size_4d and verify_shape_4d and \
-                       verify_shape and verify_reduce_axis_num
+            verify_buff_size_4d and verify_shape_4d and \
+            verify_shape and verify_reduce_axis_num
 
         return check_result

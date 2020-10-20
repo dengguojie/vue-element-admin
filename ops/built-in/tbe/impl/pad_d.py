@@ -1,33 +1,32 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-pad
+pad_d
 """
 # pylint: disable=locally-disabled,too-many-lines
 import json
 import os
 
-import te.platform.cce_params as cce_params
-from te import platform as tbe_platform
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.cce_build import build_config
-from topi.cce import util
-from impl.pad_align_reorder_ub import pad_align
-from te.utils.op_utils import *
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl import pad_align_reorder_ub
+from impl.util import util_select_op_base
+
+USED_BUFFER_LEN = 3072
+UINT64_ALL_ONE = 18446744073709551615
 
 
 def _ceil_div(value, block):
@@ -65,6 +64,14 @@ def _get_output_shape(input_shape, paddings):
 
     return output_shape
 
+def _get_scalar_dtype():
+    """
+    get scalar dtype int32 or int64
+    """
+
+    dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+
+    return dtype
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
 # pylint: disable=locally-disabled,too-many-statements,too-many-locals
@@ -92,10 +99,10 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
         src_stride = 8
         dst_stride = 4
 
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype_src) // 8
-    dtype_dst_size = tbe_platform.cce_intrin.get_bit_len(dtype_dst) // 8
-    ub_len = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.UB_SIZE) // (dtype_size + dtype_dst_size)
+    dtype_size = tbe_platform.get_bit_len(dtype_src) // 8
+    dtype_dst_size = tbe_platform.get_bit_len(dtype_dst) // 8
+    ub_len = tbe_platform.get_soc_spec(
+        tbe_platform.UB_SIZE) // (dtype_size + dtype_dst_size)
     block_ele = ub_len // ele_cnt
     ub_block_ele = block_ele * ele_cnt
     shape_len = _prod(shape[:])
@@ -111,8 +118,8 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
         num_cycle = num_cycle_index + 1
     else:
         num_cycle = num_cycle_index
-    cp_align_len_src = cce_params.BLOCK_REDUCE_INT8 // dtype_size
-    cp_align_len_fp16 = cce_params.BLOCK_REDUCE_INT8 // dtype_dst_size
+    cp_align_len_src = tbe_platform.BLOCK_REDUCE_INT8 // dtype_size
+    cp_align_len_fp16 = tbe_platform.BLOCK_REDUCE_INT8 // dtype_dst_size
 
     if num_cycle > 1:
         src_ubuf = _apply_for_new_alloc(params.ib_, dtype_src, ub_block_ele,
@@ -133,22 +140,21 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                 tvm.call_extern(
                     dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
                     input_tensor.access_ptr('r', offset=i * ub_block_ele),
-                    0, 1,
-                    _ceil_div(ub_block_ele, cp_align_len_src), 0, 0))
+                    0, 1,  _ceil_div(ub_block_ele, cp_align_len_src), 0, 0))
             ub_vconv_cycle_index = ub_block_ele // vconv_ele
             ub_vconv_cycle = ub_vconv_cycle_index + 1
 
             with params.ib_.for_range(0, ub_vconv_cycle, name="k") as k:
                 with params.ib_.if_scope(k < ub_vconv_cycle - 1):
                     params.ib_.emit(
-                        tvm.call_extern("uint64", 'set_vector_mask',
+                        tvm.call_extern("uint64", "set_vector_mask",
                                         params.uint64_all_one,
                                         params.uint64_all_one))
                     params.ib_.emit(
                         tvm.call_extern(
                             dtype_dst, vconv_insn,
                             dst_ubuf.access_ptr("w", offset=k * vconv_ele),
-                            src_ubuf.access_ptr('r', offset=k * vconv_ele),
+                            src_ubuf.access_ptr("r", offset=k * vconv_ele),
                             vconv_group, 1, 1, dst_stride, src_stride))
                 with params.ib_.else_scope():
                     ub_vconv_mod = ub_block_ele - \
@@ -160,7 +166,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
 
                     if ub_vconv_mod_repeat_more > 0:
                         params.ib_.emit(
-                            tvm.call_extern("uint64", 'set_vector_mask',
+                            tvm.call_extern("uint64", "set_vector_mask",
                                             params.uint64_all_one,
                                             params.uint64_all_one))
                         params.ib_.emit(
@@ -169,7 +175,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                                 "w", offset=(ub_vconv_cycle -
                                                              1) * vconv_ele),
                                             src_ubuf.access_ptr(
-                                                'r', offset=(ub_vconv_cycle -
+                                                "r", offset=(ub_vconv_cycle -
                                                              1) * vconv_ele),
                                             ub_vconv_mod_repeat_more,
                                             ub_stride, ub_stride,
@@ -179,7 +185,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                 tvm.call_extern(
                     dtype_dst, "copy_ubuf_to_gm",
                     gm_cast.access_ptr("w", offset=i * ub_block_ele),
-                    dst_ubuf.access_ptr('r', offset=0), 0, 1,
+                    dst_ubuf.access_ptr("r", offset=0), 0, 1,
                     _ceil_div(ub_block_ele, cp_align_len_fp16), 0, 0))
 
         with params.ib_.else_scope():
@@ -188,9 +194,10 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                 tvm.call_extern(
                     dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
                     input_tensor.access_ptr(
-                        'r', offset=(num_cycle - 1) * ub_block_ele), 0, 1,
+                        "r", offset=(num_cycle - 1) * ub_block_ele), 0, 1,
                     _ceil_div(shape_mod, cp_align_len_src), 0, 0))
-            vconv_cycle_index = shape_mod // vconv_ele  # 255*128=32640
+            vconv_cycle_index = shape_mod // vconv_ele
+            # 255*128=32640
             vconv_cycle_mod = shape_mod % vconv_ele
             if vconv_cycle_mod > 0:
                 vconv_cycle = vconv_cycle_index + 1
@@ -207,7 +214,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                         tvm.call_extern(
                             dtype_dst, vconv_insn,
                             dst_ubuf.access_ptr("w", offset=j * vconv_ele),
-                            src_ubuf.access_ptr('r', offset=j * vconv_ele),
+                            src_ubuf.access_ptr("r", offset=j * vconv_ele),
                             vconv_group, 1, 1, dst_stride, src_stride))
                 with params.ib_.else_scope():
                     vconv_mod = shape_mod - (vconv_cycle - 1) * vconv_ele
@@ -226,7 +233,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                            (vconv_mod_repeat_more * ele_cnt)
                     if vconv_mod_repeat_more > 0:
                         params.ib_.emit(
-                            tvm.call_extern("uint64", 'set_vector_mask',
+                            tvm.call_extern("uint64", "set_vector_mask",
                                             params.uint64_all_one,
                                             params.uint64_all_one))
                         params.ib_.emit(
@@ -235,7 +242,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                 dst_ubuf.access_ptr(
                                     "w", offset=(vconv_cycle - 1) * vconv_ele),
                                 src_ubuf.access_ptr(
-                                    'r', offset=(vconv_cycle - 1) * vconv_ele),
+                                    "r", offset=(vconv_cycle - 1) * vconv_ele),
                                 vconv_mod_repeat_more, stride, stride, dst,
                                 src))
                     if vconv_mod_repeat_one > 0:
@@ -244,7 +251,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                             for _ in range(vconv_mod_repeat_one):
                                 mask = mask * 2 + 1
                             params.ib_.emit(
-                                tvm.call_extern("uint64", 'set_vector_mask', 0,
+                                tvm.call_extern("uint64", "set_vector_mask", 0,
                                                 mask))
                         else:
                             offset = vconv_mod_repeat_one - 64
@@ -252,7 +259,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                             for _ in range(offset):
                                 mask = mask * 2 + 1
                             params.ib_.emit(
-                                tvm.call_extern("uint64", 'set_vector_mask',
+                                tvm.call_extern("uint64", "set_vector_mask",
                                                 mask, params.uint64_all_one))
 
                         if vconv_mod_repeat_one == 1:
@@ -268,7 +275,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                                 vconv_mod_repeat_more *
                                                 ele_cnt),
                                             src_ubuf.access_ptr(
-                                                'r',
+                                                "r",
                                                 offset=(vconv_cycle - 1) *
                                                 vconv_ele +
                                                 vconv_mod_repeat_more *
@@ -276,7 +283,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                             1, stride_one, stride_one, 0, 0))
 
                         params.ib_.emit(
-                            tvm.call_extern("uint64", 'set_vector_mask',
+                            tvm.call_extern("uint64", "set_vector_mask",
                                             params.uint64_all_one,
                                             params.uint64_all_one))
 
@@ -317,10 +324,8 @@ def _do_vector_dump(ubuf, ubuf_offset, dup_len, constant_values, params):
         """
         params.ib_.emit(
             tvm.call_extern(
-                params.dtype, 'vector_dup',
-                ubuf.access_ptr("rw", offset=ubuf_offset + cycle_offset),
-                constant_values, _ceil_div(data_len,
-                                           params.vec_align_len), 1, 1, 8, 8))
+                params.dtype, 'vector_dup', ubuf.access_ptr("rw", offset=ubuf_offset + cycle_offset),
+                constant_values, _ceil_div(data_len, params.vec_align_len), 1, 1, 8, 8))
 
     dump_buffer_max_len = params.uint8_max_value * params.vec_align_len
     num_cycle = dup_len // dump_buffer_max_len
@@ -508,8 +513,7 @@ def _mode_large_last_axis(data_len,
                     params.dtype, 'copy_gm_to_ubuf',
                     tmp_buf.access_ptr("rw", offset=0),
                     gm_in_buf.buf.access_ptr(
-                        "r", offset=gm_in_buf.offset + ex_offset), 0, 1, 1, 0,
-                    0))
+                        "r", offset=gm_in_buf.offset + ex_offset), 0, 1, 1, 0, 0))
             params.ib_.emit(
                 tvm.call_extern(
                     params.dtype, 'copy_ubuf_to_gm',
@@ -615,49 +619,34 @@ def _mode_align_dst_src_fail(out_ubuf, gm_in_buf, data_len, gm_align, params):
     """
 
     align_offset, _ = params.get_align_mask(out_ubuf.offset)
+    # to make sure there are 8 block ub reserved
+    temp_data_len = max(params.cp_align_len * 8, data_len + params.cp_align_len)
     tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                   data_len + params.cp_align_len,
+                                   temp_data_len,
                                    params.cp_align_len,
                                    tbe_platform.scope_ubuf)
 
+    # clear warning, 0 < align_offset < params.cp_align_len
     params.ib_.emit(
         tvm.call_extern(
-            params.dtype,
-            'copy_gm_to_ubuf',
+            params.dtype, 'copy_gm_to_ubuf',
             tmp_buf.access_ptr("rw", offset=0),
-            gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset),
-            0,
-            1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len),
-            # clear warning, 0 < align_offset < params.cp_align_len
-            0,
-            0))
+            gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset), 0, 1,
+            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     params.ib_.emit(
         tvm.call_extern(
-            params.dtype,
-            'copy_ubuf_to_gm',
+            params.dtype, 'copy_ubuf_to_gm',
             gm_align.access_ptr("rw", offset=align_offset),
-            tmp_buf.access_ptr("r", offset=0),
-            0,
-            1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len),
-            # clear warning, 0 < align_offset < params.cp_align_len
-            0,
-            0))
+            tmp_buf.access_ptr("r", offset=0), 0, 1,
+            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     params.ib_.emit(
         tvm.call_extern(
-            params.dtype,
-            'copy_gm_to_ubuf',
+            params.dtype, 'copy_gm_to_ubuf',
             tmp_buf.access_ptr("rw", offset=0),
-            gm_align.access_ptr("r", offset=0),
-            0,
-            1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len),
-            # clear warning, 0 < align_offset < params.cp_align_len
-            0,
-            0))
+            gm_align.access_ptr("r", offset=0), 0, 1,
+            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     _mask_copy(out_ubuf, tmp_buf, 0, data_len, params)
 
@@ -730,25 +719,26 @@ class PadParams:
         self.out_shape = _get_output_shape(self.in_shape, self.paddings)
         self.copy_mode = self.enum_copy_mode['align_ok']
         # Convert byts to Bytes
-        self.type_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-        self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.type_size
+        self.type_size = tbe_platform.get_bit_len(dtype) // 8
+        self.cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // self.type_size
         self.unified_buffer_len = \
-            (tbe_platform.cce_conf.get_soc_spec(
-                tbe_platform.cce_conf.UB_SIZE) - 3072) // self.type_size
+            (tbe_platform.get_soc_spec(
+                tbe_platform.UB_SIZE) - USED_BUFFER_LEN) // self.type_size
         self.vec_align_len = \
-            cce_params.VECTOR_INST_BLOCK_WIDTH // self.type_size
+            tbe_platform.VECTOR_INST_BLOCK_WIDTH // self.type_size
         # Maximum number of uint8
         self.uint8_max_value = 255
         # Number corresponding to 64-bit masks when they are all 1: 2**64 -1
-        self.uint64_all_one = 18446744073709551615
+        self.uint64_all_one = UINT64_ALL_ONE
         self.mask = ib_.allocate(
             "uint64", (1,), name="mask", scope=tbe_platform.scope_reg)
+        scalar_dtype = _get_scalar_dtype()
         self.align_offset = \
-            ib_.allocate("int32", (2,), name="align_offset",
+            ib_.allocate(scalar_dtype, (2,), name="align_offset",
                          scope=tbe_platform.scope_reg)
         self.device_core_num = \
-            tbe_platform.cce_conf.get_soc_spec(
-                tbe_platform.cce_conf.CORE_NUM)
+            tbe_platform.get_soc_spec(
+                tbe_platform.CORE_NUM)
         self.block = tvm.thread_axis("blockIdx.x")
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
         self.in_multi_core_mode = False
@@ -762,13 +752,9 @@ class PadParams:
             mask = self.uint64_all_one - (2 ** align_offset - 1)
             return align_offset, mask
 
-        self.align_offset[0] = 1
-        self.align_offset[0] = \
-            offset % (self.cp_align_len * self.align_offset[0])
-        self.mask[0] = \
-            tvm.const(self.uint64_all_one // 2,
-                      "uint64") * tvm.const(2, "uint64") + \
-            tvm.const(1, "uint64")
+        self.align_offset[0] = 1 if tvm.api_config.query_bit_width() == 32 else tvm.const(1, "int64")
+        self.align_offset[0] = offset % (self.cp_align_len * self.align_offset[0])
+        self.mask[0] = tvm.const(self.uint64_all_one // 2, "uint64") * tvm.const(2, "uint64") + tvm.const(1, "uint64")
         with self.ib_.for_range(
             0, self.align_offset[0], for_type="serial", name="i"):
             self.mask[0] = self.mask[0] * tvm.const(2, "uint64")
@@ -1025,9 +1011,11 @@ def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
 
     if create_data_buf:
         if params.copy_mode == params.enum_copy_mode['align_dst_src_fail']:
+            # to make sure there are 10 block ub reserved
+            temp_out_data_len = max(params.cp_align_len * 10, out_data_len)
             out_buf.buf = \
                 _apply_for_new_alloc(params.ib_, params.dtype,
-                                     out_data_len, params.cp_align_len,
+                                     temp_out_data_len, params.cp_align_len,
                                      tbe_platform.scope_ubuf)
         else:
             out_buf.buf = \
@@ -1145,54 +1133,34 @@ def _save_out_buf(out_ubuf, gm_out_buf, data_lens, params, fuse_wc_axis=False,
             if tail_pad_len > align_tail:
                 actual_offset = gm_out_buf.offset + out_data_len - \
                                 params.cp_align_len
-                params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype,
-                        'copy_ubuf_to_gm',
-                        gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr(
-                            "r", offset=out_data_len - align_tail),
-                        # The rest of the block must be constant_values.
-                        0,
-                        1,
-                        1,
-                        0,
-                        0))
-            else:
-                actual_offset = gm_out_buf.offset + \
-                                params.cp_align_len - align_tail
+                # The rest of the block must be constant_values.
                 params.ib_.emit(
                     tvm.call_extern(
                         params.dtype, 'copy_ubuf_to_gm',
                         gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr(
-                            "r", offset=out_data_len - align_tail), 0, 1, 1, 0,
-                        0))
+                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
+            else:
+                actual_offset = gm_out_buf.offset + params.cp_align_len - align_tail
+                params.ib_.emit(
+                    tvm.call_extern(
+                        params.dtype, 'copy_ubuf_to_gm',
+                        gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
+                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
 
                 params.ib_.emit(
                     tvm.call_extern(
                         params.dtype, 'copy_gm_to_ubuf',
-                        out_ubuf.access_ptr(
-                            "rw", offset=out_data_len - align_tail),
-                        gm_out_buf.buf.access_ptr(
-                            "r", offset=gm_out_buf.offset), 0, 1,
+                        out_ubuf.access_ptr("rw", offset=out_data_len - align_tail),
+                        gm_out_buf.buf.access_ptr("r", offset=gm_out_buf.offset), 0, 1,
                         _ceil_div(in_data_len, params.cp_align_len), 0, 0))
 
-                actual_offset = gm_out_buf.offset + \
-                                out_data_len - params.cp_align_len
+                actual_offset = gm_out_buf.offset + out_data_len - params.cp_align_len
+                # The rest of the block must be constant_values.
                 params.ib_.emit(
                     tvm.call_extern(
-                        params.dtype,
-                        'copy_ubuf_to_gm',
+                        params.dtype, 'copy_ubuf_to_gm',
                         gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr(
-                            "r", offset=out_data_len - align_tail),
-                        # The rest of the block must be constant_values.
-                        0,
-                        1,
-                        1,
-                        0,
-                        0))
+                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
 
         if out_data_len > params.cp_align_len:
             params.ib_.emit(
@@ -1267,9 +1235,10 @@ def _pad_multi_core_fun(axis, bufs, gm_align, params):
     out_buf, data_buf, gm_out_buf, gm_in_buf = bufs
     one_block_size = _prod(params.out_shape[axis + 1:])
 
-    _multi_core_do_padding(params.paddings[axis][0] * one_block_size,
-                           params.constant_values, gm_out_buf.buf,
-                           gm_out_buf.offset, params)
+    with params.ib_.new_scope():
+        _multi_core_do_padding(params.paddings[axis][0] * one_block_size,
+                               params.constant_values, gm_out_buf.buf,
+                               gm_out_buf.offset, params)
 
     gm_out_buf.offset = \
         gm_out_buf.offset + params.paddings[axis][0] * one_block_size
@@ -1599,17 +1568,16 @@ def _save_padding_bottom(tvm_ir, tail_block_ub, dst, src, input_x, paddings,
                 tvm.call_extern(
                     dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
                     src.access_ptr('r', offset=src_offset)))
-        gm_offset = block_offset + rows_padding*cols_padding - block_len
-        _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, tail_block_ub, 1, 1, 0, 0,
-                              gm_offset)
+        gm_offset = block_offset + rows_padding * cols_padding - block_len
+        _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, tail_block_ub, 1, 1, 0, 0, gm_offset)
 
 
 def _get_batch_rows(rows_padding_bottom, cols_align, dtype):
     """
     return maximum num rows ub can load at once
     """
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     padding_bytes = rows_padding_bottom*cols_align*dtype_size
     tempub_bytes = cols_align*dtype_size
     batch_rows = (ub_size_bytes - 32 - padding_bytes - tempub_bytes) // \
@@ -1892,8 +1860,8 @@ def _check_optimization_nhwc(input_x, paddings):
     """
     shape = list(input_x.get("shape"))
     dtype = input_x.get("dtype")
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if len(shape) <= 2:
         return False
     h_padding_after = paddings[-3][1]
@@ -1946,8 +1914,8 @@ def _check_optimization_nhwc(input_x, paddings):
                          get_soc_spec(tbe_platform.
                                       cce_conf.UB_SIZE) // 32 * 8
     device_core_num = \
-        tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
+        tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
     if _prod(shape[-2:]) + _prod(ou_shape[-2:]) > ub_maxsize:
         if _prod(shape[:-3]) >= device_core_num:
             return True
@@ -1968,8 +1936,8 @@ def _check_optimization_nchw(input_x, paddings):
     """
     shape = list(input_x.get("shape"))
     dtype = input_x.get("dtype")
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    dtype_size = tbe_platform.get_bit_len(dtype) // 8
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if len(shape) < 2:
         return False
     rows_padding_bottom = paddings[-2][1]
@@ -2081,13 +2049,10 @@ def _pattern_align(shape, paddings, dtype):
             if value not in [[0, 0], (0, 0)]:
                 padd_axis.append(index)
 
-        # fused [0, 0] and [0, 0]
-        # eg: [11,11,11], [[1,1],[0,0],[0,0]] -> [11,121], [[1,1],[0,0]]
         in_shape, in_paddings, \
         padd_axis = fused_not_padding_axis(in_shape, in_paddings, padd_axis)
         ou_shape = _get_output_shape(in_shape, in_paddings)
 
-    # fused [16,16,8], [[0,0],[2,2],[0,0]] -> [16, 128], [[0,0],[16,16]]
     if len(in_shape) >= 2 and \
             in_paddings[-1] == [0, 0] and \
             in_shape[-1] * num_bit % 32 != 0:
@@ -2140,7 +2105,7 @@ def op_select_format(input_x,
             is_support_5hd = True
 
     dtype_base = [
-        "float16", "float", "int32", "int8", "uint8"
+        "float16", "float", "int32"
     ]
     dtype_5hd = [
         "float16", "float32"
@@ -2155,19 +2120,20 @@ def op_select_format(input_x,
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = gen_param(
-        classify="input0", name="x", datatype=dtype_str, format=format_str)
-    output0 = gen_param(
-        classify="output0", name="y", datatype=dtype_str, format=format_str)
+    input0 = util_select_op_base.gen_param( classify="input0", name="x", datatype=dtype_str, format=format_str,
+                                            unknownshape_format=format_str)
+    output0 = util_select_op_base.gen_param( classify="output0", name="y", datatype=dtype_str, format=format_str,
+                                             unknownshape_format=format_str)
     param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
 # pylint: disable=locally-disabled,too-many-statements
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_LIST_INT, para_check.KERNEL_NAME)
 def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     """ calculating pad tensor by paddings parameters
 
@@ -2192,16 +2158,14 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     """
     shape = list(input_x.get("shape"))
     paddings = list(paddings)
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
     check_list_dtype = ("float16", "float32", "int32", "int8", "uint8")
     dtype = input_x.get("dtype").lower()
-    check_dtype(dtype, check_list_dtype, param_name="input_x")
+    para_check.check_dtype(dtype, check_list_dtype, param_name="input_x")
     input_format = input_x.get("format")
     ori_format = input_x.get("ori_format")
-    if input_format == "NC1HWC0" and ori_format == "NHWC" \
-            and dtype in ["float16", "float32"]:
-        paddings = [[0, 0], [0, 0], [paddings[1][0], paddings[1][1]],
-                    [paddings[2][0], paddings[2][1]], [0, 0]]
+    if input_format == "NC1HWC0" and ori_format == "NHWC" and dtype in ["float16", "float32"]:
+        paddings = [[0, 0], [0, 0], [paddings[1][0], paddings[1][1]], [paddings[2][0], paddings[2][1]], [0, 0]]
 
     if len(paddings) is not len(shape):
         raise RuntimeError(
@@ -2209,8 +2173,7 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     for padding in paddings:
         if len(padding) != 2:
             raise RuntimeError("Paddings's shape is not in the form of (n,2)")
-        if (not isinstance(padding[0], int)) or (not isinstance(
-                padding[1], int)):
+        if (not isinstance(padding[0], int)) or (not isinstance(padding[1], int)):
             raise RuntimeError("Paddings only suppot int")
 
     data = tvm.placeholder(shape, name="data", dtype=dtype)
@@ -2218,49 +2181,42 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         dtype_now = "float16"
     else:
         dtype_now = dtype
-    dtype_size = tbe_platform.cce_intrin.get_bit_len(dtype_now) // 8
-    cp_align_len = cce_params.BLOCK_REDUCE_INT8 // dtype_size
-    one_core_align = _ceil_fill(shape[len(shape) - 1] + cp_align_len,
-                                cp_align_len)
+    dtype_size = tbe_platform.get_bit_len(dtype_now) // 8
+    cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // dtype_size
+    one_core_align = _ceil_fill(shape[len(shape) - 1] + cp_align_len, cp_align_len)
 
     if _check_optimization_nchw(input_x, paddings):
         res = tvm.extern([_get_output_shape(shape, paddings)], [data],
-                         lambda ins, outs: _pad_for_n_c_hw(ins, outs,
-                                                           paddings),
+                         lambda ins, outs: _pad_for_n_c_hw(ins, outs, paddings),
                          name="res", dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
     elif _check_optimization_nhwc(input_x, paddings):
         res = tvm.extern([_get_output_shape(shape, paddings)], [data],
-                         lambda ins, outs: _pad_for_n_hw_c(ins, outs,
-                                                           paddings),
+                         lambda ins, outs: _pad_for_n_hw_c(ins, outs, paddings),
                          name="res", dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
-        with build_config:
+        with tbe_platform.build_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
     else:
         in_shape = []
         in_paddings = []
         for index, value in enumerate(shape):
-            if value != 1 or \
-                    paddings[index] not in [[0, 0], (0, 0)]:
+            if value != 1 or paddings[index] not in [[0, 0], (0, 0)]:
                 in_shape.append(value)
                 in_paddings.append(list(paddings[index]))
 
         option, new_shape, new_paddings = _pattern_align(in_shape, in_paddings, dtype)
         if option:
-            res = pad_align(new_shape, new_paddings, dtype, kernel_name)
+            res = pad_align_reorder_ub.pad_align(new_shape, new_paddings, dtype, kernel_name)
             return res
         else:
-            if len(in_shape) >= 2 and \
-                    in_paddings[-1] == [0, 0] and \
-                    in_shape[-1] * dtype_size % 32 != 0:
-
+            if len(in_shape) >= 2 and in_paddings[-1] == [0, 0] and in_shape[-1] * dtype_size % 32 != 0:
                 in_shape[-2] *= in_shape[-1]
                 in_paddings[-2][0] *= in_shape[-1]
                 in_paddings[-2][1] *= in_shape[-1]
@@ -2271,33 +2227,28 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
                 tvm.extern(
                     [_get_output_shape(in_shape, in_paddings), shape, [one_core_align],
                      _get_output_shape(in_shape, in_paddings)], [data],
-                    lambda ins, outs: _intrin_factor(ins[0], outs[0], outs[1],
-                                                     outs[2], outs[3],
-                                                     (in_shape, in_paddings,
-                                                      0)),
+                    lambda ins, outs: _intrin_factor(ins[0], outs[0], outs[1], outs[2], outs[3],
+                                                     (in_shape, in_paddings, 0)),
                     name="res", dtype=[dtype, dtype_now, dtype_now, dtype_now])
 
             sch = tvm.create_schedule(res[0].op)
             build_list = [data, res[0], res[1], res[2], res[3]]
 
-            with build_config:
+            with tbe_platform.build_config:
                 tvm.build(sch, build_list, "cce", name=kernel_name)
 
         if dtype == "int8" or dtype == "uint8":
             size_align = one_core_align * dtype_size + 32
             in_shape_size = _prod(shape[:])
             size_in_cast = in_shape_size * dtype_size + 32
-            size_out_cast = \
-                _prod(_get_output_shape(shape, paddings)) * dtype_size + 32
+            size_out_cast = _prod(_get_output_shape(shape, paddings)) * dtype_size + 32
             total_size = [size_in_cast, size_align, size_out_cast]
             num_workspace = 3
-            workspace_dict = \
-                {"workspace": {"num": num_workspace, "size": total_size}}
+            workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
             _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
         else:
             size_align = one_core_align * dtype_size + 32
             total_size = [size_align]
             num_workspace = 1
-            workspace_dict = \
-                {"workspace": {"num": num_workspace, "size": total_size}}
+            workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
             _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")

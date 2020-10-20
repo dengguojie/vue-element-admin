@@ -1,21 +1,22 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file nn_batch_norm_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file nn_batch_norm_ops.cpp
+ * \brief
  */
 #include "inc/nn_batch_norm_ops.h"
 #include <string>
@@ -37,10 +38,11 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NHWC" && data_format != "NCHW") {
-      string expected_format_list = Strcat("NHWC, NCHW");
+      string expected_format_list = ConcatString("NHWC, NCHW");
       OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NHWC' and 'NCHW'.");
       return GRAPH_FAILED;
     }
   }
@@ -74,7 +76,7 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
   reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
   reserve_space_2_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
-  
+
   return GRAPH_SUCCESS;
 }
 
@@ -94,10 +96,11 @@ IMPLEMT_INFERFUNC(BatchNormExt2, BatchNormExt2InferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NHWC" && data_format != "NCHW") {
-      string expected_format_list = Strcat("NHWC, NCHW");
+      string expected_format_list = ConcatString("NHWC, NCHW");
       OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NHWC' and 'NCHW'.");
       return GRAPH_FAILED;
     }
   }
@@ -144,8 +147,8 @@ IMPLEMT_VERIFIER(BatchNormGrad, BatchNormGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "y_backprop", "x")) {
     return GRAPH_FAILED;
   }
-  if ((!CheckTwoInputDtypeSame(op, "scale", "reserve_space_1"))
-      || (!CheckTwoInputDtypeSame(op, "scale", "reserve_space_2"))) {
+  if ((!CheckTwoInputDtypeSame(op, "scale", "reserve_space_1")) ||
+      (!CheckTwoInputDtypeSame(op, "scale", "reserve_space_2"))) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -155,10 +158,11 @@ IMPLEMT_INFERFUNC(BatchNormGrad, BatchNormGradInferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NHWC" && data_format != "NCHW") {
-      string expected_format_list = Strcat("NHWC, NCHW");
+      string expected_format_list = ConcatString("NHWC, NCHW");
       OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NHWC' and 'NCHW'.");
       return GRAPH_FAILED;
     }
   }
@@ -208,8 +212,8 @@ IMPLEMT_VERIFIER(BatchNormGradExt2, BatchNormGradExt2Verify) {
   if (!CheckTwoInputDtypeSame(op, "y_backprop", "x")) {
     return GRAPH_FAILED;
   }
-  if ((!CheckTwoInputDtypeSame(op, "scale", "reserve_space_1"))
-      || (!CheckTwoInputDtypeSame(op, "scale", "reserve_space_2"))) {
+  if ((!CheckTwoInputDtypeSame(op, "scale", "reserve_space_1")) ||
+      (!CheckTwoInputDtypeSame(op, "scale", "reserve_space_2"))) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -219,10 +223,11 @@ IMPLEMT_INFERFUNC(BatchNormGradExt2, BatchNormGradExt2InferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NHWC" && data_format != "NCHW") {
-      string expected_format_list = Strcat("NHWC, NCHW");
+      string expected_format_list = ConcatString("NHWC, NCHW");
       OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NHWC' and 'NCHW'.");
       return GRAPH_FAILED;
     }
   }
@@ -296,11 +301,9 @@ IMPLEMT_INFERFUNC(L2NormalizeGrad, L2NormalizeGradInferShape) {
 
 INFER_FUNC_REG(L2NormalizeGrad, L2NormalizeGradInferShape);
 // -------------------------L2NormalizeGrad END-----------------------------
- //namespace domi
-
+// namespace domi
 
 IMPLEMT_VERIFIER(BNInference, BNInferenceVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -313,14 +316,13 @@ IMPLEMT_INFERFUNC(BNInference, BNInferenceInferShape) {
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
 
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(BNInference, BNInferenceInferShape);
 VERIFY_FUNC_REG(BNInference, BNInferenceVerify);
 
 IMPLEMT_VERIFIER(BNInferenceD, BNInferenceDVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -332,10 +334,10 @@ IMPLEMT_INFERFUNC(BNInferenceD, BNInferenceDInferShape) {
   y_desc.SetShape(ge::Shape(x_shape));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(BNInferenceD, BNInferenceDInferShape);
 VERIFY_FUNC_REG(BNInferenceD, BNInferenceDVerify);
 
-}
+}  // namespace ge

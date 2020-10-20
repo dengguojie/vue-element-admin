@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 scale
 """
-
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
@@ -368,6 +367,72 @@ def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
     return shape
 
 
+def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
+    """
+    Get L1 fusion_params
+    Parameters
+    ----------
+    x_tensor : tensor of input data
+    y : dict of output data
+    x_tensor_num: input tensor num
+    Returns
+    -------
+    fusion_params
+    """
+    # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
+    in_l1_flag_list = []
+    in_valid_shape_list = []
+    in_slice_offset_list = []
+    in_select_read_flag_list = []
+    is_l1_depth_fusion = False
+
+    input_tensor = [x_tensor, scale_tensor, bias_tensor]
+    for x_tensor in input_tensor:
+        if x_tensor is not None:
+            l1_fusion_type = -1
+            if fusion_manager.get_build_cfg() != "disable":
+                l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
+                    if "L1_fusion_type" in x_tensor.op.attrs else -1
+                if l1_fusion_type == 1:
+                    raise RuntimeError("Scale does not support l1 width fusion")
+            is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
+            in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
+                if "addr_type" in x_tensor.op.attrs else False
+            in_l1_flag_list.append(in_l1_flag)
+            in_valid_shape = x_tensor.op.attrs["valid_shape"] \
+                if "valid_shape" in x_tensor.op.attrs else []
+            in_valid_shape_list.append(in_valid_shape)
+            in_slice_offset = x_tensor.op.attrs["slice_offset"] \
+                if "slice_offset" in x_tensor.op.attrs else []
+            in_slice_offset_list.append(in_slice_offset)
+            in_select_read_flag = x_tensor.op.tag == "read_select_5d"
+            in_select_read_flag_list.append(in_select_read_flag)
+
+    l1_fusion_type = 0 if is_l1_depth_fusion is True else -1
+
+    out_l1_flag = False
+    out_valid_shape = []
+    out_slice_offset = []
+    out_select_write_flag = False
+    if y is not None:
+        out_l1_flag = y.get("addr_type", 0) == 1
+        out_valid_shape = y.get("valid_shape", [])
+        out_slice_offset = y.get("slice_offset", [])
+        out_select_write_flag = bool(out_valid_shape)
+
+    fusion_params = {"is_l1fusion": is_l1_depth_fusion,
+                     "l1_fusion_type": l1_fusion_type,
+                     "in_l1_flag": in_l1_flag_list,
+                     "in_select_read_flag": in_select_read_flag_list,
+                     "in_valid_shape": in_valid_shape_list,
+                     "in_slice_offset": in_slice_offset_list,
+                     "out_l1_flag": out_l1_flag,
+                     "out_select_write_flag": out_select_write_flag,
+                     "out_valid_shape": out_valid_shape,
+                     "out_slice_offset": out_slice_offset}
+    return fusion_params
+
+
 # pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_compute(x, scale):
     """
@@ -494,11 +559,21 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
     res: TVM tensor list
         the result of scale compute
     """
+    tmp_y = {}
+    tmp_y["addr_type"] = 0
+    tmp_y["valid_shape"] = []
+    tmp_y["slice_offset"] = []
+    fuse_y = tmp_y if y is None else y
+    fusion_params = get_fusion_params(x, scale, bias, fuse_y)
 
+    res = None
     if bias is not None:
         res = _fused_scale_bias_compute(x, scale, bias)
     else:
         res = _fused_scale_compute(x, scale)
+
+    res.op.attrs["ele_fusion_params"] = fusion_params
+    res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
 
     return res
 
@@ -580,12 +655,36 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
         if len(shape_bias) > 0:
             shape_bias_new = shape_scale_new
 
-    bias_input = None
-    x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
-    scale_input = tvm.placeholder(shape_scale_new, name="scale_input", dtype=dtype_scale.lower())
-    if len(shape_bias) > 0:
-        bias_input = tvm.placeholder(shape_bias_new, name="bias_input", dtype=dtype_bias.lower())
+    input_list = [x, scale, bias]
+    input_shape_list = [shape_x, shape_scale_new, shape_bias_new]
+    name_list = ["x", "scale", "bias"]
+    input_tensor_list = []
+    is_l1_depth_fusion = False
+    for input_, input_shape, name_ in \
+        zip(input_list, input_shape_list, name_list):
+            if len(input_shape) > 0:
+                l1_fusion_type = -1
+                if fusion_manager.get_build_cfg() != "disable":
+                    l1_fusion_type = input_.get("L1_fusion_type", -1)
+                    if l1_fusion_type == 1:
+                        raise RuntimeError("scale does not support l1 width fusion")
+                is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
+                dtype = input_.get("dtype")
+                addr_type = input_.get("addr_type", 0)
+                valid_shape = input_.get("valid_shape", [])
+                slice_offset = input_.get("slice_offset", [])
+                attr_x = {"addr_type": addr_type,
+                          "valid_shape": valid_shape,
+                          "slice_offset": slice_offset,
+                          "L1_fusion_type": l1_fusion_type}
+                input_tensor = tvm.placeholder(input_shape, name=name_,
+                                               dtype=dtype, attrs=attr_x)
+                input_tensor_list.append(input_tensor)
 
+    if len(shape_bias) == 0:
+        input_tensor_list.append(None)
+
+    x_input, scale_input, bias_input = input_tensor_list
     res = scale_compute(x_input, scale_input, bias_input, y,
                         axis, num_axes, scale_from_blob, kernel_name)
 
@@ -598,5 +697,6 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
 
     config = {"print_ir": False,
               "name": kernel_name,
-              "tensor_list": tensor_list}
+              "tensor_list": tensor_list,
+              "l1_fusion_option": is_l1_depth_fusion}
     te.lang.cce.cce_build_code(sch, config)

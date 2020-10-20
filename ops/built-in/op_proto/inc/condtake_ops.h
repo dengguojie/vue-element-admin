@@ -1,41 +1,42 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file  condtake_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#ifndef GE_OP_CONDTAKE_OPS_H_
-#define GE_OP_CONDTAKE_OPS_H_
+
+/*!
+ * \file condtake_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_CONDTAKE_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_CONDTAKE_OPS_H_
 
 #include "graph/operator_reg.h"
 #include "graph/operator.h"
 
 namespace ge {
 /**
-*@brief Take elements from data if specific condition is satisfied on mask.
+*@brief Take elements from data if specific condition is satisfied on mask. \n
 
 *@par Inputs:
-*@li data: input tensor from which to take elements, High-dimension input would \n
+*@li data: input tensor from which to take elements, High-dimension input would
 first be flattened.
-*@li mask: condition param; must be the same shape with data.
+*@li mask: condition param; must be the same shape with data. \n
 
 *@par Attributes:
 *@li mode:convert by convert in Mode.
 *@li val:convert by <class 'float'>
-*@li eps:convert by <class 'float'> (default: 1e-06)
+*@li eps:convert by <class 'float'> (default: 1e-06) \n
 
 *@par Outputs:
 *@li out_data: the elements taken
@@ -55,4 +56,4 @@ REG_OP(CondTake)
     .OP_END_FACTORY_REG(CondTake)
 }  // namespace ge
 
-#endif  // GE_OP_ARRAY_OPS_H_
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_CONDTAKE_OPS_H_

@@ -1,24 +1,24 @@
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-PSROIPooling
+psroipooling
 """
-
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+
 
 # data type of fp16
 FP16 = "float16"
@@ -26,6 +26,8 @@ FP16 = "float16"
 FP32 = "float32"
 # data type of int32
 INT32 = "int32"
+# data type of int16
+INT16 = "int16"
 # one block size takes up 32b
 BLOCK_SIZE = 32
 # instruction's default sid is 0
@@ -113,92 +115,85 @@ class PsroiClass():
     """
     Function: class that execute psroipooling
     """
-    def input_param_check(self, product_name):
+    def _input_param_check(self):
         """
         check if the inputs are valid
 
         Parameters
         ----------
-        profile: Dprofile, ai_core profile explanation
+        None
 
         Returns
         -------
         None
         """
-
-        if not tbe_platform.cce_conf.api_check_support("tik.vrelu", "float32"):
-            check_dtype(self.dtype, (FP16,), param_name="x")
-            check_dtype(self.roi_dtype, (FP16,), param_name="rois")
+        if not tbe_platform.api_check_support("tik.vrelu", "float32"):
+            para_check.check_dtype(self.dtype, (FP16,), param_name="x")
+            para_check.check_dtype(self.roi_dtype, (FP16,), param_name="rois")
         else:
-            check_dtype(self.dtype, (FP16, FP32), param_name="x")
-            check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
+            para_check.check_dtype(self.dtype, (FP16, FP32), param_name="x")
+            para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
 
         if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['param_name1'] = self.dtype
-            error_info['param_name2'] = self.roi_dtype
-            error_info['param_name3'] = self.y_dtype
-            error_info['op_name'] = 'psroipooling'
+            error_info = {'errCode': 'E80017',
+                          'param_name1': self.dtype,
+                          'param_name2': self.roi_dtype,
+                          'param_name3': self.y_dtype,
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], the dtype of input x[%s], "
                                "rois[%s] and y[%s] must be equal."
                                % (error_info['op_name'], error_info['param_name1'],
                                   error_info['param_name2'], error_info['param_name3']))
 
-        check_shape(self.x_shape, param_name="x")
-        check_shape(self.roi_shape, param_name="rois")
-        check_shape(self.y_shape, param_name="y")
+        para_check.check_shape(self.x_shape, param_name="x")
+        para_check.check_shape(self.roi_shape, param_name="rois")
+        para_check.check_shape(self.y_shape, param_name="y")
         # x and y must be 5HD
-        check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
-        check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
+        para_check.check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
+        para_check.check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
 
         if self.roi_shape[0] != self.x_shape[0]:
-            error_info = {}
-            error_info['errCode'] = 'E81009'
-            error_info['param_value1'] = self.x_shape[0]
-            error_info['param_value2'] = self.roi_shape[0]
-            error_info['op_name'] = 'psroipooling'
+            error_info = {'errCode': 'E81009',
+                          'param_value1': self.x_shape[0],
+                          'param_value2': self.roi_shape[0],
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], the batch of input x[%s] and rois[%s] must be equal."
                                % (error_info['op_name'], error_info['param_value1'], error_info['param_value2']))
 
         if self.roi_shape[1] != DIGIT_5:
-            error_info = {}
-            error_info['errCode'] = 'E80000'
-            error_info['param_name'] = "roi_shape[1]"
-            error_info['op_name'] = 'psroipooling'
-            error_info['expect_value'] = DIGIT_5
-            error_info['real_value'] = self.roi_shape[1]
+            error_info = {'errCode': 'E80000',
+                          'param_name': "roi_shape[1]",
+                          'op_name': 'psroipooling',
+                          'expect_value': DIGIT_5,
+                          'real_value': self.roi_shape[1]}
             raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be equal 5, but actually is [%s]."
                                % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
         
         if self.roi_shape[0]*self.roi_shape[2] != self.y_shape[0]:
-            error_info = {}
-            error_info['errCode'] = 'E81009'
-            error_info['param_value1'] = self.roi_shape[0]*self.roi_shape[2]
-            error_info['param_value2'] = self.y_shape[0]
-            error_info['op_name'] = 'psroipooling'
+            error_info = {'errCode': 'E81009',
+                          'param_value1': self.roi_shape[0] * self.roi_shape[2],
+                          'param_value2': self.y_shape[0],
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], all num of rois must be equal to "
                                "y_shape[0][%s],but actually is [%s]."
                                % (error_info['op_name'], error_info['param_value2'], error_info['param_value1']))
 
         if self.group_size >= DIGIT_128:
-            error_info = {}
-            error_info['errCode'] = 'E80002'
-            error_info['param_name'] = 'group_size'
-            error_info['op_name'] = 'psroipooling'
+            error_info = {'errCode': 'E80002',
+                          'param_name': 'group_size',
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s] must be "
                                "less than [%s],but actually is [%s]."
                                % (error_info['op_name'], error_info['param_name'], DIGIT_128, self.group_size))
 
-        if self.x_shape[1]//self.y_shape[1] != self.y_shape[2]*self.y_shape[3]:
-            error_info = {}
-            error_info['errCode'] = 'E81010'
-            error_info['param_name'] = 'x_shape[1]'
-            error_info['op_name'] = 'psroipooling'
-            error_info['param_value1'] = self.x_shape[1]
-            error_info['param_value2'] = self.y_shape[1]
-            error_info['param_value3'] = self.y_shape[2]
-            error_info['param_value4'] = self.y_shape[3]
+        if self.x_shape[1] // self.y_shape[1] != self.y_shape[2]*self.y_shape[3]:
+            error_info = {'errCode': 'E81010',
+                          'param_name': 'x_shape[1]',
+                          'op_name': 'psroipooling',
+                          'param_value1': self.x_shape[1],
+                          'param_value2': self.y_shape[1],
+                          'param_value3': self.y_shape[2],
+                          'param_value4': self.y_shape[3]}
             raise RuntimeError(error_info, "In op[%s], the parameter %s is invalid, "
                                "it should follow the rule: self.x_shape[1](%s)//self.y_shape[1](%s) "
                                "== self.y_shape[2](%s)*self.y_shape[3](%s)."
@@ -206,23 +201,20 @@ class PsroiClass():
                                   error_info['param_value2'], error_info['param_value3'],
                                   error_info['param_value4']))
 
-        if self.group_size != self.y_shape[2] or \
-                self.group_size != self.y_shape[3]:
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['param_value1'] = self.y_shape[2]
-            error_info['param_value2'] = self.y_shape[3]
-            error_info['op_name'] = 'psroipooling'
+        if self.group_size != self.y_shape[2] or self.group_size != self.y_shape[3]:
+            error_info = {'errCode': 'E80017',
+                          'param_value1': self.y_shape[2],
+                          'param_value2': self.y_shape[3],
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], the shape of y_shape[2] and y_shape[3] "
                                "must be equal to group_size[%s],but actually is %s and %s."
                                % (error_info['op_name'], self.group_size, error_info['param_value1'],
                                   error_info['param_value2']))
 
         if ceil_value(self.output_dim, C0) != self.y_shape[1]:
-            error_info = {}
-            error_info['errCode'] = 'E81011'
-            error_info['param_name'] = 'output_dim'
-            error_info['op_name'] = 'psroipooling'
+            error_info = {'errCode': 'E81011',
+                          'param_name': 'output_dim',
+                          'op_name': 'psroipooling'}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s] is invalid,it should "
                                "follow the rule:(output_dim + C0 -1) // C0 == y_shape[1]"
                                % (error_info['op_name'], error_info['param_name']))
@@ -255,8 +247,8 @@ class PsroiClass():
 
         profile = tik.Dprofile()
 
-        product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        self.input_param_check(product_name)
+        product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self._input_param_check()
 
         self.dsize = TYPE_LEN_DICT[self.dtype]
         self.fm_batch = self.x_shape[0]
@@ -272,13 +264,17 @@ class PsroiClass():
 
         self.k2 = self.group_size*self.group_size
         self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         # divide the available UB space into four parts
         self.ub_one_buf = self.ub_size // 4
         self.ub_one_buf_elem = self.ub_one_buf // self.dsize
-        self.l1_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+        self.l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         self.tik_instance = tik.Tik(profile, disable_debug=True)
-        self.aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
+        self.is_hisi_cs = False
+        if self.dtype == FP16 and product_name in (tbe_platform.HI3796CV300CS,):
+            self.is_hisi_cs = True
 
         self.roi_num_step = self.vec_elem_num
         self.mask = self.roi_num_step
@@ -301,7 +297,7 @@ class PsroiClass():
         self.cache_l1 = None
         self.const_0_127_ub = None
 
-    def load_rois_to_ub(self, rois_ub, rois_offset, roi_step):
+    def _load_rois_to_ub(self, rois_ub, rois_offset, roi_step):
         """
         load rois data to ub from gm.
 
@@ -321,8 +317,8 @@ class PsroiClass():
                                         self.rois[rois_offset + i*self.roi_num_b], SID, \
                                         BURST_1, burst_len, STRIDE_ZERO, STRIDE_ZERO)
 
-    def spatial_scale_rois(self, rois_ub, rois_floor_ub, rois_spatial_ub,
-                           roi_step):
+    def _spatial_scale_rois(self, rois_ub, rois_floor_ub, rois_spatial_ub,
+                            roi_step):
         """
         compute the width and height of rois and bin.
 
@@ -344,7 +340,7 @@ class PsroiClass():
         """
         point_one_ub = self.tik_instance.Tensor(self.dtype, (roi_step,),
                                                 name="point_one_ub",
-                                                scope=tik.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
         self.tik_instance.vadds(self.mask, rois_ub[1, 0], rois_ub[1, 0],
                                 POINT_5, REPEAT_4, STRIDE_ONE, STRIDE_ONE,
                                 REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
@@ -356,12 +352,23 @@ class PsroiClass():
                                 REP_STRIDE_EIGHT, REP_STRIDE[self.dtype])
         # s322f16: vconv.deq, or s322f32: vconv
         if self.dtype == FP16:
-            self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
-                                    rois_floor_ub[1, 0],
-                                    REP_TIMES[self.dtype]*DIGIT_4,
-                                    STRIDE_ONE, STRIDE_ONE,
-                                    REP_STRIDE[self.dtype], REP_STRIDE_EIGHT,
-                                    deqscale=DEQSCALE)
+            if self.is_hisi_cs:
+                # s322s16:vcbd, and s162f16:vconv
+                rois_floor_ub_int16 = self.tik_instance.Tensor(INT16, (DIGIT_4, roi_step), \
+                        name="rois_floor_ub_int16", scope=tbe_platform.scope_ubuf)
+                self.tik_instance.vcbd(MASK64, rois_floor_ub_int16, rois_floor_ub[1, 0],
+                                       REPEAT_2*DIGIT_4, STRIDE_ONE, STRIDE_ONE,
+                                       REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT)
+                self.tik_instance.vconv(DIGIT_128, '', rois_spatial_ub,
+                                        rois_floor_ub_int16, REPEAT_1*DIGIT_4, STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
+            else:
+                self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
+                                        rois_floor_ub[1, 0],
+                                        REP_TIMES.get(self.dtype)*DIGIT_4,
+                                        STRIDE_ONE, STRIDE_ONE,
+                                        REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT,
+                                        deqscale=DEQSCALE)
         else:
             self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
                                     rois_floor_ub[1, 0],
@@ -398,7 +405,7 @@ class PsroiClass():
                                 REPEAT_2, STRIDE_ONE, STRIDE_ONE,
                                 REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
 
-    def newton_div(self, dst, divisor, dividend, repeat):
+    def _newton_div(self, dst, divisor, dividend, repeat):
         """
         use newton_div to improve performance
 
@@ -413,7 +420,8 @@ class PsroiClass():
         -------
         None
         """
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend910", "Ascend710", "Ascend610"):
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,
+                                                                   tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
@@ -421,7 +429,7 @@ class PsroiClass():
         else:
             with self.tik_instance.new_stmt_scope():
                 t_tensor = self.tik_instance.Tensor(self.dtype, \
-                                                    dividend.shape, name="t_tensor", scope=tik.scope_ubuf)
+                                                    dividend.shape, name="t_tensor", scope=tbe_platform.scope_ubuf)
                 self.tik_instance.vrec(self.mask, t_tensor, dividend, REPEAT_1,
                                        STRIDE_ONE, STRIDE_ONE,
                                        REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
@@ -448,7 +456,7 @@ class PsroiClass():
                                        STRIDE_ONE, REP_STRIDE_EIGHT,
                                        REP_STRIDE_EIGHT, STRIDE_ZERO)
 
-    def process_one_bin_1(self, params):
+    def _process_one_bin_1(self, params):
         """
         process one bin of roi: inner_c1 > 1, bin_all_dsize <= self.ub_one_buf,
                                 and bin_load_stride < MAX_GAP_SIZE
@@ -465,10 +473,10 @@ class PsroiClass():
 
         ub_bin_input_buf = self.tik_instance.Tensor(self.dtype, \
                                                     (self.ub_one_buf_elem,), name="ub_bin_input_buf", \
-                                                    scope=tik.scope_ubuf)
+                                                    scope=tbe_platform.scope_ubuf)
         ub_bin_output_buf = self.tik_instance.Tensor(self.dtype, \
                                                      (load_count_align,), name="ub_bin_output_buf", \
-                                                     scope=tik.scope_ubuf)
+                                                     scope=tbe_platform.scope_ubuf)
         self.tik_instance.vector_dup(self.mask, ub_bin_output_buf, 0,
                                      load_count_ceil, STRIDE_ONE,
                                      REP_STRIDE_EIGHT)
@@ -525,27 +533,39 @@ class PsroiClass():
                                            STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
 
         bin_area_fp_ub = self.tik_instance.Tensor(self.dtype, \
-                                                  (self.vec_elem_num,), name="bin_area_fp_ub", \
-                                                  scope=tik.scope_ubuf)
-        bin_area_int32 = self.tik_instance.Tensor(INT32, \
-                                                  (DIGIT_64*REP_TIMES[self.dtype],), name="bin_area_int32", \
-                                                  scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(DIGIT_64, bin_area_int32,
-                                     params["bin_area"], REP_TIMES[self.dtype],
-                                     STRIDE_ONE, REP_STRIDE_EIGHT)
-        # s322f16:vconv.deq, or s322f32:vconv
-        if self.dtype == FP16:
-            self.tik_instance.vconv(MASK64, '', bin_area_fp_ub, bin_area_int32,
-                                    REP_TIMES[self.dtype], STRIDE_ONE,
-                                    STRIDE_ONE, REP_STRIDE[self.dtype],
-                                    REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+                (self.vec_elem_num,), name="bin_area_fp_ub", \
+                scope=tbe_platform.scope_ubuf)
+        if self.is_hisi_cs:
+            bin_area_16_scalar = self.tik_instance.Scalar(INT16, name="bin_area_16_scalar")
+            bin_area_16_scalar.set_as(params.get("bin_area"))
+            bin_area_int16 = self.tik_instance.Tensor(INT16, \
+                    (DIGIT_128,), name="bin_area_int16", scope=tbe_platform.scope_ubuf)
+            self.tik_instance.vector_dup(DIGIT_128, bin_area_int16, \
+                    bin_area_16_scalar, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
+            # s162f16: vconv
+            self.tik_instance.vconv(DIGIT_128, '', bin_area_fp_ub,
+                                    bin_area_int16, REPEAT_1, STRIDE_ONE,
+                                    STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
         else:
-            self.tik_instance.vconv(MASK64, '', bin_area_fp_ub, bin_area_int32,
-                                    REP_TIMES[self.dtype], STRIDE_ONE,
-                                    STRIDE_ONE, REP_STRIDE[self.dtype],
-                                    REP_STRIDE_EIGHT)
-        self.newton_div(ub_bin_output_buf, ub_bin_output_buf, bin_area_fp_ub,
-                        load_count_ceil)
+            bin_area_int32 = self.tik_instance.Tensor(INT32, \
+                    (DIGIT_64*REP_TIMES.get(self.dtype),), name="bin_area_int32", \
+                    scope=tbe_platform.scope_ubuf)
+            self.tik_instance.vector_dup(MASK64, bin_area_int32, \
+                    params.get("bin_area"), REP_TIMES.get(self.dtype), STRIDE_ONE, \
+                    REP_STRIDE_EIGHT)
+            # s322f16:vconv.deq, or s322f32:vconv
+            if self.dtype == FP16:
+                self.tik_instance.vconv(MASK64, '', bin_area_fp_ub, bin_area_int32,
+                                        REP_TIMES.get(self.dtype), STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE.get(self.dtype),
+                                        REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+            else:
+                self.tik_instance.vconv(MASK64, '', bin_area_fp_ub, bin_area_int32,
+                                        REP_TIMES.get(self.dtype), STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE.get(self.dtype),
+                                        REP_STRIDE_EIGHT)
+        self._newton_div(ub_bin_output_buf, ub_bin_output_buf, bin_area_fp_ub,
+                         load_count_ceil)
 
         # move result to gm
         self.tik_instance.data_move(self.y[params["cur_roi_output_offset"], 0,
@@ -554,7 +574,7 @@ class PsroiClass():
                                     burst_len, STRIDE_ZERO,
                                     self.bin_load_out_stride)
 
-    def process_one_bin_2(self, params):
+    def _process_one_bin_2(self, params):
         """
         process one bin of roi: inner_c1 == 1, or
                                 (bin_all_dsize > self.ub_one_buf, or
@@ -584,10 +604,10 @@ class PsroiClass():
             load_count_align = load_count_ceil*self.vec_elem_num
             ub_bin_input_buf = self.tik_instance.Tensor(self.dtype, \
                                                         (self.ub_one_buf_elem,), name="ub_bin_input_buf", \
-                                                        scope=tik.scope_ubuf)
+                                                        scope=tbe_platform.scope_ubuf)
             ub_bin_output_buf = self.tik_instance.Tensor(self.dtype, \
                                                          (load_count_align,), name="ub_bin_output_buf", \
-                                                         scope=tik.scope_ubuf)
+                                                         scope=tbe_platform.scope_ubuf)
             self.tik_instance.vector_dup(self.mask, ub_bin_output_buf, 0,
                                          load_count_ceil, STRIDE_ONE,
                                          REP_STRIDE_EIGHT)
@@ -623,30 +643,42 @@ class PsroiClass():
                                            STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
 
             bin_area_fp_ub = self.tik_instance.Tensor(self.dtype, \
-                                                      (self.vec_elem_num,), name="bin_area_fp_ub", \
-                                                      scope=tik.scope_ubuf)
-            bin_area_int32 = self.tik_instance.Tensor(INT32, \
-                                                      (DIGIT_64*REP_TIMES[self.dtype],), name="bin_area_int32", \
-                                                      scope=tik.scope_ubuf)
-            self.tik_instance.vector_dup(MASK64, bin_area_int32, \
-                                         params["bin_area"], REP_TIMES[self.dtype], STRIDE_ONE, \
-                                         REP_STRIDE_EIGHT)
-            # s322f16:vconv.deq, or s322f32:vconv
-            if self.dtype == FP16:
-                self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
-                                        bin_area_int32, REP_TIMES[self.dtype],
-                                        STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[self.dtype],
-                                        REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+                    (self.vec_elem_num,), name="bin_area_fp_ub", \
+                    scope=tbe_platform.scope_ubuf)
+            if self.is_hisi_cs:
+                bin_area_16_scalar = self.tik_instance.Scalar(INT16, name="bin_area_16_scalar")
+                bin_area_16_scalar.set_as(params.get("bin_area"))
+                bin_area_int16 = self.tik_instance.Tensor(INT16, \
+                        (DIGIT_128,), name="bin_area_int16", scope=tbe_platform.scope_ubuf)
+                self.tik_instance.vector_dup(DIGIT_128, bin_area_int16, \
+                        bin_area_16_scalar, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
+                # s162f16:vconv
+                self.tik_instance.vconv(DIGIT_128, '', bin_area_fp_ub,
+                                        bin_area_int16, REPEAT_1, STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
             else:
-                self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
-                                        bin_area_int32, REP_TIMES[self.dtype],
-                                        STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[self.dtype],
-                                        REP_STRIDE_EIGHT)
+                bin_area_int32 = self.tik_instance.Tensor(INT32, \
+                        (DIGIT_64*REP_TIMES.get(self.dtype),), name="bin_area_int32", \
+                        scope=tbe_platform.scope_ubuf)
+                self.tik_instance.vector_dup(MASK64, bin_area_int32, \
+                        params.get("bin_area"), REP_TIMES.get(self.dtype), STRIDE_ONE, \
+                        REP_STRIDE_EIGHT)
+                # s322f16:vconv.deq, or s322f32:vconv
+                if self.dtype == FP16:
+                    self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
+                                            bin_area_int32, REP_TIMES.get(self.dtype),
+                                            STRIDE_ONE, STRIDE_ONE,
+                                            REP_STRIDE.get(self.dtype),
+                                            REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+                else:
+                    self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
+                                            bin_area_int32, REP_TIMES.get(self.dtype),
+                                            STRIDE_ONE, STRIDE_ONE,
+                                            REP_STRIDE.get(self.dtype),
+                                            REP_STRIDE_EIGHT)
 
-            self.newton_div(ub_bin_output_buf, ub_bin_output_buf,
-                            bin_area_fp_ub, load_count_ceil)
+            self._newton_div(ub_bin_output_buf, ub_bin_output_buf,
+                             bin_area_fp_ub, load_count_ceil)
 
             # move result to gm
             burst_len = C0*self.dsize // BLOCK_SIZE
@@ -656,7 +688,7 @@ class PsroiClass():
                                         ub_bin_output_buf, SID, BURST_1,
                                         burst_len, STRIDE_ZERO, STRIDE_ZERO)
 
-    def process_one_bin(self, params):
+    def _process_one_bin(self, params):
         """
         process one bin of roi.
 
@@ -674,7 +706,8 @@ class PsroiClass():
             v_dup_0_repeat = ceil_value(load_count, self.vec_elem_num)
             out_shape = (v_dup_0_repeat*self.vec_elem_num,)
             ub_bin_output_buf = self.tik_instance.Tensor(self.dtype, \
-                                                         out_shape, name="ub_bin_output_buf", scope=tik.scope_ubuf)
+                                                         out_shape, name="ub_bin_output_buf",
+                                                         scope=tbe_platform.scope_ubuf)
             self.tik_instance.vector_dup(self.mask, ub_bin_output_buf, 0,
                                          v_dup_0_repeat, STRIDE_ONE,
                                          REP_STRIDE_EIGHT)
@@ -687,18 +720,18 @@ class PsroiClass():
 
         with self.tik_instance.else_scope():
             if self.inner_c1 == 1:
-                self.process_one_bin_2(params)
+                self._process_one_bin_2(params)
             else:
                 with self.tik_instance.if_scope(
                         tik.all(params["bin_all_dsize"] <= self.ub_one_buf,
                                 self.bin_load_stride < MAX_GAP_SIZE)):
-                    self.process_one_bin_1(params)
+                    self._process_one_bin_1(params)
 
                 with self.tik_instance.else_scope():
                     # need loop self.inner_c1 time
-                    self.process_one_bin_2(params)
+                    self._process_one_bin_2(params)
 
-    def process_one_roi(self, params):
+    def _process_one_roi(self, params):
         """
         process one roi.
 
@@ -764,10 +797,10 @@ class PsroiClass():
                 params["bin_all_dsize"] = bin_all_dsize
                 params["bin_c0_dsize"] = bin_c0_dsize
 
-                self.process_one_bin(params)
+                self._process_one_bin(params)
 
-    def process_step1_roi(self, rois_floor_ub, rois_spatial_ub,
-                          rois_num_offset, step_i_offset, step_i_num):
+    def _process_step1_roi(self, rois_floor_ub, rois_spatial_ub,
+                           rois_num_offset, step_i_offset, step_i_num):
         """
         process roi_num roi cyclically, and process roi_step roi each time.
 
@@ -811,11 +844,11 @@ class PsroiClass():
             scalar_bin_height.set_as(rois_spatial_ub[7, roi_i])
 
             bin_start_w_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,), \
-                                                      name="bin_start_w_ub", scope=tik.scope_ubuf)
+                                                      name="bin_start_w_ub", scope=tbe_platform.scope_ubuf)
             bin_start_w_floor = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
-                                                         name="bin_start_w_floor", scope=tik.scope_ubuf)
+                                                         name="bin_start_w_floor", scope=tbe_platform.scope_ubuf)
             bin_end_w_ceil = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
-                                                      name="bin_end_w_ceil", scope=tik.scope_ubuf)
+                                                      name="bin_end_w_ceil", scope=tbe_platform.scope_ubuf)
             # scalar_roi_start_w + scalar_bin_width*(0...127)
             self.tik_instance.vmuls(self.mask, bin_start_w_ub,
                                     self.const_0_127_ub, scalar_bin_width,
@@ -838,11 +871,11 @@ class PsroiClass():
                                     REP_STRIDE[self.dtype])
 
             bin_start_h_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,), \
-                                                      name="bin_start_h_ub", scope=tik.scope_ubuf)
+                                                      name="bin_start_h_ub", scope=tbe_platform.scope_ubuf)
             bin_start_h_floor = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
-                                                         name="bin_start_h_floor", scope=tik.scope_ubuf)
+                                                         name="bin_start_h_floor", scope=tbe_platform.scope_ubuf)
             bin_end_h_ceil = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
-                                                      name="bin_end_h_ceil", scope=tik.scope_ubuf)
+                                                      name="bin_end_h_ceil", scope=tbe_platform.scope_ubuf)
             # scalar_roi_start_h + scalar_bin_height*(0...127)
             self.tik_instance.vmuls(self.mask, bin_start_h_ub,
                                     self.const_0_127_ub, scalar_bin_height,
@@ -866,7 +899,7 @@ class PsroiClass():
 
             # vmax(,0)
             dup_tmp_ub = self.tik_instance.Tensor(INT32, (DIGIT_64,), \
-                                                  name="dup_tmp_ub", scope=tik.scope_ubuf)
+                                                  name="dup_tmp_ub", scope=tbe_platform.scope_ubuf)
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, 0, REPEAT_1,
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
             self.tik_instance.vmax(MASK64, bin_start_w_floor, bin_start_w_floor,
@@ -920,9 +953,9 @@ class PsroiClass():
             params["bin_start_w_floor"] = bin_start_w_floor
             params["bin_end_w_ceil"] = bin_end_w_ceil
 
-            self.process_one_roi(params)
+            self._process_one_roi(params)
 
-    def process_rois(self, roi_step, rois_num_offset, roi_loop, roi_step_l):
+    def _process_rois(self, roi_step, rois_num_offset, roi_loop, roi_step_l):
         """
         process roi_num roi cyclically, and process roi_step roi each time.
 
@@ -940,32 +973,32 @@ class PsroiClass():
         with self.tik_instance.for_range(0, roi_loop) as inner_i:
             rois_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_5, roi_step),
                                                name="rois_ub",
-                                               scope=tik.scope_ubuf)
+                                               scope=tbe_platform.scope_ubuf)
             rois_offset = self.tik_instance.Scalar(INT32, name="rois_offset")
             rois_offset.set_as(rois_num_offset + roi_step*inner_i)
             # move rois data to ub from gm
-            self.load_rois_to_ub(rois_ub, rois_offset, roi_step)
+            self._load_rois_to_ub(rois_ub, rois_offset, roi_step)
 
             # calculate spatial scale rois
             rois_floor_ub = self.tik_instance.Tensor(INT32, \
                                                      (DIGIT_5, roi_step), \
-                                                     name="rois_floor_ub", scope=tik.scope_ubuf)
+                                                     name="rois_floor_ub", scope=tbe_platform.scope_ubuf)
             rois_spatial_ub = self.tik_instance.Tensor(self.dtype, \
                                                        (DIGIT_8, roi_step), \
-                                                       name="rois_spatial_ub", scope=tik.scope_ubuf)
-            self.spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub,
-                                    roi_step)
+                                                       name="rois_spatial_ub", scope=tbe_platform.scope_ubuf)
+            self._spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub,
+                                     roi_step)
 
             with self.tik_instance.if_scope(inner_i == (roi_loop - 1)):
-                self.process_step1_roi(rois_floor_ub, rois_spatial_ub, \
-                                       rois_num_offset, roi_step*inner_i, roi_step_l)
+                self._process_step1_roi(rois_floor_ub, rois_spatial_ub, \
+                                        rois_num_offset, roi_step*inner_i, roi_step_l)
 
             with self.tik_instance.else_scope():
-                self.process_step1_roi(rois_floor_ub, rois_spatial_ub, \
-                                       rois_num_offset, roi_step*inner_i, roi_step)
+                self._process_step1_roi(rois_floor_ub, rois_spatial_ub, \
+                                        rois_num_offset, roi_step*inner_i, roi_step)
 
-    def process_rois_multi_batch(self, roi_step, rois_num_offset, roi_loop,
-                                 roi_step_l, batch_id):
+    def _process_rois_multi_batch(self, roi_step, rois_num_offset, roi_loop,
+                                  roi_step_l, batch_id):
         """
         process roi_num roi cyclically, and process roi_step roi each time.
 
@@ -975,6 +1008,7 @@ class PsroiClass():
         rois_num_offset: the offset in block_id aicore
         roi_loop: loops of processing roi_num rois
         roi_step_l: the number of rois in last loop
+        batch_id: batch id
 
         Returns
         -------
@@ -983,37 +1017,37 @@ class PsroiClass():
         with self.tik_instance.for_range(0, roi_loop) as inner_i:
             rois_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_5, roi_step),
                                                name="rois_ub",
-                                               scope=tik.scope_ubuf)
+                                               scope=tbe_platform.scope_ubuf)
             # rois addr offset
             rois_offset = self.tik_instance.Scalar(INT32, name="rois_offset")
             rois_offset.set_as(rois_num_offset + \
                                batch_id*(self.roi_num_b*self.roi_shape[1]) + \
                                roi_step*inner_i)
             # move rois data to ub from gm
-            self.load_rois_to_ub(rois_ub, rois_offset, roi_step)
+            self._load_rois_to_ub(rois_ub, rois_offset, roi_step)
 
             # calculate spatial scale rois
             rois_floor_ub = self.tik_instance.Tensor(INT32, (DIGIT_5, roi_step),
                                                      name="rois_floor_ub",
-                                                     scope=tik.scope_ubuf)
+                                                     scope=tbe_platform.scope_ubuf)
             rois_spatial_ub = self.tik_instance.Tensor(self.dtype,
                                                        (DIGIT_8, roi_step),
                                                        name="rois_spatial_ub",
-                                                       scope=tik.scope_ubuf)
-            self.spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub,
-                                    roi_step)
+                                                       scope=tbe_platform.scope_ubuf)
+            self._spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub,
+                                     roi_step)
 
             with self.tik_instance.if_scope(inner_i == (roi_loop - 1)):
-                self.process_step1_roi(rois_floor_ub, rois_spatial_ub, \
-                                       rois_num_offset + self.roi_num_b*batch_id, \
-                                       roi_step*inner_i, roi_step_l)
+                self._process_step1_roi(rois_floor_ub, rois_spatial_ub, \
+                                        rois_num_offset + self.roi_num_b*batch_id, \
+                                        roi_step*inner_i, roi_step_l)
 
             with self.tik_instance.else_scope():
-                self.process_step1_roi(rois_floor_ub, rois_spatial_ub, \
-                                       rois_num_offset + self.roi_num_b*batch_id, \
-                                       roi_step*inner_i, roi_step)
+                self._process_step1_roi(rois_floor_ub, rois_spatial_ub, \
+                                        rois_num_offset + self.roi_num_b*batch_id, \
+                                        roi_step*inner_i, roi_step)
 
-    def cache_fm_l1(self):
+    def _cache_fm_l1(self):
         """
         cache fm in L1, if fm size  is smaller than L1.
 
@@ -1027,14 +1061,14 @@ class PsroiClass():
         """
         if self.x_data_size <= self.l1_size:
             self.cache_in_l1 = True
-            self.cache_l1 = self.tik_instance.Tensor(self.dtype, \
-                                                     self.x_shape, name="cache_l1", scope=tik.scope_cbuf)
+            self.cache_l1 = self.tik_instance.Tensor(self.dtype, self.x_shape,
+                                                     name="cache_l1", scope=tbe_platform.scope_cbuf)
             # cache fm in L1
             burst_len = self.x_data_size // BLOCK_SIZE
             self.tik_instance.data_move(self.cache_l1, self.x, SID, BURST_1,
                                         burst_len, STRIDE_ZERO, STRIDE_ZERO)
 
-    def init_const_0_127_ub(self):
+    def _init_const_0_127_ub(self):
         """
         init const_0_127_ub, which store 0.0 - 127.0.
 
@@ -1047,22 +1081,33 @@ class PsroiClass():
         None
         """
         self.const_0_127_ub = self.tik_instance.Tensor(self.dtype, \
-                                                       (DIGIT_128,), name="const_0_127_ub", scope=tik.scope_ubuf)
-        const_0_127_int32 = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
-                                                     name="const_0_127_int32", scope=tik.scope_ubuf)
-        with self.tik_instance.for_range(0, DIGIT_128) as i:
-            const_0_127_int32[i].set_as(i)
-        # s322f16:vconv.deq, or s322f32:vconv
-        if self.dtype == FP16:
-            self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
-                                    const_0_127_int32, REPEAT_2, STRIDE_ONE,
-                                    STRIDE_ONE, REP_STRIDE[self.dtype],
-                                    REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+                (DIGIT_128,), name="const_0_127_ub", scope=tbe_platform.scope_ubuf)
+        if self.is_hisi_cs:
+            # s162f16: vconv
+            const_0_127_int16 = self.tik_instance.Tensor(INT16, (DIGIT_128,), \
+                    name="const_0_127_int16", scope=tbe_platform.scope_ubuf)
+            with self.tik_instance.for_range(0, DIGIT_128) as i:
+                const_0_127_int16[i].set_as(i)
+            self.tik_instance.vconv(DIGIT_128, '', self.const_0_127_ub,
+                                    const_0_127_int16, REPEAT_1, STRIDE_ONE,
+                                    STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
         else:
-            self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
-                                    const_0_127_int32, REPEAT_2, STRIDE_ONE,
-                                    STRIDE_ONE, REP_STRIDE[self.dtype],
-                                    REP_STRIDE_EIGHT)
+            # s322f16:vconv.deq, or s322f32:vconv
+            const_0_127_int32 = self.tik_instance.Tensor(INT32, (DIGIT_128,), \
+                    name="const_0_127_int32", scope=tbe_platform.scope_ubuf)
+            with self.tik_instance.for_range(0, DIGIT_128) as i:
+                const_0_127_int32[i].set_as(i)
+
+            if self.dtype == FP16:
+                self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
+                                        const_0_127_int32, REPEAT_2, STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE.get(self.dtype),
+                                        REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+            else:
+                self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
+                                        const_0_127_int32, REPEAT_2, STRIDE_ONE,
+                                        STRIDE_ONE, REP_STRIDE.get(self.dtype),
+                                        REP_STRIDE_EIGHT)
 
     def psroi_pooling_compute(self):
         """
@@ -1104,8 +1149,8 @@ class PsroiClass():
         with self.tik_instance.for_range(0, block_num,
                                          block_num=block_num) as block_id:
             # process of one aicore
-            self.cache_fm_l1()
-            self.init_const_0_127_ub()
+            self._cache_fm_l1()
+            self._init_const_0_127_ub()
 
             rois_num_offset = self.tik_instance.Scalar(INT32,
                                                        name="rois_num_offset")
@@ -1115,15 +1160,15 @@ class PsroiClass():
                 with self.tik_instance.if_scope(block_id < outer_tail):
                     # rois_num_offset is the offset in block_id aicore
                     rois_num_offset.set_as(block_id*num1)
-                    self.process_rois(roi_step, rois_num_offset, roi_loop1,
-                                      roi_step1_l)
+                    self._process_rois(roi_step, rois_num_offset, roi_loop1,
+                                       roi_step1_l)
                 # process roi nums: num2
                 with self.tik_instance.else_scope():
                     if outer_loop > 0:
                         rois_num_offset.set_as(outer_tail*num1 +
                                                (block_id - outer_tail)*num2)
-                        self.process_rois(roi_step, rois_num_offset, roi_loop2,
-                                          roi_step2_l)
+                        self._process_rois(roi_step, rois_num_offset, roi_loop2,
+                                           roi_step2_l)
 
             else:
                 # process roi nums: num1*fm_batch
@@ -1132,9 +1177,9 @@ class PsroiClass():
                     with self.tik_instance.for_range(0, self.fm_batch) \
                             as batch_id:
                         rois_num_offset.set_as(block_id*num1)
-                        self.process_rois_multi_batch(roi_step, \
-                                                      rois_num_offset, roi_loop1, \
-                                                      roi_step1_l, batch_id)
+                        self._process_rois_multi_batch(roi_step, \
+                                                       rois_num_offset, roi_loop1, \
+                                                       roi_step1_l, batch_id)
                 # process roi nums: num2*fm_batch
                 with self.tik_instance.else_scope():
                     if outer_loop > 0:
@@ -1142,9 +1187,9 @@ class PsroiClass():
                                 as batch_id:
                             rois_num_offset.set_as(outer_tail*num1 + \
                                                    (block_id - outer_tail)*num2)
-                            self.process_rois_multi_batch(roi_step, \
-                                                          rois_num_offset, roi_loop2, \
-                                                          roi_step2_l, batch_id)
+                            self._process_rois_multi_batch(roi_step, \
+                                                           rois_num_offset, roi_loop2, \
+                                                           roi_step2_l, batch_id)
 
     def psroi_pooling_main(self):
         """
@@ -1159,13 +1204,13 @@ class PsroiClass():
         None
         """
         self.x = self.tik_instance.Tensor(self.dtype, self.x_shape,
-                                          name="x", scope=tik.scope_gm)
+                                          name="x", scope=tbe_platform.scope_gm)
         rois_shape = (self.roi_shape[0]*self.roi_shape[2]*self.roi_shape[1] +
                       self.vec_elem_num,)
         self.rois = self.tik_instance.Tensor(self.dtype, rois_shape,
-                                             name="rois", scope=tik.scope_gm)
+                                             name="rois", scope=tbe_platform.scope_gm)
         self.y = self.tik_instance.Tensor(self.dtype, shape=self.y_shape,
-                                          name="y", scope=tik.scope_gm)
+                                          name="y", scope=tbe_platform.scope_gm)
 
         self.psroi_pooling_compute()
 
@@ -1175,8 +1220,10 @@ class PsroiClass():
 
 
 # pylint: disable=too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
-                 REQUIRED_ATTR_INT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def psroipooling(x_dict, rois_dict, y_dict, output_dim, group_size,
                  spatial_scale, kernel_name="psroipooling"):
     """

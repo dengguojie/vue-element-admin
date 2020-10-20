@@ -1,24 +1,24 @@
-#!/usr/bin/env python # pylint: disable=too-many-lines
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 group_normalization_forward_training_reduce
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from functools import reduce as reduceIns
+
 import te.lang.cce
 from te import tvm
 from te import platform as cceconf
@@ -56,7 +56,7 @@ def sch_cut_not_reduce_axis_nchw(
         sch_list, res_list, sum_x, square_sum_x,
         data_ub, cast_0_ub, data_mul_ub,
         block_split_axis, block_inner,
-        ub_split_axis, ub_inner):
+        ub_split_axis, ub_inner, is_res_need_split):
     '''
     gn_reduce schedule for cut not reduce axis
     '''
@@ -71,6 +71,7 @@ def sch_cut_not_reduce_axis_nchw(
         sch[sum_x].split(sum_x.op.axis[block_split_axis],
                          factor=block_inner)
 
+    sum_x_emit_axis = sum_x_block_inner
     block_fused_axis = sum_x_block_outer
 
     if block_split_axis == 1:
@@ -93,7 +94,15 @@ def sch_cut_not_reduce_axis_nchw(
         sch[cast_0_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
     sch[data_mul_ub].compute_at(sch[sum_x_ub], sum_x_ub_outer)
 
-    sch[sum_x_ub].compute_at(sch[sum_x], block_fused_axis)
+    if is_res_need_split:
+        sum_x_block_inner_outer, sum_x_block_inner_inner = \
+            sch[sum_x].split(sum_x_block_inner,
+                             factor=ub_inner)
+
+        sum_x_emit_axis = sum_x_block_inner_inner
+        sch[sum_x_ub].compute_at(sch[sum_x], sum_x_block_inner_outer)
+    else:
+        sch[sum_x_ub].compute_at(sch[sum_x], block_fused_axis)
 
     block = tvm.thread_axis("blockIdx.x")
     sch[sum_x].bind(block_fused_axis, block)
@@ -107,7 +116,7 @@ def sch_cut_not_reduce_axis_nchw(
         sch[cast_0_ub].emit_insn(cast_0_ub.op.axis[0], "vector_conv")
     sch[data_mul_ub].emit_insn(data_mul_ub.op.axis[0], "vector_mul")
 
-    sch[sum_x].emit_insn(sum_x_block_inner, "dma_copy")
+    sch[sum_x].emit_insn(sum_x_emit_axis, "dma_copy")
 
     sch_list[0] = sch
 
@@ -147,7 +156,7 @@ def sch_cut_reduce_axis_nchw(
     split_reduce_axis_index = ub_split_axis - block_split_axis
     # after rfactor, the new reduce axis is the last reduce axis
     reduce_axis_list = sum_x_ub_rf.op.reduce_axis[-1:] + \
-                       sum_x_ub_rf.op.reduce_axis[0:-1]
+        sum_x_ub_rf.op.reduce_axis[0:-1]
 
     sum_x_rf_outer, sum_x_rf_inner = sch[sum_x_ub_rf].split(
         reduce_axis_list[split_reduce_axis_index],
@@ -201,7 +210,7 @@ def sch_cut_not_reduce_axis_nhwc(
         sch_list, res_list, sum_x, square_sum_x,
         data_ub, cast_0_ub, data_mul_ub,
         block_split_axis, block_inner,
-        ub_split_axis, ub_inner):
+        ub_split_axis, ub_inner, group_size, dtype):
     '''
     gn_reduce schedule for cut not reduce axis
     '''
@@ -222,7 +231,6 @@ def sch_cut_not_reduce_axis_nhwc(
         sch[sum_x].reorder(sum_x_block_outer,
                            sum_x.op.axis[0],
                            sum_x_block_inner)
-
 
     reorder_axis_list = []
     if ub_split_axis == 4:
@@ -301,6 +309,26 @@ def sch_cut_not_reduce_axis_nhwc(
     sch[data_mul_ub].emit_insn(data_mul_ub.op.axis[0], "vector_mul")
 
     sch[sum_x].emit_insn(sum_x_block_inner, "dma_copy")
+
+    def _do_storage_align():
+        align_size = 16
+        align_size_fp32 = 8
+        if dtype == "float32":
+            align_size = align_size_fp32
+
+        if group_size % align_size == 0:
+            return
+
+        sch[data_ub].storage_align(sch[data_ub].op.axis[3], align_size, 0)
+        if cast_0_ub is not None:
+            sch[cast_0_ub].storage_align(
+                sch[cast_0_ub].op.axis[3], align_size_fp32, 0)
+        sch[data_mul_ub].storage_align(
+            sch[data_mul_ub].op.axis[3], align_size_fp32, 0)
+        sch[sum_x].storage_align(
+            sch[sum_x].op.axis[3], align_size_fp32, 0)
+
+    _do_storage_align()
 
     sch_list[0] = sch
 
@@ -405,7 +433,7 @@ def sch_cut_reduce_axis_nhwc(
         sch_list, res_list, sum_x, square_sum_x,
         data_ub, cast_0_ub, data_mul_ub,
         block_split_axis, block_inner,
-        ub_split_axis, ub_inner):
+        ub_split_axis, ub_inner, group_size, dtype):
     '''
     group norm reduce schedule for cut reduce axis
     '''
@@ -436,7 +464,7 @@ def sch_cut_reduce_axis_nhwc(
     # after rfactor, the new reduce axis is the last reduce axis
     if block_split_axis in [1, 2]:
         reduce_axis_list = sum_x_ub_rf.op.reduce_axis[-1:] + \
-                           sum_x_ub_rf.op.reduce_axis[0:-1]
+            sum_x_ub_rf.op.reduce_axis[0:-1]
     else:
         reduce_axis_list = sum_x_ub_rf.op.reduce_axis[:]
 
@@ -492,6 +520,25 @@ def sch_cut_reduce_axis_nhwc(
     sch[sum_x_global].emit_insn(sum_x_global.op.axis[0], "dma_copy")
 
     sch[sum_x].emit_insn(sch[sum_x].op.axis[0], "phony_insn")
+
+    def _do_storage_align():
+        align_size = 16
+        align_size_fp32 = 8
+        if dtype == "float32":
+            align_size = align_size_fp32
+
+        if group_size % align_size == 0:
+            return
+
+        sch[data_ub].storage_align(sch[data_ub].op.axis[3], align_size, 0)
+        if cast_0_ub is not None:
+            sch[cast_0_ub].storage_align(
+                sch[cast_0_ub].op.axis[3], align_size_fp32, 0)
+        sch[data_mul_ub].storage_align(
+            sch[data_mul_ub].op.axis[3], align_size_fp32, 0)
+
+    _do_storage_align()
+
     sch_list[0] = sch
 
 
@@ -506,7 +553,7 @@ def _is_supported_atomic_add(reduce_tensor):
     if dtype != "float32":
         return False
     is_version_support = pver().is_cloud_version() or \
-                         pver().is_1951_version()
+        pver().is_1951_version()
     if not is_version_support:
         return False
     tag = reduce_tensor.op.tag
@@ -514,6 +561,13 @@ def _is_supported_atomic_add(reduce_tensor):
         return True
     return False
 
+
+GN_REDUCE_NCHW_TILING_MAP = {
+    "1_48_1_35_35_float32_Ascend710": (1, 8, 1, 2),
+    "1_48_1_39_39_float32_Ascend710": (1, 8, 1, 2),
+    "1_1536_1_9_9_float32_Ascend710": (1, 192, 1, 12),
+    "2_1024_1_14_14_float32_Ascend710": (1, 256, 1, 4),
+}
 
 def _gn_reduce_nchw_tiling(shape_before_reduce,
                            is_support_atomic_add,
@@ -526,9 +580,21 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
     :return:
     """
     core_num = cceconf.get_soc_spec("CORE_NUM")
+    soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
+    shape_key = "_".join(str(i) for i in shape_before_reduce) + \
+                "_" + dtype + "_" + soc_version
+    if shape_key in GN_REDUCE_NCHW_TILING_MAP:
+        block_split_axis, block_inner, \
+        ub_split_axis, ub_inner = \
+            GN_REDUCE_NCHW_TILING_MAP[shape_key]
+
+        return block_split_axis, block_inner, ub_split_axis, ub_inner
 
     n_size = shape_before_reduce[0]
     group_nums = shape_before_reduce[1]
+
+    one_core_data_threshold = 32
+    one_core_min_data_size_fp32 = 8
 
     def _get_noreduce_block_tiling():
         split_axis = 0
@@ -538,12 +604,10 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
         elif n_size * group_nums >= core_num:
             split_axis = 1
             block_factor = group_nums
-            for i in range(group_nums, 0, -1):
-                if group_nums % i != 0:
+            for i in range(1, group_nums + 1, 1):
+                if n_size * i < core_num:
                     continue
-                if n_size * (group_nums // i) < core_num:
-                    continue
-                block_factor = group_nums // i
+                block_factor = (group_nums + i - 1) // i
                 break
             res_nums = block_factor
         else:
@@ -573,19 +637,17 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
                 break
 
         if not is_find_ub_tiling:
-            if i == block_axis + 1:
-                ub_axis = block_axis + 1
-                ub_factor = shape_before_reduce[block_axis + 1]
-            elif i == block_axis:
-                for j in range(block_factor, 0, -1):
-                    if block_factor % j != 0:
-                        continue
-                    if j*tmp_size > max_ub_count:
-                        continue
+            is_block_no_tile = \
+                shape_before_reduce[block_axis] % block_factor == 0
+            for j in range(block_factor, 0, -1):
+                if not is_block_no_tile and block_factor % j != 0:
+                    continue
+                if j*tmp_size > max_ub_count:
+                    continue
 
-                    ub_axis = block_axis
-                    ub_factor = j
-                    break
+                ub_axis = block_axis
+                ub_factor = j
+                break
 
         if ub_axis <= 1:
             reduce_size = reduceIns(lambda x, y: x*y,
@@ -596,7 +658,6 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
                 ub_factor = shape_before_reduce[2]
 
         return ub_axis, ub_factor
-
 
     def _get_no_atomic_tiling(block_axis, block_factor, res_nums):
         new_block_factor = block_factor
@@ -639,23 +700,51 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
         block_split_axis is None or \
         one_core_res_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32
 
-    def _find_new_block_tiling():
+    def _find_cut_reduce_tiling(new_core_num):
+        if new_core_num > shape_before_reduce[2] > new_core_num // 2:
+            return 2, 1, shape_before_reduce[2]
+
         tmp_size = 1
         for i in range(2, len(shape_before_reduce), 1):
-            if shape_before_reduce[i] < core_num:
+            if tmp_size*shape_before_reduce[i] < new_core_num:
                 tmp_size *= shape_before_reduce[i]
                 continue
             for j in range(1, shape_before_reduce[i] + 1):
-                if shape_before_reduce[i] % j != 0:
-                    continue
-                if j*tmp_size < core_num:
+                if j*tmp_size < new_core_num:
                     continue
 
                 block_axis = i
-                block_factor = shape_before_reduce[i] // j
-                return True, block_axis, block_factor
+                if j*tmp_size % new_core_num > 0 and j > 1:
+                    j -= 1
+                block_factor = (shape_before_reduce[i] + j - 1) // j
+                block_outer = \
+                    tmp_size * \
+                    (shape_before_reduce[i] + block_factor - 1) // \
+                    block_factor
+                return block_axis, block_factor, block_outer
 
+
+    def _find_new_block_tiling(not_cut_reduce_axis_max_core):
+        reduce_size = reduceIns(lambda i, j: i*j, shape_before_reduce[2:])
+        new_core_num = core_num
+
+        if (reduce_size // core_num) < one_core_data_threshold:
+            is_find_new_core_num = False
+            for i in range(core_num - 1, 0, -1):
+                if (reduce_size // i) >= one_core_data_threshold:
+                    new_core_num = i
+                    is_find_new_core_num = True
+                    break
+            if not is_find_new_core_num:
+                return False, None, None
+
+        block_axis, block_factor, block_outer = \
+            _find_cut_reduce_tiling(new_core_num)
+
+        if block_outer > not_cut_reduce_axis_max_core:
+            return True, block_axis, block_factor
         return False, None, None
+
 
     def _find_not_reduce_block_tiling():
         # cut not reduce axis
@@ -663,30 +752,74 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
             block_axis = 0
             block_factor = 1
             for i in range(1, group_nums + 1):
-                if i * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                if i * DTYPE_WIDTH_MAP[dtype] * 2 < 32 or \
+                    (group_nums % i != 0 and \
+                     group_nums % i * DTYPE_WIDTH_MAP[dtype] * 2 < 32):
                     continue
                 block_axis = 1
                 block_factor = i
+                block_outer = n_size * (group_nums + i - 1) // i
                 break
         else:
             block_axis = 0
             block_factor = n_size
+            block_outer = 1
             for i in range(1, n_size + 1):
-                if i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
+                if i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32 or \
+                    (n_size % i != 0 and \
+                     n_size % i * group_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32):
                     continue
                 block_axis = 0
                 block_factor = i
+                block_outer = (n_size + i - 1) // i
                 break
-        return block_axis, block_factor
+        return block_axis, block_factor, block_outer
+
+    def _get_block_outer_size(shape, block_axis, block_factor):
+        if block_axis == 0:
+            block_outer_size = shape[0] // block_factor
+        elif block_axis == 1:
+            block_outer_size = shape[0] * shape[1] // block_factor
+        else:
+            block_outer_size = shape[block_axis] // block_factor
+
+            for i in range(2, block_axis, 1):
+                block_outer_size *= shape[i]
+
+        return block_outer_size
+
+    def _check_can_multi_core_not_cut_reduce_axis():
+        if group_nums >= one_core_min_data_size_fp32:
+            if n_size > 1:
+                return True
+
+            if (group_nums + one_core_min_data_size_fp32 - 1) // \
+                    one_core_min_data_size_fp32 > 1:
+                return True
+
+        for i in range(1, n_size, 1):
+            if i * group_nums < one_core_min_data_size_fp32:
+                continue
+            if (n_size + i - 1) // i > 1:
+                return True
+        return False
 
     if is_cut_reduce_axis:
-        # cut reduce axis as block
-        is_find_new_block_tiling, block_split_axis, block_inner = \
-            _find_new_block_tiling()
+        # only can cut no reduce axis
+        block_split_axis_not_reduce, block_inner_not_reduce, \
+        block_outer_not_reduce = _find_not_reduce_block_tiling()
 
-        if not is_find_new_block_tiling:
-            block_split_axis, block_inner =\
-                _find_not_reduce_block_tiling()
+        # cut reduce axis as block
+        is_find_new_block_tiling, new_block_split_axis, \
+        new_block_inner = \
+            _find_new_block_tiling(block_outer_not_reduce)
+
+        if is_find_new_block_tiling:
+            block_split_axis = new_block_split_axis
+            block_inner = new_block_inner
+        else:
+            block_split_axis = block_split_axis_not_reduce
+            block_inner = block_inner_not_reduce
 
     ub_split_axis, ub_inner = \
         _get_ub_tiling(block_split_axis, block_inner)
@@ -710,6 +843,7 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
             return 1
         return reduceIns(lambda x, y: x*y, shape)
 
+    group_size = shape_before_reduce[-1]
     core_num = cceconf.get_soc_spec("CORE_NUM")
 
     n_size = shape_before_reduce[0]
@@ -723,37 +857,23 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
         outer = core_num
         if n_size >= core_num:
             block_axis = 0
-            block_factor = n_size // core_num
+            block_factor = (n_size + core_num - 1) // core_num
             res_nums = block_factor * group_nums
-        elif group_nums >= core_num:
-            block_axis = 3
-            block_factor = group_nums // core_num
-            res_nums = n_size * block_factor
         else:
-            if n_size > group_nums:
-                if group_nums*DTYPE_WIDTH_MAP[dtype] * 2 < 32:
-                    # one core result less than 32B
-                    block_axis = 0
-                    block_factor = n_size
-                    res_nums = n_size * group_nums
-                    outer = 1
-                else:
-                    block_axis = 0
-                    block_factor = 1
-                    res_nums = group_nums
-                    outer = n_size
+            block_axis = 0
+            if group_nums >= 8:
+                block_factor = 1
+                res_nums = group_nums
+                outer = n_size
             else:
-                if n_size*DTYPE_WIDTH_MAP[dtype] * 2 < 32:
-                    # one core result less than 32B
-                    block_axis = 0
-                    block_factor = n_size
-                    res_nums = n_size * group_nums
-                    outer = 1
-                else:
-                    block_axis = 3
-                    block_factor = 1
-                    res_nums = n_size
-                    outer = group_nums
+                block_factor = n_size
+                res_nums = n_size*group_nums
+                outer = 1
+                for i in range(1, n_size + 1):
+                    if i * group_nums >= 8:
+                        block_factor = i
+                        res_nums = i*group_nums
+                        outer = (n_size + block_factor - 1) // block_factor
 
         return block_axis, block_factor, res_nums, outer
 
@@ -763,19 +883,29 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
 
         shape_new = shape_before_reduce[:]
         shape_new[block_axis] = block_factor
+        align_size_fp32 = 8
 
-        if _shape_mul(shape_new) < max_ub_count:
+        total_size = \
+            _shape_mul(shape_new[:-1]) * \
+            (group_size + align_size_fp32 - 1) // align_size_fp32 *\
+            align_size_fp32
+        if total_size < max_ub_count:
             return block_axis, block_factor
 
         tmp_size = 1
         is_find_tiling = False
         for i in range(len(shape_new) - 1, block_axis, -1):
-            if tmp_size*shape_new[i] < max_ub_count:
-                tmp_size *= shape_new[i]
+            dim = shape_new[i]
+            if i == len(shape_new) - 1:
+                dim = (dim + align_size_fp32 - 1) // align_size_fp32 *\
+                      align_size_fp32
+
+            if tmp_size*dim < max_ub_count:
+                tmp_size *= dim
                 continue
 
-            for j in range(shape_new[i], 0, -1):
-                if i == block_axis and shape_new[i] % j != 0:
+            for j in range(dim, 0, -1):
+                if i == block_axis and dim % j != 0:
                     continue
                 if j*tmp_size > max_ub_count:
                     continue
@@ -840,11 +970,6 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
 
         return block_split_axis, block_inner, ub_split_axis, ub_inner
 
-    _is_need_dichotomy_add = False
-
-    if _shape_mul(shape_before_reduce) < max_ub_count:
-        return block_split_axis, block_inner, block_split_axis, block_inner
-
     is_need_cut_reduce_axis = \
         block_outer < core_num or \
         one_core_res_nums * DTYPE_WIDTH_MAP[dtype] * 2 < 32 or \
@@ -856,15 +981,33 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
         w_size = shape_before_reduce[2]
         group_size = shape_before_reduce[4]
 
+        new_block_outer = 1
         if h_size >= core_num:
-            block_split_axis = 1
-            block_inner = h_size // core_num
+            new_block_split_axis = 1
+            new_block_inner = (h_size + core_num - 1) // core_num
+            new_block_outer = \
+                (h_size + new_block_inner - 1) // new_block_inner
         elif h_size*w_size >= core_num:
-            block_split_axis = 2
-            block_inner = w_size // (core_num // h_size)
+            new_block_split_axis = 2
+            new_block_inner = w_size // ((core_num + h_size - 1) // h_size)
+            new_block_outer = \
+                h_size * (w_size + new_block_inner - 1) // new_block_inner
         elif group_size >= core_num:
-            block_split_axis = 4
-            block_inner = group_size // core_num
+            one_time_data_size_threshold = 128
+            if (group_size + core_num - 1) // core_num >= \
+                    one_time_data_size_threshold:
+                new_block_split_axis = 4
+                new_block_inner = (group_size + core_num - 1) // core_num
+                new_block_outer = \
+                    (group_size + new_block_inner - 1) // new_block_inner
+            else:
+                new_block_split_axis = 2
+                new_block_inner = 1
+                new_block_outer = h_size * w_size
+
+        if new_block_outer > block_outer:
+            block_split_axis = new_block_split_axis
+            block_inner = new_block_inner
 
     ub_split_axis, ub_inner = _get_ub_tiling(block_split_axis, block_inner)
 
@@ -909,6 +1052,39 @@ def _check_gn_reduce_params(shape_res, shape_input, res_dtype):
         raise RuntimeError("GnReduceSchedule only support res is float32!")
 
 
+def _check_res_need_split(shape_input,
+                          block_split_axis, block_inner,
+                          ub_split_axis, ub_inner,
+                          _format, max_ub_count):
+    """
+    check result whether need split
+    when one core result is greater than max_ub_count, need split
+    """
+    # reserved
+    _ = ub_inner
+    if _format == "NCHW":
+        if block_split_axis in [2, 3, 4]:
+            # cut reduce axis
+            return False
+        if block_split_axis < ub_split_axis:
+            if block_split_axis == 0:
+                one_core_result_size = block_inner * shape_input[1]
+            else:
+                one_core_result_size = block_inner
+        else:
+            one_core_result_size = block_inner
+    else:
+        if block_split_axis in [1, 2, 4]:
+            # cut reduce axis
+            return False
+        if block_split_axis == ub_split_axis:
+            one_core_result_size = block_inner
+        else:
+            one_core_result_size = block_inner * shape_input[3]
+
+    return one_core_result_size > max_ub_count
+
+
 def gn_reduce_schedule(res, input_tensors):
     """
     group_norm reduce schedule
@@ -929,12 +1105,10 @@ def gn_reduce_schedule(res, input_tensors):
     if reduce_axis_index == [1, 2, 4]:
         _format = FORMAT_NHWC
         group_size = shape_input[-1]
-        if group_size*4 % 32 != 0:
-            # not 32B aligned, not process
-            return None
         tiling_func = _gn_reduce_nhwc_tiling
     else:
         _format = FORMAT_NCHW
+        group_size = shape_input[2]
         tiling_func = _gn_reduce_nchw_tiling
 
     dtype = input_tensor.dtype.lower()
@@ -948,9 +1122,25 @@ def gn_reduce_schedule(res, input_tensors):
             shape_input, is_support_atomic_add,
             max_ub_count, res_dtype)
 
-    log.debug("gn_reduce_schedule tiling, " + \
+    is_res_need_split = \
+        _check_res_need_split(
+            shape_input,
+            block_split_axis, block_inner,
+            ub_split_axis, ub_inner,
+            _format, max_ub_count
+        )
+
+    log.debug("gn_reduce_schedule tiling, " +
               "block_axis=%d, block_inner=%d, ub_axis=%d, ub_inner=%d",
               block_split_axis, block_inner, ub_split_axis, ub_inner)
+
+    if is_res_need_split:
+        one_time_dma_size = ub_inner
+        dma_tile = block_inner % ub_inner
+
+        is_block_conflict = one_time_dma_size < 8 or dma_tile < 8
+        if is_block_conflict:
+            return None
 
     sch = tvm.create_schedule([sum_x.op])
     sch_list = [sch]
@@ -965,7 +1155,7 @@ def gn_reduce_schedule(res, input_tensors):
                 sch_list, res, sum_x, square_sum_x,
                 data_ub, cast_0_ub, data_mul_ub,
                 block_split_axis, block_inner,
-                ub_split_axis, ub_inner)
+                ub_split_axis, ub_inner, is_res_need_split)
         elif 2 <= block_split_axis <= ub_split_axis:
             sch_cut_reduce_axis_nchw(
                 sch_list, res, sum_x,
@@ -980,13 +1170,13 @@ def gn_reduce_schedule(res, input_tensors):
                 sch_list, res, sum_x, square_sum_x,
                 data_ub, cast_0_ub, data_mul_ub,
                 block_split_axis, block_inner,
-                ub_split_axis, ub_inner)
+                ub_split_axis, ub_inner, group_size, dtype)
         elif block_split_axis in [1, 2, 4]:
             sch_cut_reduce_axis_nhwc(
                 sch_list, res, sum_x, square_sum_x,
                 data_ub, cast_0_ub, data_mul_ub,
                 block_split_axis, block_inner,
-                ub_split_axis, ub_inner)
+                ub_split_axis, ub_inner, group_size, dtype)
         else:
             raise RuntimeError("gn_reduce_schedule not support!")
 

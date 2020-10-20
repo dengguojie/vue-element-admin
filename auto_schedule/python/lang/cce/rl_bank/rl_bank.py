@@ -1,20 +1,19 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 rl bank, generate schedule from built-in bank or custom bank
-
 """
 import datetime
 import json
@@ -28,10 +27,11 @@ from te.lang.cce.rl_bank.bank_cfg import TAG_INDEX
 from te.lang.cce.rl_bank.bank_cfg import SPEC_ATTR_KEY
 from te.platform import log
 from te.lang.cce.rl_bank.withdraw import gen_sch_by_cheque
+from te.lang.cce.rl_bank.withdraw import withdraw
+from te.platform.fusion_manager import fusion_manager
 from te.lang.cce.te_compute.util import shape_to_list
 from te.lang.cce.te_schedule.util import gen_dfs_tensor_map
 from te.lang.cce.te_schedule.util import get_reduce_axis_num
-from te.platform.cce_policy import BANK_CACHE
 
 FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -122,29 +122,42 @@ def gen_tensor_feature(dfs_tensor_list):
     return str(feature_list)
 
 
-def get_rl_bank_key(output_tensors, op_info=None):
+def get_rl_bank_key(output_tensors_list, op_info=None):
     """
     generate bank_key from tensor info
     tensor_info_list, one for one tensor:tag，output shape，
     output dtype，reduce_axis，depends
+    :param output_tensors_list:
     :param op_info:
-    :param output_tensors:
     :return:bank_key:
     """
-    # try to get dfs_tensor_list from op_info by auto_schedule
-    try:
-        dfs_tensor_list = []
-        if op_info and op_info.get("dfs_tensor_list", None):
-            dfs_tensor_list = op_info["dfs_tensor_list"]
-        if not dfs_tensor_list:
-            dfs_tensor_list = get_dfs_tensor_list(output_tensors)
+    def _get_rl_bank_key(output_tensors, op_info=None):
+        # try to get dfs_tensor_list from op_info by auto_schedule
+        try:
+            dfs_tensor_list = []
+            if op_info and op_info.get("dfs_tensor_list", None):
+                dfs_tensor_list = op_info["dfs_tensor_list"]
+            if not dfs_tensor_list:
+                dfs_tensor_list = get_dfs_tensor_list(output_tensors)
 
-        bank_key = gen_tensor_feature(dfs_tensor_list)
-        log.debug("bank_key:%s", bank_key)
-        return bank_key
-    except Exception:  # pylint: disable=broad-except
-        log.info("get bank_key fail:%s", traceback.format_exc())
-        return ""
+            bank_key = gen_tensor_feature(dfs_tensor_list)
+            log.debug("bank_key:%s", bank_key)
+            return bank_key
+        except Exception:  # pylint: disable=broad-except
+            log.info("get bank_key fail:%s", traceback.format_exc())
+            return ""
+
+    final_bank_key = ""
+    if isinstance(output_tensors_list, list) and isinstance(
+            output_tensors_list[0], list):
+        for output_tensors in output_tensors_list:
+            curr_bank_key = _get_rl_bank_key(output_tensors, op_info=op_info)
+            if not curr_bank_key:
+                return ""
+            final_bank_key += curr_bank_key
+    else:
+        return _get_rl_bank_key(output_tensors_list, op_info=op_info)
+    return final_bank_key
 
 
 def trans_bank_dict(ori_dict, direction):
@@ -157,8 +170,25 @@ def trans_bank_dict(ori_dict, direction):
     trans_func = json.loads if direction == "from" else json.dumps
     new_dict = {}
     for key, value in ori_dict.items():
-        new_dict[key] = trans_func(value)
+        if value == 'tmpl' and direction == "from":
+            new_dict[key] = ('tmpl', 0)
+        else:
+            new_dict[key] = trans_func(value)
     return new_dict
+
+
+def write_bank(bank_json_path, bank_content):
+    """
+    write bank
+    :param bank_json_path:
+    :param base_key_actions_dict:
+    :return:
+    """
+    if not os.path.exists(os.path.dirname(bank_json_path)):
+        os.makedirs(os.path.dirname(bank_json_path), 0o750)
+    with open(bank_json_path, 'w') as outfile:
+        json.dump(bank_content, outfile, sort_keys=True, indent=4)
+    os.chmod(bank_json_path, 0o640)
 
 
 def add_case(outputs, cheque, tick, bank_json_path):
@@ -182,14 +212,53 @@ def add_case(outputs, cheque, tick, bank_json_path):
     if bank_key in base_key_actions_dict:
         _, old_tick = json.loads(base_key_actions_dict[bank_key])
         if old_tick and old_tick <= tick:
-            log.warn("old_tick:%s new_tick:%s, better cheque has been in bank!", old_tick, tick)
+            log.warn(
+                "old_tick:%s new_tick:%s, better cheque has been in bank!",
+                old_tick, tick)
             return False
-    base_key_actions_dict.update({bank_key: json.dumps((cheque, tick))})
-    if not os.path.exists(os.path.dirname(bank_json_path)):
-        os.makedirs(os.path.dirname(bank_json_path), 0o750)
-    with open(bank_json_path, 'w') as outfile:
-        json.dump(base_key_actions_dict, outfile, sort_keys=True, indent=4)
-    os.chmod(bank_json_path, 0o640)
+
+    if isinstance(outputs, list) and isinstance(outputs[0], list):
+        cheque_list = []
+        for i, output_tensors in enumerate(outputs):
+            cheque_list += cheque[i]
+            curr_bank_key = get_rl_bank_key(output_tensors)
+            if not curr_bank_key:
+                continue
+            base_key_actions_dict.update(
+                {curr_bank_key: json.dumps((cheque[i], tick))})
+    else:
+        cheque_list = cheque
+    base_key_actions_dict.update({bank_key: json.dumps((cheque_list, tick))})
+    write_bank(bank_json_path, base_key_actions_dict)
+    return True
+
+
+def add_tmpl_to_custom_bank(bank_key, bank_file):
+    """
+    add tmpl to custom bank. It means use auto_schedule.
+    It should not add to builtin bank.
+    :param bank_key:
+    :param bank_file:
+    :return:
+    """
+    bank_type = 'custom'
+    spec_valid, bank_dir = get_custom_rl_path()
+    # if assign TUNE_BANK_PATH, custom bank path is TUNE_BANK_PATH/soc_version/rl
+    if spec_valid:
+        bank_type = "rl"
+
+    soc_version = cceconf.get_soc_spec("SOC_VERSION")
+    bank_json_path = os.path.join(bank_dir, soc_version, bank_type, "%s.json" % bank_file)
+
+    if os.path.exists(bank_json_path):
+        with open(bank_json_path) as json_file:
+            bank_content = json.load(json_file)
+    else:
+        bank_content = {}
+    # both of key and value are string
+    if bank_key not in bank_content:
+        bank_content[bank_key] = 'tmpl'
+    write_bank(bank_json_path, bank_content)
     return True
 
 
@@ -224,8 +293,11 @@ def get_custom_rl_path():
     # if not assign custom bank dir, use default bank dir
     if not base_dir:
         base_dir = get_default_rl_path(custom=True)
-        log.warn("TUNE_BANK_PATH:%s is without access, use default %s instead!", spec_bank,
-                 base_dir)
+        if spec_bank:
+            log.warn("TUNE_BANK_PATH:%s is without access,"
+                     "use default %s instead!",
+                     spec_bank,
+                     base_dir)
 
     return spec_valid, base_dir
 
@@ -294,10 +366,25 @@ def read_custom_bank(custom_bank_dir, bank_name):
                 tmp_bank = json.load(fh_bank)
             tmp_bank = trans_bank_dict(tmp_bank, "from")
             for key, (_, tick) in tmp_bank.items():
-                if key in custom_bank and custom_bank[key][1] <= tick:
+                if key in custom_bank and \
+                        custom_bank[key][1] <= tick and \
+                        custom_bank[key][1] > 0:
                     continue
                 custom_bank[key] = tmp_bank[key]
     return custom_bank, bank_files
+
+
+def update_bank_dict(bank_update_to, bank_update_from):
+    """
+
+    :param bank_update_to:
+    :param bank_update_from:
+    :return:
+    """
+    for key, (_, tick) in bank_update_from.items():
+        if key not in bank_update_to \
+                or (key in bank_update_to and tick < bank_update_to[key][1]):
+            bank_update_to[key] = bank_update_from[key]
 
 
 def merge_custom_bank(custom_bank_dir, bank_files, bank_name, custom_bank):
@@ -371,15 +458,39 @@ def get_bank_dict(bank_name, soc_version, force_update=False):
     RL_BANK_DICT[bank_name] = {}
 
     # if assign TUNE_BANK_PATH, custom bank path is BANK_PATH/soc_version/rl
-    bank_type = "custom"
     spec_valid, custom_bank_base_dir = get_custom_rl_path()
+    custom_bank_dirs = []
     if spec_valid:
-        bank_type = "rl"
+        # 指定tune_bank_path的情况，为了兼容老版本，同时读取3个路径：
+        # 1,<TUNE_BANK_PATH>/<SOC_VERSION>/rl
+        # 2,<TUNE_BANK_PATH>/<SOC_VERSION>/custom
+        # 3,/usr/local/Ascend/atc/data/rl/<SOC_VERSION>/custom
+        for bank_type in ['custom', 'rl']:
+            custom_bank_dirs.append(os.path.join(custom_bank_base_dir,
+                                                 soc_version,
+                                                 bank_type))
 
-    custom_bank_dir = os.path.join(custom_bank_base_dir, soc_version, bank_type)
-    if os.path.isdir(custom_bank_dir):
-        custom_bank, bank_files = read_custom_bank(custom_bank_dir, bank_name)
-        merge_custom_bank(custom_bank_dir, bank_files, bank_name, custom_bank)
+        custom_bank_dirs.append(os.path.join(get_default_rl_path(custom=True),
+                                             soc_version,
+                                             bank_type))
+
+    else:
+        custom_bank_dirs.append(os.path.join(custom_bank_base_dir,
+                                             soc_version,
+                                             'custom'))
+
+    custom_bank = {}
+    for custom_bank_dir in custom_bank_dirs:
+        if os.path.isdir(custom_bank_dir):
+            cur_custom_bank, bank_files = read_custom_bank(custom_bank_dir,
+                                                           bank_name)
+            merge_custom_bank(custom_bank_dir,
+                              bank_files,
+                              bank_name,
+                              cur_custom_bank)
+            update_bank_dict(custom_bank, cur_custom_bank)
+
+    if custom_bank:
         RL_BANK_DICT[bank_name]["custom"] = custom_bank
 
     built_in_base_dir = get_default_rl_path()
@@ -395,22 +506,20 @@ def get_bank_dict(bank_name, soc_version, force_update=False):
     return bool(RL_BANK_DICT[bank_name])
 
 
-def get_cheque(out_tensors, op_info=None):
+def get_cheque(out_tensors, op_info=None, fill_tmpl=False):
     """
     get_cheque_from_bank
     :param out_tensors:op compute output tensors
     :param op_info:op info contain dfs tensor list
     :return:
     """
-    if os.getenv("ENABLE_TUNE_BANK", "True").lower() != "true":  # pylint: disable=invalid-envvar-default
+    if os.getenv("ENABLE_TUNE_BANK", "True").lower() == "false":  # pylint: disable=invalid-envvar-default
         return []
 
     soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
     bank_name = get_bank_name(soc_version)
     ret = get_bank_dict(bank_name, soc_version)
     if not ret:
-        # read bank fail, disable rl rank
-        os.environ["ENABLE_TUNE_BANK"] = "False"
         return []
 
     # get_rl_bank_key by op_name
@@ -419,6 +528,7 @@ def get_cheque(out_tensors, op_info=None):
         return []
 
     # get cheque from BANK_CACHE
+    from te.domain.tiling.get_tiling import BANK_CACHE  # pylint: disable=import-outside-toplevel
     if BANK_CACHE:
         try:
             spec_cheque = json.loads(BANK_CACHE)
@@ -426,10 +536,10 @@ def get_cheque(out_tensors, op_info=None):
                     rl_bank_key, []):
                 cheque = spec_cheque["rl_cheque"][rl_bank_key]
                 if cheque:
-                    log.info("get cheque %s from BANK_CACHE", cheque)
+                    log.info("get cheque from BANK_CACHE %s", cheque)
                     return cheque
         except json.decoder.JSONDecodeError:
-            log.error("BANK_CACHE:%s must be json format!", BANK_CACHE)
+            log.warn("RL BANK_CACHE:%s must be json format!", BANK_CACHE)
 
     # get cheque from bank
     cheque, _ = RL_BANK_DICT.get(bank_name, {}).get("custom", {}).get(rl_bank_key, ([], 0))
@@ -440,6 +550,11 @@ def get_cheque(out_tensors, op_info=None):
     cheque, _ = RL_BANK_DICT.get(bank_name, {}).get("built-in", {}).get(rl_bank_key, ([], 0))
     if cheque:
         log.info("hit built-in bank!")
+
+    # 如果Bank不存在这个Key，且fill_tmpl为True，则在Bank中添加一个tmpl的cheque
+    if not cheque and fill_tmpl:
+        add_tmpl_to_custom_bank(rl_bank_key, bank_name)
+
     return cheque if cheque else []
 
 
@@ -452,7 +567,9 @@ def query_rl_bank(out_tensors, op_info=None):
     """
     try:
         cheque = get_cheque(out_tensors, op_info=op_info)
-        if cheque:
+        if cheque == 'tmpl':
+            return True, None
+        elif cheque:
             ret, rl_schedule_obj = gen_sch_by_cheque(out_tensors, cheque)
             if ret:
                 return True, rl_schedule_obj
@@ -471,3 +588,35 @@ def update_bank():
     bank_name = get_bank_name(soc_version)
     ret = get_bank_dict(bank_name, soc_version, force_update=True)
     return ret
+
+
+def tik_dsl_bank_proc(output_tensors):
+    """
+    tik dsl op get res and bank
+    :param output_tensors:
+    :return: 
+    """
+    if fusion_manager.get_build_cfg() == "disable":
+        res_op = []
+        if isinstance(output_tensors, list):
+            for res in output_tensors:
+                res_op.append(res.op)
+        else:
+            res_op.append(output_tensors.op)
+        sch = tvm.create_schedule(res_op)
+        return output_tensors, sch
+
+    res_index = fusion_manager.get_res_index()
+    cheque_list = fusion_manager.get_cheque_list(res_index=res_index)
+    if cheque_list:
+        sch, _ = withdraw(output_tensors, cheque_list)
+        return output_tensors, sch
+
+    # for RL tune getting op res
+    fusion_manager.set_op_res(output_tensors)
+
+    ret, sch = query_rl_bank(output_tensors)
+    if ret and sch:
+        return output_tensors, sch
+
+    return output_tensors, None

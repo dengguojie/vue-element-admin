@@ -1,23 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 schedule util
 """
-
 from functools import reduce
 from operator import mul
 
@@ -26,7 +23,7 @@ from te import tvm
 from te.platform import operation
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
-    NEED_TEMP_SPACE_INSNS
+    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS
 
 VAR_BOUND_LIMIT = 2147483647
 
@@ -72,6 +69,14 @@ def need_temp_space(tensor: tvm.tensor.Tensor):
     :return:
     """
     return get_dsl_insn(tensor) in NEED_TEMP_SPACE_INSNS
+
+
+def is_vsel_insn(tensor: tvm.tensor.Tensor):
+    return get_dsl_insn(tensor) == VSEL_INSNS
+
+
+def is_vcmpsel_insn(tensor: tvm.tensor.Tensor):
+    return get_dsl_insn(tensor) in VCMPSEL_INSNS
 
 
 def get_tensor_size(tensor: tvm.tensor.Tensor):

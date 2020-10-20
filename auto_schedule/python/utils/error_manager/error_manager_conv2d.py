@@ -1,11 +1,24 @@
-"""Copyright 2019 Huawei Technologies Co., Ltd
-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
 error manager conv2d.
 """
-import json
 from te.utils.error_manager.error_manager_util import get_error_message
 
-def raise_err_input_params_not_expected(op_name, param_name, \
+
+def raise_err_input_params_not_expected(op_name, param_name,
                                         expected_value, input_value):
     """
     The op[%s] input parameter[%s] should be [%s], actual the input is [%s] %
@@ -47,7 +60,7 @@ def raise_err_input_params_not_supported(op_name, scale_value, sqrt_mode):
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_input_format_invalid(op_name, param_name, \
+def raise_err_input_format_invalid(op_name, param_name,
                                    expected_format_list, input_format):
     """
     The format of [%s] of op[%s] must in [%s], actual format is [%s] %
@@ -204,8 +217,8 @@ def raise_err_output_mem_type(op_name, output_memory_type):
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_check_the_validity_of_variable(op_name, sence_params, \
-    param_1, param_2):
+def raise_err_check_the_validity_of_variable(op_name, sence_params,
+                                             param_1, param_2):
     """
     The op [%s]. [%s] , the value is [%s] and [%s] %
     (op_name, sence_params, param_1, param_2)
@@ -226,8 +239,8 @@ def raise_err_check_the_validity_of_variable(op_name, sence_params, \
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_check_the_validity_of_one_variable(op_name, \
-    sence_params, param_1):
+def raise_err_check_the_validity_of_one_variable(op_name,
+                                                 sence_params, param_1):
     """
     The op [%s]. [%s] , the value is [%s] %
     (op_name, sence_params, param_1)
@@ -263,7 +276,7 @@ def raise_err_specific_input_shape(op_name, reason):
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_value_or_format_invalid(op_name, param_name, \
+def raise_err_value_or_format_invalid(op_name, param_name,
                                       expect_value, condition):
     """
     wrong tiling in op[%s]: [%s] must be equal to [%s] when [%s] %

@@ -1,7 +1,19 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
+pooling2d_schedule
 """
 import math
 
@@ -11,7 +23,6 @@ from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.platform import cce_emitinsn_params as cce_params
 from te.platform.cce_conf import CceProductParams as pver
-from te.lang.cce import ConvParam # pylint: disable=C0412
 from te.platform.cce_policy import get_L1_info
 from .max_pool2d_schedule import schedule as schedule_max_pool
 from .avg_pool2d_schedule import schedule as schedule_avg_pool
@@ -41,6 +52,7 @@ STRIDED_WRITE_TAG = "strided_write"
 DEFAULT_VALUE = -1
 L1_DEPTH_FUSION = 0
 L1_BREADTH_FUSION = 1
+
 
 def _get_l1fusion_device_core_num(is_l1fusion):
     """
@@ -171,8 +183,8 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                                 continue
 
                             fmap_l1_size = gm_to_l1_cut_h * in_size_w * \
-                                           ci_factor * c_block_size * \
-                                           SIZE_OF_FP16
+                                ci_factor * c_block_size * \
+                                SIZE_OF_FP16
 
                             if fmap_l1_size <= l1_tiling_size:
                                 gm_to_l1_steph_list.append(step_h)
@@ -180,7 +192,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                                 break
                     else:
                         fmap_l1_size = gm_to_l1_cut_h * in_size_w * c1_value * \
-                                       c_block_size * SIZE_OF_FP16
+                            c_block_size * SIZE_OF_FP16
 
                         if fmap_l1_size <= l1_tiling_size:
                             gm_to_l1_steph_list.append(step_h)
@@ -207,7 +219,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                             c_block_size*c_block_size
                         res_w = ci_factor*c_block_size
                         res_h = (out_size_h*out_size_w + c_block_size - 1) // \
-                                c_block_size * c_block_size
+                            c_block_size * c_block_size
                         avg_factor_dump_w = c_block_size
                         avg_factor_dump_h = \
                             (out_size_h*out_size_w + c_block_size - 1) // \
@@ -239,7 +251,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                         if out_size_h == 1:
                             size_h_gm_to_l1 = window_h - pad_top
                         fmap_l1_size = size_h_gm_to_l1 * in_size_w * \
-                                       ci_factor * c_block_size * SIZE_OF_FP16
+                            ci_factor * c_block_size * SIZE_OF_FP16
 
                         is_l1_enough = \
                             fmap_l1_size <= l1_tiling_size and \
@@ -258,7 +270,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                             tiling["gm_to_l1_cut_h"] = in_size_h
                             l1_cut_to_ub_factor = (out_size_h * out_size_w +
                                                    c_block_size - 1) // \
-                                                  c_block_size
+                                c_block_size
                             tiling["step_h"] = out_size_h
                             tiling["axis_orig"] = l1_cut_to_ub_factor
                             tiling["l1_cut_to_ub_factor"] = l1_cut_to_ub_factor
@@ -286,7 +298,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                 max_l1_cut_to_ub_factor = 1
                 for step_h in gm_to_l1_steph_list:
                     axis_outer_split_factor = step_h * out_size_w // \
-                                              c_block_size
+                        c_block_size
                     h_factor = (step_h - 1) * stride_h + window_h
                     axis_orig = axis_outer_split_factor
 
@@ -297,7 +309,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                             continue
 
                         fmap_img2col_w = window_h * window_w * c1_value * \
-                                         c_block_size
+                            c_block_size
                         fmap_img2col_h = axis_outer_split_factor * c_block_size
                         align_c1 = (c1_value + 1)//2*2
                         res_w = \
@@ -312,8 +324,8 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                         # pooling_out_ub & pooling_ub_5hd
                         res_size = res_h*res_w*SIZE_OF_FP16*2
                         avg_factor_dump_size = \
-                            ((avg_factor_dump_w*avg_factor_dump_h + \
-                            127)//128*128)*SIZE_OF_FP16
+                            ((avg_factor_dump_w*avg_factor_dump_h +
+                              127)//128*128)*SIZE_OF_FP16
 
                         if pooling_mode == "AVG" and padding_mode == "SAME":
                             # tmp_buffer is exist, the same size as
@@ -381,7 +393,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                                 continue
 
                             fmap_img2col_w = window_h * window_w * \
-                                             cutc1_factor * c_block_size
+                                cutc1_factor * c_block_size
                             fmap_img2col_h = \
                                 axis_outer_split_factor * c_block_size
                             res_w = cutc1_factor * c_block_size
@@ -399,7 +411,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                                 SIZE_OF_FP16
 
                             is_avg_same = pooling_mode == "AVG" and \
-                                          padding_mode == "SAME"
+                                padding_mode == "SAME"
                             if is_avg_same:
                                 l1_cut_to_ub_unit_size = \
                                     fmap_img2col_size + res_size + \
@@ -413,26 +425,26 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                                 l1_cut_to_ub_unit_size += res_size
 
                             invalid_size = l1_cut_to_ub_unit_size >= \
-                                           float(ub_tiling_size) or \
-                                           not check_anti_quant(h_factor,
-                                                                cutc1_factor)
+                                float(ub_tiling_size) or \
+                                not check_anti_quant(h_factor,
+                                                     cutc1_factor)
                             if invalid_size:
                                 continue
 
                             if enabler_c1_bind_core:
                                 cur_bind_core_gap = \
-                                    abs((c1_value + cutc1_factor - 1) // \
+                                    abs((c1_value + cutc1_factor - 1) //
                                         cutc1_factor - device_core_num)
                                 if cur_bind_core_gap > bind_core_gap:
                                     continue
                                 if cur_bind_core_gap == bind_core_gap and \
-                                    axis_outer_split_factor < \
-                                    max_l1_cut_to_ub_factor:
+                                        axis_outer_split_factor < \
+                                        max_l1_cut_to_ub_factor:
                                     continue
                                 bind_core_gap = cur_bind_core_gap
                             else:
                                 if axis_outer_split_factor < \
-                                    max_l1_cut_to_ub_factor:
+                                        max_l1_cut_to_ub_factor:
                                     continue
 
                             max_l1_cut_to_ub_factor = axis_outer_split_factor
@@ -557,7 +569,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                     continue
                 # make sure nRepeat param of img2col_l1_ub in [0,255]
                 ci_factor_valid = check_c1_factor(ci_factor) and \
-                                  ci_factor*window_h*window_w <= 255
+                    ci_factor*window_h*window_w <= 255
 
                 if not ci_factor_valid:
                     continue
@@ -565,10 +577,10 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                 is_avg_same = pooling_mode == "AVG" and padding_mode == "SAME"
                 if is_avg_same:
                     img2col_w = window_h*window_w*ci_factor*c_block_size + \
-                                ci_factor*c_block_size*2 + c_block_size*2
+                        ci_factor*c_block_size*2 + c_block_size*2
                 else:
                     img2col_w = window_h*window_w*ci_factor*c_block_size +\
-                                ci_factor*c_block_size*3
+                        ci_factor*c_block_size*3
 
                 if fused_ascend_quant:
                     # for c0 rearrange
@@ -598,7 +610,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                 in_cuth = (out_cuth - 1) * stride_h + window_h
 
                 gm_to_l1_size = ci_factor * in_cuth * in_size_w * \
-                                c_block_size * SIZE_OF_FP16
+                    c_block_size * SIZE_OF_FP16
 
                 is_continue = (gm_to_l1_size > l1_tiling_size) or \
                               (not check_anti_quant(in_cuth, ci_factor))
@@ -607,7 +619,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
 
                 if enabler_c1_bind_core:
                     cur_bind_core_gap = \
-                        abs((c1_value + ci_factor - 1)//ci_factor - \
+                        abs((c1_value + ci_factor - 1)//ci_factor -
                             device_core_num)
                     if cur_bind_core_gap >= bind_core_gap:
                         continue
@@ -639,16 +651,16 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
 
                 for cut_c1_factor in range(c1_value, 0, -1):
                     # when c1_value is 1, ci_factor can equals 1
-                    is_continue = (fused_ascend_quant and \
-                                            c1_value != 1 and \
-                                            cut_c1_factor % 2 != 0) or \
-                                            cut_c1_factor * window_h * \
-                                            window_w > 255
+                    is_continue = (fused_ascend_quant and
+                                   c1_value != 1 and
+                                   cut_c1_factor % 2 != 0) or \
+                        cut_c1_factor * window_h * \
+                        window_w > 255
                     if is_continue:
                         continue
 
                     img2col_fmap_columns = window_h * window_w * \
-                                     cut_c1_factor * c_block_size
+                        cut_c1_factor * c_block_size
                     img2col_fmap_rows = ho_wo_16_outer_factor * c_block_size
                     res_weight = cut_c1_factor * c_block_size
                     res_height = out_size_h * out_size_w
@@ -656,24 +668,24 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                     avg_factor_dump_height = ((out_size_h * out_size_w +
                                                128 - 1) // 128) * 128
                     fmap_img2col_size = img2col_fmap_columns * \
-                                        img2col_fmap_rows * \
-                                        SIZE_OF_FP16
+                        img2col_fmap_rows * \
+                        SIZE_OF_FP16
                     # pooling_out_ub & pooling_ub_5hd
                     pooling_res_size = res_height * res_weight * \
-                                       SIZE_OF_FP16 * 2
+                        SIZE_OF_FP16 * 2
                     avg_factor_dump_size = (avg_factor_dump_weight *
                                             avg_factor_dump_height) * \
-                                           SIZE_OF_FP16
+                        SIZE_OF_FP16
 
                     is_avg_same = pooling_mode == "AVG" and \
-                                  padding_mode == "SAME"
+                        padding_mode == "SAME"
                     if is_avg_same:
                         l1_to_ub_unit_size = fmap_img2col_size + \
-                                                 pooling_res_size + \
-                                                 avg_factor_dump_size * 2
+                            pooling_res_size + \
+                            avg_factor_dump_size * 2
                     else:
                         l1_to_ub_unit_size = fmap_img2col_size + \
-                                                 pooling_res_size * 2
+                            pooling_res_size * 2
 
                     if l1_to_ub_unit_size >= float(ub_tiling_size):
                         continue
@@ -847,11 +859,11 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
     vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
     use_fp16 = pver().is_mini_version() and \
-               (impl_mode == "high_performance")
+        (impl_mode == "high_performance")
     fp32_ability = vconv_ability and \
-                   vadd_ability and \
-                   vmul_ability and \
-                   (not use_fp16)
+        vadd_ability and \
+        vmul_ability and \
+        (not use_fp16)
 
     # pylint: disable=too-many-nested-blocks
     def _try_tiling(ub_size):
@@ -862,22 +874,22 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                 continue
 
             is_match = fused_ascend_quant and \
-                       c1_value != 1 and ci_factor % 2 != 0
+                c1_value != 1 and ci_factor % 2 != 0
             if is_match:
                 continue
 
             if pooling_mode == "GAP" and fp32_ability:
                 # fp16 will cast to fp32 compute
                 tensor_in_ub_size = ci_factor * c_block_size *\
-                                    in_size_h * in_size_w *\
-                                    (SIZE_OF_FP32 + SIZE_OF_FP16)
+                    in_size_h * in_size_w *\
+                    (SIZE_OF_FP32 + SIZE_OF_FP16)
                 result_in_ub_size = (ci_factor*c_block_size + 128 - 1) // \
-                                    128 * 128 * SIZE_OF_FP32
+                    128 * 128 * SIZE_OF_FP32
             else:
                 tensor_in_ub_size = ci_factor * c_block_size *\
-                                    in_size_h * in_size_w * SIZE_OF_FP16
+                    in_size_h * in_size_w * SIZE_OF_FP16
                 result_in_ub_size = (ci_factor * c_block_size + 128 - 1) // \
-                                    128 * 128 * SIZE_OF_FP16
+                    128 * 128 * SIZE_OF_FP16
 
             used_ub_size = tensor_in_ub_size + result_in_ub_size
 
@@ -890,7 +902,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
 
             if enabler_c1_bind_core:
                 cur_bind_core_gap = \
-                    abs((c1_value + ci_factor - 1) // ci_factor - \
+                    abs((c1_value + ci_factor - 1) // ci_factor -
                         device_core_num)
                 if cur_bind_core_gap >= bind_core_gap:
                     continue
@@ -905,7 +917,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
             tiling_params["find_tiling"] = True
 
             if not enabler_c1_bind_core or \
-                (enabler_c1_bind_core and bind_core_gap == 0):
+                    (enabler_c1_bind_core and bind_core_gap == 0):
                 break
 
         if fused_ascend_quant and ci_factor == 1:
@@ -921,7 +933,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                     continue
 
                 is_match = fused_ascend_quant and \
-                           c1_value != 1 and ci_factor % 2 != 0
+                    c1_value != 1 and ci_factor % 2 != 0
                 if is_match:
                     continue
 
@@ -940,7 +952,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                         c_block_size * SIZE_OF_FP16
                     result_in_ub_size = \
                         ci_factor * ((c_block_size + 128 - 1) // 128) *\
-                         128 * SIZE_OF_FP16
+                        128 * SIZE_OF_FP16
 
                 used_ub_size = tensor_in_ub_size + result_in_ub_size
 
@@ -965,13 +977,13 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                     if pooling_mode == "GAP" and fp32_ability:
                         # fp16 will cast to fp32 compute
                         tensor_in_ub_size = ci_factor*wi_factor*c_block_size\
-                                            * (SIZE_OF_FP32 + SIZE_OF_FP16)
+                            * (SIZE_OF_FP32 + SIZE_OF_FP16)
                         result_in_ub_size = \
-                            ci_factor*((c_block_size + 128 - 1) \
-                            // 128)*128*SIZE_OF_FP32
+                            ci_factor*((c_block_size + 128 - 1)
+                                       // 128)*128*SIZE_OF_FP32
                     else:
                         tensor_in_ub_size = ci_factor * wi_factor\
-                                            * c_block_size * SIZE_OF_FP16
+                            * c_block_size * SIZE_OF_FP16
                         result_in_ub_size = \
                             ci_factor * \
                             ((c_block_size + 128 - 1) // 128) * \
@@ -1325,7 +1337,7 @@ def pooling2d_schedule(res, sch_list):
         return res_list
 
     fused_select_write, fused_ascend_quant, fused_anti_quant, anti_res, \
-    res_quant, ascend_tensor, pooling2d_res, ascend_attr = \
+        res_quant, ascend_tensor, pooling2d_res, ascend_attr = \
         _preprocess_fusion()
 
     template = _get_from_attr(pooling2d_res.op.attrs, "template")
@@ -1398,15 +1410,15 @@ def pooling2d_schedule(res, sch_list):
         if pooling_mode == "GAP":
             impl_mode = pooling2d_res.op.attrs['impl_mode']
             use_fp16 = pver().is_mini_version() and \
-                       (impl_mode == "high_performance")
+                (impl_mode == "high_performance")
             fp32_ability = vconv_ability and \
-                        vadd_ability and \
-                        vmul_ability and \
-                        (not use_fp16)
+                vadd_ability and \
+                vmul_ability and \
+                (not use_fp16)
         else:
             fp32_ability = vconv_ability and \
-                        vadd_ability and \
-                        vmul_ability
+                vadd_ability and \
+                vmul_ability
         return fp32_ability
 
     fp32_ability = _set_fp32_ability()
@@ -1439,7 +1451,7 @@ def pooling2d_schedule(res, sch_list):
         filter_w = setfmatrix_dict["conv_kernel_w"]
 
         pooling_cut_factor, res_cut_factor, is_cut_l1_to_ub, cutc1_factor, \
-        can_enable_double_buffer, cuth_loop = \
+            can_enable_double_buffer, cuth_loop = \
             pooling2d_tiling(pooling_params, fusion_params)
 
         is_ddr_l1_cut_h_flag = (cuth_loop > 1)
@@ -1613,9 +1625,9 @@ def pooling2d_schedule(res, sch_list):
         block_tag = None
         block_axis = None
         bind_none = is_l1fusion or \
-                    (batch_size == 1 and res_c1_outer_value == 1)
+            (batch_size == 1 and res_c1_outer_value == 1)
         bind_batch = batch_size >= device_core_num or \
-                     batch_size >= res_c1_outer_value
+            batch_size >= res_c1_outer_value
         if bind_none:
             # no bind core
             batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=1)
@@ -1768,7 +1780,7 @@ def pooling2d_schedule(res, sch_list):
 
                         if block_tag == "batch":
                             i0_var = batch_outer.var * batch_factor + \
-                                     batch_inner.var
+                                batch_inner.var
                         else:
                             i0_var = batch_outer.var
                         sch[fmap_l1].buffer_tile(
@@ -1843,8 +1855,7 @@ def pooling2d_schedule(res, sch_list):
                 if pooling_mode == "AVG":
                     if padding_mode == "SAME":
                         avg_para_dict = {
-                            'out_var': res_outer if fused_ascend_quant \
-                                       else pooling2d_res_outer
+                            'out_var': res_outer if fused_ascend_quant else pooling2d_res_outer
                         }
                         sch[pooling_out_ub_mul_factor].emit_insn(
                             pooling_out_ub_mul_factor.op.axis[0],
@@ -1902,7 +1913,7 @@ def pooling2d_schedule(res, sch_list):
                                             c1_or_res_outer)
                 if is_l1fusion:
                     only_l1_breadth_fusion = (l1_fusion_type == 1) and \
-                                             not in_select_read_flag
+                        not in_select_read_flag
                     if only_l1_breadth_fusion:
                         sch[tensor_in].emit_insn(tensor_in.op.axis[0],
                                                  'dma_copy')
@@ -1973,8 +1984,7 @@ def pooling2d_schedule(res, sch_list):
                 if pooling_mode == "AVG":
                     if padding_mode == "SAME":
                         avg_para_dict = {
-                            'out_var': res_outer if fused_ascend_quant \
-                                                 else pooling2d_res_outer
+                            'out_var': res_outer if fused_ascend_quant else pooling2d_res_outer
                         }
                         sch[pooling_out_ub_mul_factor].emit_insn(
                             pooling_out_ub_mul_factor.op.axis[0],
@@ -2327,7 +2337,7 @@ def pooling_global_quant_schedule(
         return res_list
 
     pooling_out_ub_mul_factor_f16, pooling_out_ub_mul_factor, pooling_out_ub, \
-    tensor_in_ub_f32, tensor_in_ub, tensor_in = _set_scop_get_rel_tensor()
+        tensor_in_ub_f32, tensor_in_ub, tensor_in = _set_scop_get_rel_tensor()
 
     sch[pooling2d_res].compute_inline()
     sch[input_ub].compute_inline()
@@ -2346,7 +2356,7 @@ def pooling_global_quant_schedule(
 
     is_no_bind = is_l1fusion or (batch_size == 1 and res_c1_outer_value == 1)
     is_bind_batch = batch_size >= device_core_num or\
-                    batch_size >= res_c1_outer_value
+        batch_size >= res_c1_outer_value
     if is_no_bind:
         # no bind core
         batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=1)

@@ -1,33 +1,34 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 common function
 """
 import math
 import collections
 from functools import update_wrapper
+from functools import reduce as functools_reduce
 from types import MappingProxyType
 from typing import Hashable
 from typing import Callable
 from typing import Union
-from functools import reduce as functools_reduce
+
 from te import tvm
-from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_conf import VERSION_CLOUD
 from . import pattern
+
 
 # fake node label
 FAKE_NODE_TAG = "elewise_empty_intrin"
@@ -87,12 +88,12 @@ TILING_RADICAL = 0
 TILING_CONSERVATIVE = 1
 
 
-class L1CommonParam():
+class L1CommonParam(object):
+    """"L1 common parameter"""
+    l1_fusion_tensors_map = None
 
     def __init__(self):
         pass
-
-    l1_fusion_tensors_map = None
 
 
 def get_split_axis(shape, max_ub_count):
@@ -357,33 +358,30 @@ def tiling_from_front_to_back(shape, max_size, align_factor=None,
         if mod2count_align > mod2count_all:
             return outer, inner, split_axis
         # 2.2.2 elif: mod2count_reduceshape >= mod2count_all
-        elif mod2count_align <= mod2count_reduceshape:
+        if mod2count_align <= mod2count_reduceshape:
             return outer, inner, split_axis
         # 2.2.3 else: mod2count_reduceshape + mod2count_splitaxis >= mod2count_all,
         # and mod2count_reduceshape < mod2count_all
-        else:
-            factor = 2 ** (mod2count_align - mod2count_reduceshape)
-            # 2.2.3.1 if: is_divisible
-            if is_divisible:
-                outer_update = outer
-                while outer_update >= factor:
-                    if outer_update % factor == 0:
-                        outer = outer_update
-                        inner = (shape[split_axis] + outer - 1) // outer
-                        break
-                    outer_update = get_max_divisor(shape[split_axis],
-                                                   outer_update - 1)
+        factor = 2 ** (mod2count_align - mod2count_reduceshape)
+        # 2.2.3.1 if: is_divisible
+        if is_divisible:
+            outer_update = outer
+            while outer_update >= factor:
+                if outer_update % factor == 0:
+                    outer = outer_update
+                    inner = (shape[split_axis] + outer - 1) // outer
+                    break
+                outer_update = get_max_divisor(shape[split_axis],
+                                               outer_update - 1)
 
-                return outer, inner, split_axis
+            return outer, inner, split_axis
 
-            # pylint: disable=no-else-return
-            # 2.2.3.2 else: not is_divisible
-            if outer < factor:
-                return outer, inner, split_axis
-            else:
-                outer = outer // factor * factor
-                inner = (shape[split_axis] + outer - 1) // outer
-                return outer, inner, split_axis
+        # 2.2.3.2 else: not is_divisible
+        if outer < factor:
+            return outer, inner, split_axis
+        outer = outer // factor * factor
+        inner = (shape[split_axis] + outer - 1) // outer
+        return outer, inner, split_axis
 
     return outer, inner, split_axis
 
@@ -573,9 +571,9 @@ def get_block_factor_conservative(shape, barrier, factor):
         # equal case, use front index
         priority1 = cur_efficiency > res_efficiency
         priority2 = cur_efficiency == res_efficiency and \
-                    cur_idxs[0] < res_idx[0]
+            cur_idxs[0] < res_idx[0]
         priority3 = cur_efficiency == res_efficiency and \
-                    cur_idxs[0] == res_idx[0] and cur_factor[0] > res_factor[0]
+            cur_idxs[0] == res_idx[0] and cur_factor[0] > res_factor[0]
         if priority1 or priority2 or priority3:
             res_idx = cur_idxs[:]
             res_factor = cur_factor[:]
@@ -590,13 +588,13 @@ def get_block_factor_conservative(shape, barrier, factor):
             return
         visit.append(idxs)
 
-        ### single pattern
+        # single pattern
         if len(shape) == 1:
             coef = ceil(shape[0], factor)
             compare_cut_result(shape[0], idxs, [coef])
             return
 
-        ### multi pattern
+        # multi pattern
         inner_size = get_shape_size(shape[1:-1])
         # inner_size too large
         if factor < inner_size:
@@ -664,19 +662,18 @@ def get_block_factor_radical(shape, barrier, factor):
     res_idx = []
     res_efficiency = DEFAULT_INDEX
     res_coef = INIT_SIZE
-    # pylint: consider-using-enumerate
-    for d_var in range(len(shape)):
+    for d_var, d_shape in enumerate(shape):
         if d_var in barrier:
             temp_coef, temp_efficiency = get_factor_from_series_axes(temp_shape)
             if compare_cut_result(res_efficiency, temp_efficiency) and len(
-                    temp_shape):
+                    temp_shape) > 0:
                 res_idx = temp_idx[:]
                 res_efficiency = temp_efficiency
                 res_coef = temp_coef
             temp_shape = []
             temp_idx = []
         else:
-            temp_shape.append(shape[d_var])
+            temp_shape.append(d_shape)
             temp_idx.append(d_var)
 
     return res_idx, res_coef
@@ -742,8 +739,7 @@ def pattern_identify(tensor_list):
         if BROADCAST_TAG_LABEL in tensor.op.tag:
             if former_broadcast:
                 continue
-            else:
-                former_broadcast = True
+            former_broadcast = True
         else:
             former_broadcast = False
         tag_list.append(tensor.op.tag)
@@ -751,6 +747,7 @@ def pattern_identify(tensor_list):
         if pattern.data[cur_pattern] == tag_list:
             return cur_pattern
     return pattern.P_NONE
+
 
 def _map_apend(input_map, key, value):
     if input_map.get(key):
@@ -847,6 +844,7 @@ def get_emit_insn_map(tensor):
     else:
         insn = insn_map.get(tensor.op.tag)
     return insn
+
 
 def is_bert_bn_target(tensor_list):
     """

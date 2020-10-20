@@ -1,10 +1,24 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief LayerNormGrad fusion pass(LayerNormGrad --> LayerNormXBackprop & LayerNormBetaGammaBackprop)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file copy_fusion_pass.cpp
+ * \brief LayerNormGrad fusion pass
+ *   (LayerNormGrad --> LayerNormXBackprop \brief LayerNormBetaGammaBackprop)
+ */
 #include <iostream>
 #include <vector>
 #include <string>
@@ -21,94 +35,86 @@
 #include "securec.h"
 #include "pattern_fusion_util.h"
 
-#include"copy_fusion_pass.h"
-
+#include "copy_fusion_pass.h"
 
 using namespace std;
 using namespace ge;
 
 namespace fe {
-static const string PATTERN_COPY ="Copy";
+static const string PATTERN_COPY = "Copy";
 
 vector<FusionPattern*> CopyFusionPass::DefinePatterns() {
-    vector<FusionPattern*> patterns;
+  vector<FusionPattern*> patterns;
 
-    FusionPattern *pattern =new (std::nothrow) FusionPattern("CopyFusion");
-    FUSION_PASS_CHECK(pattern == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-            return patterns);
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("CopyFusion");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
 
-    pattern->AddOpDesc(PATTERN_COPY, {"Copy"}).SetOutput(PATTERN_COPY);
+  pattern->AddOpDesc(PATTERN_COPY, {"Copy"}).SetOutput(PATTERN_COPY);
 
-    patterns.push_back(pattern);
+  patterns.push_back(pattern);
 
-    return patterns;
+  return patterns;
 }
 
+Status CopyFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  // Get copy node and copy node description.
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into COPYPass");
+  ge::NodePtr copyNode = GetNodeFromMapping(PATTERN_COPY, mapping);
+  FUSION_PASS_CHECK(copyNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "copyNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
-Status CopyFusionPass::Fusion(ge::ComputeGraph &graph,
-                              Mapping &mapping,
-                              vector<ge::NodePtr> &newNodes)
-{
-    // Get copy node and copy node description.
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into COPYPass");
-    ge::NodePtr copyNode =GetNodeFromMapping(PATTERN_COPY, mapping);
-    FUSION_PASS_CHECK(copyNode == nullptr,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "copyNode is null, fusion failed."),
-             return PARAM_INVALID);
+  ge::OpDescPtr copyDesc = copyNode->GetOpDesc();
+  FUSION_PASS_CHECK(copyDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "copyNode's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
 
-    ge::OpDescPtr copyDesc = copyNode->GetOpDesc();
-    FUSION_PASS_CHECK(copyDesc == nullptr,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "copyNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
+  // Get Input Node
+  ge::InDataAnchorPtr oriInAnchorPtr0 = copyNode->GetInDataAnchor(0);
+  ge::OutDataAnchorPtr oriBottomPeerAnchorPtr0 = oriInAnchorPtr0->GetPeerOutAnchor();
+  ge::NodePtr inputNode = oriBottomPeerAnchorPtr0->GetOwnerNode();
 
-    //Get Input Node
-    ge::InDataAnchorPtr oriInAnchorPtr0 = copyNode->GetInDataAnchor(0);
-    ge::OutDataAnchorPtr oriBottomPeerAnchorPtr0 = oriInAnchorPtr0->GetPeerOutAnchor();
-    ge::NodePtr inputNode = oriBottomPeerAnchorPtr0->GetOwnerNode();
-
-    //Get oriTopPeerAnchorPtrs
-    vector<ge::InDataAnchorPtr> oriTopPeerAnchorPtrs;
-    for (auto outAnchor : copyNode->GetAllOutDataAnchors()) {
-        for (auto dstInAnchor : outAnchor->GetPeerInDataAnchors()) {
-            oriTopPeerAnchorPtrs.push_back(dstInAnchor);
-        }
+  // Get oriTopPeerAnchorPtrs
+  vector<ge::InDataAnchorPtr> oriTopPeerAnchorPtrs;
+  for (auto outAnchor : copyNode->GetAllOutDataAnchors()) {
+    for (auto dstInAnchor : outAnchor->GetPeerInDataAnchors()) {
+      oriTopPeerAnchorPtrs.push_back(dstInAnchor);
     }
+  }
 
-    for (auto inAnchor : copyNode->GetAllInDataAnchors()) {
-        if (inAnchor != nullptr) {
-            inAnchor->UnlinkAll();
-        }
+  for (auto inAnchor : copyNode->GetAllInDataAnchors()) {
+    if (inAnchor != nullptr) {
+      inAnchor->UnlinkAll();
     }
+  }
 
-    if (copyNode->GetInControlAnchor() != nullptr) {
-        copyNode->GetInControlAnchor()->UnlinkAll();
+  if (copyNode->GetInControlAnchor() != nullptr) {
+    copyNode->GetInControlAnchor()->UnlinkAll();
+  }
+
+  for (auto outAnchor : copyNode->GetAllOutDataAnchors()) {
+    if (outAnchor != nullptr) {
+      outAnchor->UnlinkAll();
     }
+  }
 
-    for (auto outAnchor : copyNode->GetAllOutDataAnchors()) {
-        if (outAnchor != nullptr) {
-            outAnchor->UnlinkAll();
-        }
-    }
+  if (copyNode->GetOutControlAnchor() != nullptr) {
+    copyNode->GetOutControlAnchor()->UnlinkAll();
+  }
 
-    if (copyNode->GetOutControlAnchor() != nullptr) {
-        copyNode->GetOutControlAnchor()->UnlinkAll();
-    }
+  for (uint64_t i = 0; i < oriTopPeerAnchorPtrs.size(); i++) {
+    ge::NodePtr outputNode = oriTopPeerAnchorPtrs.at(i)->GetOwnerNode();
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, oriTopPeerAnchorPtrs.at(i)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              inputNode->GetName().c_str(), outputNode->GetName().c_str()),
+                      return FAILED);
+  }
 
-    for (uint64_t i = 0; i < oriTopPeerAnchorPtrs.size(); i++) {
-        ge::NodePtr outputNode = oriTopPeerAnchorPtrs.at(i)->GetOwnerNode();
-        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, oriTopPeerAnchorPtrs.at(i)),
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                        inputNode->GetName().c_str(), outputNode->GetName().c_str()),
-                        return FAILED);
-    }
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(copyNode),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove copy node failed"), return FAILED);
 
-    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(copyNode),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "remove copy node failed"),
-            return FAILED);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "COPYPass success!!!!");
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "COPYPass success!!!!");
-
-    return SUCCESS;
+  return SUCCESS;
 }
 REGISTER_PASS("COPYPass", SECOND_ROUND_BUILT_IN_GRAPH_PASS, CopyFusionPass);
-}
+}  // namespace fe

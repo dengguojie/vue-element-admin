@@ -1,8 +1,22 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief batch_multi_class_nms fusion pass
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file batch_multi_class_nms_fusion_pass.cpp
+ * \brief batch_multi_class_nms fusion pass
  */
 #include "batch_multi_class_nms_fusion_pass.h"
 #include <fstream>
@@ -26,13 +40,12 @@ namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeBatchMultiClassNonMaxSuppression";
 static const string FUSED_NODE = "BatchMultiClassNonMaxSuppression";
 
-vector<FusionPattern *> BatchMultiClassNonMaxSuppressionFusionPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
-  FusionPattern *pattern = \
-  new (std::nothrow) FusionPattern("BatchMultiClassNonMaxSuppressionFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),  return patterns);
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE})
-          .SetOutput(PATTERN_FUSEDNODE);
+vector<FusionPattern*> BatchMultiClassNonMaxSuppressionFusionPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("BatchMultiClassNonMaxSuppressionFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+                    return patterns);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
   return patterns;
 }
@@ -50,14 +63,12 @@ bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::N
   return true;
 }
 
-Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &graph,
-                                                          Mapping &mapping,
-                                                          vector<ge::NodePtr> &newNodes) {
+Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                                          vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchMultiClassNonMaxSuppressionFusionPass fusion begin.");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::GeTensorDesc boxesInputDesc = fusedNode->GetOpDesc()->GetInputDesc(0);
   vector<int64_t> boxesInputShape = boxesInputDesc.GetShape().GetDims();
   auto boxesSize = boxesInputShape.size();
@@ -67,15 +78,15 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &grap
   // insert transpose at input 0
   if (boxesSize != 4) {
     isNeedTranposeBeforeScore = false;
-    permBoxesList = {0,2,1};
+    permBoxesList = {0, 2, 1};
   } else {
-    permBoxesList = {0,2,3,1};
+    permBoxesList = {0, 2, 3, 1};
   }
   AddTransposeBeforeNode(fusedNode, 0, permBoxesList, graph);
   // insert transpose at input 1
 
   // get the input 1 peer node op type
-  vector<int64_t> permScoreList = {0,2,1};
+  vector<int64_t> permScoreList = {0, 2, 1};
   auto peerNode = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
   auto peerOpType = peerNode->GetType();
   bool isNeedTransposeBeforeSlice = false;
@@ -90,65 +101,69 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &grap
       DataType dtype = op.GetInputDesc("offsets").GetDataType();
 
       vector<ge::GeTensorPtr> sliceTensorPtr = ge::OpDescUtils::MutableWeights(peerNode);
-      FUSION_PASS_CHECK(sliceTensorPtr.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "slice const is nullptr!"), return PARAM_INVALID);
+      FUSION_PASS_CHECK(sliceTensorPtr.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "slice const is nullptr!"),
+                        return PARAM_INVALID);
 
       if (dtype == ge::DT_INT32) {
         // modify Slice offset const node value
         ge::GeTensorPtr offsetsTensorPtr = sliceTensorPtr[0];
-        int32_t *constOffsetData = (int32_t *) (offsetsTensorPtr->GetData().GetData());
+        int32_t* constOffsetData = (int32_t*)(offsetsTensorPtr->GetData().GetData());
         if (constOffsetData == nullptr) {
           OP_LOGE(FUSED_OP_TYPE.c_str(), "Get Offset Data from const node is NULL.");
           return PARAM_INVALID;
         }
 
         vector<int32_t> offsetsNew = {constOffsetData[0], constOffsetData[2], constOffsetData[1]};
-        offsetsTensorPtr->SetData(reinterpret_cast<uint8_t *>(offsetsNew.data()), offsetsNew.size() * sizeof(int32_t));
+        offsetsTensorPtr->SetData(reinterpret_cast<uint8_t*>(offsetsNew.data()), offsetsNew.size() * sizeof(int32_t));
 
         // modify Slice size const node value
         ge::GeTensorPtr sizeTensorPtr = sliceTensorPtr[1];
-        int32_t *constSizeData = (int32_t *) (sizeTensorPtr->GetData().GetData());
+        int32_t* constSizeData = (int32_t*)(sizeTensorPtr->GetData().GetData());
         if (constSizeData == nullptr) {
           OP_LOGE(FUSED_OP_TYPE.c_str(), "Get size Data from const node is NULL.");
           return PARAM_INVALID;
         }
         vector<int32_t> sizeNew = {constSizeData[0], constSizeData[2], constSizeData[1]};
-        sizeTensorPtr->SetData(reinterpret_cast<uint8_t *>(sizeNew.data()), sizeNew.size() * sizeof(int32_t));
+        sizeTensorPtr->SetData(reinterpret_cast<uint8_t*>(sizeNew.data()), sizeNew.size() * sizeof(int32_t));
       } else {
         // modify Slice offset const node value
         ge::GeTensorPtr offsetsTensorPtr = sliceTensorPtr[0];
-        int64_t *constOffsetData = (int64_t *) (offsetsTensorPtr->GetData().GetData());
+        int64_t* constOffsetData = (int64_t*)(offsetsTensorPtr->GetData().GetData());
         if (constOffsetData == nullptr) {
           OP_LOGE(FUSED_OP_TYPE.c_str(), "Get Offset Data from const node is NULL.");
           return PARAM_INVALID;
         }
         vector<int64_t> offsetsNew = {constOffsetData[0], constOffsetData[2], constOffsetData[1]};
-        offsetsTensorPtr->SetData(reinterpret_cast<uint8_t *>(offsetsNew.data()), offsetsNew.size() * sizeof(int64_t));
+        offsetsTensorPtr->SetData(reinterpret_cast<uint8_t*>(offsetsNew.data()), offsetsNew.size() * sizeof(int64_t));
 
         // modify Slice size const node value
         ge::GeTensorPtr sizeTensorPtr = sliceTensorPtr[1];
-        int64_t *constSizeData = (int64_t *) (sizeTensorPtr->GetData().GetData());
+        int64_t* constSizeData = (int64_t*)(sizeTensorPtr->GetData().GetData());
         if (constSizeData == nullptr) {
           OP_LOGE(FUSED_OP_TYPE.c_str(), "Get size Data from const node is NULL.");
           return PARAM_INVALID;
         }
         vector<int64_t> sizeNew = {constSizeData[0], constSizeData[2], constSizeData[1]};
-        sizeTensorPtr->SetData(reinterpret_cast<uint8_t *>(sizeNew.data()), sizeNew.size() * sizeof(int64_t));
+        sizeTensorPtr->SetData(reinterpret_cast<uint8_t*>(sizeNew.data()), sizeNew.size() * sizeof(int64_t));
       }
     } else {
       vector<int64_t> offsets;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "offsets", offsets);
-      FUSION_PASS_CHECK(offsets.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is nullptr!"), return PARAM_INVALID);
+      FUSION_PASS_CHECK(offsets.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is nullptr!"),
+                        return PARAM_INVALID);
       vector<int64_t> size;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "size", size);
-      FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr size is nullptr!"), return PARAM_INVALID);
+      FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr size is nullptr!"),
+                        return PARAM_INVALID);
       vector<int64_t> offsetsNew = {offsets[0], offsets[2], offsets[1]};
       vector<int64_t> sizeNew = {size[0], size[2], size[1]};
-      ge::AttrUtils::SetListInt( peerNode->GetOpDesc(), "offsets", offsetsNew);
-      ge::AttrUtils::SetListInt( peerNode->GetOpDesc(), "sizeNew", sizeNew);
+      ge::AttrUtils::SetListInt(peerNode->GetOpDesc(), "offsets", offsetsNew);
+      ge::AttrUtils::SetListInt(peerNode->GetOpDesc(), "sizeNew", sizeNew);
     }
     // update Slice out desc
     vector<int64_t> oriSliceOutputShape = peerNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
-    FUSION_PASS_CHECK(oriSliceOutputShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Slice output shape is nullptr!"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(oriSliceOutputShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Slice output shape is nullptr!"),
+                      return PARAM_INVALID);
     vector<int64_t> outputSliceShapeVec;
     outputSliceShapeVec.push_back(oriSliceOutputShape[0]);
     outputSliceShapeVec.push_back(oriSliceOutputShape[2]);
@@ -206,19 +221,20 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &grap
   std::shared_ptr<ge::OpDesc> reduceDesc = nullptr;
   std::string reduceDescName = fusedNode->GetName() + "_Output_3_reduce";
   reduceDesc = std::make_shared<ge::OpDesc>(reduceDescName, "StridedSliceD");
-  FUSION_PASS_CHECK(reduceDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add reduce after valid num is null, fusion failed."),
-           return FAILED);
+  FUSION_PASS_CHECK(reduceDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add reduce after valid num is null, fusion failed."),
+                    return FAILED);
   FUSION_PASS_CHECK(reduceDesc->AddOutputDesc("y", nmsNumDesc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "add output y for reduce after valid num is null, fusion failed."),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add output y for reduce after valid num is null, fusion failed."),
+                    return FAILED);
 
   ge::GeShape newShape(newShapeVec);
   nmsNumDesc.SetShape(newShape);
   nmsNumDesc.SetOriginShape(newShape);
   opOutputDesc->UpdateOutputDesc(3, nmsNumDesc);
   FUSION_PASS_CHECK(reduceDesc->AddInputDesc("x", nmsNumDesc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for reduce after valid num is null, fusion failed."),
-           return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for reduce after valid num is null, fusion failed."),
+                    return FAILED);
   ge::AttrUtils::SetListInt(reduceDesc, "begin", {0, 0});
   ge::AttrUtils::SetListInt(reduceDesc, "end", {oriNmsNumShape[0], 1});
   ge::AttrUtils::SetListInt(reduceDesc, "strides", {1, 1});
@@ -231,21 +247,16 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &grap
   // add node to graph
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
   // add edge GraphUtils node output with other node input
-  for (auto inDataAnchor :
-       fusedNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(3),
-                                        inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reduceNode->GetOutDataAnchor(0),
-                                     inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge failed."), return FAILED);
+  for (auto inDataAnchor : fusedNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(3), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reduceNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge failed."), return FAILED);
   }
 
   // add input for reduce node
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(3),
-                                   reduceNode->GetInDataAnchor(0)) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "AddEdge edge failed."), return FAILED);
-
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(3), reduceNode->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "AddEdge edge failed."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchMultiClassNonMaxSuppressionFusionPass fusion end");
   return SUCCESS;
@@ -253,5 +264,4 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph &grap
 
 REGISTER_PASS("BatchMultiClassNonMaxSuppressionFusionPass", BUILT_IN_GRAPH_PASS,
               BatchMultiClassNonMaxSuppressionFusionPass);
-}
-
+}  // namespace fe

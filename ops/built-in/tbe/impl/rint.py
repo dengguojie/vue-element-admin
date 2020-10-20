@@ -1,33 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 rint
 """
-from __future__ import absolute_import
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from functools import reduce as reduceIns
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("rint")
+@tbe_platform.fusion_manager.fusion_manager.register("rint")
 def rint_compute(input_x, output_y, kernel_name="rint"):
     """
     rint compute
@@ -53,13 +50,13 @@ def rint_compute(input_x, output_y, kernel_name="rint"):
     res: TVM tensor
         the result of rint compute
     """
-    res = te.lang.cce.round(input_x)
-    res = te.lang.cce.cast_to(res, input_x.dtype)
+    res = tbe.round(input_x)
+    res = tbe.cast_to(res, input_x.dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def rint(input_x, output_y, kernel_name="rint"):
     """
     algorithm: rint
@@ -87,18 +84,18 @@ def rint(input_x, output_y, kernel_name="rint"):
     shape_x = input_x.get("shape")
     dtype = input_x.get("dtype")
 
-    check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_x, param_name="input_x")
 
     check_list = ("float16", "float32")
-    check_dtype(dtype.lower(), check_list, param_name="input_x")
+    para_check.check_dtype(dtype.lower(), check_list, param_name="input_x")
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape_x)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_x)
     data_x = tvm.placeholder(fuseshape, dtype=dtype.lower(), name="data")
     res = rint_compute(data_x, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_x, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

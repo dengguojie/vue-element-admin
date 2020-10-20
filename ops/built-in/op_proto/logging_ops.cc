@@ -1,62 +1,59 @@
-/* *
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
- * http:// www.apache.org/licenses/LICENSE-2.0
- *
- * @file logging_ops.cpp
- *
- * @brief
- *
- * @version 1.0
- *
+/*!
+ * \file logging_ops.cpp
+ * \brief
  */
 #include "inc/logging_ops.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 
 namespace ge {
-IMPLEMT_INFERFUNC(Timestamp, TimestampInfer)
-{
-    TensorDesc yDesc = op.GetOutputDesc("y");
-    Shape scalarShape;
-    (void)Scalar(scalarShape);
-    yDesc.SetDataType(DT_DOUBLE);
-    yDesc.SetShape(scalarShape);
-    return op.UpdateOutputDesc("y", yDesc);
+IMPLEMT_INFERFUNC(Timestamp, TimestampInfer) {
+  TensorDesc yDesc = op.GetOutputDesc("y");
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  yDesc.SetDataType(DT_DOUBLE);
+  yDesc.SetShape(scalarShape);
+  return op.UpdateOutputDesc("y", yDesc);
 }
 
 INFER_FUNC_REG(Timestamp, TimestampInfer);
 
-IMPLEMT_INFERFUNC(Assert, AssertInfer)
-{
-    return GRAPH_SUCCESS;
+IMPLEMT_INFERFUNC(Assert, AssertInfer) {
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Assert, AssertInfer);
 
-IMPLEMT_INFERFUNC(Print, PrintInfer)
-{
-    return GRAPH_SUCCESS;
+IMPLEMT_INFERFUNC(Print, PrintInfer) {
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Print, PrintInfer);
 
-IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer)
-{
-    Shape unused;
-    if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "input x must be a scalar");
-        return GRAPH_FAILED;
-    }
+IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer) {
+  Shape unused;
+  if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "input x must be a scalar");
+    return GRAPH_FAILED;
+  }
 
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(PrintV2, PrintV2Infer);

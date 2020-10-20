@@ -1,31 +1,42 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file log_plugin.cpp
+ * \brief
  */
 #include "register/register.h"
-namespace domi {
-const std::string LOG_ATTR_BASE = "base";
-const std::string LOG_ATTR_SCALE = "scale";
-const std::string LOG_ATTR_SHIFT = "shift";
-const float DEFAULT_BASE_VALUE = -1.0;
-const float DEFAULT_SCALE_VALUE = 1.0;
-const float DEFAULT_SHIFT_VALUE = 0.0;
 
-Status ParserParamLog(const Message *op_src, ge::Operator &op)
-{
-    AutoMappingFn(op_src, op);
-    op.SetAttr(LOG_ATTR_BASE, (float)DEFAULT_BASE_VALUE);
-    op.SetAttr(LOG_ATTR_SCALE, (float)DEFAULT_SCALE_VALUE);
-    op.SetAttr(LOG_ATTR_SHIFT, (float)DEFAULT_SHIFT_VALUE);
-    return SUCCESS;
+namespace domi {
+
+Status ParserParamLog(const Message* op_src, ge::Operator& op) {
+  AutoMappingFn(op_src, op);
+  const std::string log_attr_base = "base";
+  const float default_base_value = -1.0;
+  op.SetAttr(log_attr_base, static_cast<float>(default_base_value));
+
+  const std::string log_attr_scale = "scale";
+  const float default_scale_value = 1.0;
+  op.SetAttr(log_attr_scale, static_cast<float>(default_scale_value));
+
+  const std::string log_attr_shift = "shift";
+  const float default_shift_value = 0.0;
+  op.SetAttr(log_attr_shift, static_cast<float>(default_shift_value));
+
+  return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("Log")

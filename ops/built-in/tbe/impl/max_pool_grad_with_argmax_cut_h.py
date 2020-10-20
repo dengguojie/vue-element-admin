@@ -1,20 +1,24 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-maxpool_grad_with_argmax
+max_pool_grad_with_argmax_cut_h
 """
 import math
+
 from te import tik
 from te import platform as tbe_platform
-
 from impl import common_util
 from impl import constant_util as constant
 
@@ -341,7 +345,7 @@ class MaxpoolGradBase():
                                                                  thread_num=1) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "", data_vsel_ub_fp32[
                                         cycle * V_MAX_REPEAT * FP32_MAX], data_vsel_ub[
-                                            cycle * V_MAX_REPEAT * FP32_MAX],
+                                                                cycle * V_MAX_REPEAT * FP32_MAX],
                                                             V_MAX_REPEAT, constant.STRIDE_ONE,
                                                             constant.STRIDE_ONE,
                                                             constant.REPEAT_STRIDE_EIGHT,
@@ -507,7 +511,7 @@ class MaxpoolGradBase():
         flag_last = 0
         col2img_h_last = ho_max_last * strideh if \
             hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
-        while col2img_w * col2img_h_last * channel * dtype_size < self.ub_limit\
+        while col2img_w * col2img_h_last * channel * dtype_size < self.ub_limit \
                 and ho_max_last <= ho_last:
             ho_max_last += 1
             col2img_h_last = ho_max_last * strideh if \
@@ -680,7 +684,7 @@ class MaxpoolGradBase():
                                                                  thread_num=1) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "", data_vsel_ub_fp32[
                                         cycle * V_MAX_REPEAT * FP32_MAX], data_vsel_ub[
-                                            cycle * V_MAX_REPEAT * FP32_MAX],
+                                                                cycle * V_MAX_REPEAT * FP32_MAX],
                                                             V_MAX_REPEAT, constant.STRIDE_ONE,
                                                             constant.STRIDE_ONE,
                                                             constant.REPEAT_STRIDE_EIGHT,
@@ -865,7 +869,7 @@ class MaxpoolGradBase():
                                                                  thread_num=1) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "", data_vsel_ub_fp32[
                                         cycle * V_MAX_REPEAT * FP32_MAX], data_vsel_ub[
-                                            cycle * V_MAX_REPEAT * FP32_MAX],
+                                                                cycle * V_MAX_REPEAT * FP32_MAX],
                                                             V_MAX_REPEAT, constant.STRIDE_ONE,
                                                             constant.STRIDE_ONE,
                                                             constant.REPEAT_STRIDE_EIGHT,

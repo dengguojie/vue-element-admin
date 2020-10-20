@@ -1,23 +1,24 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 vector schedule
 """
 import abc
 import math
 import copy
+
 from te import platform as cceconf
 from te import tvm
 from te.platform import log
@@ -173,7 +174,6 @@ class VectorSchedule(object):
         if subpattern is not None:
             self._op_subpattern = subpattern
 
-
     def do_schedule(self, out_tensors, sch_list, spec_node_list):
         """
         auto_schedule for cce AI-CORE
@@ -203,6 +203,7 @@ class VectorSchedule(object):
         if not is_success:
             return False
 
+        self._get_l1fusion_params(self._out_tensors)
         self._get_l1fuison_flag()
 
         self._calculate_cache_read()
@@ -240,6 +241,36 @@ class VectorSchedule(object):
 
         log.debug("end vector_schedule")
         return self._schedule_valid
+
+    def _get_l1fusion_params(self, out_tensors):
+        """ get l1fusion params"""
+
+        def __get_ele_fusion_params(in_tensor):
+            """get ele fusion params"""
+            if "ele_fusion_params" in in_tensor.op.attrs:
+                fusion_params_map = in_tensor.op.attrs["ele_fusion_params"]
+                if fusion_params_map:
+                    for key, value in fusion_params_map.items():
+                        if hasattr(value, "value"):
+                            self._fusion_params[key] = value.value
+                        else:
+                            self._fusion_params[key] = value
+
+            # fused_op: l1 fusion info should get from fused_op output
+            # so need to update out_l1_flag
+            is_fused_compute = self._fusion_params.get("is_fused_compute", False)
+            if is_fused_compute:
+                res = self._out_tensors[0]
+                revise_out_l1_flag = res.op.attrs["addr_type"].value == 1 \
+                    if "addr_type" in res.op.attrs else False
+                self._fusion_params["out_l1_flag"] = revise_out_l1_flag
+
+        for tensor in out_tensors:
+            # get output tensor L1 fusion params
+            if tensor.op.name.find("write_select") >= 0:
+                __get_ele_fusion_params(tensor.op.input_tensors[0])
+            else:
+                __get_ele_fusion_params(tensor)
 
     def _get_l1fuison_flag(self):
         """
@@ -326,16 +357,17 @@ class VectorSchedule(object):
             for tensor in self._out_tensors[1:]:
                 dfs_tensor_graph(tensor, True, visited, input_tensors,
                                  mid_tensors, tensor_map)
-            kernel_name = input_tensors[0].name.split("__")[-1]
-            reuse_dict = cce_emitinsn_params.cceEmitParamsIns.get_param(
-                "InputReuseDict_" +
-                kernel_name)
-            if reuse_dict is not None:
-                for i, j in reuse_dict.items():
-                    out_tensor = j
-                    if j in self._temp_out_tensors:
-                        out_tensor = self._temp_out_tensors[j]
-                    self._schedule[i].reused_by(out_tensor)
+            if input_tensors:
+                kernel_name = input_tensors[0].name.split("__")[-1]
+                reuse_dict = cce_emitinsn_params.cceEmitParamsIns.get_param(
+                    "InputReuseDict_" +
+                    kernel_name)
+                if reuse_dict is not None:
+                    for i, j in reuse_dict.items():
+                        out_tensor = j
+                        if j in self._temp_out_tensors:
+                            out_tensor = self._temp_out_tensors[j]
+                        self._schedule[i].reused_by(out_tensor)
 
     def calculate_need_cancel_ub_tiling(self):
         """
@@ -437,12 +469,11 @@ class VectorSchedule(object):
             self._schedule[res].bind(self._multi_core_fused_axis, block)
 
         if self._batch_bind_only:
-            res = self._last_output_tensor # pylint: disable=no-member
+            res = self._last_output_tensor  # pylint: disable=no-member
             ub_tiling_result = self._tiling_result["ub_tiling"]
             res_ub_outer = ub_tiling_result["outer_itervar"]
             self._schedule[res].pragma(res_ub_outer,
                                        "json_info_batchBindOnly", 1)
-
 
     def _do_compute_at(self):
         for stage in self._compute_at_map:
@@ -593,7 +624,7 @@ class VectorSchedule(object):
         block_dim = core_num
         if data_size < core_num * multi_core_threshold:
             block_dim = (data_size + multi_core_threshold - 1) // \
-                        multi_core_threshold
+                multi_core_threshold
 
         if block_dim < 1:
             block_dim = 1
@@ -601,17 +632,17 @@ class VectorSchedule(object):
         block_split_axis, block_split_outer_size = self._find_split_axis(
             shape, 0, len(shape) - 1, block_dim)
         block_split_inner_size = shape[block_split_axis] // \
-                                 block_split_outer_size
+            block_split_outer_size
 
         block_split_axis, block_split_modified_inner_size, \
-        block_split_outer_size = \
+            block_split_outer_size = \
             self._modify_block_tiling(shape, data_size, block_split_axis,
                                       block_split_inner_size,
                                       multi_core_threshold,
                                       block_split_outer_size)
 
         return block_split_axis, block_split_modified_inner_size, \
-               block_split_outer_size
+            block_split_outer_size
 
     # The backend does not support non-divisible split+fuse,
     # so block tiling needs to be adjusted to divide the split for
@@ -627,7 +658,7 @@ class VectorSchedule(object):
                 shape[block_split_axis] % block_split_inner_size == 0 \
                 or sum(shape[0:block_split_axis]) == block_split_axis:
             return block_split_axis, block_split_inner_size, \
-                   block_split_outer_size
+                block_split_outer_size
 
         core_num = self._get_block_num()
         sorted_factors = self._get_factors_of_positive_integer(
@@ -659,10 +690,9 @@ class VectorSchedule(object):
             block_split_outer_size = f_large
 
         block_split_inner_size = shape[block_split_axis] // \
-                                 block_split_outer_size
+            block_split_outer_size
 
         return block_split_axis, block_split_inner_size, block_split_outer_size
-
 
     def _get_factors_of_positive_integer(self, axis):
         factors = []
@@ -678,8 +708,7 @@ class VectorSchedule(object):
         factors.sort()
         return factors
 
-
-    def _get_ub_tiling(self, # pylint: disable=too-many-locals, too-many-branches
+    def _get_ub_tiling(self,  # pylint: disable=too-many-locals, too-many-branches
                        shape, block_tiling_axis, block_tiling_inner_loop,
                        max_ub_count, divisible_split=False):
         last_axis = len(shape) - 1
@@ -741,7 +770,7 @@ class VectorSchedule(object):
     @staticmethod
     def _modify_split_size(*args):
         block_tiling_axis, block_tiling_inner_loop, bound_size, need_split, \
-        shape, split_axis, split_size = args
+            shape, split_axis, split_size = args
         if split_axis == block_tiling_axis:
             if (shape[block_tiling_axis] % block_tiling_inner_loop == 1) and \
                     not need_split and split_size < bound_size:
@@ -939,4 +968,3 @@ class VectorSchedule(object):
                 "elewise_single_diagonal",
             "read_select": "dma_copy",
             "write_select": "dma_copy"}
-

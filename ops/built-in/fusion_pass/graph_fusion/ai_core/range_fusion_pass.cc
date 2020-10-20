@@ -1,10 +1,29 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file range_fusion_pass.cpp
+ * \brief
+ */
 #include "range_fusion_pass.h"
 
 #include <iostream>
-#include <vector>
-#include <string>
 #include <map>
 #include <cmath>
+#include <memory>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -17,27 +36,23 @@
 #include "securec.h"
 #include "pattern_fusion_util.h"
 
-
-using namespace std;
-using namespace ge;
-
 namespace fe {
-  const int64_t realDimCnt = 1;
-  static const int32_t INT_NUM_ZERO = 0;
-  static const float FLOAT_NUM_ZERO = 0;
-  static const string PATTERN_RANGE = "Range";
-  const std::string CONSTANTOP = "Constant";
-  const char *RANGE = "Range";
+const int64_t realDimCnt = 1;
+static const int32_t INT_NUM_ZERO = 0;
+static const float FLOAT_NUM_ZERO = 0;
+static const char PATTERN_RANGE[] = "Range";
+static const char CONSTANTOP[] = "Constant";
+static const char RANGE[] = "Range";
 
 Status assist_float_help(const int32_t n, float* output) {
-  for (int32_t i=0; i<n; i++){
-  output[i] = float(i);
+  for (int32_t i = 0; i < n; i++) {
+    output[i] = static_cast<float>(i);
   }
   return SUCCESS;
 }
 
 Status assist_int_help(const int32_t n, int32_t* output) {
-  for (int32_t i=0; i<n; i++) {
+  for (int32_t i = 0; i < n; i++) {
     output[i] = i;
   }
   return SUCCESS;
@@ -45,25 +60,24 @@ Status assist_int_help(const int32_t n, int32_t* output) {
 
 vector<FusionPattern*> RangeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern *pattern = new (std::nothrow) FusionPattern("RangeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),  return patterns);
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("RangeFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
 
-  pattern->AddOpDesc(PATTERN_RANGE, {RANGE})
-    .SetOutput(PATTERN_RANGE);
+  pattern->AddOpDesc(PATTERN_RANGE, {RANGE}).SetOutput(PATTERN_RANGE);
   patterns.push_back(pattern);
 
   return patterns;
 }
 
-Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
-                               Mapping &mapping,
-                               vector<ge::NodePtr> &fusionNodes)
-{
+Status RangeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr rangeVNode = GetNodeFromMapping(PATTERN_RANGE, mapping);
-  FUSION_PASS_CHECK(rangeVNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rangeVNode is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(rangeVNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rangeVNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   ge::OpDescPtr rangeDesc = rangeVNode->GetOpDesc();
-  FUSION_PASS_CHECK(rangeDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rangeDesc is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(rangeDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rangeDesc is null, fusion failed."),
+                    return PARAM_INVALID);
 
   ge::InDataAnchorPtr range_anchor_ptr0 = rangeVNode->GetInDataAnchor(0);
   ge::InDataAnchorPtr range_anchor_ptr1 = rangeVNode->GetInDataAnchor(1);
@@ -79,43 +93,35 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
   ge::DataType constType2 = constNode2->GetOpDesc()->GetOutputDesc(0).GetDataType();
   ge::Format constformat0 = constNode0->GetOpDesc()->GetOutputDesc(0).GetFormat();
 
-  std::string fusionOpType="RangeD";
+  std::string fusionOpType = "RangeD";
   std::vector<PassAttrInfo> rangeAttrInfo;
-  if(constType0==ge::DT_INT32 && constType1==ge::DT_INT32 && constType2==ge::DT_INT32) {
-    PassAttrInfo start_attr={0, "start", "SetInt"};
-    PassAttrInfo limit_attr={1, "limit", "SetInt"};
-    PassAttrInfo delta_attr={2, "delta", "SetInt"};
+  if (constType0 == ge::DT_INT32 && constType1 == ge::DT_INT32 && constType2 == ge::DT_INT32) {
+    PassAttrInfo start_attr = {0, "start", "SetInt"};
+    PassAttrInfo limit_attr = {1, "limit", "SetInt"};
+    PassAttrInfo delta_attr = {2, "delta", "SetInt"};
     rangeAttrInfo.push_back(start_attr);
     rangeAttrInfo.push_back(limit_attr);
     rangeAttrInfo.push_back(delta_attr);
-  }else {
-    PassAttrInfo start_attr={0, "start", "SetFloat"};
-    PassAttrInfo limit_attr={1, "limit", "SetFloat"};
-    PassAttrInfo delta_attr={2, "delta", "SetFloat"};
+  } else {
+    PassAttrInfo start_attr = {0, "start", "SetFloat"};
+    PassAttrInfo limit_attr = {1, "limit", "SetFloat"};
+    PassAttrInfo delta_attr = {2, "delta", "SetFloat"};
     rangeAttrInfo.push_back(start_attr);
     rangeAttrInfo.push_back(limit_attr);
     rangeAttrInfo.push_back(delta_attr);
   }
 
   ge::NodePtr fusionNode = nullptr;
-  std::string nodeName = rangeVNode->GetName();
-  Status ret = PatternFusionUtil::ConstToAttrWithType(graph, rangeVNode, fusionOpType, rangeAttrInfo);
+  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, rangeVNode, fusionOpType, rangeAttrInfo, fusionNode);
   if (ret != SUCCESS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Range has input which is not a constant, graph not changed");
     return NOT_CHANGED;
   }
-  for (auto node: graph.GetDirectNode()) {
-    if(nodeName == node->GetName()) {
-      fusionNode = node;
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Find FusionNode");
-      break;
-    }
-  }
-  FUSION_PASS_CHECK(rangeDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "FusionNode is full, fusion failed."), return PARAM_INVALID);
+
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusionNode);
 
   float res;
-  if(constType0==ge::DT_INT32 && constType1==ge::DT_INT32 && constType2==ge::DT_INT32) {
+  if (constType0 == ge::DT_INT32 && constType1 == ge::DT_INT32 && constType2 == ge::DT_INT32) {
     int constData1;
     int constData2;
     int constData3;
@@ -132,8 +138,8 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
     int assist_num_one;
     assist_num = abs(constData2 - constData1);
     assist_num_one = abs(constData3);
-    res = ceil(float(assist_num) / assist_num_one);
-  }else {
+    res = ceil(static_cast<float>(assist_num) / assist_num_one);
+  } else {
     float constData1;
     float constData2;
     float constData3;
@@ -157,9 +163,9 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
   dimsIn.push_back(res);
   ge::GeShape assistShape(dimsIn);
   ge::GeTensorDesc rangeInputTensor;
-  if(constType0==ge::DT_INT32 && constType1==ge::DT_INT32 && constType2==ge::DT_INT32) {
+  if (constType0 == ge::DT_INT32 && constType1 == ge::DT_INT32 && constType2 == ge::DT_INT32) {
     rangeInputTensor.SetDataType(ge::DT_INT32);
-  }else {
+  } else {
     rangeInputTensor.SetDataType(ge::DT_FLOAT);
   }
 
@@ -174,18 +180,28 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
   // GESHAPE->vector
   vector<int64_t> dimInfo = rangeInputShape.GetDims();
   ge::GeTensorPtr assitPtr = nullptr;
-  if(dataType == ge::DT_INT32) {
+  if (dataType == ge::DT_INT32) {
     unique_ptr<int32_t> inputAssit(new (std::nothrow) int32_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+                      return PARAM_INVALID);
     ret = assist_int_help(dimNums, inputAssit.get());
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
-    FUSION_PASS_MAKE_SHARED((assitPtr = std::make_shared<ge::GeTensor>(rangeInputTensor, reinterpret_cast<uint8_t *>(inputAssit.get()), dimNums * sizeof(int32_t))), assitPtr = nullptr; return PARAM_INVALID);
-  }else {
+    FUSION_PASS_MAKE_SHARED(
+        (assitPtr = std::make_shared<ge::GeTensor>(rangeInputTensor, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                                   dimNums * sizeof(int32_t))),
+        assitPtr = nullptr;
+        return PARAM_INVALID);
+  } else {
     unique_ptr<float> inputAssit(new (std::nothrow) float[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+                      return PARAM_INVALID);
     ret = assist_float_help(dimNums, inputAssit.get());
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
-    FUSION_PASS_MAKE_SHARED((assitPtr = std::make_shared<ge::GeTensor>(rangeInputTensor, reinterpret_cast<uint8_t *>(inputAssit.get()), dimNums * sizeof(float))), assitPtr = nullptr; return PARAM_INVALID);
+    FUSION_PASS_MAKE_SHARED(
+        (assitPtr = std::make_shared<ge::GeTensor>(rangeInputTensor, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                                   dimNums * sizeof(float))),
+        assitPtr = nullptr;
+        return PARAM_INVALID);
   }
 
   vector<ge::GeTensorPtr> weights = {assitPtr};
@@ -198,5 +214,5 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph &graph,
   return SUCCESS;
 }
 
-  REGISTER_PASS("RangeFusionPass", BUILT_IN_GRAPH_PASS, RangeFusionPass);
-}
+REGISTER_PASS("RangeFusionPass", BUILT_IN_GRAPH_PASS, RangeFusionPass);
+}  // namespace fe

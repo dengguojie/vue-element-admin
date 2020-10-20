@@ -1,37 +1,34 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 basic_lstm_cell_v2
 """
-
 # pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
-import te.lang.cce
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as cceconf
-import te.platform.cce_params as cce
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from impl.tanh_compute import tanh_compute
-from te.platform.cce_build import build_config
-import topi
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+
+from impl import tanh_compute
 
 NONETYPE = type(None)
 C0 = 16
 
 
-# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines,too-many-arguments,cell-var-from-loop
+# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines
+# pylint: too-many-arguments,cell-var-from-loop
 def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
                   tensor_list, scope_list, operation_list):
     """
@@ -69,18 +66,16 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
                                                          b, c, d],
                                            name="tensor_static_ub_" + index_name)
         tensor_list["tensor_static_ub_" + index_name] = tensor_static_ub_tmp
-        scope_list["tensor_static_ub_" + index_name] = cce.scope_ubuf
+        scope_list["tensor_static_ub_" + index_name] = tbe_platform.scope_ubuf
         operation_list["tensor_static_ub_" + index_name] = "dma_copy"
         tensor_static_ub_tmp_true = tensor_static_ub_tmp
         if not product_info["hisi_es"] and static_dtype == "float16":
             tensor_static_ub_tmp_true = tvm.compute(gate_shape,
                                                     lambda *i:
-                                                    topi.cast(tensor_static_ub_tmp(*i),
-                                                              "float32"),
-                                                    name="tensor_static_ub_true_"
-                                                    + index_name)
+                                                    shape_util.cast(tensor_static_ub_tmp(*i), "float32"),
+                                                    name="tensor_static_ub_true_" + index_name)
             tensor_list["tensor_static_ub_true_" + index_name] = tensor_static_ub_tmp_true
-            scope_list["tensor_static_ub_true_" + index_name] = cce.scope_ubuf
+            scope_list["tensor_static_ub_true_" + index_name] = tbe_platform.scope_ubuf
             operation_list["tensor_static_ub_true_" + index_name] = "vector_conv"
         tmp_ub_true = tvm.compute(gate_shape,
                                   lambda *i:
@@ -88,12 +83,12 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
                                   _tensor(index_name)(*i),
                                   name=index_name + "_ub_true")
         tensor_list[index_name + "_ub_true"] = tmp_ub_true
-        scope_list[index_name + "_ub_true"] = cce.scope_ubuf
+        scope_list[index_name + "_ub_true"] = tbe_platform.scope_ubuf
         operation_list[index_name + "_ub_true"] = "vector_add"
 
 
 # pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
-@fusion_manager.register("basic_lstm_cell_v2")
+@tbe_platform.fusion_manager.fusion_manager.register("basic_lstm_cell_v2")
 def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                expose_hidden, product_info, impl_mode):
     """
@@ -124,16 +119,16 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                         lambda *i: tensor_list["tensor_matmul_result_l0c_gt"](*i),
                         name="gt_ub")
     tensor_list["it_ub"] = it_ub
-    scope_list["it_ub"] = cce.scope_ubuf
+    scope_list["it_ub"] = tbe_platform.scope_ubuf
     operation_list["it_ub"] = "dma_copy"
     tensor_list["ft_ub"] = ft_ub
-    scope_list["ft_ub"] = cce.scope_ubuf
+    scope_list["ft_ub"] = tbe_platform.scope_ubuf
     operation_list["ft_ub"] = "dma_copy"
     tensor_list["ot_ub"] = ot_ub
-    scope_list["ot_ub"] = cce.scope_ubuf
+    scope_list["ot_ub"] = tbe_platform.scope_ubuf
     operation_list["ot_ub"] = "dma_copy"
     tensor_list["gt_ub"] = gt_ub
-    scope_list["gt_ub"] = cce.scope_ubuf
+    scope_list["gt_ub"] = tbe_platform.scope_ubuf
     operation_list["gt_ub"] = "dma_copy"
 
     it_ub_true = it_ub
@@ -156,13 +151,11 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     if tensor_cont_ub.dtype != ft_ub_true.dtype:
         tensor_cont_f_ub_tmp = tvm.compute(ub_cont,
                                            lambda *i:
-                                           topi.cast(tensor_cont_ub(*i),
-                                                     dtype=ft_ub_true.dtype),
+                                           shape_util.cast(tensor_cont_ub(*i), dtype=ft_ub_true.dtype),
                                            name="tensor_cont_f_ub_tmp")
         tensor_list["tensor_cont_f_ub_tmp"] = tensor_cont_f_ub_tmp
-        scope_list["tensor_cont_f_ub_tmp"] = cce.scope_ubuf
+        scope_list["tensor_cont_f_ub_tmp"] = tbe_platform.scope_ubuf
         operation_list["tensor_cont_f_ub_tmp"] = "vector_conv"
-
 
     # Do sigmoid(It,Ft,ot) calculation
     tensor_one = tvm.compute(gate_shape,
@@ -171,7 +164,7 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                              name='tensor_one')
     if product_info["cloud"]:
         tensor_list["tensor_one"] = tensor_one
-        scope_list["tensor_one"] = cce.scope_ubuf
+        scope_list["tensor_one"] = tbe_platform.scope_ubuf
         operation_list["tensor_one"] = "vector_dup"
 
     sigmoid(gate_shape, it_ub_true, tensor_one,
@@ -187,14 +180,13 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                   name="ft_cont_ub_true")
 
     tensor_list["ft_cont_ub_true"] = ft_cont_ub_true
-    scope_list["ft_cont_ub_true"] = cce.scope_ubuf
+    scope_list["ft_cont_ub_true"] = tbe_platform.scope_ubuf
     operation_list["ft_cont_ub_true"] = "vector_muls"
     sigmoid(gate_shape, ot_ub_true,
             tensor_one, product_info, "ot",
             tensor_list, scope_list, operation_list)
     # Do tanh(gt) calculation
-    tanh_res, tanh_operation, tanh_scope = tanh_compute(gate_shape, gt_ub_true,
-                                                        "gt", impl_mode)
+    tanh_res, tanh_operation, tanh_scope = tanh_compute.tanh_compute(gate_shape, gt_ub_true, "gt", impl_mode)
     tensor_list.update(tanh_res)
     operation_list.update(tanh_operation)
     scope_list.update(tanh_scope)
@@ -209,61 +201,61 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                   lambda *i: tensor_c(*i),
                                   name='tensor_c_ub')
         tensor_list["tensor_c_ub"] = tensor_c_ub
-        scope_list["tensor_c_ub"] = cce.scope_ubuf
+        scope_list["tensor_c_ub"] = tbe_platform.scope_ubuf
         operation_list["tensor_c_ub"] = "dma_copy"
     else:
         tensor_c_ub = tvm.compute(gate_shape,
                                   lambda *i: tvm.const(0, dtype=dtype_c),
                                   name='tensor_c_ub')
         tensor_list["tensor_c_ub"] = tensor_c_ub
-        scope_list["tensor_c_ub"] = cce.scope_ubuf
+        scope_list["tensor_c_ub"] = tbe_platform.scope_ubuf
         operation_list["tensor_c_ub"] = "vector_dup"
     tensor_c_ub_true = tensor_c_ub
     if not product_info["hisi_es"] and dtype_c == "float16":
         tensor_c_ub_true = tvm.compute(gate_shape,
                                        lambda *i:
-                                       topi.cast(tensor_c_ub(*i), "float32"),
+                                       shape_util.cast(tensor_c_ub(*i), "float32"),
                                        name="tensor_c_ub_true")
         tensor_list["tensor_c_ub_true"] = tensor_c_ub_true
-        scope_list["tensor_c_ub_true"] = cce.scope_ubuf
+        scope_list["tensor_c_ub_true"] = tbe_platform.scope_ubuf
         operation_list["tensor_c_ub_true"] = "vector_conv"
     tensor_cf_ub = tvm.compute(gate_shape,
                                lambda *i: tensor_c_ub_true(*i) *
                                tensor_list["ft_cont_ub_true"](*i),
                                name="tensor_cf_ub")
     tensor_list["tensor_cf_ub"] = tensor_cf_ub
-    scope_list["tensor_cf_ub"] = cce.scope_ubuf
+    scope_list["tensor_cf_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_cf_ub"] = "vector_mul"
     tensor_gi_ub = tvm.compute(gate_shape,
                                lambda *i: tensor_ub_tanh_gt(*i) *
                                tensor_list["tensor_gate_sigmoid_it"](*i),
                                name="tensor_gi_ub")
     tensor_list["tensor_gi_ub"] = tensor_gi_ub
-    scope_list["tensor_gi_ub"] = cce.scope_ubuf
+    scope_list["tensor_gi_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_gi_ub"] = "vector_mul"
     tensor_ct_ub = tvm.compute(gate_shape,
                                lambda *i: tensor_cf_ub(*i) + tensor_gi_ub(*i),
                                name="tensor_ct_ub")
     tensor_list["tensor_ct_ub"] = tensor_ct_ub
-    scope_list["tensor_ct_ub"] = cce.scope_ubuf
+    scope_list["tensor_ct_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_ct_ub"] = "vector_add"
 
     tensor_ct_ub_true = tensor_ct_ub
     if dtype_c == "float16" and tensor_ct_ub.dtype != dtype_c:
         tensor_ct_ub_true = tvm.compute(gate_shape,
                                         lambda *i:
-                                        topi.cast(tensor_ct_ub(*i), "float16"),
+                                        shape_util.cast(tensor_ct_ub(*i), "float16"),
                                         name="tensor_ct_ub_true")
         tensor_list["tensor_ct_ub_true"] = tensor_ct_ub_true
-        scope_list["tensor_ct_ub_true"] = cce.scope_ubuf
+        scope_list["tensor_ct_ub_true"] = tbe_platform.scope_ubuf
         operation_list["tensor_ct_ub_true"] = "vector_conv"
     elif dtype_c == "float32" and tensor_ct_ub.dtype != dtype_c:
         tensor_ct_ub_true = tvm.compute(gate_shape,
                                         lambda *i:
-                                        topi.cast(tensor_ct_ub(*i), "float32"),
+                                        shape_util.cast(tensor_ct_ub(*i), "float32"),
                                         name="tensor_ct_ub_true")
         tensor_list["tensor_ct_ub_true"] = tensor_ct_ub_true
-        scope_list["tensor_ct_ub_true"] = cce.scope_ubuf
+        scope_list["tensor_ct_ub_true"] = tbe_platform.scope_ubuf
         operation_list["tensor_ct_ub_true"] = "vector_conv"
     # Move ct to gm
     ct = tvm.compute(gate_shape, lambda *i: tensor_ct_ub_true(*i), name="ct")
@@ -273,20 +265,19 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     # Move ct back(Fake)
     tensor_ct_ub_fake = tvm.compute(gate_shape, lambda *i: ct(*i), name="ct_ub_fake")
     tensor_list["tensor_ct_ub_fake"] = tensor_ct_ub_fake
-    scope_list["tensor_ct_ub_fake"] = cce.scope_ubuf
+    scope_list["tensor_ct_ub_fake"] = tbe_platform.scope_ubuf
     operation_list["tensor_ct_ub_fake"] = "dma_copy"
     tensor_ct_ub_fake_true = tensor_ct_ub_fake
     if not product_info["hisi_es"] and tensor_ct_ub_fake.dtype == "float16":
         tensor_ct_ub_fake_true = tvm.compute(gate_shape,
                                              lambda *i:
-                                             topi.cast(tensor_ct_ub_fake(*i), "float32"),
+                                             shape_util.cast(tensor_ct_ub_fake(*i), "float32"),
                                              name="tensor_ct_ub_fake_true")
         operation_list["tensor_ct_ub_fake_true"] = "vector_conv"
     tensor_list["tensor_ct_ub_fake_true"] = tensor_ct_ub_fake_true
-    scope_list["tensor_ct_ub_fake_true"] = cce.scope_ubuf
+    scope_list["tensor_ct_ub_fake_true"] = tbe_platform.scope_ubuf
     # calc tanh(ct)
-    tanh_res, tanh_operation, tanh_scope = tanh_compute(gate_shape,
-                                                        tensor_ct_ub_fake_true,
+    tanh_res, tanh_operation, tanh_scope = tanh_compute.tanh_compute(gate_shape, tensor_ct_ub_fake_true,
                                                         "ct", impl_mode)
     tensor_list.update(tanh_res)
     operation_list.update(tanh_operation)
@@ -299,17 +290,17 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                tensor_ub_tanh_ct(*i),
                                name="tensor_ht_ub")
     tensor_list["tensor_ht_ub"] = tensor_ht_ub
-    scope_list["tensor_ht_ub"] = cce.scope_ubuf
+    scope_list["tensor_ht_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_ht_ub"] = "vector_mul"
 
     tensor_ht_ub_true = tensor_ht_ub
     if not product_info["hisi_es"] and dtype_h == "float16":
         tensor_ht_ub_true = tvm.compute(gate_shape,
                                         lambda *i:
-                                        topi.cast(tensor_ht_ub(*i), "float16"),
+                                        shape_util.cast(tensor_ht_ub(*i), "float16"),
                                         name="tensor_ht_ub_true")
         tensor_list["tensor_ht_ub_true"] = tensor_ht_ub_true
-        scope_list["tensor_ht_ub_true"] = cce.scope_ubuf
+        scope_list["tensor_ht_ub_true"] = tbe_platform.scope_ubuf
         operation_list["tensor_ht_ub_true"] = "vector_conv"
     # Move ht to gm
     ht = tvm.compute(gate_shape, lambda *i: tensor_ht_ub_true(*i), name="ht")
@@ -318,7 +309,8 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     return tensor_list, scope_list, operation_list, build_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# pylint: too-many-locals,invalid-name,too-many-arguments
 def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                       expose_hidden, build_list, is_hisi_es,
                       tensor_list, scope_list, operation_list):
@@ -383,24 +375,24 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
         tensor_h_ub = tvm.compute(shape_h,
                                   lambda *i: tensor_h(*i), name='tensor_h_ub')
         tensor_list["tensor_h_ub"] = tensor_h_ub
-        scope_list["tensor_h_ub"] = cce.scope_ubuf
+        scope_list["tensor_h_ub"] = tbe_platform.scope_ubuf
         operation_list["tensor_h_ub"] = "dma_copy"
     else:
         tensor_h_ub = tvm.compute(shape_h,
                                   lambda *i: tvm.const(0, dtype=dtype_h),
                                   name='tensor_h_ub')
         tensor_list["tensor_h_ub"] = tensor_h_ub
-        scope_list["tensor_h_ub"] = cce.scope_ubuf
+        scope_list["tensor_h_ub"] = tbe_platform.scope_ubuf
         operation_list["tensor_h_ub"] = "vector_dup"
 
     tensor_h_ub_true = tensor_h_ub
     if dtype_h == "float32":
         tensor_h_ub_true = tvm.compute(shape_h,
                                        lambda *i:
-                                       topi.cast(tensor_h_ub, dtype="float16"),
+                                       shape_util.cast(tensor_h_ub, dtype="float16"),
                                        name="tensor_h_ub_true")
         tensor_list["tensor_h_ub_true"] = tensor_h_ub_true
-        scope_list["tensor_h_ub_true"] = cce.scope_ubuf
+        scope_list["tensor_h_ub_true"] = tbe_platform.scope_ubuf
         operation_list["tensor_h_ub_true"] = "vector_conv"
 
     tensor_cont_ub = tvm.compute(ub_cont,
@@ -408,16 +400,16 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                  name="tensor_cont_ub")
 
     tensor_list["tensor_cont_ub"] = tensor_cont_ub
-    scope_list["tensor_cont_ub"] = cce.scope_ubuf
+    scope_list["tensor_cont_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_cont_ub"] = "dma_copy"
     tensor_cont_ub_tmp = tensor_cont_ub
     if dtype_cont != "float16":
         tensor_cont_ub_tmp = tvm.compute(ub_cont,
                                          lambda *i:
-                                         topi.cast(tensor_cont_ub(*i), dtype="float16"),
+                                         shape_util.cast(tensor_cont_ub(*i), dtype="float16"),
                                          name="tensor_cont_ub_tmp")
         tensor_list["tensor_cont_ub_tmp"] = tensor_cont_ub_tmp
-        scope_list["tensor_cont_ub_tmp"] = cce.scope_ubuf
+        scope_list["tensor_cont_ub_tmp"] = tbe_platform.scope_ubuf
         operation_list["tensor_cont_ub_tmp"] = "vector_conv"
 
     tensor_h_cont_ub = tvm.compute(shape_h,
@@ -426,7 +418,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                    tensor_cont_ub_tmp[i1, i2],
                                    name="tensor_h_cont_ub")
     tensor_list["tensor_h_cont_ub"] = tensor_h_cont_ub
-    scope_list["tensor_h_cont_ub"] = cce.scope_ubuf
+    scope_list["tensor_h_cont_ub"] = tbe_platform.scope_ubuf
     operation_list["tensor_h_cont_ub"] = "vector_muls"
 
     for t in symbol:
@@ -443,7 +435,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                                                    indice[3]]),
                                        name="tensor_xh_l1_" + t, tag="concat")
         tensor_list["tensor_xh_l1_" + t] = tensor_xh_l1_tmp
-        scope_list["tensor_xh_l1_" + t] = cce.scope_cbuf
+        scope_list["tensor_xh_l1_" + t] = tbe_platform.scope_cbuf
 
         if t == "ot":
             operation_list["tensor_xh_l1_" + t] = "dma_copy"
@@ -454,7 +446,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                         lambda *i: tensor_xh_l1_tmp(*i),
                                         name='tensor_xh_l0a_' + t)
         tensor_list["tensor_xh_l0a_" + t] = tensor_xh_loa_tmp
-        scope_list["tensor_xh_l0a_" + t] = cce.scope_ca
+        scope_list["tensor_xh_l0a_" + t] = tbe_platform.scope_ca
 
         if t == "ot":
             operation_list["tensor_xh_l0a_" + t] = "dma_copy"
@@ -466,14 +458,14 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                       lambda *i: tensor_w(*_index_w(t, *i)),
                                       name='tensor_w_l1_' + t)
         tensor_list["tensor_w_l1_" + t] = tensor_w_l1_tmp
-        scope_list["tensor_w_l1_" + t] = cce.scope_cbuf
+        scope_list["tensor_w_l1_" + t] = tbe_platform.scope_cbuf
         operation_list["tensor_w_l1_" + t] = "dma_copy"
 
         tensor_w_l0b_tmp = tvm.compute(right_shape,
                                        lambda *i: tensor_w_l1_tmp(*i),
                                        name='tensor_w_l0b_' + t)
         tensor_list["tensor_w_l0b_" + t] = tensor_w_l0b_tmp
-        scope_list["tensor_w_l0b_" + t] = cce.scope_cb
+        scope_list["tensor_w_l0b_" + t] = tbe_platform.scope_cb
         operation_list["tensor_w_l0b_" + t] = "dma_copy"
 
         tensor_b_ub_tmp = tvm.compute(shape_bias,
@@ -482,24 +474,24 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                                                output_dim + i0, i1],
                                       name='tensor_b_ub_' + t)
         tensor_list["tensor_b_ub_" + t] = tensor_b_ub_tmp
-        scope_list["tensor_b_ub_" + t] = cce.scope_ubuf
+        scope_list["tensor_b_ub_" + t] = tbe_platform.scope_ubuf
         operation_list["tensor_b_ub_" + t] = "dma_copy"
 
         tensor_b_ub_true_tmp = tensor_b_ub_tmp
         if not is_hisi_es and dtype_bias == "float16":
             tensor_b_ub_true_tmp = tvm.compute(shape_bias,
                                                lambda *i:
-                                               topi.cast(tensor_b_ub_tmp(*i), "float32"),
+                                               shape_util.cast(tensor_b_ub_tmp(*i), "float32"),
                                                name="tensor_b_ub_true_" + t)
             tensor_list["tensor_b_ub_true_" + t] = tensor_b_ub_true_tmp
-            scope_list["tensor_b_ub_true_" + t] = cce.scope_ubuf
+            scope_list["tensor_b_ub_true_" + t] = tbe_platform.scope_ubuf
             operation_list["tensor_b_ub_true_" + t] = "vector_conv"
         tensor_b_loc_tmp = tvm.compute(matmul_shape,
                                        lambda i0, i1, i2, i3:
                                        tensor_b_ub_true_tmp[i0, i3],
                                        name='tensor_b_loc_' + t)
         tensor_list["tensor_b_loc_" + t] = tensor_b_loc_tmp
-        scope_list["tensor_b_loc_" + t] = cce.scope_cc
+        scope_list["tensor_b_loc_" + t] = tbe_platform.scope_cc
         operation_list["tensor_b_loc_" + t] = "dma_copy"
 
         reduce_kb = tvm.reduce_axis((0, input_dim + output_dim), name='reduce_kb_' + t)
@@ -511,18 +503,19 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                      matmul_type), axis=[reduce_kb, reduce_kp]),
             name='tensor_matmul_l0c_' + t, attrs={'input_order': 'positive'})
         tensor_list["tensor_matmul_l0c_" + t] = tensor_matmul_l0c_tmp
-        scope_list["tensor_matmul_l0c_" + t] = cce.scope_cc
+        scope_list["tensor_matmul_l0c_" + t] = tbe_platform.scope_cc
         # Matmul accumulation it + b_it
         tensor_matmul_result_l0c_tmp = tvm.compute(matmul_shape,
                                                    lambda *i: tensor_b_loc_tmp(*i) +
                                                    tensor_matmul_l0c_tmp(*i),
                                                    name="tensor_matmul_result_l0c_" + t)
         tensor_list["tensor_matmul_result_l0c_" + t] = tensor_matmul_result_l0c_tmp
-        scope_list["tensor_matmul_result_l0c_" + t] = cce.scope_cc
+        scope_list["tensor_matmul_result_l0c_" + t] = tbe_platform.scope_cc
         operation_list["tensor_matmul_result_l0c_" + t] = "phony_insn"
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# pylint: too-many-locals,invalid-name,too-many-arguments
 def newton_iteration(shape, tensor_x_rec,
                      tensor_x, symbol, tensor_list, scope_list, operation_list):
     """
@@ -544,19 +537,19 @@ def newton_iteration(shape, tensor_x_rec,
                                      lambda *i: tensor_x_rec(*i) * tensor_x(*i),
                                      name="tensor_newton_mul0_" + symbol)
     tensor_list["tensor_newton_mul0_" + symbol] = tensor_newton_mul0
-    scope_list["tensor_newton_mul0_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_newton_mul0_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_newton_mul0_" + symbol] = "vector_mul"
     tensor_newton_add = tvm.compute(shape,
                                     lambda *i: tensor_newton_mul0(*i) + const_num_neg_two,
                                     name="tensor_newton_add_" + symbol)
     tensor_list["tensor_newton_add_" + symbol] = tensor_newton_add
-    scope_list["tensor_newton_add_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_newton_add_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_newton_add_" + symbol] = "vector_add"
     tensor_newton_mul1 = tvm.compute(shape,
                                      lambda *i: tensor_newton_add(*i) * tensor_x_rec(*i),
                                      name="tensor_newton_mul1_" + symbol)
     tensor_list["tensor_newton_mul1_" + symbol] = tensor_newton_mul1
-    scope_list["tensor_newton_mul1_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_newton_mul1_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_newton_mul1_" + symbol] = "vector_mul"
     tensor_newton_mul2 = tvm.compute(shape,
                                      lambda *i: tensor_newton_mul1(*i) * const_num_neg_one,
@@ -564,7 +557,8 @@ def newton_iteration(shape, tensor_x_rec,
     return tensor_newton_mul2
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# pylint: too-many-locals,invalid-name,too-many-arguments
 def sigmoid(shape, tensor_allgate_ub, tensor_one,
             product_info, symbol, tensor_list, scope_list, operation_list):
     """
@@ -585,39 +579,37 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
                                         const_num_neg_one,
                                         name="tensor_gate_neg_" + symbol)
     tensor_list["tensor_gate_neg_" + symbol] = tensor_ub_neg_allgate
-    scope_list["tensor_gate_neg_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_gate_neg_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_gate_neg_" + symbol] = "vector_mul"
     tensor_ub_allgate_exp_fp16 = tensor_ub_neg_allgate
     if product_info["mini"]:
         tensor_ub_allgate_exp_fp16 = tvm.compute(shape,
-                                                 lambda *i: topi.cast(tensor_ub_neg_allgate(*i),
-                                                                      "float16"),
+                                                 lambda *i: shape_util.cast(tensor_ub_neg_allgate(*i), "float16"),
                                                  name="tensor_gate_exp_fp16_" + symbol)
         tensor_list["tensor_gate_exp_fp16_" + symbol] = tensor_ub_allgate_exp_fp16
-        scope_list["tensor_gate_exp_fp16_" + symbol] = cce.scope_ubuf
+        scope_list["tensor_gate_exp_fp16_" + symbol] = tbe_platform.scope_ubuf
         operation_list["tensor_gate_exp_fp16_" + symbol] = "vector_conv"
     tensor_ub_allgate_exp = tvm.compute(shape,
                                         lambda *i: tvm.exp(tensor_ub_allgate_exp_fp16(*i)),
                                         name="tensor_gate_exp_" + symbol)
     tensor_list["tensor_gate_exp_" + symbol] = tensor_ub_allgate_exp
-    scope_list["tensor_gate_exp_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_gate_exp_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_gate_exp_" + symbol] = "vector_exp"
     tensor_ub_allgate_exp_fp32 = tensor_ub_allgate_exp
     if not product_info["hisi_es"]:
         tensor_ub_allgate_exp_fp32 = tvm.compute(shape,
                                                  lambda *i:
-                                                 topi.cast(tensor_ub_allgate_exp(*i),
-                                                           dtype_c),
+                                                 shape_util.cast(tensor_ub_allgate_exp(*i), dtype_c),
                                                  name="tensor_gate_exp_fp32_" + symbol)
         tensor_list["tensor_gate_exp_fp32_" + symbol] = tensor_ub_allgate_exp_fp32
-        scope_list["tensor_gate_exp_fp32_" + symbol] = cce.scope_ubuf
+        scope_list["tensor_gate_exp_fp32_" + symbol] = tbe_platform.scope_ubuf
         operation_list["tensor_gate_exp_fp32_" + symbol] = "vector_conv"
     tensor_ub_allgate_add = tvm.compute(shape,
                                         lambda *i:
                                         tensor_ub_allgate_exp_fp32(*i) + const_num_one,
                                         name="tensor_gate_add_" + symbol)
     tensor_list["tensor_gate_add_" + symbol] = tensor_ub_allgate_add
-    scope_list["tensor_gate_add_" + symbol] = cce.scope_ubuf
+    scope_list["tensor_gate_add_" + symbol] = tbe_platform.scope_ubuf
     operation_list["tensor_gate_add_" + symbol] = "vector_add"
 
     if product_info["cloud"]:
@@ -627,7 +619,7 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
                                                 name="tensor_gate_sigmoid_" + symbol)
         tensor_newton_mul2 = tensor_ub_allgate_sigmoid
         tensor_list["tensor_gate_sigmoid_" + symbol] = tensor_newton_mul2
-        scope_list["tensor_gate_sigmoid_" + symbol] = cce.scope_ubuf
+        scope_list["tensor_gate_sigmoid_" + symbol] = tbe_platform.scope_ubuf
         operation_list["tensor_gate_sigmoid_" + symbol] = "vector_div"
     else:
         tensor_ub_allgate_sigmoid = tvm.compute(shape,
@@ -635,7 +627,7 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
                                                 const_num_one / tensor_ub_allgate_add(*i),
                                                 name="tensor_gate_sigmoid_" + symbol)
         tensor_list["tensor_gate_sigmoid_tmp_" + symbol] = tensor_ub_allgate_sigmoid
-        scope_list["tensor_gate_sigmoid_tmp_" + symbol] = cce.scope_ubuf
+        scope_list["tensor_gate_sigmoid_tmp_" + symbol] = tbe_platform.scope_ubuf
         operation_list["tensor_gate_sigmoid_tmp_" + symbol] = "vector_rec"
         tensor_newton_mul2 = newton_iteration(shape,
                                               tensor_ub_allgate_sigmoid,
@@ -643,11 +635,12 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
                                               symbol, tensor_list,
                                               scope_list, operation_list)
         tensor_list["tensor_gate_sigmoid_" + symbol] = tensor_newton_mul2
-        scope_list["tensor_gate_sigmoid_" + symbol] = cce.scope_ubuf
+        scope_list["tensor_gate_sigmoid_" + symbol] = tbe_platform.scope_ubuf
         operation_list["tensor_gate_sigmoid_" + symbol] = "vector_mul"
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,consider-using-in
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals
+# pylint: invalid-name,too-many-arguments,consider-using-in
 def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                             expose_hidden, num_output, product_info):
     """
@@ -665,14 +658,8 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                            " output_dim[%s]!"
                            % (str(num_output), str(num_output * C0)))
     if x["dtype"] != "float16" or w_xh["dtype"] != "float16":
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name1'] = 'x'
-        error_info['param_name2'] = 'w'
-        error_info['op_name'] = 'BasicLSTMCellV2'
-        error_info['expect_value'] = 'float16'
-        error_info['param1_dtype'] = x["dtype"]
-        error_info['param2_dtype'] = w_xh["dtype"]
+        error_info = {'errCode': 'E80008', 'param_name1': 'x', 'param_name2': 'w', 'op_name': 'BasicLSTMCellV2',
+                      'expect_value': 'float16', 'param1_dtype': x["dtype"], 'param2_dtype': w_xh["dtype"]}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s]'s dtype should be "
                                        "one of [%s], but actually is [%s]/[%s]."
                            % (error_info['op_name'], error_info['param_name1'],
@@ -702,7 +689,8 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
             raise RuntimeError("w_xc_x_static shape is wrong, please check!")
 
 
-# pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals
+# pylint: invalid-name,too-many-arguments
 def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                                 operation_list, build_list,
                                 product_info, tilling_info, kernel_name):
@@ -721,7 +709,8 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
             s[tensor_list[key]].emit_insn(s[tensor_list[key]].op.axis[0], operation_list[key])
 
         if key == "tensor_h_cont_ub" or key == "ft_cont_ub_true":
-            s[tensor_list[key]].reorder(tensor_list[key].op.axis[1], tensor_list[key].op.axis[2], tensor_list[key].op.axis[0], tensor_list[key].op.axis[3])
+            s[tensor_list[key]].reorder(tensor_list[key].op.axis[1], tensor_list[key].op.axis[2],
+                                        tensor_list[key].op.axis[0], tensor_list[key].op.axis[3])
             s[tensor_list[key]].emit_insn(s[tensor_list[key]].op.axis[0], operation_list[key])
 
     s[tensor_list["tensor_xh_l1_ot"]].reused_by(tensor_list["tensor_xh_l1_it"],
@@ -732,7 +721,7 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                                                  tensor_list["tensor_xh_l0a_gt"])
     # handle matmul info
 
-    mad_pattern = cce.GEMM_MODE
+    mad_pattern = tbe_platform.GEMM_MODE
     # split matmul
     symbol = ["it", "ft", "ot", "gt"]
     l1_factor = tilling_info["l1_factor"]
@@ -872,7 +861,7 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
     for key in tensor_list.keys():
         if key not in special_symbol:
             s[tensor_list[key]].compute_at(s[ht], compute_at_axis)
-    ct_gm = s.cache_write(tensor_list["ct"], cce.scope_ubuf)
+    ct_gm = s.cache_write(tensor_list["ct"], tbe_platform.scope_ubuf)
     s[ct_gm].compute_at(s[ht], compute_at_axis)
     s[ht].emit_insn(s[ht].op.axis[2], 'dma_copy')
 
@@ -882,7 +871,7 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
     for t in build_symbol:
         if t in build_list.keys():
             new_build_list += [build_list[t]]
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(s, new_build_list, "cce", name=kernel_name)
 
 
@@ -913,12 +902,12 @@ def get_high_precision_list():
 
 
 def get_tilling(x, h_t, product_info, mini_core):
-    block_num = cceconf.CceProductParams().getParams("Device_core_num")
+    block_num = tbe_platform.CceProductParams().getParams("Device_core_num")
     if block_num != 1:
         block_num = mini_core
 
-    l0_size = cceconf.CceProductParams().getParams("L0B_Buffer")
-    ub_size = cceconf.CceProductParams().getParams("Unified_Buffer")
+    l0_size = tbe_platform.CceProductParams().getParams("L0B_Buffer")
+    ub_size = tbe_platform.CceProductParams().getParams("Unified_Buffer")
     ub_limit = ub_size // 8
 
     x_shape = x["shape"]
@@ -1023,11 +1012,14 @@ def get_tilling(x, h_t, product_info, mini_core):
     return tilling_info
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, OPTION_ATTR_INT, OPTION_ATTR_BOOL, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_BOOL, OPTION_ATTR_INT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+# pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals
+# pylint: invalid-name,too-many-arguments
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
                        h=None, c=None, w_xh=None, bias=None,
                        w_xh_deqscale=None,
@@ -1099,7 +1091,7 @@ def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
     -------
     None
     """
-    product_version = cceconf.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if product_version in ("Hi3796CV300ES"):
         is_hisi_es = True
         is_mini = False

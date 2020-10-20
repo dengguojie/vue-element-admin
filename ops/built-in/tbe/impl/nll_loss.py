@@ -1,16 +1,18 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 nll_loss
 """
 # pylint: disable=ungrouped-imports,import-error
@@ -64,7 +66,7 @@ def _shape_and_dtype_check(x, target, weight, kernel_name):
 # pylint: disable=too-many-instance-attributes,too-many-arguments
 # pylint: disable=too-many-locals,too-many-statements
 # pylint: disable=attribute-defined-outside-init,too-many-lines
-class nll_loss_compute:
+class NllLossCompute:
     """
     NLLLOSS
 
@@ -271,17 +273,19 @@ class nll_loss_compute:
         self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
             "Unified_Buffer")//2 - 2048
         self.init_tiling_size()
-        self._compute_none_and_sum_size()
-        if self.big_weight is True:
+
+        # cancel db when cannot move weight or target to ub one time
+        # with open db
+        if self.big_weight or self.big_target:
             self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
                 "Unified_Buffer") - 2048
             self.thread_num = 1
             self.init_tiling_size()
-            self._compute_none_and_sum_size()
+        self._compute_none_and_sum_size()
 
-    def init_reduction_none_and_sum_tiling(self):
+    def init_reduction_none_and_sum_and_mean_tiling(self):
         """
-        Recalculate tiling when reduction is none or sum.
+        Recalculate tiling when reduction is none or sum or mean.
 
         Parameters
         ----------
@@ -594,7 +598,7 @@ class nll_loss_compute:
         -------
         None
         """
-        self.init_reduction_none_and_sum_tiling()
+        self.init_reduction_none_and_sum_and_mean_tiling()
         max_move_out_burst = math.ceil(self.move_max_line/8)
         last_move_out_burst = math.ceil(self.move_last_line/8)
         avg_move_out_burst = math.ceil(self.avg_line/8)
@@ -716,7 +720,7 @@ class nll_loss_compute:
         -------
         None
         """
-        self.init_reduction_none_and_sum_tiling()
+        self.init_reduction_none_and_sum_and_mean_tiling()
         with self.tik_instance.for_range(0, self.core_num,
                                          block_num=self.core_num) as cycle:
             self._init_mean_ub()
@@ -766,7 +770,7 @@ class nll_loss_compute:
                                            self.move_last_line
                                 self.mean_compute_process(
                                     self.lower_eight_line+self.move_last_line,
-                                    lower_core_offset,
+                                    loop_offset + lower_core_offset,
                                     math.ceil(line * self.c_dim/8))
                                 self.tik_instance.data_move(
                                     self.total_weight, self.temp_weight_ub,
@@ -1190,6 +1194,6 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean",
     None
     """
     _shape_and_dtype_check(x, target, weight, kernel_name)
-    nll_loss_function = nll_loss_compute(x, target, weight,
+    nll_loss_function = NllLossCompute(x, target, weight,
                                          reduction, kernel_name)
     return nll_loss_function.nll_loss_compute_start()

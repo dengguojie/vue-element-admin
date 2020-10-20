@@ -1,31 +1,30 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-confusion_softmax_grad_ext
+softmax_grad_ext
 """
-
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from te.utils.op_utils import *
-
-
-SIZE_SIXTEEN = 16
-
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
@@ -35,13 +34,13 @@ def _division_sixteen(shape):
 
     if len(shape) < 2:
         if shape[-1] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_manager_vector.raise_err_specific_reson("softmax_grad_ext", "value of shape is illegal")
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
-        raise RuntimeError("value of shape is illegal")
+        error_manager_vector.raise_err_specific_reson("softmax_grad_ext", "value of shape is illegal")
 
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+    if shape[-1] % constant.SIZE_SIXTEEN == 0 and shape[-2] % constant.SIZE_SIXTEEN == 0:
         return True
 
     return False
@@ -113,11 +112,10 @@ def _check_nz_rule(grad, x1, x2, axis):
     format_list = [format_grad, format_x1, format_x2]
 
     if format_list not in format_target:
-        raise RuntimeError("Combination of format is illegal in nz+nd ")
+        error_manager_vector.raise_err_specific_reson("softmax_grad_ext", "Combination of format is illegal in nz+nd")
 
     if not(len(shape_x2) == 1 and shape_x2[0] == 1):
-        raise RuntimeError("the last input tensor should be scalar")
-
+        error_manager_vector.raise_err_specific_reson("softmax_grad_ext", "the last input tensor should be scalar")
 
     forward = [i for i in range(len(ori_shape))]
     back_forwad = [i-len(ori_shape) for i in range(len(ori_shape))]
@@ -299,7 +297,6 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
 
     if grad.get("format") == "FRACTAL_NZ":
         axis = _check_nz_rule(grad, x1, x2, axis)
-
 
     shape_grad, shape_x1, shape_max_mul = \
         broadcast_shapes(shape_grad, shape_grad, param_name_input1="grad",

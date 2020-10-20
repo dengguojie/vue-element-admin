@@ -1,29 +1,32 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not
-use this file except in compliance with the License.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
 fake_quant_with_min_max_args_gradient
 """
-import te.lang.cce
+import functools
+
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.platform.cce_conf import api_check_support
-from topi import generic
-from topi.cce import util
-from functools import reduce as functools_reduce
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals
-@fusion_manager.register("fake_quant_with_min_max_args_gradient")
+@tbe_platform.fusion_manager.fusion_manager.register("fake_quant_with_min_max_args_gradient")
 def fake_quant_with_min_max_args_gradient_compute(gradients, x, y,
                                                   min=-6, max=6, num_bits=8,
                                                   narrow_range=False,
@@ -65,7 +68,7 @@ def fake_quant_with_min_max_args_gradient_compute(gradients, x, y,
     res: TVM tensor
         the result of fake_quant_with_min_max_args_gradient_compute
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
     output_dtype = x.dtype
     nudged_min, nudged_max = _nudge_min_max_gradient(min, max, num_bits,
                                                      narrow_range)
@@ -73,7 +76,7 @@ def fake_quant_with_min_max_args_gradient_compute(gradients, x, y,
     # where((x<=nudged_max)&(x>=nudged_min),1,0),Convert the input to 0 and 1 tensor
     between_nudged_min_max = _cmpare_value(x, nudged_min, nudged_max)
 
-    res = te.lang.cce.vmul(gradients, between_nudged_min_max)
+    res = tbe.vmul(gradients, between_nudged_min_max)
 
     return res
 
@@ -146,54 +149,58 @@ def _cmpare_value(x, nudged_min, nudged_max):
     max_value = tvm.const(2 ** (62), dtype="float32")
     max_value_one = tvm.const(2 ** (2), dtype="float32")
 
-    if api_check_support("te.lang.cce.vmaxs", x.dtype):
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmaxs", x.dtype):
         nudged_min_neg = nudged_min * (-1.0)
         nudged_max_neg = nudged_max * (-1.0)
 
-        sub_tmp = te.lang.cce.vadds(x, nudged_min_neg)
-        sub_min = te.lang.cce.vadds(sub_tmp, min_value)
-        vmax_tmp = te.lang.cce.vmaxs(sub_min, tvm.const(0, sub_min.dtype))
+        sub_tmp = tbe.vadds(x, nudged_min_neg)
+        sub_min = tbe.vadds(sub_tmp, min_value)
+        vmax_tmp = tbe.vmaxs(sub_min, tvm.const(0, sub_min.dtype))
 
-        sub_tmp_max1 = te.lang.cce.vadds(x, nudged_max_neg)
-        sub_tmp_max2 = te.lang.cce.vmuls(sub_tmp_max1, tvm.const(-1.0, sub_tmp_max1.dtype))
-        sub_max = te.lang.cce.vadds(sub_tmp_max2, min_value)
-        vmin_tmp = te.lang.cce.vmaxs(sub_max, tvm.const(0, sub_min.dtype))
+        sub_tmp_max1 = tbe.vadds(x, nudged_max_neg)
+        sub_tmp_max2 = tbe.vmuls(sub_tmp_max1, tvm.const(-1.0, sub_tmp_max1.dtype))
+        sub_max = tbe.vadds(sub_tmp_max2, min_value)
+        vmin_tmp = tbe.vmaxs(sub_max, tvm.const(0, sub_min.dtype))
 
-        one_tmp = te.lang.cce.vmul(vmax_tmp, vmin_tmp)
-        one_min = te.lang.cce.vmins(one_tmp, min_value)
+        one_tmp = tbe.vmul(vmax_tmp, vmin_tmp)
+        one_min = tbe.vmins(one_tmp, min_value)
 
-        vmul_max_value = te.lang.cce.vmuls(one_min, max_value)
-        vmul_max_value_one = te.lang.cce.vmuls(vmul_max_value, max_value)
-        between_nudged_min_max = te.lang.cce.vmuls(vmul_max_value_one, max_value_one)
+        vmul_max_value = tbe.vmuls(one_min, max_value)
+        vmul_max_value_one = tbe.vmuls(vmul_max_value, max_value)
+        between_nudged_min_max = tbe.vmuls(vmul_max_value_one, max_value_one)
     else:
-        data_zero = te.lang.cce.vmuls(x, 0)
-        max_value_tensor = te.lang.cce.vadds(data_zero, max_value)
-        min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
-        max_value_one_tensor = te.lang.cce.vadds(data_zero, max_value_one)
-        nudged_max_tensor = te.lang.cce.vadds(data_zero, nudged_max)
-        nudged_min_tensor = te.lang.cce.vadds(data_zero, nudged_min)
+        data_zero = tbe.vmuls(x, 0)
+        max_value_tensor = tbe.vadds(data_zero, max_value)
+        min_value_tensor = tbe.vadds(data_zero, min_value)
+        max_value_one_tensor = tbe.vadds(data_zero, max_value_one)
+        nudged_max_tensor = tbe.vadds(data_zero, nudged_max)
+        nudged_min_tensor = tbe.vadds(data_zero, nudged_min)
 
-        sub_tmp = te.lang.cce.vsub(x, nudged_min_tensor)
-        sub_min = te.lang.cce.vadds(sub_tmp, min_value)
-        vmax_tmp = te.lang.cce.vmax(sub_min, data_zero)
+        sub_tmp = tbe.vsub(x, nudged_min_tensor)
+        sub_min = tbe.vadds(sub_tmp, min_value)
+        vmax_tmp = tbe.vmax(sub_min, data_zero)
 
-        sub_tmp_max = te.lang.cce.vsub(nudged_max_tensor, x)
-        sub_max = te.lang.cce.vadds(sub_tmp_max, min_value)
-        vmin_tmp = te.lang.cce.vmax(sub_max, data_zero)
+        sub_tmp_max = tbe.vsub(nudged_max_tensor, x)
+        sub_max = tbe.vadds(sub_tmp_max, min_value)
+        vmin_tmp = tbe.vmax(sub_max, data_zero)
 
-        one_tmp = te.lang.cce.vmul(vmax_tmp, vmin_tmp)
-        one_min = te.lang.cce.vmin(one_tmp, min_value_tensor)
+        one_tmp = tbe.vmul(vmax_tmp, vmin_tmp)
+        one_min = tbe.vmin(one_tmp, min_value_tensor)
 
-        vmul_max_value = te.lang.cce.vmul(one_min, max_value_tensor)
-        vmul_max_value_one = te.lang.cce.vmul(vmul_max_value, max_value_tensor)
-        between_nudged_min_max = te.lang.cce.vmul(vmul_max_value_one,
+        vmul_max_value = tbe.vmul(one_min, max_value_tensor)
+        vmul_max_value_one = tbe.vmul(vmul_max_value, max_value_tensor)
+        between_nudged_min_max = tbe.vmul(vmul_max_value_one,
                                                   max_value_one_tensor)
 
     return between_nudged_min_max
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, (OPTION_ATTR_FLOAT, OPTION_ATTR_INT),
-                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), OPTION_ATTR_INT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
+                            (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def fake_quant_with_min_max_args_gradient(gradients, x, y, min=-6,
                                           max=6, num_bits=8, narrow_range=False,
                                           kernel_name="fake_quant_"
@@ -237,16 +244,16 @@ def fake_quant_with_min_max_args_gradient(gradients, x, y, min=-6,
     shape_x = x.get("shape")
     if shape_gradients != shape_x:
         raise RuntimeError("shape of two input must be same")
-    util.compare_tensor_dict_key(gradients, x, "dtype")
+    shape_util.compare_tensor_dict_key(gradients, x, "dtype")
 
-    check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
     input_dtype = x.get("dtype").lower()
-    check_dtype(input_dtype, ["float32"], param_name="x")
+    para_check.check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
         raise RuntimeError("min must be less than max")
     if num_bits < 2 or num_bits > 16:
         raise RuntimeError("num_bits is between 2 and 16")
-    shape_x = (functools_reduce(lambda x, y: x * y, shape_x[:]),)
+    shape_x = (functools.reduce(lambda x, y: x * y, shape_x[:]),)
     gradients = tvm.placeholder(shape_x, name="gradients", dtype=input_dtype)
     x = tvm.placeholder(shape_x, name="x", dtype=input_dtype)
     res = fake_quant_with_min_max_args_gradient_compute(gradients, x,
@@ -255,8 +262,8 @@ def fake_quant_with_min_max_args_gradient(gradients, x, y, min=-6,
                                                         num_bits, narrow_range,
                                                         kernel_name)
     with tvm.target.cce():
-        auto_sch = generic.auto_schedule(res)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [gradients, x, res]}
-    te.lang.cce.cce_build_code(auto_sch, config)
+    tbe.cce_build_code(auto_sch, config)

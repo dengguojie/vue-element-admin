@@ -1,30 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 select
 """
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
+
 # define a VALUE, value = 1
 VALUE_ONE = 1
 
@@ -46,8 +43,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
     format_x2 = x2.get("ori_format")
 
     format_list = []
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul",
-                                               "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         dtype_list = ["float16", "float", "int32", "int8", "uint8"]
     else:
         dtype_list = ["float16", "int32", "int8", "uint8"]
@@ -55,7 +51,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
     dtype_total0 = []
     dtype_total0.append("bool")
     format_list1 = []
-    #NZ+NZ ND+ND 5HD+5HD FZ+FZ
+    # NZ+NZ ND+ND 5HD+5HD FZ+FZ
     if (len(shape_condition) != 1) or \
             (len(shape_condition) == 1 and len(shape_x1) == 1
              and len(shape_x2) == 1):
@@ -71,16 +67,16 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
             dtype_total = dtype_total + [dtype]*len(format_list)
         dtype_total0 = dtype_total0*len(dtype_total)
         format_list = format_list * len(dtype_list)
-        input0 = gen_param(classify="input0", name="condition",
+        input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                            datatype=",".join(dtype_total0),
                            format=",".join(format_list))
-        input1 = gen_param(classify="input1", name="x1",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x1",
                            datatype=",".join(dtype_total),
                            format=",".join(format_list))
-        input2 = gen_param(classify="input2", name="x2",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x2",
                            datatype=",".join(dtype_total),
                            format=",".join(format_list))
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype=",".join(dtype_total),
                             format=",".join(format_list))
     else:
@@ -106,25 +102,26 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
         dtype_total0 = dtype_total0*len(dtype_total)
         format_list1 = format_list1*len(dtype_list)
         format_list = format_list*len(dtype_total)
-        input0 = gen_param(classify="input0", name="condition",
+        input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                            datatype=",".join(dtype_total0),
                            format=",".join(format_list))
-        input1 = gen_param(classify="input1", name="x1",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x1",
                            datatype=",".join(dtype_total),
                            format=",".join(format_list1))
-        input2 = gen_param(classify="input2", name="x2",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x2",
                            datatype=",".join(dtype_total),
                            format=",".join(format_list1))
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype=",".join(dtype_total),
                             format=",".join(format_list1))
 
     param_list = [input0, input1, input2, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
+
 # pylint: disable=too-many-locals, invalid-name, unused-argument
-@fusion_manager.register("select")
+@tbe_platform.fusion_manager.fusion_manager.register("select")
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select
@@ -147,57 +144,51 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     res: TVM tensor
         the result of compute
     """
-    shape = te.lang.cce.util.shape_to_list(x1.shape)
-    con_shape = te.lang.cce.util.shape_to_list(condition.shape)
+    shape = shape_util.shape_to_list(x1.shape)
+    con_shape = shape_util.shape_to_list(condition.shape)
     num_dtype = x1.dtype
 
     if (num_dtype in ("float32", "int32")) and \
-            (not (tbe_platform.cce_conf.api_check_support("te.lang.cce.vsel",
-                                                          "float32"))):
+            (not (tbe_platform.api_check_support("te.lang.cce.vsel", "float32"))):
         if num_dtype == "int32":
-            condition = te.lang.cce.ceil(condition)
+            condition = tbe.ceil(condition)
         else:
-            condition = te.lang.cce.cast_to(condition, num_dtype)
-        condition = te.lang.cce.broadcast(condition, shape)
-        ones = te.lang.cce.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype),
-                                     shape, output_dtype=num_dtype)
-        condition_opp = te.lang.cce.vsub(ones, condition)
-        temp_x = te.lang.cce.vmul(x1, condition)
-        temp_y = te.lang.cce.vmul(x2, condition_opp)
-        res = te.lang.cce.vadd(temp_x, temp_y)
+            condition = tbe.cast_to(condition, num_dtype)
+        condition = tbe.broadcast(condition, shape)
+        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype), shape, output_dtype=num_dtype)
+        condition_opp = tbe.vsub(ones, condition)
+        temp_x = tbe.vmul(x1, condition)
+        temp_y = tbe.vmul(x2, condition_opp)
+        res = tbe.vadd(temp_x, temp_y)
         return res
 
     if num_dtype in ("int8", "uint8", "int32"):
-        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vsel",
-                                                   "float32"):
+        if tbe_platform.api_check_support("te.lang.cce.vsel", "float32"):
             x1_dtype = "float32"
-            ones = te.lang.cce.broadcast(tvm.const(VALUE_ONE, dtype="float32"),
-                                         shape, output_dtype="float32")
-            x1 = te.lang.cce.cast_to(x1, "float32")
-            x2 = te.lang.cce.cast_to(x2, "float32")
+            ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape, output_dtype="float32")
+            x1 = tbe.cast_to(x1, "float32")
+            x2 = tbe.cast_to(x2, "float32")
         else:
             x1_dtype = "float16"
-            ones = te.lang.cce.broadcast(tvm.const(VALUE_ONE, dtype="float16"),
-                                         shape, output_dtype="float16")
-            x1 = te.lang.cce.cast_to(x1, "float16")
-            x2 = te.lang.cce.cast_to(x2, "float16")
+            ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float16"), shape, output_dtype="float16")
+            x1 = tbe.cast_to(x1, "float16")
+            x2 = tbe.cast_to(x2, "float16")
     else:
         x1_dtype = num_dtype
-        ones = te.lang.cce.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype),
-                                     shape, output_dtype=num_dtype)
+        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype), shape, output_dtype=num_dtype)
     if list(con_shape) == list(shape):
-        res = te.lang.cce.vsel(condition, x1, x2)
+        res = tbe.vsel(condition, x1, x2)
     else:
-        condition = te.lang.cce.cast_to(condition, x1_dtype)
-        condition = te.lang.cce.broadcast(condition, shape)
-        res = te.lang.cce.vcmpsel(condition, rhs=ones, operation='eq',
-                                  slhs=x1, srhs=x2)
+        condition = tbe.cast_to(condition, x1_dtype)
+        condition = tbe.broadcast(condition, shape)
+        res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
     if num_dtype in ("int8", "uint8", "int32"):
-        res = te.lang.cce.cast_to(res, num_dtype)
+        res = tbe.cast_to(res, num_dtype)
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def select(condition, x1, x2, y, kernel_name="select"):
     """
       Selects elements from `x1` or `x2`, depending on `condition`.
@@ -228,9 +219,9 @@ def select(condition, x1, x2, y, kernel_name="select"):
     bool_dtype = condition.get("dtype").lower()
     if bool_dtype == "bool":
         bool_dtype = "int8"
-    check_shape(shape_x1, param_name="x1")
+    para_check.check_shape(shape_x1, param_name="x1")
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(dtype_x1, check_list, param_name="x1")
+    para_check.check_dtype(dtype_x1, check_list, param_name="x1")
 
     if shape_x1 != shape_x2:
         raise RuntimeError("Shape of tensor x1 and x2 must be equal!")
@@ -251,15 +242,13 @@ def select(condition, x1, x2, y, kernel_name="select"):
             raise RuntimeError("Shape of tensor condition and x1 must be "
                                "equal!")
 
-    con_shape, shape_x1 = refine_shapes_for_broadcast(con_shape, shape_x1)
+    con_shape, shape_x1 = shape_util.refine_shapes_for_broadcast(con_shape, shape_x1)
 
-    flag_cloud = tbe_platform.cce_conf.api_check_support("te.lang.cce.vsel",
-                                                         "float32")
+    flag_cloud = tbe_platform.api_check_support("te.lang.cce.vsel", "float32")
     flag_dtype = dtype_x1 in ("float32", "int32")
     if (list(con_shape) != list(shape_x1)) or \
             ((not flag_cloud) and flag_dtype):
-        condition = tvm.placeholder(con_shape, name="condition",
-                                    dtype=bool_dtype)
+        condition = tvm.placeholder(con_shape, name="condition", dtype=bool_dtype)
     else:
         condition = tvm.placeholder(con_shape, name="condition", dtype="bool")
     input_x1 = tvm.placeholder(shape_x1, name="input_x1", dtype=dtype_x1)
@@ -267,7 +256,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
 
     with tvm.target.cce():
         res = select_compute(condition, input_x1, input_x2, y, kernel_name)
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     if list(con_shape) == list(shape_x1):
         config = {"name": kernel_name,
@@ -276,4 +265,4 @@ def select(condition, x1, x2, y, kernel_name="select"):
     else:
         config = {"name": kernel_name,
                   "tensor_list": [condition, input_x1, input_x2, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

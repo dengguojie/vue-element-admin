@@ -1,21 +1,28 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
-   You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file softmax_grad_plugin.cpp
+ * \brief
  */
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace domi {
-Status ParseParamsSoftmaxGradMappingFn(const Message* op_src,
-                                       ge::Operator& op) {
+Status ParseParamsSoftmaxGradMappingFn(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(0);
@@ -30,8 +37,7 @@ Status ParseParamsSoftmaxGradMappingFn(const Message* op_src,
   auto ret = op_dsc->UpdateInputDesc(0, orgTensorW);
   auto ret1 = op_dsc->UpdateInputDesc(1, orgTensorW1);
   auto ret2 = op_dsc->UpdateOutputDesc(0, orgTensorW2);
-  if(ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS || ret2 !=
-     ge::GRAPH_SUCCESS) {
+  if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS || ret2 != ge::GRAPH_SUCCESS) {
     return FAILED;
   }
   return SUCCESS;
@@ -42,4 +48,3 @@ REGISTER_CUSTOM_OP("SoftmaxGrad")
     .ParseParamsFn(ParseParamsSoftmaxGradMappingFn)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
-

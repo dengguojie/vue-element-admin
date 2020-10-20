@@ -1,29 +1,35 @@
 /**
  * Copyright 2020 Huawei Technologies Co., Ltd
-
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
-
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
-
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
+/*!
+ * \file scope_layernorm_grad_pass.cc
+ * \brief
+ */
 #include "scope_layernorm_grad_pass.h"
+
 #include <set>
+
 #include "op_log.h"
-#include "external/register/scope/scope_fusion_pass_register.h"
+#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 namespace {
-const char *const kScopeType = "layer_norm_grad";
-const char *const kScopeRltType = "LayerNormGrad";
-const char *const kOpType = "LayerNormGrad";
+const char* const kScopeType = "layer_norm_grad";
+const char* const kScopeRltType = "LayerNormGrad";
+const char* const kOpType = "LayerNormGrad";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormGradPass::DefinePatterns() {
@@ -35,12 +41,14 @@ std::vector<ScopeFusionPatterns> ScopeLayerNormGradPass::DefinePatterns() {
   return patterns_list;
 }
 
-std::string ScopeLayerNormGradPass::PassName() { return std::string("ScopeLayerNormGradPass"); }
+std::string ScopeLayerNormGradPass::PassName() {
+  return std::string("ScopeLayerNormGradPass");
+}
 
-void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
+void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   // recognize moments
-  std::vector<ScopePattern *> batch1;
-  ScopePattern *moments_grad = new (std::nothrow) ScopePattern();
+  std::vector<ScopePattern*> batch1;
+  ScopePattern* moments_grad = new (std::nothrow) ScopePattern();
   if (moments_grad == nullptr) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
@@ -50,7 +58,7 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   batch1.push_back(moments_grad);
 
   // recognize batchnorm
-  ScopePattern *batchnorm_grad = new (std::nothrow) ScopePattern();
+  ScopePattern* batchnorm_grad = new (std::nothrow) ScopePattern();
   if (batchnorm_grad == nullptr) {
     delete moments_grad;
     moments_grad = nullptr;
@@ -63,8 +71,8 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   patterns.push_back(batch1);
 
   // recognize LayerNorm grad
-  std::vector<ScopePattern *> batch2;
-  ScopePattern *layernorm_grad = new (std::nothrow) ScopePattern();
+  std::vector<ScopePattern*> batch2;
+  ScopePattern* layernorm_grad = new (std::nothrow) ScopePattern();
   if (layernorm_grad == nullptr) {
     delete moments_grad;
     moments_grad = nullptr;
@@ -80,11 +88,11 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns &patterns) {
   patterns.push_back(batch2);
 }
 
-void FindInputsShouldInScope(const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map,
-                             const std::unordered_map<std::string, ge::OperatorPtr> &all_nodes_map,
-                             std::vector<ge::OperatorPtr> &result_nodes) {
+void FindInputsShouldInScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                             const std::unordered_map<std::string, ge::OperatorPtr>& all_nodes_map,
+                             std::vector<ge::OperatorPtr>& result_nodes) {
   std::set<std::string> inputs_name;
-  for (auto &it : nodes_map) {
+  for (auto& it : nodes_map) {
     for (size_t i = 0; i < it.second->GetInputsSize(); i++) {
       // some input name contain "^", should be removed
       auto input_desc = it.second->GetInputDesc(i);
@@ -95,7 +103,7 @@ void FindInputsShouldInScope(const std::unordered_map<std::string, ge::OperatorP
     }
   }
 
-  for (auto &name : inputs_name) {
+  for (auto& name : inputs_name) {
     auto iter = all_nodes_map.find(name);
     if (iter != all_nodes_map.end()) {
       size_t count = 0;
@@ -114,15 +122,16 @@ void FindInputsShouldInScope(const std::unordered_map<std::string, ge::OperatorP
   }
 }
 
-std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(
-    const Scope *scope, std::shared_ptr<ScopeGraph> &scope_graph, const std::string &mask) {
+std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(const Scope* scope,
+                                                                               std::shared_ptr<ScopeGraph>& scope_graph,
+                                                                               const std::string& mask) {
   // find inputs of scope should be in fused scope
   std::vector<ge::OperatorPtr> result_nodes;
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
   const std::unordered_map<std::string, ge::OperatorPtr>& all_nodes_map = scope_graph->GetNodesMap();
   FindInputsShouldInScope(nodes_map, all_nodes_map, result_nodes);
   // find outputs of scope should be in fused scope
-  for (auto &it : all_nodes_map) {
+  for (auto& it : all_nodes_map) {
     // node name should contain mask
     if ((mask != "") && (it.second->GetName().find(mask) == std::string::npos)) {
       continue;
@@ -142,7 +151,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(
     if (find) {
       // if the node is not in result_nodes, it will be insert to result_nodes
       bool find1 = true;
-      for (auto &it1 : result_nodes) {
+      for (auto& it1 : result_nodes) {
         if (it1->GetName() == it.second->GetName()) {
           find1 = false;
           break;
@@ -156,23 +165,23 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(
   return result_nodes;
 }
 
-Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph> &scope_graph,
-                                                     std::vector<ScopesResult> &results) {
+Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph,
+                                                     std::vector<ScopesResult>& results) {
   if (scope_graph == nullptr) {
     OP_LOGE(kOpType, "Input params is nullptr.");
     return domi::PARAM_INVALID;
   }
-  const ScopeTree *scope_tree = scope_graph->GetScopeTree();
-  std::vector<Scope *> scopes = scope_tree->GetAllScopes();
+  const ScopeTree* scope_tree = scope_graph->GetScopeTree();
+  const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
 
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     if (scope == nullptr) {
       OP_LOGE(kOpType, "Scope is nullptr.");
       return domi::PARAM_INVALID;
     }
     if (scope->SubType() == kScopeType) {
       ScopesResult result;
-      std::vector<Scope *> result_scopes;
+      std::vector<Scope*> result_scopes;
       result_scopes.push_back(scope);
       result.SetScopes(result_scopes);
       std::vector<ge::OperatorPtr> in_scope_nodes = FindOutNodesShouldInScope(scope, scope_graph, "AddN");
@@ -184,19 +193,19 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void ScopeLayerNormGradPass::FindInputIndex(const Scope *scope, int &index, const std::string &name,
-                                            const std::string &base_name) {
+void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
+                                            const std::string& base_name) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
   }
-  std::unordered_map<std::string, ge::OperatorPtr> nodes_map = scope->AllNodesMap();
+  const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
   std::vector<std::string> mul_input_names;
-  for (auto &it : nodes_map) {
+  for (auto& it : nodes_map) {
     auto node_def = it.second;
     std::string sub_name = (node_def->GetName().length() > name.length())
-                          ? node_def->GetName().substr(node_def->GetName().length() - name.length())
-                          : node_def->GetName();
+                               ? node_def->GetName().substr(node_def->GetName().length() - name.length())
+                               : node_def->GetName();
     if (sub_name == name) {
       for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
         auto input_desc = node_def->GetInputDesc(i);
@@ -216,20 +225,20 @@ void ScopeLayerNormGradPass::FindInputIndex(const Scope *scope, int &index, cons
   }
 }
 
-void ScopeLayerNormGradPass::FindInputXIndex(const Scope *scope, int &index) {
+void ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
   }
-  std::unordered_map<std::string, ge::OperatorPtr> nodes_map = scope->AllNodesMap();
+  const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
   std::vector<std::string> mul_input_names;
   std::vector<std::string> mul1_input_names;
-  for (auto &it : nodes_map) {
+  for (auto& it : nodes_map) {
     auto node_def = it.second;
     std::string names = "batchnorm/mul_1_grad/Mul";
     std::string sub_name = (node_def->GetName().length() > names.length())
-                          ? node_def->GetName().substr(node_def->GetName().length() - names.length())
-                          : node_def->GetName();
+                               ? node_def->GetName().substr(node_def->GetName().length() - names.length())
+                               : node_def->GetName();
     if (sub_name == names) {
       for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
         // some input name contain "^", should be removed
@@ -241,8 +250,8 @@ void ScopeLayerNormGradPass::FindInputXIndex(const Scope *scope, int &index) {
 
     std::string names1 = "batchnorm/mul_1_grad/Mul_1";
     std::string sub_name1 = (node_def->GetName().length() > names1.length())
-                           ? node_def->GetName().substr(node_def->GetName().length() - names1.length())
-                           : node_def->GetName();
+                                ? node_def->GetName().substr(node_def->GetName().length() - names1.length())
+                                : node_def->GetName();
     if (sub_name1 == names1) {
       for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
         // some input name contain "^", should be removed
@@ -269,9 +278,8 @@ void ScopeLayerNormGradPass::FindInputXIndex(const Scope *scope, int &index) {
   return;
 }
 
-void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr> &nodes,
-                                              std::string &node_def_name) {
-  for (const auto node_def : nodes) {
+void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name) {
+  for (auto& node_def : nodes) {
     OP_LOGI(kOpType, "Result node name is %s", node_def->GetName().c_str());
     if (node_def->GetName().find("AddN") != std::string::npos) {
       bool find_mul1 = false;
@@ -296,9 +304,9 @@ void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr>
   return;
 }
 
-void ScopeLayerNormGradPass::ProcessInputDy(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeLayerNormGradPass::ProcessInputDy(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   int dy_index = kFusionDisableIndex;
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     FindInputIndex(scope, dy_index, "batchnorm/mul_1_grad/Mul", "batchnorm");
   }
   if (dy_index == 0) {
@@ -311,9 +319,9 @@ void ScopeLayerNormGradPass::ProcessInputDy(const std::vector<Scope *> &scopes, 
   }
 }
 
-void ScopeLayerNormGradPass::ProcessInputX(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeLayerNormGradPass::ProcessInputX(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   int x_index = kFusionDisableIndex;
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     FindInputXIndex(scope, x_index);
   }
   if (x_index == 0) {
@@ -326,9 +334,9 @@ void ScopeLayerNormGradPass::ProcessInputX(const std::vector<Scope *> &scopes, F
   }
 }
 
-void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   int gamma_index = kFusionDisableIndex;
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     FindInputIndex(scope, gamma_index, "batchnorm/mul_grad/Mul", "gradients");
   }
   if (gamma_index == 0) {
@@ -341,7 +349,7 @@ void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope *> &scope
   }
 }
 
-void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope *> &scopes, FusionScopesResult *fusion_rlt) {
+void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   if (fusion_rlt == nullptr) {
     OP_LOGE(kOpType, "Input fusion_rlt is nullptr.");
     return;
@@ -367,7 +375,7 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope *> &sc
 
   fusion_rlt->SetType(kScopeRltType);
   fusion_rlt->SetDescription("");
-  for (auto &scope : scopes) {
+  for (auto& scope : scopes) {
     // The upper call guarantees that the scope is not empty.
     if (scope->SubType() == kScopeType) {
       std::string scope_name = scope->Name();

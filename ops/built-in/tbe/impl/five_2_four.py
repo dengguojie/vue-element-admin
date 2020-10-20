@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 five_2_four
 """
 from __future__ import absolute_import
@@ -27,6 +27,8 @@ from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from topi.cce import util
 from impl import slice_d
+from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
+from te import platform as tbe_platform
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -76,6 +78,16 @@ def _func_pipe(tvm_ib):
     tvm_ib.emit(
         tvm.call_extern("int32", "wait_flag", pipe_mte3, pipe_mte2,
                         event))
+
+
+def _get_scalar_dtype():
+    """
+    get scalar dtype int32 or int64
+    """
+
+    dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+
+    return dtype
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-nested-blocks
@@ -505,7 +517,8 @@ def _more_dim_ir(dst, data, max_dim, shape_all):
     reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
     data_tail = _new_alloc(tvm_ib, dst.dtype, param.get('cp_align_len'),
                            "data_tail", scope=cce.scope_ubuf)
-    reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr',
                                scope=cce.scope_reg)
     c_0 = 16
     num_dim_block_col = _ceil_div(dst.shape[1], c_0)
@@ -853,9 +866,8 @@ def _one_dim_ir(dst, data, max_dim, shape_all):
     reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
     data_tail = _new_alloc(tvm_ib, dst.dtype, param.get('cp_align_len'),
                            "data_tail", scope=cce.scope_ubuf)
-    reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
-                               scope=cce.scope_reg)
-
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr', scope=cce.scope_reg)
     c_0 = 16
     num_dim_block_col = _ceil_div(dst.shape[1], c_0)
     num_ele_block_col = functools_reduce(lambda x, y: x*y, dst.shape[1:])
@@ -1522,8 +1534,8 @@ def _split_dim_ir(dst, data, max_dim, shape_all):
                             param.get('cp_align_len')*param.get(
                                 "cp_align_len"),
                             "data_align", scope=cce.scope_ubuf)
-    reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
-                               scope=cce.scope_reg)
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr', scope=cce.scope_reg)
     num_dim_block_col = _ceil_div(dst.shape[1], c_0)
     num_ele_block_col = functools_reduce(lambda x, y: x*y, dst.shape[1:])
     dim_ele = functools_reduce(lambda x, y: x*y, data.shape[2:])
@@ -1855,14 +1867,16 @@ def _func_more_dim_ir_fp16(args):
                                                             "src_dim_gm"))),
                                 0, num_dim_cur_core, len_burst, 0, 0))
 
+    scalar_dtype = _get_scalar_dtype()
     reg_addr[16] = tvm.expr.Cast("int64",
                                  tvm.call_extern("handle", "",
                                                  input_ub.access_ptr(
-                                                     "r"))).astype("int32")
+                                                     "r"))).astype(scalar_dtype)
     reg_addr[17] = tvm.expr.Cast("int64",
                                  tvm.call_extern("handle", "",
                                                  output_ub.access_ptr(
-                                                     "r"))).astype("int32")
+                                                     "r"))).astype(scalar_dtype)
+
     with tvm_ib.for_range(0, num_dim_cur_core, name="num_d") as num_d:
         dim_offset = num_d*param.get("src_dim_space")*param.get(
             "float_size")
@@ -2183,8 +2197,8 @@ def _more_dim_ir_fp16(dst, data, max_dim, shape_all):
                                      scope=cce.scope_reg,
                                      data=addr_array)
     reg = tvm_ib.allocate(dst.dtype, (1,), name='reg', scope=cce.scope_reg)
-    reg_addr = tvm_ib.allocate("int32", (18,), name='reg_addr',
-                               scope=cce.scope_reg)
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (18,), name='reg_addr', scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
                           name="num_g") as num_g:
@@ -2284,14 +2298,15 @@ def _func_vnchw(args):
     src_eight_block = 8*src_gap
     dst_eight_block = 8*dst_gap
 
+    scalar_dtype = _get_scalar_dtype()
     reg_addr[16] = tvm.expr.Cast("int64",
                                  tvm.call_extern("handle", "",
                                                  input_ub.access_ptr(
-                                                     "r"))).astype("int32")
+                                                     "r"))).astype(scalar_dtype)
     reg_addr[17] = tvm.expr.Cast("int64",
                                  tvm.call_extern("handle", "",
                                                  output_ub.access_ptr(
-                                                     "r"))).astype("int32")
+                                                     "r"))).astype(scalar_dtype)
 
     with tvm_ib.for_range(0, 8, name="i") as i:
         tvm_ib.emit(tvm.call_extern("uint64", "reg_mov",
@@ -2719,8 +2734,8 @@ def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
                                      scope=cce.scope_reg,
                                      data=addr_array)
     reg = tvm_ib.allocate(dst.dtype, (1,), name='reg', scope=cce.scope_reg)
-    reg_addr = tvm_ib.allocate("int32", (18,), name='reg_addr',
-                               scope=cce.scope_reg)
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (18,), name='reg_addr', scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
                           name="num_g") as num_g:
@@ -3114,9 +3129,10 @@ def _more_row_ir_nhwc(dst, data, max_dim, shape_all):
                               scope=cce.scope_reg)
     reg_two = tvm_ib.allocate(dst.dtype, (1,), name='reg_two',
                               scope=cce.scope_reg)
-    reg_addr_one = tvm_ib.allocate("int32", (8,), name='reg_addr_one',
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr_one = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr_one',
                                    scope=cce.scope_reg)
-    reg_addr_two = tvm_ib.allocate("int32", (8,), name='reg_addr_two',
+    reg_addr_two = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr_two',
                                    scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
@@ -3566,9 +3582,10 @@ def _split_row_ir_nhwc(dst, data, max_dim, shape_all):
                               scope=cce.scope_reg)
     reg_two = tvm_ib.allocate(dst.dtype, (1,), name='reg_two',
                               scope=cce.scope_reg)
-    reg_addr_one = tvm_ib.allocate("int32", (8,), name='reg_addr_one',
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr_one = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr_one',
                                    scope=cce.scope_reg)
-    reg_addr_two = tvm_ib.allocate("int32", (8,), name='reg_addr_two',
+    reg_addr_two = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr_two',
                                    scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index"),
@@ -5043,7 +5060,8 @@ def _nhwc_adds_fp16_ir(dst, data):
                           param.get("ub_ele"),
                           "data_res", scope=cce.scope_ubuf)
     reg = tvm_ib.allocate(dst.dtype, (8,), name='reg', scope=cce.scope_reg)
-    reg_addr = tvm_ib.allocate("int32", (8,), name='reg_addr',
+    scalar_dtype = _get_scalar_dtype()
+    reg_addr = tvm_ib.allocate(scalar_dtype, (8,), name='reg_addr',
                                scope=cce.scope_reg)
 
     with tvm_ib.for_range(0, param.get("num_group_index") + 1,
@@ -9864,292 +9882,300 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     dst_shape = list(dst.get("shape"))
     dtype = src.get("dtype")
 
-    if dst_format.lower() == "nchw":
-        n_i, c_i, h_i, w_i = dst_shape
+    #te.lang.cce.vaddrelu support float32 @ 1951
+    #te.lang.cce.compute_five2four has no 1951 supporting dtype info
+    if dst_format.lower() == "nchw" and \
+            tbe_platform.cce_conf.api_check_support(\
+            "te.lang.cce.vaddrelu", "float32") and\
+            dtype == "float32":
+        five_2_four_v200_fp32fp16(src, dst, src_format, dst_format, kernel_name)
     else:
-        n_i, h_i, w_i, c_i = dst_shape
-
-    if _check_slice_branch(src_shape, dst_shape, dst_format, dtype) and False:
-        slice_in = src.copy()
-        slice_out = dst.copy()
-        n_i, _, h_i, w_i, c_0 = src_shape
-        x_shape = [n_i, h_i, w_i, c_0]
-        slice_in["shape"] = x_shape
-        slice_out["shape"] = dst_shape
-        begin = [0, 0, 0, 0]
-        size = dst_shape
-        slice_d(slice_in, slice_out, begin, size, kernel_name)
-    else:
-        if n_i == 1 and h_i == 1 and w_i == 1:
-            sch, tensor_list = _move_for_one(c_i, dtype)
-        elif _check_move_one_more_batch(dst_shape, dst_format, dtype):
-            data = tvm.placeholder(src_shape, dtype=dtype, name="data")
-            res = tvm.extern(dst_shape, [data],
-                             lambda ins, outs: _move_one_more_batch(
-                                 outs[0], ins[0], c_i),
-                             name="res", dtype=dtype)
-            tensor_list = [data, res]
-            sch = tvm.create_schedule(res.op)
+        if dst_format.lower() == "nchw":
+            n_i, c_i, h_i, w_i = dst_shape
         else:
-            max_dim = max(dst_shape)
-            shape_all = functools_reduce(lambda x, y: x * y, src_shape[:])
+            n_i, h_i, w_i, c_i = dst_shape
 
-            data = tvm.placeholder(src_shape, dtype=dtype, name="data")
-            if dst_format.lower() == "nchw":
-                if dtype == "float32":
-                    if _check_16_16_64_64(dst_shape, dst_format, dtype):
-                        if dst_shape == [16, 16, 64, 64]:
-                            shape_new = [16, 64 * 64, 16]
-                            shape_res = [16, 16, 64 * 64]
-                        elif dst_shape == [16, 32, 64, 64]:
-                            shape_new = [32, 64 * 64, 16]
-                            shape_res = [32, 16, 64 * 64]
-
-                        data = tvm.placeholder(shape_new, dtype=dtype,
-                                               name="data")
-                        res = tvm.extern(shape_res, [data],
-                                         lambda ins,
-                                                outs:
-                                         _nchw_sp_16_16_64_64_fp32(
+        if _check_slice_branch(src_shape, dst_shape, dst_format, dtype) and False:
+            slice_in = src.copy()
+            slice_out = dst.copy()
+            n_i, _, h_i, w_i, c_0 = src_shape
+            x_shape = [n_i, h_i, w_i, c_0]
+            slice_in["shape"] = x_shape
+            slice_out["shape"] = dst_shape
+            begin = [0, 0, 0, 0]
+            size = dst_shape
+            slice_d(slice_in, slice_out, begin, size, kernel_name)
+        else:
+            if n_i == 1 and h_i == 1 and w_i == 1:
+                sch, tensor_list = _move_for_one(c_i, dtype)
+            elif _check_move_one_more_batch(dst_shape, dst_format, dtype):
+                data = tvm.placeholder(src_shape, dtype=dtype, name="data")
+                res = tvm.extern(dst_shape, [data],
+                                 lambda ins, outs: _move_one_more_batch(
+                                     outs[0], ins[0], c_i),
+                                 name="res", dtype=dtype)
+                tensor_list = [data, res]
+                sch = tvm.create_schedule(res.op)
+            else:
+                max_dim = max(dst_shape)
+                shape_all = functools_reduce(lambda x, y: x * y, src_shape[:])
+    
+                data = tvm.placeholder(src_shape, dtype=dtype, name="data")
+                if dst_format.lower() == "nchw":
+                    if dtype == "float32":
+                        if _check_16_16_64_64(dst_shape, dst_format, dtype):
+                            if dst_shape == [16, 16, 64, 64]:
+                                shape_new = [16, 64 * 64, 16]
+                                shape_res = [16, 16, 64 * 64]
+                            elif dst_shape == [16, 32, 64, 64]:
+                                shape_new = [32, 64 * 64, 16]
+                                shape_res = [32, 16, 64 * 64]
+    
+                            data = tvm.placeholder(shape_new, dtype=dtype,
+                                                   name="data")
+                            res = tvm.extern(shape_res, [data],
+                                             lambda ins,
+                                                    outs:
+                                             _nchw_sp_16_16_64_64_fp32(
+                                                 outs[0], ins[0]),
+                                             name="res", dtype=dtype)
+    
+                        elif _check_nchw_fp32_sp1(src_shape, dst_shape,
+                                                  dst_format, dtype):
+                            data = tvm.placeholder(src_shape, dtype=dtype,
+                                                   name="data")
+                            branch = _choose_nchw_fp32_sp1(src_shape, dst_shape,
+                                                           dtype)
+                            if branch == "little":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins,
+                                                        outs:
+                                                 _nchw_fp32_sp1_little(
+                                                     outs[0], ins[0]),
+                                                 name="res", dtype=dtype)
+                            elif branch == "small":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins,
+                                                        outs:
+                                                 _nchw_fp32_sp1_small(
+                                                     outs[0], ins[0]),
+                                                 name="res", dtype=dtype)
+                            elif branch == "split_hw":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins,
+                                                        outs:
+                                                 _nchw_fp32_split_hw(
+                                                     outs[0], ins[0]),
+                                                 name="res", dtype=dtype)
+                            elif branch == "split_hw_fencore":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins,
+                                                        outs:
+                                                 _nchw_fp32_split_hw_fencore(
+                                                     outs[0], ins[0]),
+                                                 name="res", dtype=dtype)
+    
+                        else:
+                            branch = _get_ir_branch(src_shape, dtype, shape_all)
+                            if branch == "more_dim":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins, outs: _more_dim_ir(
+                                                     outs[0], ins[0],
+                                                     max_dim, shape_all),
+                                                 name="res", dtype=dtype)
+                            elif branch == "one_dim":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins, outs: _one_dim_ir(
+                                                     outs[0], ins[0],
+                                                     max_dim, shape_all),
+                                                 name="res", dtype=dtype)
+                            else:
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins, outs: _split_dim_ir(
+                                                     outs[0],
+                                                     ins[0],
+                                                     max_dim,
+                                                     shape_all),
+                                                 name="res", dtype=dtype)
+                    else:
+                        if _check_ci_align_nchw_fp16(src_shape, dst_shape,
+                                                     dst_format,
+                                                     dtype):
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs: _ci_align_nchw_fp16(
+                                                 outs[0],
+                                                 ins[0]),
+                                             name="res", dtype=dtype)
+                        elif _check_n_16_7_7_nchw_fp16(dst_shape, dst_format,
+                                                       dtype):
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs:
+                                             _n_16_7_7_nchw_fp16(
+                                                 outs[0],
+                                                 ins[0]),
+                                             name="res", dtype=dtype)
+                        else:
+                            branch_fp16 = _get_ir_branch_fp16(dst_shape, dtype,
+                                                              shape_all)
+                            if branch_fp16 == "more_dim_fp16":
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins, outs:
+                                                 _more_dim_ir_fp16(
+                                                     outs[0],
+                                                     ins[0],
+                                                     max_dim,
+                                                     shape_all),
+                                                 name="res", dtype=dtype)
+                            else:
+                                res = tvm.extern(dst_shape, [data],
+                                                 lambda ins,
+                                                        outs:
+                                                 _split_dim_ir_fp16(
+                                                     outs[0], ins[0], max_dim,
+                                                     shape_all),
+                                                 name="res", dtype=dtype)
+                else:
+                    mark, core_num, base_shape = _get_ir_branch_sp_nhwc(src_shape,
+                                                                        dtype)
+    
+                    if mark != "inconformity":
+                        if mark == "less_ub":
+                            res = tvm.extern(dst_shape, [data], \
+                                             lambda ins, outs: _less_ub_ir_nhwc(
+                                                 outs[0], ins[0], \
+                                                 base_shape, core_num),
+                                             name="res", dtype=dtype)
+                        else:
+                            res = tvm.extern(dst_shape, [data], \
+                                             lambda ins, outs: _more_ub_ir_nhwc(
+                                                 outs[0], ins[0], \
+                                                 base_shape, core_num),
+                                             name="res", dtype=dtype)
+                    elif _check_divide_sp_fp16(src_shape, dst_shape, dtype):
+                        res = tvm.extern(dst_shape, [data],
+                                         lambda ins, outs: _nhwc_adds_fp16_ir(
                                              outs[0], ins[0]),
                                          name="res", dtype=dtype)
-
-                    elif _check_nchw_fp32_sp1(src_shape, dst_shape,
+                    elif _check_move_full(src_shape, dst_shape, dst_format, dtype):
+                        n_i, h_i, w_i, _ = dst_shape
+                        device_core_num = AICORE_NUM
+                        if n_i == 1 and ((h_i * w_i) % device_core_num == 0):
+                            n_new = device_core_num
+                            hw = h_i * w_i // device_core_num
+                            h_new = 1
+                            w_new = hw
+                            dst_shape[0] = n_new
+                            dst_shape[1] = h_new
+                            dst_shape[2] = w_new
+                            src_shape[0] = n_new
+                            src_shape[2] = h_new
+                            src_shape[3] = w_new
+                        data = tvm.placeholder(src_shape, dtype=dtype, name="data")
+                        res = tvm.extern(dst_shape, [data],
+                                         lambda ins, outs: _move_full(outs[0],
+                                                                      ins[0]),
+                                         name="res", dtype=dtype)
+    
+                    elif _check_vconv_fp16(src_shape, dst_shape,
+                                           dst_format, dtype):
+                        shape_five_new, shape_nhwc_new = _get_new_shape_vconv_fp16(
+                            src_shape, dst_shape)
+                        data = tvm.placeholder(shape_five_new, dtype=dtype,
+                                               name="data")
+                        branch = _choose_vconv_fp16(shape_nhwc_new, dtype)
+                        if branch == "fencore":
+                            res = tvm.extern(shape_nhwc_new, [data],
+                                             lambda ins, outs:
+                                             _move_vconv_fp16_new_fencore(
+                                                 outs[0], ins[0]),
+                                             name="res", dtype=dtype)
+                        else:
+                            res = tvm.extern(shape_nhwc_new, [data],
+                                             lambda ins, outs:
+                                             _move_vconv_fp16_new(
+                                                 outs[0], ins[0]),
+                                             name="res", dtype=dtype)
+    
+                    elif _check_ci_align_nhwc_fp16(src_shape, dst_shape,
+                                                   dst_format, dtype):
+                        n_i, h_i, w_i, _ = dst_shape
+                        device_core_num = AICORE_NUM
+                        if n_i == 1 and ((h_i * w_i) % device_core_num == 0):
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs:
+                                             _ci_align_nhwc_fp16_one(
+                                                 outs[0],
+                                                 ins[0]),
+                                             name="res", dtype=dtype)
+                        elif _check_ci_align_nhwc_fencore(src_shape, dst_shape,
+                                                          dst_format, dtype):
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs:
+                                             _ci_align_nhwc_fp16_fencore(
+                                                 outs[0],
+                                                 ins[0]),
+                                             name="res", dtype=dtype)
+                        else:
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs: _ci_align_nhwc_fp16(
+                                                 outs[0],
+                                                 ins[0]),
+                                             name="res", dtype=dtype)
+    
+                    elif _check_nhwc_fp16_sp1(src_shape, dst_shape,
                                               dst_format, dtype):
                         data = tvm.placeholder(src_shape, dtype=dtype,
                                                name="data")
-                        branch = _choose_nchw_fp32_sp1(src_shape, dst_shape,
-                                                       dtype)
+                        branch = _choose_nhwc_fp16_sp1(dst_shape, dtype)
+    
                         if branch == "little":
                             res = tvm.extern(dst_shape, [data],
                                              lambda ins,
                                                     outs:
-                                             _nchw_fp32_sp1_little(
+                                             _nhwc_fp16_sp1_little(
                                                  outs[0], ins[0]),
                                              name="res", dtype=dtype)
                         elif branch == "small":
                             res = tvm.extern(dst_shape, [data],
                                              lambda ins,
                                                     outs:
-                                             _nchw_fp32_sp1_small(
-                                                 outs[0], ins[0]),
-                                             name="res", dtype=dtype)
-                        elif branch == "split_hw":
-                            res = tvm.extern(dst_shape, [data],
-                                             lambda ins,
-                                                    outs:
-                                             _nchw_fp32_split_hw(
+                                             _nhwc_fp16_sp1_small(
                                                  outs[0], ins[0]),
                                              name="res", dtype=dtype)
                         elif branch == "split_hw_fencore":
                             res = tvm.extern(dst_shape, [data],
                                              lambda ins,
                                                     outs:
-                                             _nchw_fp32_split_hw_fencore(
+                                             _nhwc_fp16_split_hw_fencore(
                                                  outs[0], ins[0]),
                                              name="res", dtype=dtype)
-
-                    else:
-                        branch = _get_ir_branch(src_shape, dtype, shape_all)
-                        if branch == "more_dim":
-                            res = tvm.extern(dst_shape, [data],
-                                             lambda ins, outs: _more_dim_ir(
-                                                 outs[0], ins[0],
-                                                 max_dim, shape_all),
-                                             name="res", dtype=dtype)
-                        elif branch == "one_dim":
-                            res = tvm.extern(dst_shape, [data],
-                                             lambda ins, outs: _one_dim_ir(
-                                                 outs[0], ins[0],
-                                                 max_dim, shape_all),
-                                             name="res", dtype=dtype)
-                        else:
-                            res = tvm.extern(dst_shape, [data],
-                                             lambda ins, outs: _split_dim_ir(
-                                                 outs[0],
-                                                 ins[0],
-                                                 max_dim,
-                                                 shape_all),
-                                             name="res", dtype=dtype)
-                else:
-                    if _check_ci_align_nchw_fp16(src_shape, dst_shape,
-                                                 dst_format,
-                                                 dtype):
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs: _ci_align_nchw_fp16(
-                                             outs[0],
-                                             ins[0]),
-                                         name="res", dtype=dtype)
-                    elif _check_n_16_7_7_nchw_fp16(dst_shape, dst_format,
-                                                   dtype):
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs:
-                                         _n_16_7_7_nchw_fp16(
-                                             outs[0],
-                                             ins[0]),
-                                         name="res", dtype=dtype)
-                    else:
-                        branch_fp16 = _get_ir_branch_fp16(dst_shape, dtype,
-                                                          shape_all)
-                        if branch_fp16 == "more_dim_fp16":
-                            res = tvm.extern(dst_shape, [data],
-                                             lambda ins, outs:
-                                             _more_dim_ir_fp16(
-                                                 outs[0],
-                                                 ins[0],
-                                                 max_dim,
-                                                 shape_all),
-                                             name="res", dtype=dtype)
-                        else:
+                        elif branch == "split_hw":
                             res = tvm.extern(dst_shape, [data],
                                              lambda ins,
                                                     outs:
-                                             _split_dim_ir_fp16(
+                                             _nhwc_fp16_split_hw(
+                                                 outs[0], ins[0]),
+                                             name="res", dtype=dtype)
+    
+                    else:
+                        branch = _get_ir_branch_nhwc(dst_shape, dtype, shape_all)
+                        if branch == "more_row_nhwc":
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs: _more_row_ir_nhwc(
+                                                 outs[0],
+                                                 ins[0],
+                                                 max_dim,
+                                                 shape_all),
+                                             name="res", dtype=dtype)
+                        else:
+                            res = tvm.extern(dst_shape, [data],
+                                             lambda ins, outs: _split_row_ir_nhwc(
                                                  outs[0], ins[0], max_dim,
                                                  shape_all),
                                              name="res", dtype=dtype)
-            else:
-                mark, core_num, base_shape = _get_ir_branch_sp_nhwc(src_shape,
-                                                                    dtype)
-
-                if mark != "inconformity":
-                    if mark == "less_ub":
-                        res = tvm.extern(dst_shape, [data], \
-                                         lambda ins, outs: _less_ub_ir_nhwc(
-                                             outs[0], ins[0], \
-                                             base_shape, core_num),
-                                         name="res", dtype=dtype)
-                    else:
-                        res = tvm.extern(dst_shape, [data], \
-                                         lambda ins, outs: _more_ub_ir_nhwc(
-                                             outs[0], ins[0], \
-                                             base_shape, core_num),
-                                         name="res", dtype=dtype)
-                elif _check_divide_sp_fp16(src_shape, dst_shape, dtype):
-                    res = tvm.extern(dst_shape, [data],
-                                     lambda ins, outs: _nhwc_adds_fp16_ir(
-                                         outs[0], ins[0]),
-                                     name="res", dtype=dtype)
-                elif _check_move_full(src_shape, dst_shape, dst_format, dtype):
-                    n_i, h_i, w_i, _ = dst_shape
-                    device_core_num = AICORE_NUM
-                    if n_i == 1 and ((h_i * w_i) % device_core_num == 0):
-                        n_new = device_core_num
-                        hw = h_i * w_i // device_core_num
-                        h_new = 1
-                        w_new = hw
-                        dst_shape[0] = n_new
-                        dst_shape[1] = h_new
-                        dst_shape[2] = w_new
-                        src_shape[0] = n_new
-                        src_shape[2] = h_new
-                        src_shape[3] = w_new
-                    data = tvm.placeholder(src_shape, dtype=dtype, name="data")
-                    res = tvm.extern(dst_shape, [data],
-                                     lambda ins, outs: _move_full(outs[0],
-                                                                  ins[0]),
-                                     name="res", dtype=dtype)
-
-                elif _check_vconv_fp16(src_shape, dst_shape,
-                                       dst_format, dtype):
-                    shape_five_new, shape_nhwc_new = _get_new_shape_vconv_fp16(
-                        src_shape, dst_shape)
-                    data = tvm.placeholder(shape_five_new, dtype=dtype,
-                                           name="data")
-                    branch = _choose_vconv_fp16(shape_nhwc_new, dtype)
-                    if branch == "fencore":
-                        res = tvm.extern(shape_nhwc_new, [data],
-                                         lambda ins, outs:
-                                         _move_vconv_fp16_new_fencore(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-                    else:
-                        res = tvm.extern(shape_nhwc_new, [data],
-                                         lambda ins, outs:
-                                         _move_vconv_fp16_new(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-
-                elif _check_ci_align_nhwc_fp16(src_shape, dst_shape,
-                                               dst_format, dtype):
-                    n_i, h_i, w_i, _ = dst_shape
-                    device_core_num = AICORE_NUM
-                    if n_i == 1 and ((h_i * w_i) % device_core_num == 0):
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs:
-                                         _ci_align_nhwc_fp16_one(
-                                             outs[0],
-                                             ins[0]),
-                                         name="res", dtype=dtype)
-                    elif _check_ci_align_nhwc_fencore(src_shape, dst_shape,
-                                                      dst_format, dtype):
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs:
-                                         _ci_align_nhwc_fp16_fencore(
-                                             outs[0],
-                                             ins[0]),
-                                         name="res", dtype=dtype)
-                    else:
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs: _ci_align_nhwc_fp16(
-                                             outs[0],
-                                             ins[0]),
-                                         name="res", dtype=dtype)
-
-                elif _check_nhwc_fp16_sp1(src_shape, dst_shape,
-                                          dst_format, dtype):
-                    data = tvm.placeholder(src_shape, dtype=dtype,
-                                           name="data")
-                    branch = _choose_nhwc_fp16_sp1(dst_shape, dtype)
-
-                    if branch == "little":
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins,
-                                                outs:
-                                         _nhwc_fp16_sp1_little(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-                    elif branch == "small":
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins,
-                                                outs:
-                                         _nhwc_fp16_sp1_small(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-                    elif branch == "split_hw_fencore":
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins,
-                                                outs:
-                                         _nhwc_fp16_split_hw_fencore(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-                    elif branch == "split_hw":
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins,
-                                                outs:
-                                         _nhwc_fp16_split_hw(
-                                             outs[0], ins[0]),
-                                         name="res", dtype=dtype)
-
-                else:
-                    branch = _get_ir_branch_nhwc(dst_shape, dtype, shape_all)
-                    if branch == "more_row_nhwc":
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs: _more_row_ir_nhwc(
-                                             outs[0],
-                                             ins[0],
-                                             max_dim,
-                                             shape_all),
-                                         name="res", dtype=dtype)
-                    else:
-                        res = tvm.extern(dst_shape, [data],
-                                         lambda ins, outs: _split_row_ir_nhwc(
-                                             outs[0], ins[0], max_dim,
-                                             shape_all),
-                                         name="res", dtype=dtype)
-
-            tensor_list = [data, res]
-            sch = tvm.create_schedule(res.op)
-
-        with build_config:
-            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+    
+                tensor_list = [data, res]
+                sch = tvm.create_schedule(res.op)
+    
+            with build_config:
+                tvm.build(sch, tensor_list, "cce", name=kernel_name)

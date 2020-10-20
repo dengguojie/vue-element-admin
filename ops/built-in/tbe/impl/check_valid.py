@@ -1,25 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 check_valid
 """
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-from topi.cce import util
+from te.utils import para_check
 from impl import common_util
-from te.utils.op_utils import *
 
 # count of shape dim
 DIM_CNT = 2
@@ -30,7 +29,8 @@ FLOAT16_MINIMUM = 2**(-24)
 FLOAT16_SCALAR = 2**12
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def check_valid(bbox_tensor, img_metas, valid_tensor,
                 kernel_name="check_valid"):
     """
@@ -54,17 +54,17 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
     bbox_shape = bbox_tensor.get("shape")
     bbox_dtype = bbox_tensor.get("dtype").lower()
     # check for value > 0
-    check_shape(bbox_shape, param_name="bbox_tensor")
+    para_check.check_shape(bbox_shape, param_name="bbox_tensor")
 
     bbox_dtype_check_list = [
         "float16",
     ]
-    check_dtype(bbox_dtype, bbox_dtype_check_list, param_name="bbox_tensor")
+    para_check.check_dtype(bbox_dtype, bbox_dtype_check_list, param_name="bbox_tensor")
     valid_shape = valid_tensor.get("shape")
 
     img_metas_dtype = img_metas.get("dtype").lower()
     img_metas_shape = img_metas.get("shape")
-    check_shape(img_metas_shape, param_name="img_metas")
+    para_check.check_shape(img_metas_shape, param_name="img_metas")
     if img_metas_dtype != bbox_dtype:
         raise RuntimeError(
             "The type of img_metas should be same to bbox_tensor!")
@@ -672,8 +672,7 @@ class CheckValid(object):
         self.__move_job_bbox_to_ub(job_index, inverted)
         with self.tik_instance.for_range(0, 2) as n_col:
             # col=0,1, point to x1, y1
-            with self.tik_instance.if_scope(
-                    n_col == 0):
+            with self.tik_instance.if_scope(n_col == 0):
                 self.calc_col_ge_flag()
 
             with self.tik_instance.else_scope():
@@ -705,10 +704,8 @@ class CheckValid(object):
         base_loop_per_core = total_job_num // core_number
         core_over = total_job_num - (base_loop_per_core * core_number)
 
-        with self.tik_instance.for_range(
-                0, core_number, block_num=core_number) as num_core_i:
-            with self.tik_instance.for_range(0,
-                                             base_loop_per_core) as num_core_j:
+        with self.tik_instance.for_range(0, core_number, block_num=core_number) as num_core_i:
+            with self.tik_instance.for_range(0, base_loop_per_core) as num_core_j:
                 self.check_valid_compute(
                     base_loop_per_core * num_core_i + num_core_j)
 

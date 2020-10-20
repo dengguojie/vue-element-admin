@@ -1,24 +1,25 @@
 /**
- * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file  internal_ops.h
- *
- * @brief
- *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-#ifndef GE_OP_INTERNAL_OPS_H_
-#define GE_OP_INTERNAL_OPS_H_
+
+/*!
+ * \file internal_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_INTERNAL_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_INTERNAL_OPS_H_
 
 #include "graph/operator_reg.h"
 #include "graph/operator.h"
@@ -26,13 +27,13 @@
 namespace ge {
 
 /**
-*@brief aicpu assit help op for auxiliary matrix generation.
+*@brief aicpu assit help op for auxiliary matrix generation. \n
 
 *@par Inputs:
-*The input is dynamic for attribute func_name \n
+*The input is dynamic for attribute func_name   \n
 
 *@par Attributes:
-*@li func_name:An required param, for example "topkv2". \n
+*@li func_name:An required param, for example "topkv2".   \n
 
 *@par Outputs:
 *The output is dynamic for attribute func_name.
@@ -46,10 +47,10 @@ REG_OP(AssistHelp)
     . OP_END_FACTORY_REG(AssistHelp)
 
 /**
-*@brief aicpu cache help for lhisi cache flush.
+*@brief aicpu cache help for lhisi cache flush. \n
 
 *@par Inputs:
-*The input is dynamic for attribute func_name \n
+*The input is dynamic for attribute func_name   \n
 
 *@par Outputs:
 *The output is dynamic for attribute func_name.
@@ -60,13 +61,16 @@ REG_OP(CacheUpdate)
     .OP_END_FACTORY_REG(CacheUpdate)
 
 /**
-*@brief transfer data from L1 buffer to DDR or DDR to L1.
+*@brief transfer data from L1 buffer to DDR or DDR to L1. \n
 
 *@par Inputs:
-*The input is dynamic for attribute func_name \n
+*The input is dynamic for attribute func_name   \n
 
 *@par Outputs:
 *The output is dynamic for attribute func_name.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
 */
 REG_OP(InternalDataMove)
     .INPUT(x, TensorType::ALL())
@@ -77,4 +81,4 @@ REG_OP(InternalDataMove)
 
 }  // namespace ge
 
-#endif  // GE_OP_INTERNAL_OPS_H_
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_INTERNAL_OPS_H_

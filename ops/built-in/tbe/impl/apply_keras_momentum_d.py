@@ -1,33 +1,31 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 apply_keras_momentum_d
 """
+import te.platform as tbe_platform
+from impl.util.util_apply_op_schedule import ApplyOpConfig
+from impl.util.util_apply_op_schedule import common_apply_op_process
 
-import te.lang.cce
-from impl.util.util_apply_op_schedule import (ApplyOpConfig,
-                                              common_apply_op_process)
-from te import platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# pylint: disable=unused-argument
-@fusion_manager.register("apply_keras_momentum_d")
+# pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
+@tbe_platform.fusion_manager.fusion_manager.register("apply_keras_momentum_d")
 def apply_keras_momentum_d_compute(var,
                                    accum,
                                    lr,
@@ -51,33 +49,26 @@ def apply_keras_momentum_d_compute(var,
     """
     inp_dtype = var.dtype
     # check the instruction supports or not
-    vmul_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vmul", "float32")
+    vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
-        raise RuntimeError(
-            "Input dtype is float32, but do not support on the platform")
+        raise RuntimeError("Input dtype is float32, but do not support on the platform")
 
     # update var and accum according to the momentum scheme
     # accum = accum * momentum - grad * lr
-    accum_momen = tvm.compute(accum.shape,
-                              lambda *indices: accum(*indices) * momentum[0],
-                              tag='elewise_single_VS_mul')
-    grad_lr = tvm.compute(grad.shape,
-                          lambda *indices: grad(*indices) * lr[0],
-                          tag='elewise_single_VS_mul')
-    out_accum = te.lang.cce.vsub(accum_momen, grad_lr)
+    accum_momen = tvm.compute(accum.shape, lambda *indices: accum(*indices) * momentum[0], tag='elewise_single_VS_mul')
+    grad_lr = tvm.compute(grad.shape, lambda *indices: grad(*indices) * lr[0], tag='elewise_single_VS_mul')
+    out_accum = tbe.vsub(accum_momen, grad_lr)
 
     # var = var + accum * momentum - grad * lr
     if use_nesterov is True:
-        accum_momen2 = tvm.compute(
-            accum.shape,
-            lambda *indices: out_accum(*indices) * momentum[0],
-            tag='elewise_single_VS_mul')
-        add_var_am = te.lang.cce.vadd(var, accum_momen2)
-        out_var = te.lang.cce.vsub(add_var_am, grad_lr)
+        accum_momen2 = tvm.compute(accum.shape,
+                                   lambda *indices: out_accum(*indices) * momentum[0],
+                                   tag='elewise_single_VS_mul')
+        add_var_am = tbe.vadd(var, accum_momen2)
+        out_var = tbe.vsub(add_var_am, grad_lr)
     # var = var + accum
     else:
-        out_var = te.lang.cce.vadd(var, out_accum)
+        out_var = tbe.vadd(var, out_accum)
 
     def _compute(*index):
         return out_var(*index), out_accum(*index)
@@ -86,11 +77,10 @@ def apply_keras_momentum_d_compute(var,
 
 
 # pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_OUTPUT, op_utils.OPTION_ATTR_BOOL,
-                          op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def apply_keras_momentum_d(var,
                            accum,
                            lr,
@@ -109,7 +99,6 @@ def apply_keras_momentum_d(var,
         var = var + accum * momentum - grad * lr
     else:
         var = var + accum
-
     Parameters
     ----------
     var : dict of tensor var, include shape and dtype.
@@ -146,10 +135,7 @@ def apply_keras_momentum_d(var,
         [out_var, out_accum],
         6 if use_nesterov else 5,
     )
-    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'grad',
-                                         'momentum'),
-                                    scalar=('lr', 'momentum'),
-                                    reuse=())
+    name = ApplyOpConfig.TensorName(all=('var', 'accum', 'lr', 'grad', 'momentum'), scalar=('lr', 'momentum'), reuse=())
     options = ApplyOpConfig.TensorOptions(attrs=use_nesterov)
 
     common_apply_op_process(ApplyOpConfig(args, name, options), kernel_name)

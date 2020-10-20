@@ -1,23 +1,26 @@
+# /usr/bin/env python
+# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-concat_last_dim
+concat_l1fusion
 """
-from functools import reduce as functools_reduce
+import numpy
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
-import numpy as np
-
 
 def get_offset_and_mask(dim, shape_list, output_shape,
                         align_len):
@@ -148,7 +151,7 @@ class ConcatL1Fusion:
     def __init__(self, input_values, output_data, axis, kernel_name):
         self.tik_instance = tik.Tik()
         self.aicore_num = \
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+            tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.dtype = input_values[0].get("dtype").lower()
         self.output_shape = output_data.get("shape")
@@ -173,11 +176,11 @@ class ConcatL1Fusion:
         self.input_tensors, self.output_tensor = self.init_tensor(
             self.input_shapes, self.output_shape, self.dtype, self.input_addr_type, self.output_addr_type)
 
-        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
+        dtype_bytes_size = tbe_platform.get_bit_len(self.dtype) // 8
         self.ele_each_block = 32 // dtype_bytes_size
 
         self.ub_half_size = \
-            (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+            (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
              // dtype_bytes_size // 2 - self.ele_each_block)
         self.max_input_dim_size = 0
         self.is_data_move_first_dim = False
@@ -665,28 +668,28 @@ class ConcatL1Fusion:
             input_offset = input_dict.get("slice_offset")
             if len(input_offset) != 0:
                 input_slice_offset.append(input_offset)
-            out_dim = int(np.prod(shape_input[0:concat_axis]))
+            out_dim = int(numpy.prod(shape_input[0:concat_axis]))
             if out_dim == 1:
-                shape_input = (int(np.prod(shape_input)),)
+                shape_input = (int(numpy.prod(shape_input)),)
             else:
-                inner_dim = int(np.prod(shape_input[concat_axis:]))
+                inner_dim = int(numpy.prod(shape_input[concat_axis:]))
                 shape_input = (out_dim, inner_dim)
             if self.jump_read:
-                out_dim = int(np.prod(valid_shape_input[0:concat_axis]))
+                out_dim = int(numpy.prod(valid_shape_input[0:concat_axis]))
                 if out_dim == 1:
-                    shape_input = (int(np.prod(valid_shape_input)),)
+                    shape_input = (int(numpy.prod(valid_shape_input)),)
                 else:
-                    inner_dim = int(np.prod(valid_shape_input[concat_axis:]))
+                    inner_dim = int(numpy.prod(valid_shape_input[concat_axis:]))
                     shape_input = (out_dim, inner_dim)
                 input_valid_shapes.append(shape_input)
 
         if len(input_shapes[0]) == 2:
-            out_dim = int(np.prod(self.output_shape[0:concat_axis]))
-            inner_dim = int(np.prod(self.output_shape[concat_axis:]))
+            out_dim = int(numpy.prod(self.output_shape[0:concat_axis]))
+            inner_dim = int(numpy.prod(self.output_shape[concat_axis:]))
             self.output_shape = (out_dim, inner_dim)
             concat_axis = 1
         else:
-            self.output_shape = (int(np.prod(self.output_shape)),)
+            self.output_shape = (int(numpy.prod(self.output_shape)),)
             concat_axis = 0
 
         # calcu the output shape again
@@ -748,4 +751,3 @@ class ConcatL1Fusion:
                 dtype, self.output_valid_shape, name=output_tensor_name_per, scope=output_tensor_scope)
 
         return input_tensors, output_tensor
-

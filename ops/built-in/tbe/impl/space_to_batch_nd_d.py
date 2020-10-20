@@ -1,34 +1,27 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-space_to_batch_nd
+space_to_batch_nd_d
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
-from functools import reduce as functools_reduce
 import te.lang.cce
-from te import tvm
 from te import platform as tbe_platform
 from te.platform.cce_build import build_config
-from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_intrin_md import reset_mask_insn
-from topi.cce import util
-from impl.copy_only import copy_only
 from te.utils.op_utils import *
+from impl.copy_only import copy_only
+from impl.transpose_d import transpose_d
 
 
 # pylint: disable=too-many-instance-attributes,useless-object-inheritance
@@ -461,7 +454,6 @@ def _check_parms(shape, dtype, block_shape, paddings, kernel_name):
 
 
 # pylint: disable=invalid-name
-@fusion_manager.register("space_to_batch_nd_d")
 def space_to_batch_nd_d_compute(x,
                                 y,
                                 block_shape,
@@ -489,9 +481,6 @@ def space_to_batch_nd_d_compute(x,
     """
     shape = te.lang.cce.util.shape_to_list(x.shape)
     dtype = x.dtype
-
-    if len(paddings) == 4:
-        paddings = [[paddings[0], paddings[1]], [paddings[2], paddings[3]]]
 
     space = _SpaceToBatch(shape, dtype, block_shape, paddings)
 
@@ -521,7 +510,7 @@ def space_to_batch_nd_d(x,
     block_shape: list or tuple
         1-D with shape [2].
     paddings: list or tuple
-        2-D with shape [2, 2], paddings[i] = [pad_start, pad_end]
+        2-D with shape [2, 2], paddings[i] = [pad_start, pad_end].
     kernel_name: str
         cce kernel name, default value is "space_to_batch_nd_d".
 
@@ -531,9 +520,29 @@ def space_to_batch_nd_d(x,
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
+    input_format = x.get("format")
+    ori_format = x.get("ori_format")
 
-    if len(paddings) == 4:
-        paddings = [[paddings[0], paddings[1]], [paddings[2], paddings[3]]]
+    if input_format not in ("NC1HWC0",):
+        raise RuntimeError("The input_format must be NC1HWC0.")
+
+    if ori_format in ("NHWC",):
+        if len(paddings) == 4:
+            paddings = [[paddings[0], paddings[1]], [paddings[2], paddings[3]]]
+    elif ori_format in ("NCHW",):
+        if len(block_shape) == 3 and block_shape[0] == 1:
+            block_shape = [block_shape[1], block_shape[2]]
+        else:
+            raise RuntimeError("The value of first block_shape must be 1")
+        if len(paddings) == 6 and paddings[0] == 0 and paddings[1] == 0:
+            paddings = [[paddings[2], paddings[3]], [paddings[4], paddings[5]]]
+        elif len(paddings) == 3 and len(paddings[0]) == 2 and len(paddings[1]) == 2 \
+                and len(paddings[2]) == 2 and paddings[0][0] == 0 and paddings[0][1] == 0:
+            paddings = [[paddings[1][0], paddings[1][1]], [paddings[2][0], paddings[2][1]]]
+        else:
+            raise RuntimeError("The value of first paddings must be 0")
+    else:
+        raise RuntimeError("The ori_format is not supported")
 
     _check_parms(shape, dtype, block_shape, paddings, kernel_name)
 
@@ -541,6 +550,19 @@ def space_to_batch_nd_d(x,
             0] == 0 and paddings[0][1] == 0 and paddings[1][
                 0] == 0 and paddings[1][1] == 0:
         copy_only(x, x, kernel_name)
+        return
+
+    if paddings[0][0] == 0 and paddings[0][1] == 0 and \
+            paddings[1][0] == 0 and paddings[1][1] == 0:
+        new_shape_input = \
+            (shape[0], shape[1], shape[2] // block_shape[0], block_shape[0],
+             shape[3] // block_shape[1], block_shape[1], shape[4])
+        new_shape_output = \
+            (block_shape[0], block_shape[1], shape[0], shape[1], shape[2] //
+             block_shape[0], shape[3] // block_shape[1], shape[4])
+        x.update({"shape": new_shape_input})
+        y.update({"shape": new_shape_output})
+        transpose_d(x, y, [3, 5, 0, 1, 2, 4, 6], kernel_name)
         return
 
     data = tvm.placeholder(shape, name="data", dtype=dtype)

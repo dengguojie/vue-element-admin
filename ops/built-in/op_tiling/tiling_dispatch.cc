@@ -1,21 +1,31 @@
-/*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file tiling_dispatch.cpp
+ * \brief tiling function of ops
+ */
 #include <string>
+
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
 #include "register/op_tiling.h"
-#include "vector_tiling.hpp"
+
+#include "vector_tiling.h"
+#include "op_log.h"
 
 namespace optiling {
 
@@ -27,30 +37,28 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AutoTiling(const std::string &op_type, const TeOpParas &op_paras,
-        const nlohmann::json &op_info, OpRunInfo &run_info)
-{
-    GELOGI("op[%s] tiling running.", op_type.c_str());
+bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                OpRunInfo& run_info) {
+  GELOGI("op[%s] tiling running.", op_type.c_str());
 
-    const std::string &pattern = op_info["_pattern"].get<std::string>();
+  const std::string& pattern = op_info["_pattern"].get<std::string>();
 
-    GELOGI("op[%s] tiling pattern.", pattern.c_str());
+  GELOGI("op[%s] tiling pattern.", pattern.c_str());
 
-    bool ret = false;
-    if (pattern == "CommReduce") {
-        ret = ReduceTiling(op_type, op_paras, op_info, run_info);
-    } else if (pattern == "ElemWise") {
-        ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
-    } else {
-        ret = false;
-        GELOGI("Auto tiling not supported patten: %s.", pattern.c_str());
-    }
+  bool ret = false;
+  if (pattern == "CommReduce") {
+    ret = ReduceTiling(op_type, op_paras, op_info, run_info);
+  } else if (pattern == "ElemWise") {
+    ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+  } else {
+    ret = false;
+    GELOGI("Auto tiling not supported patten: %s.", pattern.c_str());
+  }
 
-    return ret;
+  return ret;
 }
-
 
 // register autoTiling
 REGISTER_OP_TILING_FUNC(AutoTiling, AutoTiling);
 
-}
+}  // namespace optiling

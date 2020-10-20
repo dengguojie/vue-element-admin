@@ -1,76 +1,148 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd.
-
-conv2d_backprop_input
+conv2d_backprop_input_d
 """
-
-from __future__ import absolute_import
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from impl.util import util_deconv_comm
 from te import tvm
-from topi import generic
-from te.platform import CUBE_MKN
-from te.platform.fusion_manager import fusion_manager
-from te.utils.error_manager import error_manager_util as err_man
-from topi.cce import util
-import impl.util.util_deconv_comm as comm
-
+from te.utils import error_manager
+from te.utils import para_check
 
 # the dim of shape in conv2d_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
-# the dim of strides in conv2d_backprop must be 2
-STRIDES_SHAPE_DIM = 2
-# the dim of pads in conv2d_backprop must be 4
-PADDING_SHAPE_DIM = 4
-
-# fmap_H, fmap_W must be in [2,4096]
-FMAP_HW_MIN = 2
-FMAP_HW_MAX = 4096
-
-# DeDy_H,DeDy_W must be in [2,4096]
-DEDY_HW_MIN = 2
-DEDY_HW_MAX = 4096
-
-# filter_H, filter_W must be in [1,255]
-FILTER_HW_MIN = 1
-FILTER_HW_MAX = 255
-
-# stride must be in [1,63] and h*w can't larger than 256
-STRIDE_HW_MIN = 1
-STRIDE_HW_MAX = 63
-STRIDE_SIZE_MAX = 256
-
-# pads must be in [0,255]
-PAD_MIN = 0
-PAD_MAX = 255
-
-# dilation must be in [1,255]
-DILATION_MIN = 1
-DILATION_MAX = 255
 
 # each axis of shape must less than 1000000
 DEFAULT_MAX_SHAPE_NUM = 1000000
 
-# the bytes length of several dtypes
-BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
-                  "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
-# same as (2**63-1)
-DATA_SIZE_MAX = 9223372036854775807
 
-# If pads is string , only support "SAME" or "VALID"
-PADDING_SUPPORT = ('SAME', 'VALID')
-# pads valid mode is [0, 0, 0, 0]
-PADDING_VAILD = (0, 0, 0, 0)
+def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    dilations,
+    data_format,
+    topi_flag=0,
+):
+    """
+    check the inputpara and get input shape
+
+    Parameters
+    ----------
+    filter: dict with keys(shape and dtype) or Tensor
+            input weight tensor
+
+    out_backprop: dict with keys(shape and dtype) or Tensor
+                  The shape of gradients.
+
+    y: dict with keys(shape and dtype)
+       conv2d_backprop_input output tensor, dtype must be assigned
+
+    input_size: The shape of feature map.
+                 4-D with shape [batch, channels, height, weight].
+
+    strides: tuple/list of 4 integers
+             filter move stride
+
+    dilations: tuple/list of 4 integers
+               filter expand size of dilated conv2d_backprop_input
+
+    data_format: str
+            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+            Specify the data format of the input and output data.
+
+    topi_flag: input para from topi or compute
+               0: compute;1: topi, Defaults to 0
 
 
-@util.check_input_type(dict, dict, dict, (tuple, list), (tuple, list),
-                       (str, tuple, list), (tuple, list), int, str, str)
-def conv2d_backprop_input_d(filter,  # pylint: disable=W0622,C0103,R0913,R0914
-                            out_backprop, y, input_size, strides,
-                            pads, dilations=(1, 1, 1, 1),
-                            groups=None, data_format="NHWC",
-                            kernel_name="conv2d_backprop_input"):
+    Returns
+    -------
+    res: the shape, strides, dilations
+    """
+
+    if topi_flag == 1:
+        ori_shape_filters = filter.get("ori_shape")
+        ori_shape_out_backprop = out_backprop.get("ori_shape")
+        ori_shape_res = y.get("ori_shape")
+
+        ori_format_filters = filter.get("ori_format")
+        ori_format_out_backprop = out_backprop.get("ori_format")
+        ori_format_res = y.get("ori_format")
+    else:
+        ori_shape_filters = [i.value for i in filter.op.attrs["ori_shape"]]
+        ori_shape_out_backprop = [i.value for i in out_backprop.op.attrs["ori_shape"]]
+        ori_shape_res = [i for i in y["ori_shape"]]
+
+        ori_format_filters = filter.op.attrs["ori_format"]
+        ori_format_out_backprop = out_backprop.op.attrs["ori_format"]
+        ori_format_res = y["ori_format"]
+
+    if list(input_size) != list(ori_shape_res):
+        dict_args = {}
+        dict_args["errCode"] = "E65007"
+        dict_args["param1"] = "input_size"
+        dict_args["param2"] = "ori_shape of y"
+        dict_args["actual_value"] = "{}, {}".format(input_size, ori_shape_res)
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    if len(strides) == 4:
+        h_index = data_format.find("H")
+        w_index = data_format.find("W")
+        strides = [strides[h_index], strides[w_index]]
+
+    shape_filters = util_deconv_comm.get_filter_shape(
+        ori_format_filters, ori_shape_filters
+    )
+
+    shape_out_backprop = util_deconv_comm.get_shape_out_backprop(
+        ori_format_out_backprop, ori_shape_out_backprop
+    )
+
+    shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
+
+    dilations = util_deconv_comm.get_shape_dilation(data_format, dilations)
+
+    return [shape_filters, shape_out_backprop, shape_res, strides, dilations]
+
+
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
+    para_check.KERNEL_NAME,
+)
+def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NHWC",
+    kernel_name="conv2d_backprop_input",
+):
     """
     algorithm: conv2d_backprop_input
 
@@ -95,9 +167,9 @@ def conv2d_backprop_input_d(filter,  # pylint: disable=W0622,C0103,R0913,R0914
              [pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input
+               filter expand size of dilated conv2d_backprop_input, Defaults to (1, 1, 1, 1]).
     groups: int
-            param for group conv2d_backprop_input
+            param for group conv2d_backprop_input,  Defaults to 1.
 
     data_format: str
             An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
@@ -119,68 +191,76 @@ def conv2d_backprop_input_d(filter,  # pylint: disable=W0622,C0103,R0913,R0914
     out_backprop_dtype = out_backprop.get("dtype")
     res_dtype = y.get("dtype")
 
-    ori_format_filters = filter.get("ori_format")
-    ori_format_out_backprop = out_backprop.get("ori_format")
-    ori_format_res = y.get("ori_format")
-    if list(input_size) != list(ori_shape_res):
-        dict_args = {}
-        dict_args['errCode'] = "E65007"
-        dict_args['param1'] = "input_size"
-        dict_args['param2'] = "ori_shape of y"
-        dict_args['actual_value'] = "{}, {}". \
-            format(input_size, ori_shape_res)
-        raise RuntimeError(dict_args,
-                           err_man.get_error_message(dict_args))
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(ori_shape_filters,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(ori_shape_out_backprop,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(input_size,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(ori_shape_res,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-    util.check_shape_rule(dilations,
-                          CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                          DEFAULT_MAX_SHAPE_NUM)
-
-    if len(strides) == 4:
-        h_index = data_format.find('H')
-        w_index = data_format.find('W')
-        strides = [strides[h_index], strides[w_index]]
-
-    shape_filters = comm.get_filter_shape(
-        ori_format_filters, ori_shape_filters
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(
+        ori_shape_filters,
+        CONV_BACKPROP_SHAPE_DIM,
+        CONV_BACKPROP_SHAPE_DIM,
+        DEFAULT_MAX_SHAPE_NUM,
+    )
+    para_check.check_shape_rule(
+        ori_shape_out_backprop,
+        CONV_BACKPROP_SHAPE_DIM,
+        CONV_BACKPROP_SHAPE_DIM,
+        DEFAULT_MAX_SHAPE_NUM,
+    )
+    para_check.check_shape_rule(
+        input_size,
+        CONV_BACKPROP_SHAPE_DIM,
+        CONV_BACKPROP_SHAPE_DIM,
+        DEFAULT_MAX_SHAPE_NUM,
+    )
+    para_check.check_shape_rule(
+        ori_shape_res,
+        CONV_BACKPROP_SHAPE_DIM,
+        CONV_BACKPROP_SHAPE_DIM,
+        DEFAULT_MAX_SHAPE_NUM,
+    )
+    para_check.check_shape_rule(
+        dilations,
+        CONV_BACKPROP_SHAPE_DIM,
+        CONV_BACKPROP_SHAPE_DIM,
+        DEFAULT_MAX_SHAPE_NUM,
     )
 
-    shape_out_backprop = comm.get_shape_out_backprop(
-        ori_format_out_backprop, ori_shape_out_backprop)
+    res = _check_conv2dbp_input_para(
+        filter,
+        out_backprop,
+        y,
+        input_size,
+        strides,
+        dilations,
+        data_format,
+        topi_flag=1,
+    )
+    shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+    _conv2d_backprop_input_cce(
+        shape_filters,
+        shape_out_backprop,
+        shape_res,
+        strides,
+        pads,
+        dilations,
+        filters_dtype,
+        out_backprop_dtype,
+        res_dtype,
+        kernel_name,
+    )
 
-    shape_res = comm.get_shape_res(ori_format_res, ori_shape_res)
 
-    dilations = comm.get_shape_dilation(data_format, dilations)
-
-    conv2d_backprop_input_cce(shape_filters,
-                              shape_out_backprop,
-                              shape_res,
-                              strides,
-                              pads,
-                              dilations,
-                              filters_dtype,
-                              out_backprop_dtype,
-                              res_dtype,
-                              kernel_name)
-
-
-@fusion_manager.register("conv2d_backprop_input_d")
-def conv2d_backprop_input_d_compute(filter, out_backprop, y, input_size,
-                                    strides, pads, dilations=(1, 1, 1, 1),
-                                    groups=None, data_format="NHWC",
-                                    kernel_name="conv2d_backprop_input"):
+@tbe_platform.fusion_manager.fusion_manager.register("conv2d_backprop_input_d")
+def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NHWC",  # pylint: disable=W0613
+    kernel_name="conv2d_backprop_input",
+):
     """
     used for fusion
     Parameters
@@ -204,9 +284,9 @@ def conv2d_backprop_input_d_compute(filter, out_backprop, y, input_size,
              [pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input
+               filter expand size of dilated conv2d_backprop_input,  Defaults to [1, 1, 1, 1].
     groups: int
-            param for group conv2d_backprop_input
+            param for group conv2d_backprop_input,  Defaults to 1.
     data_format: str
             An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
             Specify the data format of the input and output data.
@@ -218,70 +298,76 @@ def conv2d_backprop_input_d_compute(filter, out_backprop, y, input_size,
     Tensor of conv2d_backprop_input
     """
 
-    ori_shape_filters = [i.value for i in filter.op.attrs["ori_shape"]]
-    ori_shape_out_backprop = \
-        [i.value for i in out_backprop.op.attrs["ori_shape"]]
-    ori_shape_res = [i for i in y["ori_shape"]]
-
     filters_dtype = filter.dtype
     out_backprop_dtype = out_backprop.dtype
     res_dtype = y["dtype"]
 
-    ori_format_filters = filter.op.attrs["ori_format"]
-    ori_format_out_backprop = out_backprop.op.attrs["ori_format"]
-    ori_format_res = y["ori_format"]
-    if list(input_size) != list(ori_shape_res):
-        dict_args = {}
-        dict_args['errCode'] = "E65007"
-        dict_args['param1'] = "input_size"
-        dict_args['param2'] = "ori_shape of y"
-        dict_args['actual_value'] = "{}, {}". \
-            format(input_size, ori_shape_res)
-        raise RuntimeError(dict_args,
-                           err_man.get_error_message(dict_args))
-    if len(strides) == 4:
-        h_index = data_format.find('H')
-        w_index = data_format.find('W')
-        strides = [strides[h_index], strides[w_index]]
+    res = _check_conv2dbp_input_para(
+        filter,
+        out_backprop,
+        y,
+        input_size,
+        strides,
+        dilations,
+        data_format,
+        topi_flag=0,
+    )
+    shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+    util_deconv_comm.check_conv2dbp_input_params(
+        shape_filters,
+        shape_out_backprop,
+        shape_res,
+        strides,
+        pads,
+        dilations,
+        filters_dtype,
+        out_backprop_dtype,
+        res_dtype,
+        kernel_name,
+    )
 
-    shape_filters = comm.get_filter_shape(
-        ori_format_filters, ori_shape_filters)
-    shape_out_backprop = comm.get_shape_out_backprop(
-        ori_format_out_backprop, ori_shape_out_backprop)
-    shape_res = comm.get_shape_res(ori_format_res, ori_shape_res)
-    dilations = comm.get_shape_dilation(ori_format_out_backprop, dilations)
+    pads = util_deconv_comm.get_padlist(
+        pads, shape_res, strides, shape_filters, dilations
+    )
 
-    comm.check_conv2dbp_input_params(shape_filters, shape_out_backprop,
-                                     shape_res, strides, pads, dilations,
-                                     filters_dtype, out_backprop_dtype,
-                                     res_dtype, kernel_name)
-
-    pads = comm.get_padlist(pads, shape_res, strides, shape_filters, dilations)
-
-    res = te.lang.cce.conv2d_backprop_input_compute(filter,
-                                                    out_backprop,
-                                                    shape_filters,
-                                                    shape_res,
-                                                    strides,
-                                                    pads,
-                                                    dilations,
-                                                    res_dtype=res_dtype,
-                                                    kernel_name=kernel_name)
+    res = tbe.conv2d_backprop_input_compute(
+        filter,
+        out_backprop,
+        shape_filters,
+        shape_res,
+        strides,
+        pads,
+        dilations,
+        res_dtype=res_dtype,
+        kernel_name=kernel_name,
+    )
     return res
 
 
-@util.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                       (list, tuple), (str, list, tuple), (list, tuple),
-                       str,
-                       str,
-                       str,
-                       str)
-def conv2d_backprop_input_cce(shape_filter, shape_out_backprop, input_sizes,
-                              strides, pads, dilations=(1, 1, 1, 1),
-                              filter_dtype='float16',
-                              out_backprop_dtype='float16',
-                              res_dtype='float16',
-                              kernel_name="conv2d_backprop_input_cce"):
+@para_check.check_input_type(
+    (list, tuple),
+    (list, tuple),
+    (list, tuple),
+    (list, tuple),
+    (str, list, tuple),
+    (list, tuple),
+    str,
+    str,
+    str,
+    str,
+)
+def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
+    shape_filter,
+    shape_out_backprop,
+    input_sizes,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    filter_dtype="float16",
+    out_backprop_dtype="float16",
+    res_dtype="float16",
+    kernel_name="conv2d_backprop_input_cce",
+):
     """
     Topi interface of conv2d backprop input
 
@@ -315,41 +401,63 @@ def conv2d_backprop_input_cce(shape_filter, shape_out_backprop, input_sizes,
     ----------
     """
 
-    def _ceil(x_1, x_2):
-        if x_2 == 0:
-            raise RuntimeError("Division by zero")
-        return (x_1 + x_2 - 1) // x_2
-
-    res = comm.check_conv2dbp_input_params(shape_filter, shape_out_backprop,
-                                           input_sizes, strides, pads,
-                                           dilations, filter_dtype,
-                                           out_backprop_dtype, res_dtype,
-                                           kernel_name)
-    shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations, \
-    filter_dtype, out_backprop_dtype, res_dtype, kernel_name = res
+    res = util_deconv_comm.check_conv2dbp_input_params(
+        shape_filter,
+        shape_out_backprop,
+        input_sizes,
+        strides,
+        pads,
+        dilations,
+        filter_dtype,
+        out_backprop_dtype,
+        res_dtype,
+        kernel_name,
+    )
+    (
+        shape_filter,
+        shape_out_backprop,
+        input_sizes,
+        strides,
+        pads,
+        dilations,
+        filter_dtype,
+        out_backprop_dtype,
+        res_dtype,
+        kernel_name,
+    ) = res
 
     dedy_batch, dedy_channel, dedy_h, dedy_w = shape_out_backprop
     filter_batch, filter_channel, filter_h, filter_w = shape_filter
 
-    _, dy_k0, _ = CUBE_MKN[out_backprop_dtype]['mac']
-    _, w_k0, w_n0 = CUBE_MKN[filter_dtype]['mac']
-    shape_dedy = (dedy_batch,
-                  _ceil(dedy_channel, dy_k0), dedy_h, dedy_w, dy_k0)
+    _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]["mac"]
+    _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
+    shape_dedy = (
+        dedy_batch,
+        util_deconv_comm.ceil(dedy_channel, dy_k0),
+        dedy_h,
+        dedy_w,
+        dy_k0,
+    )
     if filter_dtype == "int8" and out_backprop_dtype == "int8":
-        filter_channel = comm.align(filter_channel, w_n0)
+        filter_channel = util_deconv_comm.align(filter_channel, w_n0)
         shape_filter_frac = (
-            _ceil(filter_batch, w_k0)*filter_h*filter_w,
-            _ceil(filter_channel, w_n0), w_n0, w_k0)
+            util_deconv_comm.ceil(filter_batch, w_k0) * filter_h * filter_w,
+            util_deconv_comm.ceil(filter_channel, w_n0),
+            w_n0,
+            w_k0,
+        )
     else:
         shape_filter_frac = (
-            _ceil(filter_channel, w_n0)*filter_h*filter_w,
-            _ceil(filter_batch, w_k0), w_k0, w_n0)
+            util_deconv_comm.ceil(filter_channel, w_n0) * filter_h * filter_w,
+            util_deconv_comm.ceil(filter_batch, w_k0),
+            w_k0,
+            w_n0,
+        )
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
 
-    filter_frac = tvm.placeholder(shape_filter_frac,
-                                  name="filter", dtype=filter_dtype)
+    filter_frac = tvm.placeholder(shape_filter_frac, name="filter", dtype=filter_dtype)
 
-    dedx = te.lang.cce.conv2d_backprop_input_compute(
+    dedx = tbe.conv2d_backprop_input_compute(
         filters=filter_frac,
         out_backprop=dedy,
         filter_sizes=shape_filter,
@@ -358,16 +466,13 @@ def conv2d_backprop_input_cce(shape_filter, shape_out_backprop, input_sizes,
         padding=pads,
         dilations=dilations,
         res_dtype=res_dtype,
-        kernel_name=kernel_name
+        kernel_name=kernel_name,
     )
     tensor_list = [filter_frac, dedy, dedx]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(dedx)
+        sch = tbe.auto_schedule(dedx)
 
-    config = {
-        "name": kernel_name,
-        "tensor_list": tensor_list
-    }
+    config = {"name": kernel_name, "tensor_list": tensor_list}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

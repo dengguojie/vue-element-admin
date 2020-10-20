@@ -1,21 +1,22 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce atomic schedule
 """
 import copy
+import math
 
 from te import platform as cceconf
 from te import tvm
@@ -27,6 +28,7 @@ from .vector_schedule import VectorSchedule
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 
 BLOCK_SIZE_BYTE = 32
+
 
 # noinspection PyUnusedLocal
 @register_tiling_case(pattern=Pattern.REDUCE)
@@ -45,7 +47,8 @@ def calc_tiling_case(outs, option=None):
         return []
     tiling_cases = reduce_sch.get_tiling_cases()
 
-    operation.get_context().add("reduce_schedule", reduce_sch)
+    operation.get_context().get_current_compute().add("reduce_schedule",
+                                                      reduce_sch)
 
     return tiling_cases
 
@@ -58,7 +61,8 @@ def schedule(outs, tiling_case):
     :param tiling_case:
     :return:
     """
-    reduce_sch = operation.get_context().get("reduce_schedule")
+    reduce_sch = operation.get_context().get_current_compute().get(
+        "reduce_schedule")
     return reduce_sch.do_schedule(outs, tiling_case)
 
 
@@ -150,6 +154,7 @@ class ReduceSchedule(VectorSchedule):
         self._produce_atomic_sch = False
         self._atomic_tiling_case_list = []
         self._atomic_sch = None
+        self._compute_key = None
 
     def init(self, out_tensors, spec_node_list):
         """
@@ -207,15 +212,15 @@ class ReduceSchedule(VectorSchedule):
                 self._tiling_case_list))
         else:
             return None
-        sch.tiling_key = tiling_case
+
+        compute_key = self._get_compute_key()
+        sch.tiling_key = self._gen_tiling_key(compute_key, tiling_case)
 
         return sch
 
     def _do_reduce_schedule(self, tiling_case):
 
         self._schedule = tvm.create_schedule([self._res_tensor.op])
-
-        self._schedule.disable_allocate(cceconf.scope_ubuf)
 
         self._select_tiling_case(tiling_case)
 
@@ -312,6 +317,27 @@ class ReduceSchedule(VectorSchedule):
 
         return True
 
+    def _gen_compute_key(self, shape_before_reduce, reduce_axis_index):
+
+        compute_key = 0
+        dim_len = len(shape_before_reduce)
+        for i in range(0, dim_len):
+            if i in reduce_axis_index:
+                compute_key = compute_key + 2 * math.pow(2, (dim_len - 1 - i))
+            else:
+                compute_key = compute_key + math.pow(2, (dim_len - 1 - i))
+
+        self._compute_key = int(compute_key)
+
+
+        return int(compute_key)
+
+    def _get_compute_key(self):
+        return self._compute_key
+
+    def _gen_tiling_key(self, compute_key, tiling_case_index):
+
+        return compute_key * 1000 + tiling_case_index
     def get_tiling_cases(self):
         """
         :return:
@@ -351,33 +377,49 @@ class ReduceSchedule(VectorSchedule):
         """
         :return:
         """
-        for i in range(0, len(self._tiling_case_list)):
-            self._reduce_tiling_key_map[i] = self._tiling_case_list[i]
 
+        shape_before_reduce = self._reduce_info["shape_before_reduce"]
+        reduce_axis_index = self._reduce_info["reduce_axis_index"]
+        compute_key = self._gen_compute_key(shape_before_reduce,
+                                            reduce_axis_index)
+        for i in range(0, len(self._tiling_case_list)):
+            tiling_key = self._gen_tiling_key(compute_key, i)
+            self._reduce_tiling_key_map[tiling_key] = self._tiling_case_list[i]
+
+        max_ub_count = self._get_max_ub_count()
         reduce_info = {}
         reduce_info["reduce_axis"] = self._reduce_info["reduce_axis_index"]
         reduce_info["keep_dims"] = self._reduce_info["keep_dims"]
         reduce_info["dtype"] = self._reduce_info["dtype"]
         reduce_info["out_dtype"] = self._res_tensor.dtype
 
-        max_ub_count = self._get_max_ub_count()
+        compile_info = {}
+        compile_info["reduce_tiling_key_map"] = self._reduce_tiling_key_map
+        compile_info["reduce_info"] = reduce_info
+        compile_info["pattern"] = Pattern.REDUCE
+        compile_info["max_ub_count"] = max_ub_count
+        compile_info["core_num"] = cceconf.get_soc_spec("CORE_NUM")
 
-        operation.add_compile_info("pattern", Pattern.REDUCE)
-        operation.add_compile_info("reduce_tiling_key_map",
-                                   self._reduce_tiling_key_map)
-        operation.add_compile_info("reduce_info", reduce_info)
-        operation.add_compile_info("max_ub_count", max_ub_count)
-        operation.add_compile_info("core_num",
-                                   cceconf.get_soc_spec("CORE_NUM"))
+        compute_pattern = [compute_key]
+        pre_compile_info = operation.get_compile_info()
+        if pre_compile_info:
+            if "compute_pattern" in pre_compile_info.keys():
+                compute_pattern = pre_compile_info["compute_pattern"]
+                compute_pattern.append(compute_key)
+
+        operation.add_compile_info("compute_pattern", compute_pattern)
 
         if self._produce_atomic_sch:
             atomic_tiling_key_map = {}
             for i in range(0, len(self._atomic_tiling_case_list)):
-                atomic_tiling_key_map[i + len(self._tiling_case_list)] = \
+                tiling_key = self._gen_tiling_key(compute_key, i + len(
+                    self._tiling_case_list))
+                atomic_tiling_key_map[tiling_key] = \
                     self._atomic_tiling_case_list[i]
+            compile_info["atomic_tiling_key_map"] = atomic_tiling_key_map
 
-            operation.add_compile_info("atomic_tiling_key_map",
-                                       atomic_tiling_key_map)
+        operation.add_compile_info(str(compute_key), compile_info)
+
 
     def _gen_tiling_case_not_last_axis(self, shape_before_reduce,
                                        reduce_axis_index):
@@ -412,7 +454,7 @@ class ReduceSchedule(VectorSchedule):
                                    "ub_factor": None}
                     self._tiling_case_list.append(tiling_case)
 
-        dtype = self._reduce_info["dtype"]
+        dtype = self._res_tensor.dtype
         if self._need_special_tiling_case_not_last_axis(dtype,
                                                         shape_before_reduce,
                                                         reduce_axis_index):
@@ -455,7 +497,7 @@ class ReduceSchedule(VectorSchedule):
         size = DTYPE_BYTE_MAPPING[dtype]
         for i in range(last_axis_start_index, last_axis_end_index + 1):
             if isinstance(shape[i], tvm.expr.Var):
-                return False
+                return True
             size = size * shape[i]
 
         return size < 32
@@ -968,8 +1010,6 @@ class ReduceSchedule(VectorSchedule):
             if self._res_tensor not in self._cache_write_exclude_tensors:
                 self._cache_write_tensors.append(self._res_tensor)
 
-
-
     def _do_cache_write(self):
         """
         cache write operations
@@ -1290,7 +1330,6 @@ class ReduceSchedule(VectorSchedule):
                 return True
         return False
 
-
     def _do_storage_bound(self):
         """
         :return:
@@ -1307,7 +1346,6 @@ class ReduceSchedule(VectorSchedule):
 
         for tensor in self._mid_output_tensors:
             self._schedule[tensor].set_storage_bound(tensor_space)
-
 
     # 'pylint: disable=too-many-locals
     def _calculate_tiling(self):
@@ -1611,7 +1649,6 @@ class ReduceSchedule(VectorSchedule):
         ub_inner = ub_tiling_result["inner_itervar"]
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
 
-
         is_keep_dims = self._reduce_info["keep_dims"]
         reduce_a1_start_index = a1_start_index
         reduce_a1_end_index = a1_end_index
@@ -1725,7 +1762,6 @@ class ReduceSchedule(VectorSchedule):
                                                       a1_end_index)
 
         self.__reorder_reduce_not_last_axis_before_reduce(a1_start_index)
-
 
     @staticmethod
     def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index):
@@ -1876,7 +1912,7 @@ class ReduceSchedule(VectorSchedule):
         read_buffer : the all read_cache for input in ub, type is list
         """
         if self._is_reduce_not_last_axis():
-            self._need_db = True
+            self._need_db = False
         else:
             self._need_db = False
 
@@ -1970,12 +2006,15 @@ class ReduceSchedule(VectorSchedule):
                 ub_split_axis = ub_tiling_result["axis"]
                 # ub cut ak (none reduce axis),
                 if ub_split_axis not in reduce_axis_index:
-                    reduce_ub_inner = reduce_ub_tiling_tensor.op.reduce_axis[0]
+                    # reduce axis op loop is 1
+                    reduce_axis_tmp = reduce_ub_tiling_tensor.op.reduce_axis[0]
+                    if hasattr(reduce_axis_tmp.dom.min, 'value') and \
+                            reduce_axis_tmp.dom.min.value == 0 and \
+                            hasattr(reduce_axis_tmp.dom.extent, 'value') and \
+                            reduce_axis_tmp.dom.extent.value == 1:
+                        reduce_ub_inner = reduce_axis_tmp
 
             insn = get_insn(reduce_ub_tiling_tensor)
-            if insn == "vector_reduce_prod":
-                if self._is_reduce_not_last_axis():
-                    insn = "vector_mul"
 
             para = {"scope": reduce_ub_inner,
                     "instruction": insn}
@@ -2306,8 +2345,6 @@ class ReduceSchedule(VectorSchedule):
         if tmp_op["op"].find("|") != -1:
             str_list = op_node.tag.split("|")
             tmp_op["op"] = str_list[0]
-
-
 
     def __split_tensor(self, tensor):
         """

@@ -1,6 +1,18 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
 Tiling helper, set and get a fixed tiling
 """
 import os
@@ -10,7 +22,8 @@ from te import tvm
 
 
 class Singleton():
-    """Singleton base class
+    """
+    Singleton base class
     """
     __instance = None
     __tiling = None
@@ -18,6 +31,9 @@ class Singleton():
     __input_params = None
 
     def __init__(self):
+        """
+        init the config path
+        """
         self._singleton__tiling = dict()
         self._singleton__tiling_type = None
         self._singleton__input_params = None
@@ -33,6 +49,9 @@ class Singleton():
             self._singleton__tiling_type = "auto_tiling"
 
     def __new__(cls, *args, **kw):
+        """
+        new object
+        """
         if not cls.__instance:
             cls.__instance = super(Singleton, cls).__new__(cls, *args, **kw)
         return cls.__instance
@@ -67,8 +86,7 @@ class Singleton():
             executable binary file
 
         """
-        if isinstance(inputs, dict) and \
-            isinstance(inputs.get("kernel_name", None), tvm.expr.StringImm):
+        if isinstance(inputs, dict) and isinstance(inputs.get("kernel_name", None), tvm.expr.StringImm):
             inputs["kernel_name"] = inputs['kernel_name'].value
         self._singleton__input_params = copy.deepcopy(inputs)
 
@@ -98,8 +116,7 @@ class Singleton():
             raise RuntimeError("illegal inputs: %s" % str(inputs))
 
         if not isinstance(inputs, dict) or not self._singleton__input_params:
-            raise RuntimeError("set params when tuning tiling, like: %s"
-                               % str(inputs))
+            raise RuntimeError("set params when tuning tiling, like: %s" % str(inputs))
 
         ignore_list = ["reserved_ub", "kernel_name", "op_name", "test_case"]
         pre_params = dict()
@@ -113,9 +130,8 @@ class Singleton():
                 cur_params[key] = inputs[key]
 
         if str(cur_params) != str(pre_params):
-            raise RuntimeError("tiling params is changed, previous is: %s, "
-                               "input is %s"
-                               % (str(pre_params), str(cur_params)))
+            raise RuntimeError("tiling params is changed, previous is: %s, input is %s" \
+                % (str(pre_params), str(cur_params)))
 
         return copy.deepcopy(self._singleton__tiling.get(_kernel_name, None))
 
@@ -131,9 +147,7 @@ class Singleton():
         """
         type_list = ["tuning_tiling"]
         if self._singleton__tiling_type not in type_list:
-            raise RuntimeError("tiling mode is not tuning tiling, "
-                               "current is %s"
-                               % str(self._singleton__tiling_type))
+            raise RuntimeError("tiling mode is not tuning tiling, current is %s" % str(self._singleton__tiling_type))
 
         if isinstance(tiling, dict):
             self._singleton__tiling[kernel_name] = copy.deepcopy(tiling)
@@ -167,8 +181,7 @@ class Singleton():
         else:
             raise TypeError('tiling is not a str.')
 
-    def instance_refresh(self, tiling_type=None, \
-                         input_params=None, tiling_dict=None):
+    def instance_refresh(self, tiling_type=None, input_params=None, tiling_dict=None):
         """refresh private member variable of Singleton object
         Parameters
         ----------
@@ -179,8 +192,13 @@ class Singleton():
         Returns
         -------
         """
+        ret_value = dict()
+        ret_value["input_params"] = \
+            copy.deepcopy(self._singleton__input_params)
         self._singleton__tiling = copy.deepcopy(tiling_dict)
         self._singleton__tiling_type = copy.deepcopy(tiling_type)
         self._singleton__input_params = copy.deepcopy(input_params)
+        return ret_value
+
 
 TILING_INSTANCE = Singleton()

@@ -1,29 +1,29 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 greater
 """
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import refine_shapes_for_broadcast
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
+
 
 # min float32 value
 MIN_FP32 = 2**(-126)
@@ -52,40 +52,40 @@ def _greater_compare(data, shape, dtype, data_min):
     -------
     the compare result
     """
-    data_zero = te.lang.cce.broadcast(tvm.const(0, dtype), shape, dtype)
+    data_zero = tbe.broadcast(tvm.const(0, dtype), shape, dtype)
     if dtype == "int32":
-        data_one = te.lang.cce.broadcast(tvm.const(1, "float16"),
+        data_one = tbe.broadcast(tvm.const(1, "float16"),
                                          shape, "float16")
     else:
-        data_one = te.lang.cce.broadcast(tvm.const(1, dtype), shape, dtype)
+        data_one = tbe.broadcast(tvm.const(1, dtype), shape, dtype)
 
-    res_sub = te.lang.cce.vsub(data[1], data[0])
+    res_sub = tbe.vsub(data[1], data[0])
     # to amend sub zero result
-    res_sub_zero = te.lang.cce.vadd(res_sub, data_min)
-    res_min = te.lang.cce.vmin(res_sub_zero, data_min)
-    res_max = te.lang.cce.vmax(res_min, data_zero)
+    res_sub_zero = tbe.vadd(res_sub, data_min)
+    res_min = tbe.vmin(res_sub_zero, data_min)
+    res_max = tbe.vmax(res_min, data_zero)
 
     if dtype == "float32":
         # max num of float32 is 2**126
         # but cce can only support 2**62, so use 62/62/2 to adaptor 126
         max_support_fp32 = tvm.const(2**62, dtype=dtype)
-        res_mul1 = te.lang.cce.vmuls(res_max, max_support_fp32)
-        res_mul2 = te.lang.cce.vmuls(res_mul1, max_support_fp32)
-        res_mul = te.lang.cce.vmuls(res_mul2, tvm.const(2**2, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, max_support_fp32)
+        res_mul2 = tbe.vmuls(res_mul1, max_support_fp32)
+        res_mul = tbe.vmuls(res_mul2, tvm.const(2**2, dtype=dtype))
     elif dtype == "float16":
         # max num of float16 is 2**24
         # but cce can only support 2**12, so use 12/12 to adaptor 24
         max_support_fp16 = tvm.const(2**12, dtype=dtype)
-        res_mul1 = te.lang.cce.vmuls(res_max, max_support_fp16)
-        res_mul = te.lang.cce.vmuls(res_mul1, max_support_fp16)
+        res_mul1 = tbe.vmuls(res_max, max_support_fp16)
+        res_mul = tbe.vmuls(res_mul1, max_support_fp16)
     else:
-        res_mul = te.lang.cce.cast_to(res_max, "float16")
-    res = te.lang.cce.vsub(data_one, res_mul)
+        res_mul = tbe.cast_to(res_max, "float16")
+    res = tbe.vsub(data_one, res_mul)
 
-    return te.lang.cce.cast_to(res, "uint8", True)
+    return tbe.cast_to(res, "uint8", True)
 
 
-@fusion_manager.register("greater")
+@tbe_platform.fusion_manager.fusion_manager.register("greater")
 def greater_compute(x, y, z, kernel_name="greater"):
     """
     if x is greater than y, then return 1, else return 0.
@@ -105,35 +105,39 @@ def greater_compute(x, y, z, kernel_name="greater"):
     -------
     the result
     """
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    shape_y = te.lang.cce.util.shape_to_list(y.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_y = shape_util.shape_to_list(y.shape)
     dtype = x.dtype.lower()
-    shape_x, shape_y, shape = broadcast_shapes(shape_x, shape_y, param_name_input1="x", param_name_input2="y")
+    shape_x, shape_y, shape = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                          param_name_input1="x",
+                                                          param_name_input2="y")
 
     if dtype in ("int8", "uint8"):
-        x = te.lang.cce.cast_to(x, "float16")
-        y = te.lang.cce.cast_to(y, "float16")
+        x = tbe.cast_to(x, "float16")
+        y = tbe.cast_to(y, "float16")
         dtype = "float16"
 
-    data_x = te.lang.cce.broadcast(x, shape)
-    data_y = te.lang.cce.broadcast(y, shape)
+    data_x = tbe.broadcast(x, shape)
+    data_y = tbe.broadcast(y, shape)
 
     if dtype == "float32":
         # minimun num of float32 2**(-126)
-        data_min = te.lang.cce.broadcast(tvm.const(MIN_FP32, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(MIN_FP32, dtype=dtype),
                                          shape, dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
-        data_min = te.lang.cce.broadcast(tvm.const(MIN_FP16, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(MIN_FP16, dtype=dtype),
                                          shape, dtype)
     else:
-        data_min = te.lang.cce.broadcast(tvm.const(1, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
                                          shape, dtype)
 
     return _greater_compare((data_x, data_y), shape, dtype, data_min)
 
+
 # pylint: disable=invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def greater(x, y, z, kernel_name="greater"):
     """
     do element-wise greater operation between two input tensors
@@ -153,28 +157,29 @@ def greater(x, y, z, kernel_name="greater"):
     -------
     None
     """
-    shape_input_x = util.scalar2tensor_one(x.get("shape"))
+    shape_input_x = shape_util.scalar2tensor_one(x.get("shape"))
     dtype_input_x = x.get("dtype").lower()
-    shape_input_y = util.scalar2tensor_one(y.get("shape"))
+    shape_input_y = shape_util.scalar2tensor_one(y.get("shape"))
     dtype_input_y = y.get("dtype").lower()
 
-    check_shape(shape_input_x, param_name="x")
-    check_shape(shape_input_y, param_name="y")
+    para_check.check_shape(shape_input_x, param_name="x")
+    para_check.check_shape(shape_input_y, param_name="y")
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(dtype_input_x, check_list, param_name="x")
+    para_check.check_dtype(dtype_input_x, check_list, param_name="x")
 
-    shape_list = broadcast_shapes(shape_input_x, shape_input_y, param_name_input1="x", param_name_input2="y")
+    shape_list = shape_util.broadcast_shapes(shape_input_x, shape_input_y,
+                                             param_name_input1="x", param_name_input2="y")
 
-    reshape_x, reshape_y = refine_shapes_for_broadcast(shape_list[0],
-                                                       shape_list[1])
+    reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_list[0],
+                                                                  shape_list[1])
     data_x = tvm.placeholder(reshape_x, dtype=dtype_input_x, name="data_x")
     data_y = tvm.placeholder(reshape_y, dtype=dtype_input_y, name="data_y")
 
     res = greater_compute(data_x, data_y, z, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_x, data_y, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,22 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 support parallel compilation
 """
-
 import multiprocessing as mp
 import queue
 import time
@@ -34,14 +32,18 @@ import subprocess
 import logging
 import json
 import threading
+from pathlib import Path
 from configparser import ConfigParser
-import te.platform.log_util as telog
+
+import te.platform.log_util as te_log
 import te.platform.fusion_manager as fusion_manager
 import te.platform.fusion_util as fusion_util
 import te.platform.cce_policy as cce_policy
 
 FILE_MODE_440 = stat.S_IRUSR | stat.S_IRGRP
+FLAG = os.O_WRONLY | os.O_CREAT
 MAXINT32 = 2**32
+
 
 def init_logger():
     """
@@ -96,6 +98,8 @@ def mygetattr(obj, name):
     :param name: attr name
     :return: attr
     """
+    if not name:
+        return obj
     name_list = name.split(".")
     while name_list:
         obj = getattr(obj, name_list[0])
@@ -129,7 +133,19 @@ def worker_sigint_handler(signum, frame):  # pylint: disable=unused-argument
     """
     # logging module uses reentrant threading.Rlock,
     # can be safely used in signal handler
-    logger.warning('Ctrl-C pressed, worker process quiting...')
+    logger.warning('Ctrl-C pressed or session exit or cur python terminate,'
+                   ' worker process quiting...')
+    del_tmp_files_by_pid(OpCompiler.master_pid)
+    os._exit(1)  # pylint: disable=protected-access
+
+
+def worker_sigint_handler_no_print(signum, frame):  # pylint: disable=unused-argument
+    """
+    worker process just quit when Ctrl-C pressed
+    """
+    # logging module uses reentrant threading.Rlock,
+    # can be safely used in signal handler
+    del_tmp_files_by_pid(OpCompiler.master_pid)
     os._exit(1)  # pylint: disable=protected-access
 
 
@@ -141,7 +157,10 @@ def exec_compilation_task(worker_env, task_env):
     :return: None
     """
     # just quit, avoid KeyboardInterrupt traceback printing mess
-    signal.signal(signal.SIGINT, worker_sigint_handler)
+    sig_list = [signal.SIGINT, signal.SIGHUP]
+    for sig in sig_list:
+        signal.signal(sig, worker_sigint_handler)
+    signal.signal(signal.SIGTERM, worker_sigint_handler_no_print)
 
     cce = importlib.import_module("te.platform.cce_conf")
 
@@ -192,7 +211,7 @@ def get_multi_process_count(tune_mode):
         if "RL" in tune_mode and count == 0:
             count = 1
         return count
-    except:  # pylint: disable=bare-except
+    except Exception:       # 'pylint: disable=broad-except
         return 8
 
 
@@ -230,6 +249,7 @@ def guess_pyexe_path(mp_ctx):
     """
     pylibver = sys.version_info
     pyver = subprocess.run([sys.executable, '-V'], stderr=subprocess.DEVNULL,
+                           check=False,
                            stdout=subprocess.PIPE).stdout.decode().split()[1].split('.')
     if pyver[0] == str(pylibver.major) and pyver[1] == str(pylibver.minor):
         return
@@ -596,7 +616,8 @@ class DeferredOpRes:
 
 
 def init_multi_process_env(embedding, socinfo, tune_mode,
-                           slog_level=None, slog_event=1):
+                           slog_level=None, slog_event=1,
+                           pid_timestamp=""):
     """
     init multi compilation process
     :param embedding: if is embedding python
@@ -604,20 +625,9 @@ def init_multi_process_env(embedding, socinfo, tune_mode,
     :param l2mode:
     :return: compilation worker number
     """
-    pid = os.getpid()
-    time_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    atc_time_stamp = "pid{}_{}".format(pid, time_str)
+    logger.info("pid_timestamp: %s", pid_timestamp)
+    atc_time_stamp = pid_timestamp
     OpCompiler.atc_time_stamp = atc_time_stamp
-    lock_tick_file = "lock_tick_{}.tmp".format(atc_time_stamp)
-    ltf_path = os.path.join(os.getcwd(), lock_tick_file)
-    if not os.path.isfile(ltf_path):
-        with open(ltf_path, 'w') as ltf:
-            pass
-    lock_data_file = "lock_data_{}.tmp".format(atc_time_stamp)
-    ldf_path = os.path.join(os.getcwd(), lock_data_file)
-    if not os.path.isfile(ldf_path):
-        with open(ldf_path, 'w') as ldf:
-            pass
     process_count = get_multi_process_count(tune_mode)
     if process_count <= 0:
         return 0, None, None, None
@@ -640,50 +650,41 @@ def init_multi_process_env(embedding, socinfo, tune_mode,
     return res
 
 
-def deal_with_atc_data():
+def del_tmp_files_by_pid(pid):
     """
-    deal with the atc process data file before deinit atc multi-process
+    deleate tmp files by atc pid
+    :param: atc pid
     :return: None
     """
-    best_ticks_file_name = "best_ticks_{}.json".format(\
-                                                    OpCompiler.atc_time_stamp)
-    res_data_file_name = "res_data_{}.json".format(OpCompiler.atc_time_stamp)
-    tune_show_dir_name = "tune_show_{}".format(OpCompiler.atc_time_stamp)
-    lock_file_name = "file.lock"
     cur_path = os.getcwd()
-    tick_file_path = os.path.join(cur_path, best_ticks_file_name)
-    res_file_path = os.path.join(cur_path, res_data_file_name)
+    tmp_list = []
+    file_lock_path = os.path.join(cur_path, "file.lock")
+    tmp_list.append(file_lock_path)
+    for path_item in Path(cur_path).glob('*pid{}*'.format(pid)):
+        list_item = os.fspath(path_item)
+        if "tune_result" not in list_item:
+            tmp_list.append(list_item)
+    try:
+        for item in tmp_list:
+            if os.path.isfile(item):
+                os.remove(item)
+            if os.path.isdir(item):
+                shutil.rmtree(item)
+    except OSError:
+        pass
+
+
+def del_tmp_files(atc_time_stamp):
+    """
+    deleate tmp files in the atc process
+    :param: atc_time_stamp, the atc pid and time stamp str
+    :return: None
+    """
+    cur_path = os.getcwd()
+    tune_show_dir_name = "tune_show_{}".format(atc_time_stamp)
+    lock_file_name = "file.lock"
     tune_show_dir = os.path.join(cur_path, tune_show_dir_name)
     lock_file = os.path.join(cur_path, lock_file_name)
-    if not (os.path.isfile(tick_file_path) and os.path.isfile(res_file_path)):
-        return
-    file_dict = {}
-    file_dict["process_data"] = {}
-    file_dict["result_data"] = {}
-    with open(tick_file_path, 'r') as tick_file:
-        file_dict["process_data"] = json.load(tick_file)
-    os.remove(tick_file_path)
-    with open(res_file_path, 'r') as res_file:
-        res_data_list = res_file.readlines()
-        for res_data in res_data_list:
-            file_dict["result_data"].update(json.loads(res_data))
-    os.remove(res_file_path)
-    stamp_str = res_data_file_name.split('.')[0][8:]
-    json_file_path = os.path.join(cur_path,\
-                                    "tune_result{}.json".format(stamp_str))
-    if os.path.isfile(json_file_path):
-        os.remove(json_file_path)
-    with open(json_file_path, 'w') as json_file:
-        json_file.write(json.dumps(file_dict))
-    os.chmod(json_file_path, FILE_MODE_440)
-    lock_tick_file = "lock_tick_{}.tmp".format(OpCompiler.atc_time_stamp)
-    ltf_path = os.path.join(os.getcwd(), lock_tick_file)
-    if os.path.isfile(ltf_path):
-        os.remove(ltf_path)
-    lock_data_file = "lock_data_{}.tmp".format(OpCompiler.atc_time_stamp)
-    ldf_path = os.path.join(os.getcwd(), lock_data_file)
-    if os.path.isfile(ldf_path):
-        os.remove(ldf_path)
     if os.path.isfile(lock_file):
         os.remove(lock_file)
     if os.path.isdir(tune_show_dir):
@@ -695,7 +696,7 @@ def deinit_multi_process_env():
     deinit multi compilation process
     :return: None
     """
-    deal_with_atc_data()
+    del_tmp_files(OpCompiler.atc_time_stamp)
     compilers = (OpCompiler.compiler,
                  OpCompiler.autotune_compiler)
     for compiler in compilers:
@@ -743,6 +744,7 @@ class TaskDispatcher:
     """
     Task Dispatcher
     """
+
     def __init__(self, task_env):
         """
         init
@@ -798,6 +800,7 @@ class TaskWorker:
     """
     Task runner
     """
+
     def __init__(self, task_env):
         """
         init
@@ -862,6 +865,21 @@ class TaskWorker:
         main loop
         :return:
         """
+        def _prerun(task):
+            """
+            set l1 size before run
+            """
+            cce_policy.set_L1_info("op_L1_space", task.l1size)
+            logger.info("set l1 size %s, %s", task.l1size, task)
+
+        def _postrun(task):
+            """
+            restore l1 size after run
+            """
+            if task.l1size >= 0:
+                cce_policy.set_L1_info("op_L1_space", -1)  # reset l1 space
+            logger.info("restore l1 size. %s, %s", task.l1size, task)
+
         optask_dispatcher = OpCompiler.task_dispatcher
         autotune_dispatcher = OpCompiler.autotune_task_dispatcher
         while not self.term_event.is_set():
@@ -870,49 +888,6 @@ class TaskWorker:
                 if self._live_checker.poll():
                     self._live_checker.recv()
 
-                # CAUTION: task dispatcher MUST dispatch data_sync task first
-                try:
-                    task = self._task_queue.get(True, self._block_timeout)
-                except queue.Empty:
-                    task = None
-
-                if task is None:
-                    self.try_sync_data()
-                    continue
-
-                if self._start is None:
-                    self._start = datetime.datetime.now()
-
-                count = task.check_need_sync()
-                self.mandatory_sync_data(count)
-
-                if task.l1size >= 0:
-                    cce_policy.set_L1_info("op_L1_space", task.l1size)
-                if self._time_stamp:
-                    res = task.run(self._time_stamp)
-                else:
-                    res = task.run()
-                if task.l1size >= 0:
-                    cce_policy.set_L1_info("op_L1_space", -1)  # reset l1 space
-
-                self._count += 1
-                task_tag = getattr(task, "tag", None)
-                if res is None:
-                    continue
-
-                if task_tag is None:
-                    self.fin_task_queue.put(res)
-                elif task_tag == "autotune":
-                    logger.info("autotune task %s", task.desc())
-                    fin_queue = optask_dispatcher.fin_task_queue
-                    fin_queue.put(res)
-                elif task_tag == "autotune_compile_op":
-                    fin_queue = autotune_dispatcher.fin_task_queue
-                    fin_queue = fin_queue[task.from_worker]
-                    fin_queue.put(res)
-
-                self._end = datetime.datetime.now()
-
             except EOFError:
                 logger.warning("Master process dead. worker process quiting..")
                 # Avoid 'Broken PIPE' exception msg of multiprocessing module,
@@ -920,11 +895,53 @@ class TaskWorker:
                 sys.excepthook = excepthook_silent
                 break
 
+            # CAUTION: task dispatcher MUST dispatch data_sync task first
+            try:
+                task = self._task_queue.get(True, self._block_timeout)
+            except queue.Empty:
+                task = None
+
+            if task is None:
+                self.try_sync_data()
+                continue
+
+            if self._start is None:
+                self._start = datetime.datetime.now()
+
+            count = task.check_need_sync()
+            self.mandatory_sync_data(count)
+
+            _prerun(task)
+            if self._time_stamp:
+                res = task.run(self._time_stamp)
+            else:
+                res = task.run()
+            _postrun(task)
+
+            self._count += 1
+            task_tag = getattr(task, "tag", None)
+            if res is None:
+                continue
+
+            if task_tag is None:
+                self.fin_task_queue.put(res)
+            elif task_tag == "autotune":
+                logger.info("autotune task %s", task.desc())
+                fin_queue = optask_dispatcher.fin_task_queue
+                fin_queue.put(res)
+            elif task_tag == "autotune_compile_op":
+                fin_queue = autotune_dispatcher.fin_task_queue
+                fin_queue = fin_queue[task.from_worker]
+                fin_queue.put(res)
+
+            self._end = datetime.datetime.now()
+
 
 class OpTask:
     """
     Base class of various parallel task
     """
+
     def __init__(self, timeout_ms=2000):
         self._timeout_ms = timeout_ms
         self._data_sync_count = {}
@@ -968,6 +985,7 @@ class PySysPathTask(OpTask):
     """
     task to add directories to sys.path
     """
+
     def __init__(self, syspath):
         """
         init
@@ -989,6 +1007,7 @@ class PyImportTask(OpTask):
     """
     task to import py modules
     """
+
     def __init__(self, module_list):
         """
         init
@@ -1011,6 +1030,7 @@ class ObjSyncTask(OpTask):
     """
     Task to sync module objects from parent to child process.
     """
+
     def __init__(self, module_name, obj_name, obj_value):
         """
         init
@@ -1037,6 +1057,7 @@ class AutotuneTask(OpTask):
     """
     Autotune Task
     """
+
     def __init__(self, graph_id, task_id, json_str, data_dict, kernel_name):
         """
         init
@@ -1079,12 +1100,12 @@ class AutotuneTask(OpTask):
                 return gen_task_res(self.build_type, self.graph_id,
                                     self.task_id, 0, self._kernel_name,
                                     infomsg)
-        except Exception as e:   # 'pylint: disable=broad-except
-            if isinstance(getattr(e, 'args', None), (tuple, list)) and \
-               len(e.args) > 0 and \
-               isinstance(e.args[0], dict) and \
-               'errCode' in e.args[0]:
-                except_msg, except_dict_msg = telog.except_msg()
+        except Exception as exc:   # 'pylint: disable=broad-except
+            if isinstance(getattr(exc, 'args', None), (tuple, list)) and \
+               len(exc.args) > 0 and \
+               isinstance(exc.args[0], dict) and \
+               'errCode' in exc.args[0]:
+                except_msg, except_dict_msg = te_log.except_msg()
                 errmsg = "autotune op compile fail. kernel_name[{}]"\
                     .format(self._kernel_name)
                 logger.info("%s. json:%s\n%s", errmsg,
@@ -1097,12 +1118,11 @@ class AutotuneTask(OpTask):
                                     except_msg=except_msg,
                                     except_tuple_msg=(except_dict_msg,
                                                       self._kernel_name))
-            else:
-                logger.error("auto_tune_compile got unknown error, fallback "
-                             "to normal compilation. taskID[%s:%s], "
-                             "traceback message: %s",
-                             self.graph_id, self.task_id,
-                             traceback.format_exc())
+            logger.error("auto_tune_compile got unknown error, fallback "
+                         "to normal compilation. taskID[%s:%s], "
+                         "traceback message: %s",
+                         self.graph_id, self.task_id,
+                         traceback.format_exc())
 
         logger.info("autotune compile failed. taskID[%s:%s]",
                     self.graph_id, self.task_id)
@@ -1126,10 +1146,11 @@ class PrebuildTask(OpTask):
     """
     Task to prebuild tbe op
     """
+
     def __init__(self, graph_id, task_id, op_module,
                  op_type, op_func, *op_args,
                  inputs=None, outputs=None, attrs=None,
-                 unknown_shape=False):
+                 unknown_shape=False, int64_mode=False):
         """
         init
         :param graph_id:
@@ -1151,6 +1172,7 @@ class PrebuildTask(OpTask):
         self._op_attrs = attrs
         self.build_type = 0
         self._unknown_shape = unknown_shape
+        self._int64_mode = int64_mode
 
     def __str__(self):
         """
@@ -1172,21 +1194,22 @@ class PrebuildTask(OpTask):
                                                      inputs=self._op_inputs,
                                                      outputs=self._op_outputs,
                                                      attrs=self._op_attrs,
-                                                     unknown_shape=self._unknown_shape)
+                                                     unknown_shape=self._unknown_shape,
+                                                     int64_mode=self._int64_mode)
             end = datetime.datetime.now()
             infomsg = "prebuild success. pattern[{}] module[{}] "\
                 "func[{}], time:{}/{}".format(pattern, self._op_module,
                                               self._op_func, start, end-start)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 0, pattern, infomsg)
-        except:                 # pylint: disable=bare-except
-            except_msg, except_dict_msg = telog.except_msg()
+        except Exception:       # 'pylint: disable=broad-except
+            except_msg, except_dict_msg = te_log.except_msg()
             errmsg = "prebuild failed. module[{}] func[{}]"\
                 .format(self._op_module, self._op_func)
             logger.info("%s, args:%s\n%s", errmsg, self._op_args, except_msg)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 1, 'None', errmsg,
-                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"\
+                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"
                                 .format(self._op_args,
                                         self._op_inputs,
                                         self._op_outputs,
@@ -1212,10 +1235,11 @@ class SingleOpTask(OpTask):
     Task to compile single tbe op
     """
     # pylint: disable=too-many-arguments
+
     def __init__(self, graph_id, task_id, op_module, op_type,
                  op_func, kernel_name, *op_args,
                  inputs=None, outputs=None, attrs=None,
-                 unknown_shape=False):
+                 unknown_shape=False, int64_mode=False):
         """
         init
         :param graph_id:
@@ -1239,6 +1263,7 @@ class SingleOpTask(OpTask):
         self._op_attrs = attrs
         self.build_type = 1
         self._unknown_shape = unknown_shape
+        self._int64mode = int64_mode
 
     def __str__(self):
         """
@@ -1260,7 +1285,8 @@ class SingleOpTask(OpTask):
                                                  inputs=self._op_inputs,
                                                  outputs=self._op_outputs,
                                                  attrs=self._op_attrs,
-                                                 unknown_shape=self._unknown_shape)
+                                                 unknown_shape=self._unknown_shape,
+                                                 int64_mode=self._int64mode)
             end = datetime.datetime.now()
             infomsg = "single op compile success. kernel[{}] "\
                 "module[{}] func[{}], time:{}/{}"\
@@ -1268,8 +1294,8 @@ class SingleOpTask(OpTask):
                         self._op_func, start, end-start)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 0, self._kernel_name, infomsg, op_res=res)
-        except:                 # pylint: disable=bare-except
-            except_msg, except_dict_msg = telog.except_msg()
+        except Exception:       # 'pylint: disable=broad-except
+            except_msg, except_dict_msg = te_log.except_msg()
             errmsg = "single op compile failed. kernel[{}] "\
                 "module[{}] func[{}]"\
                 .format(self._kernel_name, self._op_module,
@@ -1277,7 +1303,7 @@ class SingleOpTask(OpTask):
             logger.info("%s, args:%s\n%s", errmsg, self._op_args, except_msg)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
                                 1, self._kernel_name, errmsg,
-                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"\
+                                err_args="args:{}, input:{}, outputs:{}, attrs:{}"
                                 .format(self._op_args,
                                         self._op_inputs,
                                         self._op_outputs,
@@ -1303,6 +1329,7 @@ class FusionOpTask(OpTask):
     """
     Task to compile fusion op
     """
+
     def __init__(self, graph_id, task_id, json_str, kernel_name):
         """
         init
@@ -1340,15 +1367,16 @@ class FusionOpTask(OpTask):
             fusion_manager.op_build_cfg_en()
             op_run_env_func(self.op_env_cfg, "prerun")
             res = opfunc(self._json_str)
-            op_run_env_func(self.op_env_cfg, "postrun")
+            post_res = op_run_env_func(self.op_env_cfg, "postrun")
             end = datetime.datetime.now()
             infomsg = "fusion op compile success. "\
                 "kernel[{}], time:{}/{}"\
                 .format(self._kernel_name, start, end-start)
             return gen_task_res(self.build_type, self.graph_id, self.task_id,
-                                0, self._kernel_name, infomsg, op_res=res)
-        except:                 # pylint: disable=bare-except
-            except_msg, except_dict_msg = telog.except_msg()
+                                0, self._kernel_name, infomsg, op_res=res,
+                                post_res=post_res)
+        except Exception:       # 'pylint: disable=broad-except
+            except_msg, except_dict_msg = te_log.except_msg()
             errmsg = "fusion op compile fail. kernel_name[{}]"\
                 .format(self._kernel_name)
             logger.info("%s. json:%s\n%s", errmsg, self._json_str, except_msg)
@@ -1373,7 +1401,7 @@ class FusionOpTask(OpTask):
 # 'pylint: disable=too-many-arguments
 def dispatch_prebuild_task(graph_id, task_id, l1size,
                            op_module, op_type, op_func,
-                           unknown_shape, op_args):
+                           unknown_shape, op_args, int64_mode=False):
     """
     prebuild task
     :param graph_id:
@@ -1388,7 +1416,8 @@ def dispatch_prebuild_task(graph_id, task_id, l1size,
     task = PrebuildTask(graph_id, task_id, op_module,
                         op_type, op_func,
                         inputs=inputs, outputs=outputs, attrs=attrs,
-                        unknown_shape=unknown_shape)
+                        unknown_shape=unknown_shape,
+                        int64_mode=int64_mode)
     task.set_l1size(l1size)
     OpCompiler.compiler.dispatch_task(task)
 
@@ -1396,7 +1425,7 @@ def dispatch_prebuild_task(graph_id, task_id, l1size,
 # 'pylint: disable=too-many-arguments
 def dispatch_single_op_compile_task(graph_id, task_id, l1size, op_module,
                                     op_type, op_func, kernel_name,
-                                    unknown_shape, op_args):
+                                    unknown_shape, op_args, int64_mode=False):
     """
     single op build task
     :param graph_id:
@@ -1414,7 +1443,7 @@ def dispatch_single_op_compile_task(graph_id, task_id, l1size, op_module,
     task = SingleOpTask(graph_id, task_id, op_module,
                         op_type, op_func, kernel_name,
                         inputs=inputs, outputs=outputs, attrs=attrs,
-                        unknown_shape=unknown_shape)
+                        unknown_shape=unknown_shape, int64_mode=int64_mode)
     task.set_l1size(l1size)
     OpCompiler.compiler.dispatch_task(task)
 
@@ -1435,8 +1464,8 @@ def dispatch_fusion_op_compile_task(graph_id, task_id, l1size,
     OpCompiler.compiler.dispatch_task(task)
 
 
-def dispatch_autotune_op_compile_task(graph_id, task_id, l1size,
-                                      json_str, data_dict, kernel_name):
+def dispatch_autotune_task(graph_id, task_id, l1size,
+                           json_str, data_dict, kernel_name):
     """
     fusion op build task
     :param graph_id:
@@ -1463,7 +1492,7 @@ def import_py_module(module_list):
     OpCompiler.compiler.sync_data(task)
 
 
-def sync_py_object(module_name, obj_name):
+def sync_py_object(module_name, obj_name, has_value=False, obj_value=None):
     """
     sync python object to worker process
     :param module_name:
@@ -1471,11 +1500,14 @@ def sync_py_object(module_name, obj_name):
     """
     if OpCompiler.master_pid == 0:
         return
-
-    opm = importlib.import_module(module_name)
-    obj = mygetattr(opm, obj_name)
-    obj = zlib.compress(pickle.dumps(obj))
-    task = ObjSyncTask(module_name, obj_name, obj)
+    if has_value:
+        obj_value = zlib.compress(pickle.dumps(obj_value))
+        task = ObjSyncTask(module_name, obj_name, obj_value)
+    else:
+        opm = importlib.import_module(module_name)
+        obj = mygetattr(opm, obj_name)
+        obj = zlib.compress(pickle.dumps(obj))
+        task = ObjSyncTask(module_name, obj_name, obj)
 
     if OpCompiler.master_pid == os.getpid():
         OpCompiler.compiler.sync_data(task)
@@ -1483,6 +1515,17 @@ def sync_py_object(module_name, obj_name):
         # This is autotune sub process
         pid = os.getpid()
         OpCompiler.task_dispatcher.sync_data(task, pidfrom=pid)
+
+
+def sync_py_object_serial(module_name, obj_name, obj_value):
+    """
+    sync python object
+    :param module_name:
+    :param obj_name:
+    :param obj_value:
+    """
+    pymodule = importlib.import_module(module_name)
+    mysetattr(pymodule, obj_name, obj_value)
 
 
 def sync_syspath(syspath):
@@ -1513,10 +1556,11 @@ def op_run_env_func(op_env_cfg, func_name):
         if len(prerun) > 2:
             kwargs = prerun[2]
 
-        prerun[0](*args, **kwargs)
+        return prerun[0](*args, **kwargs)
     except Exception:   # 'pylint: disable=broad-except
-        except_msg, except_dict_msg = telog.except_msg()
+        except_msg, _ = te_log.except_msg()
         logger.info("%s", except_msg)
+    return
 
 
 def compile_op(json_str, op_env_cfg=None):
@@ -1534,11 +1578,11 @@ def compile_op(json_str, op_env_cfg=None):
         try:
             op_run_env_func(op_env_cfg, "prerun")
             fusion_util.fusion_op(json_str)
-            op_run_env_func(op_env_cfg, "postrun")
+            post_res = op_run_env_func(op_env_cfg, "postrun")
             res = gen_task_res(2, gid, tid, 0, kernel_name,
-                               "syncbuild succ")
+                               "syncbuild succ", post_res=post_res)
         except Exception:   # 'pylint: disable=broad-except
-            except_msg, _ = telog.except_msg()
+            except_msg, _ = te_log.except_msg()
             errmsg = "compile op fail. kernel[{}]".format(kernel_name)
             logger.info("%s. json:%s\n%s", errmsg, json_str, except_msg)
             res = gen_task_res(2, gid, tid, 1, kernel_name,
@@ -1563,6 +1607,9 @@ def compile_op(json_str, op_env_cfg=None):
 
 
 def compile_op_sync(json_str):
+    """
+    compile op synchronously
+    """
     defer = compile_op(json_str)
     while True:
         time.sleep(0.01)
@@ -1572,6 +1619,9 @@ def compile_op_sync(json_str):
 
 
 def update_running_task(task):
+    """
+    update runing task status
+    """
     if OpCompiler.compiler is None:
         return
     OpCompiler.compiler.update_running_task(task)

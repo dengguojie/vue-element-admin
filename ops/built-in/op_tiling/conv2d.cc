@@ -1,20 +1,29 @@
-/*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file conv2d.cpp
+ * \brief tiling function of conv2d
+ */
 #include <string>
 #include <nlohmann/json.hpp>
 #include "register/op_tiling.h"
 #include "graph/debug/ge_log.h"
+#include "conv_tiling.h"
+#include "op_log.h"
 
 namespace optiling {
 /*
@@ -25,87 +34,53 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool Conv2DTiling(const std::string &opType,
-                  const TeOpParas &opParas,
-                  const nlohmann::json &opCompileInfo,
-                  OpRunInfo &runInfo)
-{
-    if (opParas.inputs.empty() || opParas.outputs.empty() ||
-        opParas.inputs[0].tensor.empty() || opParas.outputs[0].tensor.empty() ||
-        opParas.inputs[0].tensor[0].shape.empty() ||
-        opParas.outputs[0].tensor[0].shape.empty()) {
-        return false;
-    }
-    std::string mode = opCompileInfo["dynamic_mode"].get<std::string>();
-    GELOGD("dynamic_mode is [%s]", mode.c_str());
-    GELOGD("Current format is %s, Ori format is %s",
-        opParas.inputs[0].tensor[0].format.c_str(),
-        opParas.inputs[0].tensor[0].ori_format.c_str());
-    int32_t tilingID = 0;
-    uint32_t blockDim = 0;
-    if (mode == "dynamic_hw") {
-        auto h = opParas.inputs[0].tensor[0].shape[2];
-        auto w = opParas.inputs[0].tensor[0].shape[3];
-        auto& tilingSeeds = opCompileInfo.at("repo_seeds");
-        for (auto it = tilingSeeds.begin(); it != tilingSeeds.end(); it++) {
-            auto& seed = it.value();
-            if (h == seed[0] && w == seed[1]) {
-                tilingID = std::stoi(it.key());
-                blockDim = (uint32_t)opCompileInfo["block_dim"][it.key()];
-            }
-        }
-        if (tilingID == 0) {
-            auto& tilingCases = opCompileInfo.at("tiling_range");
-            for (auto it = tilingCases.begin(); it != tilingCases.end(); it++) {
-                auto& ranges = it.value();
-                for (auto itRange = ranges.begin(); itRange != ranges.end(); itRange++) {
-                    if (h >= (*itRange)[0] && h <= (*itRange)[1] &&
-                        w >= (*itRange)[2] && w <= (*itRange)[3]) {
-                        tilingID = std::stoi(it.key());
-                        blockDim = (uint32_t)opCompileInfo["block_dim"][it.key()];
-                    }
-                }
-            }
-        }
+bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
+                  OpRunInfo& runInfo) {
+  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
+      opParas.outputs[0].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
+      opParas.outputs[0].tensor[0].shape.empty()) {
+    return false;
+  }
+  std::string mode = opCompileInfo["dynamic_mode"].get<std::string>();
+  GELOGD("dynamic_mode is [%s]", mode.c_str());
+  GELOGD("Current format is %s, Ori format is %s", opParas.inputs[0].tensor[0].format.c_str(),
+         opParas.inputs[0].tensor[0].ori_format.c_str());
 
-        runInfo.block_dim = blockDim;
-        ByteBufferPut(runInfo.tiling_data, tilingID);
-        ByteBufferPut(runInfo.tiling_data, (int32_t)h);
-        ByteBufferPut(runInfo.tiling_data, (int32_t)w);
-        auto outH = opParas.outputs[0].tensor[0].shape[2];
-        auto outW = opParas.outputs[0].tensor[0].shape[3];
-        ByteBufferPut(runInfo.tiling_data, (int32_t)outH);
-        ByteBufferPut(runInfo.tiling_data, (int32_t)outW);
+  int32_t tilingId = 0;
+  if (mode == "dynamic_hw") {
+    int32_t h = opParas.inputs[0].tensor[0].shape[2];
+    int32_t w = opParas.inputs[0].tensor[0].shape[3];
+    int32_t outH = opParas.outputs[0].tensor[0].shape[2];
+    int32_t outW = opParas.outputs[0].tensor[0].shape[3];
+    tilingId = ConvTiling({h, w}, mode, opCompileInfo, runInfo);
+    ByteBufferPut(runInfo.tiling_data, tilingId);
+    ByteBufferPut(runInfo.tiling_data, h);
+    ByteBufferPut(runInfo.tiling_data, w);
+    ByteBufferPut(runInfo.tiling_data, outH);
+    ByteBufferPut(runInfo.tiling_data, outW);
 
-        GELOGD("tiling_data is %d, %d, %d, %d, %d", tilingID, (int32_t)h, (int32_t)w,
-               (int32_t)outH, (int32_t)outW);
-    } else if (mode == "dynamic_batch") {
-        auto curB = opParas.inputs[0].tensor[0].shape[0];
-        auto& tilingCase = opCompileInfo.at("tiling_range");
-        for (auto it = tilingCase.begin(); it != tilingCase.end(); it++) {
-            auto& range = it.value();
-            if (curB >= range[0] && curB <= range[1]) {
-                tilingID = std::stoi(it.key());
-                runInfo.block_dim = (uint32_t)opCompileInfo["block_dim"][it.key()];
-            }
-        }
-        ByteBufferPut(runInfo.tiling_data, tilingID);
-        ByteBufferPut(runInfo.tiling_data, (int32_t)curB);
-        GELOGD("Input info is %d, %d.", tilingID, (int32_t)curB);
+    GELOGD("tiling_data is %d, %d, %d, %d, %d", tilingId, h, w, outH, outW);
+  } else if (mode == "dynamic_batch") {
+    int32_t batch = opParas.inputs[0].tensor[0].shape[0];
+    tilingId = ConvTiling({batch}, mode, opCompileInfo, runInfo);
+    ByteBufferPut(runInfo.tiling_data, tilingId);
+    ByteBufferPut(runInfo.tiling_data, batch);
 
-    } else {
-        GE_LOGE("mode: %s is not supported", mode.c_str());
-        return false;
-    }
+    GELOGD("Input info is %d, %d", tilingId, batch);
+  } else {
+    OP_LOGE(opType.c_str(), "op ScatterAddTiling is not supported");
+    return false;
+  }
 
-    if (tilingID == 0) {
-        GE_LOGE("This shape is not covered by any tiling, "
+  if (tilingId == 0) {
+    OP_LOGE(opType.c_str(),
+            "This shape is not covered by any tiling, "
             "please modify range and recompile");
-        return false;
-    }
-    return true;
+    return false;
+  }
+  return true;
 }
 
 // register tiling interface of the conv2d
 REGISTER_OP_TILING_FUNC(Conv2D, Conv2DTiling);
-}
+}  // namespace optiling

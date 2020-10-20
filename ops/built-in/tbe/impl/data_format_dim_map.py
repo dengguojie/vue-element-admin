@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 data_format_dim_map
 
   Op_description :
@@ -37,15 +35,12 @@ data_format_dim_map
     [3] All : shape size limit is 2147483648.
 """
 
-from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from te.utils.op_utils import *
-import topi
-from topi.cce import util
+from te import tvm
+from te.utils import para_check
+from te.utils import shape_util
 
 # mod rhs
 MOD_RHS = 4
@@ -66,13 +61,13 @@ def _data_format_dim_map_mod(data):
     data mod by 4
     """
 
-    data = te.lang.cce.cast_to(data, 'float16')
-    data = te.lang.cce.vadds(data, MOD_RHS)
-    data_div_4 = te.lang.cce.vmuls(data, QUARTER)
-    data_floor = te.lang.cce.floor(data_div_4)
-    data_floor = te.lang.cce.cast_to(data_floor, 'float16')
-    data_mul_4 = te.lang.cce.vmuls(data_floor, MOD_RHS)
-    data_mod = te.lang.cce.vsub(data, data_mul_4)
+    data = tbe.cast_to(data, 'float16')
+    data = tbe.vadds(data, MOD_RHS)
+    data_div_4 = tbe.vmuls(data, QUARTER)
+    data_floor = tbe.floor(data_div_4)
+    data_floor = tbe.cast_to(data_floor, 'float16')
+    data_mul_4 = tbe.vmuls(data_floor, MOD_RHS)
+    data_mod = tbe.vsub(data, data_mul_4)
     return data_mod
 
 
@@ -90,17 +85,17 @@ def _dimension_index(data_mod, ind):
     dimension index
     """
 
-    is_zero = te.lang.cce.vcmp(data_mod, 0., 'eq')
-    is_one = te.lang.cce.vcmp(data_mod, 1., 'eq')
-    is_two = te.lang.cce.vcmp(data_mod, 2., 'eq')
-    return te.lang.cce.cast_to(te.lang.cce.vsel(is_zero, ind[0], \
-                               te.lang.cce.vsel(is_one, ind[1], \
-                               te.lang.cce.vsel(is_two, ind[2], ind[3]))), \
+    is_zero = tbe.vcmp(data_mod, 0., 'eq')
+    is_one = tbe.vcmp(data_mod, 1., 'eq')
+    is_two = tbe.vcmp(data_mod, 2., 'eq')
+    return tbe.cast_to(tbe.vsel(is_zero, ind[0], \
+                                                tbe.vsel(is_one, ind[1], \
+                                                                 tbe.vsel(is_two, ind[2], ind[3]))), \
                                "int32")
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@fusion_manager.register("data_format_dim_map")
+@tbe_platform.fusion_manager.fusion_manager.register("data_format_dim_map")
 def _data_format_dim_map_compute(x,
                                  y,
                                  src_format='NHWC',
@@ -134,7 +129,9 @@ def _data_format_dim_map_compute(x,
     return _dimension_index(data_mod, ind)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_STR, OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def data_format_dim_map(x,
                         y,
                         src_format="NHWC",
@@ -161,11 +158,11 @@ def data_format_dim_map(x,
     dtype_input = x.get("dtype")
 
     # check kernel name, shape, size, dtype
-    check_shape(shape_input, param_name="x")
-    shape_input, _ = refine_shape_axes(shape_input, [])
+    para_check.check_shape(shape_input, param_name="x")
+    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
     check_list = ("int32", )
     dtype_input = dtype_input.lower()
-    check_dtype(dtype_input, check_list, param_name="x")
+    para_check.check_dtype(dtype_input, check_list, param_name="x")
 
     # check length of format
     if len(src_format) != 4:
@@ -185,11 +182,11 @@ def data_format_dim_map(x,
                                        kernel_name)
 
     with tvm.target.cce():
-        sch = topi.generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
     config = {
         "name": kernel_name,
         "print_ir": False,
         "tensor_list": (data_input, res),
         "bool_storage_as_1bit": False
     }
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

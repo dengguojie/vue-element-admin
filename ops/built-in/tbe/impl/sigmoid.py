@@ -1,33 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sigmoid
 """
+import functools
 
-from functools import reduce as reduceIns
-
-import te.lang.cce
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
-from topi import generic
+from te.lang import cce as tbe
+from te.utils import para_check
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("sigmoid")
+# pylint: disable=unused-argument,too-many-locals,invalid-name
+@tbe_platform.fusion_manager.fusion_manager.register("sigmoid")
 def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """
     calculating data
@@ -47,10 +44,8 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """
     data_input = x
     dtype = x.dtype
-    exp_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vexp", "float32")
-    mul_support = tbe_platform.cce_conf.api_check_support(
-        "te.lang.cce.vmuls", "float32")
+    exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
         error_info = {}
         error_info['errCode'] = 'E80008'
@@ -61,29 +56,27 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
         raise RuntimeError(
             error_info, "In op[%s], the parameter[%s]'s dtype "
             "should be [%s], but actually is [%s]." %
-            (error_info['op_name'], error_info['param_name'],
-             error_info['expect_value'], error_info['real_value']))
+            (error_info['op_name'], error_info['param_name'], error_info['expect_value'], error_info['real_value']))
 
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
-    tmp_negative = te.lang.cce.vmuls(data_input, const_num_neg_one)
+    tmp_negative = tbe.vmuls(data_input, const_num_neg_one)
     if dtype == "float32" and not exp_support:
-        tmp_negative = te.lang.cce.cast_to(tmp_negative, "float16")
-    tmp_exp = te.lang.cce.vexp(tmp_negative)
+        tmp_negative = tbe.cast_to(tmp_negative, "float16")
+    tmp_exp = tbe.vexp(tmp_negative)
     if dtype == "float32" and not exp_support:
-        tmp_exp = te.lang.cce.cast_to(tmp_exp, "float32")
-    tmp_sum = te.lang.cce.vadds(tmp_exp, const_num_one)
+        tmp_exp = tbe.cast_to(tmp_exp, "float32")
+    tmp_sum = tbe.vadds(tmp_exp, const_num_one)
     if dtype == "float32":
         inp_shape = tmp_sum.shape
-        tensor_one = te.lang.cce.broadcast(tvm.const(1, dtype), inp_shape)
-        tmp_rec = te.lang.cce.vdiv(tensor_one, tmp_sum)
+        tensor_one = tbe.broadcast(tvm.const(1, dtype), inp_shape)
+        tmp_rec = tbe.vdiv(tensor_one, tmp_sum)
     else:
-        tmp_rec = te.lang.cce.vrec(tmp_sum)
+        tmp_rec = tbe.vrec(tmp_sum)
     return tmp_rec
 
 
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sigmoid(x, y, kernel_name="sigmoid"):
     """
     calculating data
@@ -103,20 +96,18 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype")
-    op_utils.check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
     input_dtype = dtype.lower()
     check_list = ("float16", "float32")
-    op_utils.check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
-    fused_shape = [reduceIns(lambda a, b: a * b, shape[:])]
-    data_input = tvm.placeholder(fused_shape,
-                                 name="data_input",
-                                 dtype=input_dtype)
+    fused_shape = [functools.reduce(lambda a, b: a * b, shape[:])]
+    data_input = tvm.placeholder(fused_shape, name="data_input", dtype=input_dtype)
 
     res = sigmoid_compute(data_input, y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

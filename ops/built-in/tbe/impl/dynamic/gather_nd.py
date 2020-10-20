@@ -1,19 +1,20 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 gather_nd
 """
-
 from te import tvm
 import te.lang.dynamic
 from topi.cce import util
@@ -53,7 +54,6 @@ TILING_MODE_1 = 1
 # params is cache in UB
 TILING_MODE_2 = 2
 
-# paramsRowSize >= 32
 # paramsRow is 32B aligned, params is cache in L1
 TILING_MODE_3 = 3
 # paramsRow is 32B aligned, params is in gm
@@ -508,8 +508,6 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_once * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # indices_row_num_once: row_num_once_ub * inner_loop_num + row_num_once_tail_ub
-            # a1. process row_num_once_ub * inner_loop_num
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 self.process_loop_mode_2(self.inner_loop_num, indices_num_offset, indices_ub, res_ub, x_ub)
 
@@ -519,7 +517,6 @@ class GatherNd():
                 self.process_last_mode_2(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
                                          indices_ub, res_ub, x_ub)
 
-        # b. indices_row_num_last: row_num_once_ub * inner_loop_num_last + row_num_last_tail_ub
         with tik_instance.if_scope(self.indices_row_num_last > 0):
             indices_num_offset = block_id * self.indices_num_each_core + \
                                  self.indices_loop_num * self.indices_row_num_once
@@ -528,11 +525,9 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_last * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # b1. process row_num_once_ub * inner_loop_num_last
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
                 self.process_loop_mode_2(self.inner_loop_num_last, indices_num_offset, indices_ub, res_ub, x_ub)
 
-            # b2. process row_num_last_tail_ub
             with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
                 inner_indices_offset = self.inner_loop_num_last * self.row_num_once_ub
                 self.process_last_mode_2(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
@@ -560,8 +555,6 @@ class GatherNd():
         res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
 
-        # 1. indices_num_each_core: indices_row_num_once * indices_loop_num + indices_row_num_last
-        # a. indices_row_num_once * indices_loop_num
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
             # move indices data to ub from gm
@@ -569,8 +562,6 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_once * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # indices_row_num_once = row_num_once_ub * inner_loop_num + row_num_once_tail_ub
-            # a1. process row_num_once_ub * inner_loop_num
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 self.process_loop_mode_1(self.inner_loop_num, indices_num_offset, indices_ub, res_ub)
 
@@ -580,7 +571,6 @@ class GatherNd():
                 self.process_last_mode_1(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
                                          indices_ub, res_ub)
 
-        # b. indices_row_num_last: row_num_once_ub * inner_loop_num_last + row_num_last_tail_ub
         with tik_instance.if_scope(self.indices_row_num_last > 0):
             indices_num_offset = block_id * self.indices_num_each_core + \
                                  self.indices_loop_num * self.indices_row_num_once
@@ -590,10 +580,8 @@ class GatherNd():
                                               BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
-                # b1. process row_num_once_ub * inner_loop_num_last
                 self.process_loop_mode_1(self.inner_loop_num_last, indices_num_offset, indices_ub, res_ub)
 
-            # b2. process row_num_last_tail_ub
             with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
                 inner_indices_offset = self.inner_loop_num_last * self.row_num_once_ub
                 self.process_last_mode_1(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
@@ -745,8 +733,6 @@ class GatherNd():
                                      name="res_ub", scope=tik.scope_ubuf)
         half_ub_params_elem = half_ub_size // self.params_dsize
 
-        # 1. indices_num_each_core = indices_row_num_once * indices_loop_num + indices_row_num_last
-        # a. process indices_row_num_once * indices_loop_num
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_num_offset = block_id * self.indices_num_each_core + \
                                  indices_loop_i * self.indices_row_num_once
@@ -870,7 +856,7 @@ class GatherNd():
                 suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
                 gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
 
-            # process the front part of one params_row: one_row_loop * half_ub_params_elem
+            # process the front part of one params_row
             with tik_instance.for_range(0, self.one_row_loop) as row_inner_i:
                 # move half_ub_params_elem data of one row to res_ub from gm
                 tik_instance.data_move(res_ub, self.x[gm_offset_i + row_inner_i*half_ub_params_elem], 0,
@@ -917,8 +903,6 @@ class GatherNd():
         res_ub = tik_instance.Tensor(self.params_dtype, (half_ub_size // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
 
-        # 1. indices_num_each_core: indices_row_num_once * indices_loop_num + indices_row_num_last
-        # a. process indices_row_num_once * indices_loop_num
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
             # move indices data to ub from gm
@@ -926,9 +910,8 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_once * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # process first (indices_loop_num - 1) loop: indices_row_num_once * (indices_loop_num - 1)
             self.process_loop_mode_6(self.indices_row_num_once, indices_num_offset, indices_ub, res_ub)
-            # process last one loop in indices_loop_num: indices_row_num_once * 1
+            # process last one loop in indices_loop_num
             self.process_last_mode_6(self.indices_row_num_once, indices_num_offset, indices_ub, res_ub)
 
         # b. process indices_row_num_last
@@ -1150,9 +1133,6 @@ class GatherNd():
                                          name="indices_ub", scope=tik.scope_ubuf)
         res_ub = tik_instance.Tensor(self.params_dtype, (half_ub_size // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
-
-        # 1. indices_num_each_core: indices_row_num_once * indices_loop_num + indices_row_num_last
-        # a. process indices_row_num_once * indices_loop_num
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
             # move indices data to ub from gm
@@ -1160,8 +1140,6 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_once * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # indices_row_num_once: row_num_once_ub * inner_loop_num + row_num_once_tail_ub
-            # a1. process row_num_once_ub * inner_loop_num
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 self.process_loop_32b_aligned(self.inner_loop_num, indices_num_offset, indices_ub, res_ub, x_src)
 
@@ -1171,7 +1149,6 @@ class GatherNd():
                 self.process_last_32b_aligned(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
                                               indices_ub, res_ub, x_src)
 
-        # b. indices_row_num_last: row_num_once_ub * inner_loop_num_last + row_num_last_tail_ub
         with tik_instance.if_scope(self.indices_row_num_last > 0):
             indices_num_offset = block_id * self.indices_num_each_core + \
                                  self.indices_loop_num * self.indices_row_num_once
@@ -1180,7 +1157,6 @@ class GatherNd():
                                    ceil_value(self.indices_row_num_last * self.indices_last_dim * self.indices_dsize,
                                               BLOCK_SIZE), 0, 0)
 
-            # b1. process row_num_once_ub * inner_loop_num_last
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
                 self.process_loop_32b_aligned(self.inner_loop_num_last, indices_num_offset, indices_ub, res_ub, x_src)
 
@@ -1345,7 +1321,6 @@ class GatherNd():
             self.get_tiling_args(self.tiling_ub)
 
             with tik_instance.if_scope(block_id < self.need_core_num):
-                # 1. params_row size < 32
                 with tik_instance.if_scope(tik.any(tiling_mode == TILING_MODE_1, tiling_mode == TILING_MODE_2)):
                     # TILING_MODE_1, params not cache
                     with tik_instance.if_scope(tiling_mode == TILING_MODE_1):

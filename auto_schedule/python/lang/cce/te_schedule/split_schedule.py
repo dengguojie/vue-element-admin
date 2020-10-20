@@ -1,26 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 split schedule
 """
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
-from functools import reduce as functools_reduce
 import math
+from functools import reduce as functools_reduce
 
 from te import tvm
 from te import platform as cce
@@ -120,7 +120,6 @@ def _check_align(shape_list, block_cnt, split_dim):
 
 def do_split_schedule(divide_flag, split_dim, align_flag, shape_list, i, dtype, sch, res, res_op,  # pylint: disable=too-many-arguments
                       block_idx, tensor_list, block_cnt):  # pylint: disable=too-many-arguments
-
     """
     do_split_schedule
     :param divide_flag:

@@ -1,27 +1,33 @@
-/* Copyright (C) 2018. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2018 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use
- * this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file many_dynamic_plugin.cpp
+ * \brief
+ */
 #include "register/register.h"
 #include "register/auto_mapping_util.h"
 #include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
 
-using namespace domi::tensorflow;
+#include "op_log.h"
 
 namespace domi {
 
-Status GetAttrValue(const NodeDef *node, std::string &attr_name, int32_t &dynamic_tensor_num) {
-  tensorflow::AttrValue attr_num;
+Status GetAttrValue(const domi::tensorflow::NodeDef* node, std::string& attr_name, int32_t& dynamic_tensor_num) {
+  domi::tensorflow::AttrValue attr_num;
   if (!(ge::AutoMappingUtil::FindAttrValue(node, attr_name, attr_num))) {
     OP_LOGE("In NodeDef %s dynamic attr [%s] is not exist.", node->name().c_str(), attr_name.c_str());
     return FAILED;
@@ -52,8 +58,8 @@ Status SparseSplitMapping(const google::protobuf::Message* op_src, ge::Operator&
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
   std::string attr_name = "num_split";
-  std::vector<std::string> dynamic_output {"y_indices", "y_values", "y_shape"};
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  std::vector<std::string> dynamic_output{"y_indices", "y_values", "y_shape"};
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
@@ -64,9 +70,9 @@ Status SparseSplitMapping(const google::protobuf::Message* op_src, ge::Operator&
 
   bool is_pushback = true;
   for (std::string output_name : dynamic_output) {
-      (void)op_desc->AddDynamicOutputDesc(output_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d",
-          node->name().c_str(), output_name.c_str(), dynamic_tensor_num);
+    (void)op_desc->AddDynamicOutputDesc(output_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d", node->name().c_str(), output_name.c_str(),
+            dynamic_tensor_num);
   }
   return SUCCESS;
 }
@@ -88,9 +94,9 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
   std::string attr_name = "num_features";
-  std::vector<std::string> dynamic_input {"float_values", "bucket_boundaries"};
+  std::vector<std::string> dynamic_input{"float_values", "bucket_boundaries"};
   std::string dynamic_output = "y";
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
@@ -101,13 +107,13 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
 
   bool is_pushback = true;
   for (std::string input_name : dynamic_input) {
-      (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-          node->name().c_str(), input_name.c_str(), dynamic_tensor_num);
+    (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
+            dynamic_tensor_num);
   }
   (void)op_desc->AddDynamicOutputDesc(dynamic_output, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-  OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d",
-      node->name().c_str(), dynamic_output.c_str(), dynamic_tensor_num);
+  OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d", node->name().c_str(), dynamic_output.c_str(),
+          dynamic_tensor_num);
 
   return SUCCESS;
 }
@@ -129,9 +135,9 @@ Status DynamicStitchMapping(const google::protobuf::Message* op_src, ge::Operato
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
   std::string attr_name = "N";
-  std::vector<std::string> dynamic_input {"indices", "x"};
+  std::vector<std::string> dynamic_input{"indices", "x"};
 
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
@@ -142,9 +148,9 @@ Status DynamicStitchMapping(const google::protobuf::Message* op_src, ge::Operato
 
   bool is_pushback = true;
   for (std::string input_name : dynamic_input) {
-      (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-          node->name().c_str(), input_name.c_str(), dynamic_tensor_num);
+    (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
+            dynamic_tensor_num);
   }
 
   return SUCCESS;
@@ -167,8 +173,8 @@ Status ParallelDynamicStitchMapping(const google::protobuf::Message* op_src, ge:
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
   std::string attr_name = "N";
-  std::vector<std::string> dynamic_input {"indices", "x"};
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  std::vector<std::string> dynamic_input{"indices", "x"};
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
@@ -179,9 +185,9 @@ Status ParallelDynamicStitchMapping(const google::protobuf::Message* op_src, ge:
 
   bool is_pushback = true;
   for (std::string input_name : dynamic_input) {
-      (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-          node->name().c_str(), input_name.c_str(), dynamic_tensor_num);
+    (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
+            dynamic_tensor_num);
   }
 
   return SUCCESS;
@@ -204,8 +210,8 @@ Status SparseConcatMapping(const google::protobuf::Message* op_src, ge::Operator
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
   std::string attr_name = "N";
-  std::vector<std::string> dynamic_input {"indices", "values", "shapes"};
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  std::vector<std::string> dynamic_input{"indices", "values", "shapes"};
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
@@ -216,9 +222,9 @@ Status SparseConcatMapping(const google::protobuf::Message* op_src, ge::Operator
 
   bool is_pushback = true;
   for (std::string input_name : dynamic_input) {
-      (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-          node->name().c_str(), input_name.c_str(), dynamic_tensor_num);
+    (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
+            dynamic_tensor_num);
   }
 
   return SUCCESS;
@@ -240,9 +246,9 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
 
-  const NodeDef *node = reinterpret_cast<const NodeDef *>(op_src);
+  const domi::tensorflow::NodeDef* node = reinterpret_cast<const domi::tensorflow::NodeDef*>(op_src);
 
-  std::vector<std::string> dynamic_input {"indices", "shapes"};
+  std::vector<std::string> dynamic_input{"indices", "shapes"};
   std::string attr_N = "N";
   int32_t N_value = 0;
   ret = GetAttrValue(node, attr_N, N_value);
@@ -271,17 +277,17 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
 
   bool is_pushback = true;
   for (std::string input_name : dynamic_input) {
-      (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(N_value), is_pushback);
-      OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-          node->name().c_str(), input_name.c_str(), N_value);
+    (void)op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(N_value), is_pushback);
+    OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
+            N_value);
   }
   (void)op_desc->AddDynamicInputDesc(value_input, static_cast<uint32_t>(sparse_types_value), is_pushback);
-  OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-      node->name().c_str(), value_input.c_str(), sparse_types_value);
+  OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), value_input.c_str(),
+          sparse_types_value);
 
   (void)op_desc->AddDynamicInputDesc(dense_inputs, static_cast<uint32_t>(dense_types_value), is_pushback);
-  OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d",
-      node->name().c_str(), dense_inputs.c_str(), dense_types_value);
+  OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), dense_inputs.c_str(),
+          dense_types_value);
 
   return SUCCESS;
 }
@@ -292,4 +298,4 @@ REGISTER_CUSTOM_OP("SparseCross")
     .ParseParamsFn(SparseCrossMapping)
     .ImplyType(ImplyType::AI_CPU);
 
-}
+}  // namespace domi

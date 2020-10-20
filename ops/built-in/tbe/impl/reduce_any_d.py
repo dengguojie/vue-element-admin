@@ -1,17 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce_any_d
 
   Op_description :
@@ -36,15 +37,11 @@ reduce_any_d
     [2] `aixs` may be int or list, must be in the range `[-rank(x), rank(x))`.
     [3] `keepdims`:An optional `bool`. Defaults to `False`.
 """
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import refine_shape_axes
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name
@@ -52,7 +49,7 @@ from te.utils.op_utils import *
 NONE_TYPE = type(None)
 
 
-@fusion_manager.register("reduce_any_d")
+@tbe_platform.fusion_manager.fusion_manager.register("reduce_any_d")
 def reduce_any_d_compute(x, y, axes, keepdims,
                          kernel_name="reduce_any_d"):
     """
@@ -77,7 +74,7 @@ def reduce_any_d_compute(x, y, axes, keepdims,
     Tensor after any compute
 
     """
-    shape = te.lang.cce.util.shape_to_list(x.shape)
+    shape = shape_util.shape_to_list(x.shape)
     shape_len = len(shape)
     if not axes:
         axes = range(shape_len)
@@ -85,14 +82,16 @@ def reduce_any_d_compute(x, y, axes, keepdims,
         axes = list(axes)
 
     dtype = x.dtype
-    data_fp16 = te.lang.cce.cast_to(x, "float16")
-    data_abs = te.lang.cce.vabs(data_fp16)
-    res_tmp = te.lang.cce.reduce_max(data_abs, axis=axes, keepdims=keepdims)
-    res_s8 = te.lang.cce.cast_to(res_tmp, dtype, True)
+    data_fp16 = tbe.cast_to(x, "float16")
+    data_abs = tbe.vabs(data_fp16)
+    res_tmp = tbe.reduce_max(data_abs, axis=axes, keepdims=keepdims)
+    res_s8 = tbe.cast_to(res_tmp, dtype, True)
     return res_s8
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT),
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     """
     Reduce a tensor on a certain axes based on max
@@ -119,12 +118,12 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     shape = x.get("shape")
     dtype = x.get("dtype")
 
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
 
     if dtype == "bool":
         dtype = "int8"
     check_list = ("int8",)
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     shape_len = len(shape)
     if not axes:
@@ -133,12 +132,12 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     if hasattr(axes, 'index'):
         axes = list(axes)
 
-    axes = util.axis_check(shape_len, axes)
+    axes = shape_util.axis_check(shape_len, axes)
 
-    is_5hdc = util.check_and_init_5hdc_reduce_support(x, axes)
+    is_5hdc = para_check.check_and_init_5hdc_reduce_support(x, axes)
     if not is_5hdc:
-        shape, axes = util.shape_refine(list(shape), axes)
-        shape, axes = util.simplify_axis_shape(shape, axes)
+        shape, axes = shape_util.shape_refine(list(shape), axes)
+        shape, axes = shape_util.simplify_axis_shape(shape, axes)
 
     inp_dtype = dtype.lower()
     data_input = tvm.placeholder(shape, name="data_input_" + kernel_name, dtype=inp_dtype)
@@ -149,8 +148,8 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
         res.ori_format = x["ori_format"]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

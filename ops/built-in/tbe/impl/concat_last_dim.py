@@ -1,21 +1,26 @@
+# /usr/bin/env python
+# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 concat_last_dim
 """
-from functools import reduce as functools_reduce
+import functools
+
+import te.platform as tbe_platform
 from te import tik
-from te import platform as tbe_platform
 
 # vnchwconv can deal 16*16
 TRANSPOSE_SIZE = 256
@@ -24,7 +29,8 @@ ONE_BLOCK_FP16_SIZE = 16
 
 
 def get_ceil_int(int1, int2):
-    """get cel for input1 and input2
+    """
+    get cel for input1 and input2
     """
     if int1 == 0:
         return 1
@@ -38,10 +44,12 @@ def get_ceil_int(int1, int2):
 # pylint: disable=too-many-instance-attributes,too-many-arguments
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
 class ConcatWithVnchw:
-    """Function: use to finish ConcatLastDim main functions
+    """
+    Function: use to finish ConcatLastDim main functions
     """
     def __init__(self, input_data, output_data, kernel_name="concat_last_dim"):
-        """init concat base parameters
+        """
+        init concat base parameters
         """
         self.input_shapes = []
         self.data_dtype = input_data[0].get("dtype").lower()
@@ -80,7 +88,8 @@ class ConcatWithVnchw:
             "float16", (self.dst_size,), scope=tik.scope_gm, name="data_gm_out")
 
     def whether_last_dim_same(self):
-        """check whether all the last dim of inputs are the same
+        """
+        check whether all the last dim of inputs are the same
         """
         last_dim_the_same = True
         input_last_dim = self.input_shapes[0][-1]
@@ -120,7 +129,7 @@ class ConcatWithVnchw:
         if self.data_dtype in ["float32", "float16"] \
                 and input_last_dim in sup_shape \
                 and self.input_num in sup_count \
-                and output_last_dim * factor <= 16 and self.src_size >= 256:
+                and output_last_dim * factor <= 16 and self.src_size >= TRANSPOSE_SIZE:
             self.use_last_dim = True
 
         if self.data_dtype in ["float16"] \
@@ -136,9 +145,10 @@ class ConcatWithVnchw:
         return self.use_last_dim or self.use_last_dim_odd
 
     def get_tensor_size_in_fp16(self, data_shape):
-        """get_tensor_size_in_fp16
         """
-        data_size = functools_reduce(lambda x, y: x * y, data_shape)
+        get_tensor_size_in_fp16
+        """
+        data_size = functools.reduce(lambda x, y: x * y, data_shape)
         fp16_size = data_size
         if self.data_dtype == "float32":
             fp16_size = fp16_size * 2
@@ -146,7 +156,8 @@ class ConcatWithVnchw:
 
     def concat_last_dim_one_core(self, src_core_offset, des_core_offset,
                                  core_pro, mov_tail, max_mov_num):
-        """concat_last_dim_one_core
+        """
+        concat_last_dim_one_core
         """
         # per core scedule
         if mov_tail != 0:
@@ -157,24 +168,24 @@ class ConcatWithVnchw:
         core_tail = core_pro % max_mov_num
 
         input_ub_0 = \
-            self.tik_instance.Tensor("float16", (256*max_mov_num,),
+            self.tik_instance.Tensor("float16", (TRANSPOSE_SIZE*max_mov_num,),
                                      tik.scope_ubuf, "input_ub_0")
         vnchw_ub_0 = \
             self.tik_instance.Tensor("float16",
-                                     (256*self.input_num*max_mov_num,),
+                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "vnchw_ub_0")
         out_ub_0 = \
             self.tik_instance.Tensor("float16",
-                                     (256*self.input_num*max_mov_num,),
+                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "out_ub_0")
-        input_ub_1 = self.tik_instance.Tensor("float16", (256*max_mov_num,),
+        input_ub_1 = self.tik_instance.Tensor("float16", (TRANSPOSE_SIZE*max_mov_num,),
                                               tik.scope_ubuf, "input_ub_1")
         vnchw_ub_1 = \
             self.tik_instance.Tensor("float16",
-                                     (256*self.input_num*max_mov_num,),
+                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "vnchw_ub_1")
         out_ub_1 = self.tik_instance.Tensor("float16",
-                                            (256*self.input_num*max_mov_num,),
+                                            (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                             tik.scope_ubuf, "out_ub_1")
 
         tiling_ub_list_0 = [input_ub_0, vnchw_ub_0, out_ub_0]
@@ -217,8 +228,8 @@ class ConcatWithVnchw:
         def _run_vnchw_all_to_out(ub_list, gm_output_offset,
                                   run_mov_num, copy_tail):
             _, ub_vnchw, ub_out, gm_output = ub_list
-            _dst_rep_stride = (256 // 16) * self.input_num
-            _src_rep_stride = (256 // 16) * self.input_num
+            _dst_rep_stride = (TRANSPOSE_SIZE // 16) * self.input_num
+            _src_rep_stride = (TRANSPOSE_SIZE // 16) * self.input_num
             if run_mov_num == 1:
                 _dst_rep_stride = 0
                 _src_rep_stride = 0
@@ -245,12 +256,8 @@ class ConcatWithVnchw:
 
         def _run_one_loop(tiling_ub_list, _loop_offset,
                           run_mov_num, copy_tail=0):
-            src_offset = \
-                src_core_offset \
-                + _loop_offset
-            dst_offset = \
-                des_core_offset \
-                + _loop_offset * self.input_num
+            src_offset = src_core_offset + _loop_offset
+            dst_offset = des_core_offset + _loop_offset * self.input_num
             # copy input one by one and vnchwconv input to vnchw_ub
             for i_idx in range(self.input_num):
                 _run_copy_input_and_vnchw(
@@ -265,8 +272,7 @@ class ConcatWithVnchw:
                 dst_offset, run_mov_num, copy_tail
             )
 
-        with self.tik_instance.for_range(
-                0, core_loop // 2) as loop_idx:
+        with self.tik_instance.for_range(0, core_loop // 2) as loop_idx:
             _idx = loop_idx*2
             _run_one_loop(tiling_ub_list_0,
                           _idx * TRANSPOSE_SIZE * max_mov_num,
@@ -294,7 +300,8 @@ class ConcatWithVnchw:
             _run_one_loop(tiling_ub_list_0, _offset, 1, mov_tail)
 
     def concat_last_dim_compute(self):
-        """concat_last_dim_compute
+        """
+        concat_last_dim_compute
         """
         ub_half_size = \
             int(tbe_platform.CceProductParams().getParams("Unified_Buffer")
@@ -317,8 +324,7 @@ class ConcatWithVnchw:
         # define concat fuction
         concat_fuc = self.concat_last_dim_one_core
 
-        with self.tik_instance.for_range(
-                0, core_used, block_num=core_used) as core_idx:
+        with self.tik_instance.for_range(0, core_used, block_num=core_used) as core_idx:
             src_offset_core = \
                 core_idx * move_num_per_core * TRANSPOSE_SIZE
             dst_offset_core = src_offset_core * self.input_num
@@ -327,8 +333,7 @@ class ConcatWithVnchw:
                     src_offset_core, dst_offset_core,
                     move_num_per_core, 0, max_mov_num)
             else:
-                with self.tik_instance.if_scope(
-                        core_idx < (core_used - 1)):
+                with self.tik_instance.if_scope(core_idx < (core_used - 1)):
                     concat_fuc(
                         src_offset_core, dst_offset_core,
                         move_num_per_core, 0, max_mov_num)
@@ -347,18 +352,21 @@ class ConcatWithVnchw:
         return self.tik_instance
 
     def do_concat_vnchw(self):
-        """do_concat_vnchw for last dims
+        """
+        do_concat_vnchw for last dims
         """
         self.concat_last_dim_compute()
 
 
 class ConcatWith5HD:
-    """Function: use to finish ConcatWith5HD main functions
+    """
+    Function: use to finish ConcatWith5HD main functions
     """
 
     def __init__(self, input_data, output_data,
                  axis, kernel_name="concat_last_dim"):
-        """init concat base parameters
+        """
+        init concat base parameters
         """
         self.data_dtype = input_data[0].get("dtype").lower()
         self.format = input_data[0].get("format")
@@ -390,7 +398,8 @@ class ConcatWith5HD:
         self.is_the_same_c = False
 
     def check_shape_support(self):
-        """check_shape_support
+        """
+        check_shape_support
         """
         if self.ori_format in ("NCHW",):
             shape_c_dim = 1
@@ -427,7 +436,8 @@ class ConcatWith5HD:
         return False, shape_c_dim
 
     def check_op_select(self):
-        """function for op_select_format in concat
+        """
+        function for op_select_format in concat
         """
         is_shape_support, c_dim_num = self.check_shape_support()
         if not is_shape_support:
@@ -439,7 +449,8 @@ class ConcatWith5HD:
         return True
 
     def check_5hd_vnchw(self):
-        """check_5hd_vnchw
+        """
+        check_5hd_vnchw
         """
         is_shape_support, c_dim_num = self.check_shape_support()
 
@@ -460,7 +471,8 @@ class ConcatWith5HD:
         return True
 
     def init_gm_tensor(self):
-        """init_gm_tensor
+        """
+        init_gm_tensor
         """
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.cce_conf.get_soc_spec(
@@ -478,16 +490,18 @@ class ConcatWith5HD:
             scope=tik.scope_gm, name="data_gm_out")
 
     def get_tensor_size_in_fp16(self, data_shape):
-        """get_tensor_size_in_fp16
         """
-        data_size = functools_reduce(lambda x, y: x * y, data_shape)
+        get_tensor_size_in_fp16
+        """
+        data_size = functools.reduce(lambda x, y: x * y, data_shape)
         fp16_size = data_size
         if self.data_dtype == "float32":
             fp16_size = fp16_size * 2
         return fp16_size
 
     def do_5hd_concat_cut_by_batch(self):
-        """do_5hd_concat_cut_by_batch
+        """
+        do_5hd_concat_cut_by_batch
         """
         if self.data_dtype == "float32":
             self.last_ori_dim = self.last_ori_dim*2
@@ -507,8 +521,7 @@ class ConcatWith5HD:
         # define concat fuction
         concat_fuc = self.do_5hd_concat_scedule
 
-        with self.tik_instance.for_range(
-                0, core_used, block_num=core_used) as core_idx:
+        with self.tik_instance.for_range(0, core_used, block_num=core_used) as core_idx:
             src_offset_core = \
                 core_idx * batch_per_core * batch_offset
             dst_offset_core = src_offset_core * shape_c1
@@ -517,8 +530,7 @@ class ConcatWith5HD:
                     src_offset_core, dst_offset_core,
                     batch_per_core)
             else:
-                with self.tik_instance.if_scope(
-                        core_idx < (core_used - 1)):
+                with self.tik_instance.if_scope(core_idx < (core_used - 1)):
                     concat_fuc(
                         src_offset_core, dst_offset_core,
                         batch_per_core)
@@ -538,7 +550,8 @@ class ConcatWith5HD:
 
     def do_5hd_concat_scedule(self, input_offset, output_offset,
                               process_batch):
-        """do_5hd_concat_cut_by_batch
+        """
+        do_5hd_concat_cut_by_batch
         """
         # get ub size, max fp16 num in half ub
         ub_half_size = \
@@ -675,12 +688,8 @@ class ConcatWith5HD:
         def _run_one_loop(tiling_ub_list, _offset_list, _loop_offset,
                           run_mov_num, copy_tail=0):
             batch_input_offset, batch_output_offset = _offset_list
-            src_offset = \
-                batch_input_offset \
-                + _loop_offset
-            dst_offset = \
-                batch_output_offset \
-                + _loop_offset
+            src_offset = batch_input_offset + _loop_offset
+            dst_offset = batch_output_offset + _loop_offset
             # copy input one by one and vnchwconv input to vnchw_ub
             c1_loop = get_ceil_int(self.input_num, inner_sigment)
             c1_tail = self.input_num % inner_sigment
@@ -718,8 +727,7 @@ class ConcatWith5HD:
             batch_offset_list = [_batch_input_offset, _batch_output_offset]
             # copy input to ub
             if copy_loop > 0:
-                with self.tik_instance.for_range(
-                        0, copy_loop) as loop_idx:
+                with self.tik_instance.for_range(0, copy_loop) as loop_idx:
                     _idx = loop_idx
                     _run_one_loop(tiling_ub_list_0, batch_offset_list,
                                   _idx * TRANSPOSE_SIZE * max_transpose_sigment,

@@ -1,14 +1,23 @@
 /**
- * @file conv_to_fullyconnection_fusion_pass.cpp
+ * Copyright 2020 Huawei Technologies Co., Ltd
  *
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2020. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @brief fuse conv to fullyconnection
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @version 1.0
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file conv_to_fullyconnection_fusion_pass.cpp
+ * \brief fuse conv to fullyconnection
+ */
 #include "conv_to_fullyconnection_fusion_pass.h"
 #include <climits>
 #include <iostream>
@@ -34,36 +43,23 @@ static const string REQUANT = "AscendRequant";
 static const char ATTR_GROUPS[] = "groups";
 static const char ATTR_PADS[] = "pads";
 static const char ATTR_NUM_OUTPUT[] = "num_output";
-static const std::map<ge::Format, std::map<std::string, int32_t>> FE_AXIS_INDEX_OF_FORMAT =
-    {{ge::FORMAT_NCHW, {{"N", NCHW_DIM_N},
-                        {"C", NCHW_DIM_C},
-                        {"H", NCHW_DIM_H},
-                        {"W", NCHW_DIM_W}}},
-     {ge::FORMAT_HWCN, {{"N", HWCN_DIM_N},
-                        {"C", HWCN_DIM_C},
-                        {"H", HWCN_DIM_H},
-                        {"W", HWCN_DIM_W}}},
-     {ge::FORMAT_NHWC, {{"N", NHWC_DIM_N},
-                        {"C", NHWC_DIM_C},
-                        {"H", NHWC_DIM_H},
-                        {"W", NHWC_DIM_W}}}
-    };
+static const std::map<ge::Format, std::map<std::string, int32_t>> FE_AXIS_INDEX_OF_FORMAT = {
+    {ge::FORMAT_NCHW, {{"N", NCHW_DIM_N}, {"C", NCHW_DIM_C}, {"H", NCHW_DIM_H}, {"W", NCHW_DIM_W}}},
+    {ge::FORMAT_HWCN, {{"N", HWCN_DIM_N}, {"C", HWCN_DIM_C}, {"H", HWCN_DIM_H}, {"W", HWCN_DIM_W}}},
+    {ge::FORMAT_NHWC, {{"N", NHWC_DIM_N}, {"C", NHWC_DIM_C}, {"H", NHWC_DIM_H}, {"W", NHWC_DIM_W}}}};
 
-vector<FusionPattern *> ConvToFullyConnectionFusionPass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
-  FusionPattern *pattern =
-      new (std::nothrow) FusionPattern("ConvToFullyConnectionFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."),
-           return patterns);
+vector<FusionPattern*> ConvToFullyConnectionFusionPass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("ConvToFullyConnectionFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
 
-  pattern->AddOpDesc(PATTERN_CONV, {CONV2D})
-          .SetOutput(PATTERN_CONV);
+  pattern->AddOpDesc(PATTERN_CONV, {CONV2D}).SetOutput(PATTERN_CONV);
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define pattern ConvToFullyConnectionFusionPass success.");
   return patterns;
 }
 
-int64_t ConvToFullyConnectionFusionPass::GetDimByAxisName(const ge::GeTensorDesc &tensor, const string &axis) {
+int64_t ConvToFullyConnectionFusionPass::GetDimByAxisName(const ge::GeTensorDesc& tensor, const string& axis) {
   ge::Format format = tensor.GetFormat();
   int32_t index = 0;
   auto iter = FE_AXIS_INDEX_OF_FORMAT.find(format);
@@ -82,30 +78,26 @@ int64_t ConvToFullyConnectionFusionPass::GetDimByAxisName(const ge::GeTensorDesc
   }
   ge::GeShape shape = tensor.GetShape();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "format %s, axis %s, index %d, dim %ld",
-          ge::TypeUtils::FormatToSerialString(format).c_str(),
-          axis.c_str(), index, shape.GetDim(index));
+          ge::TypeUtils::FormatToSerialString(format).c_str(), axis.c_str(), index, shape.GetDim(index));
   return shape.GetDim(index);
 }
 
-Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc &xTensor,
-                     const ge::GeTensorDesc &filterTensor) {
-  int64_t  xAixsH = GetDimByAxisName(xTensor, "H");
-  int64_t  filterAixsH = GetDimByAxisName(filterTensor, "H");
-  int64_t  xAixsW = GetDimByAxisName(xTensor, "W");
-  int64_t  filterAixsW = GetDimByAxisName(filterTensor, "W");
-  int64_t  xAixsC = GetDimByAxisName(xTensor, "C");
-  int64_t  filterAixsC = GetDimByAxisName(filterTensor, "C");
+Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc& xTensor,
+                                                      const ge::GeTensorDesc& filterTensor) {
+  int64_t xAixsH = GetDimByAxisName(xTensor, "H");
+  int64_t filterAixsH = GetDimByAxisName(filterTensor, "H");
+  int64_t xAixsW = GetDimByAxisName(xTensor, "W");
+  int64_t filterAixsW = GetDimByAxisName(filterTensor, "W");
+  int64_t xAixsC = GetDimByAxisName(xTensor, "C");
+  int64_t filterAixsC = GetDimByAxisName(filterTensor, "C");
 
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "HWC of x is [%ld, %ld, %ld], filter is [%ld, %ld, %ld].",
-          xAixsH, xAixsW, xAixsC, filterAixsH, filterAixsW, filterAixsC);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "HWC of x is [%ld, %ld, %ld], filter is [%ld, %ld, %ld].", xAixsH, xAixsW, xAixsC,
+          filterAixsH, filterAixsW, filterAixsC);
 
-  bool flag = xAixsH && xAixsW && xAixsC &&
-              filterAixsH && filterAixsW && filterAixsC;
+  bool flag = xAixsH && xAixsW && xAixsC && filterAixsH && filterAixsW && filterAixsC;
   FUSION_PASS_CHECK(!flag, OP_LOGD(FUSED_OP_TYPE.c_str(), "HWC invalid."), return FAILED);
 
-  flag = (xAixsH == filterAixsH) &&
-         (xAixsW == filterAixsW) &&
-         (xAixsC == filterAixsC);
+  flag = (xAixsH == filterAixsH) && (xAixsW == filterAixsW) && (xAixsC == filterAixsC);
   FUSION_PASS_CHECK(!flag, OP_LOGD(FUSED_OP_TYPE.c_str(), "HWC of x and filter are not equal."), return FAILED);
   return SUCCESS;
 }
@@ -113,75 +105,63 @@ Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc &xT
 Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
   string convNodeName = convNode->GetName();
 
-  ge::GeTensorDesc xInputDesc =
-      convNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc filterInputDesc =
-      convNode->GetOpDesc()->GetInputDesc(1);
+  ge::GeTensorDesc xInputDesc = convNode->GetOpDesc()->GetInputDesc(0);
+  ge::GeTensorDesc filterInputDesc = convNode->GetOpDesc()->GetInputDesc(1);
 
   FUSION_PASS_CHECK(convNode->GetOutAllNodes().size() != 1,
-           OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv out node num should be one."),
-           return FAILED);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv out node num should be one."), return FAILED);
 
   ge::NodePtr convNextNode = convNode->GetOutAllNodes().at(0);
   string nextOpType = convNextNode->GetOpDesc()->GetType();
   FUSION_PASS_CHECK((nextOpType == QUANT) || (nextOpType == REQUANT),
-           OP_LOGD(FUSED_OP_TYPE.c_str(), "Not support fc+requant or fc+quant ub fusion."),
-           return FAILED);
-  for (unsigned i=0; i<convNextNode->GetOutAllNodes().size(); i++) {
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Not support fc+requant or fc+quant ub fusion."), return FAILED);
+  for (unsigned i = 0; i < convNextNode->GetOutAllNodes().size(); i++) {
     string nextNextOpType = convNextNode->GetOutAllNodes().at(i)->GetOpDesc()->GetType();
     OP_LOGD(FUSED_OP_TYPE.c_str(), "conv2d next next node is %s", nextNextOpType.c_str());
     FUSION_PASS_CHECK((nextNextOpType == SIGMOID) && (nextOpType == DEQUANT),
-            OP_LOGD(FUSED_OP_TYPE.c_str(), "Not support effient_net fc+dequant+sigmod ub fusion."),
-            return FAILED);
+                      OP_LOGD(FUSED_OP_TYPE.c_str(), "Not support effient_net fc+dequant+sigmod ub fusion."),
+                      return FAILED);
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "%s, x format %s, ori format %s, filter format %s, ori format %s.",
-          convNodeName.c_str(),
-          TypeUtils::FormatToSerialString(xInputDesc.GetFormat()).c_str(),
+          convNodeName.c_str(), TypeUtils::FormatToSerialString(xInputDesc.GetFormat()).c_str(),
           TypeUtils::FormatToSerialString(xInputDesc.GetOriginFormat()).c_str(),
           TypeUtils::FormatToSerialString(filterInputDesc.GetFormat()).c_str(),
           TypeUtils::FormatToSerialString(filterInputDesc.GetOriginFormat()).c_str());
 
   FUSION_PASS_CHECK(CheckHWCEqual(xInputDesc, filterInputDesc) != SUCCESS,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "HWC of x and filter are not equal."),
-           return FAILED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "HWC of x and filter are not equal."), return FAILED);
 
   int32_t groups = 0;
   (void)ge::AttrUtils::GetInt(convNode->GetOpDesc(), ATTR_GROUPS, groups);
-  FUSION_PASS_CHECK(groups != 1,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "groups of should be 1, actual is %ld.", groups),
-           return FAILED);
+  FUSION_PASS_CHECK(groups != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "groups of should be 1, actual is %ld.", groups),
+                    return FAILED);
 
   vector<int64_t> convPads;
   vector<int64_t> convPadsTarget = {0, 0, 0, 0};
   (void)ge::AttrUtils::GetListInt(convNode->GetOpDesc(), ATTR_PADS, convPads);
-  FUSION_PASS_CHECK(convPads != convPadsTarget,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "convPads of should be [0, 0, 0, 0]."),
-           return FAILED);
+  FUSION_PASS_CHECK(convPads != convPadsTarget, OP_LOGI(FUSED_OP_TYPE.c_str(), "convPads of should be [0, 0, 0, 0]."),
+                    return FAILED);
   return SUCCESS;
 }
 
-Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph &graph,
-                                       Mapping &mapping,
-                                       vector<ge::NodePtr> &fusionNodes) {
+Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                               vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr convNode = GetNodeFromMapping(PATTERN_CONV, mapping);
   FUSION_PASS_CHECK(convNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new convNode not success."),
-           return PARAM_INVALID);
+                    return PARAM_INVALID);
 
   FUSION_PASS_CHECK(CheckFusionParm(convNode) != SUCCESS,
-           OP_LOGI(FUSED_OP_TYPE.c_str(), "Can not do fusion to node, %s.",
-                   convNode->GetName().c_str()),
-           return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Can not do fusion to node, %s.", convNode->GetName().c_str()),
+                    return NOT_CHANGED);
 
   ge::OpDescPtr convOp = convNode->GetOpDesc();
-  FUSION_PASS_CHECK(convOp == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "convOp not success."),
-           return PARAM_INVALID);
+  FUSION_PASS_CHECK(convOp == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "convOp not success."), return PARAM_INVALID);
 
   // set optype to fullyconnection
   convOp->SetType(FC);
 
   // set attr num_output of fullyconnection
-  ge::GeTensorDesc outputDesc =
-      convNode->GetOpDesc()->GetOutputDesc(0);
+  ge::GeTensorDesc outputDesc = convNode->GetOpDesc()->GetOutputDesc(0);
   int32_t outAixsC = GetDimByAxisName(outputDesc, "C");
   OP_LOGD(FUSED_OP_TYPE.c_str(), "outAixsC of conv is %ld.", outAixsC);
   (void)ge::AttrUtils::SetInt(convOp, ATTR_NUM_OUTPUT, outAixsC);
@@ -190,8 +170,7 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph &graph,
   std::map<string, uint32_t> inputNameMap = convOp->GetAllInputName();
   std::map<string, uint32_t> inputNameMapNew;
   for (auto inputName : inputNameMap) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "conv %ld th input is %s.",
-            inputName.second, inputName.first.c_str());
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "conv %ld th input is %s.", inputName.second, inputName.first.c_str());
     string key = inputName.first;
     uint32_t value = inputName.second;
     if (inputName.first == "filter") {
@@ -203,17 +182,14 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph &graph,
   }
 
   for (auto inputName : inputNameMapNew) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "after conv %ld th input is %s.",
-            inputName.second, inputName.first.c_str());
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "after conv %ld th input is %s.", inputName.second, inputName.first.c_str());
   }
   FUSION_PASS_CHECK(false == convOp->UpdateInputName(inputNameMapNew),
-           OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateInputName conv failed."),
-           return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateInputName conv failed."), return FAILED);
 
   inputNameMap = convOp->GetAllInputName();
   for (auto inputName : inputNameMap) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "after1 conv %ld th input is %s.",
-            inputName.second, inputName.first.c_str());
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "after1 conv %ld th input is %s.", inputName.second, inputName.first.c_str());
   }
 
   fusionNodes.push_back(convNode);

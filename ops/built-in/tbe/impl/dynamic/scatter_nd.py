@@ -1,3 +1,20 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+scatter nd
+"""
 from te import tvm
 import te.lang.dynamic
 from functools import reduce as reduceIns
@@ -23,7 +40,7 @@ MAX_FP32_INT32_MINI_UPDATES_UB = 220 * 128 // 2
 MAX_FP32_INT32_MINI_SHAPE_UB = 220 * 128
 
 
-class Scatter_nd():
+class ScatterNd():
     def __init__(self, indices, x, shape, y, kernel_name):
         self.indices_dtype = indices.get("dtype").lower()
         self.updates_dtype = x.get("dtype").lower()
@@ -563,7 +580,7 @@ def scatter_nd(indices, x, shape, y, kernel_name="ScatterNd"):
         -------
         compile info
         """
-    obj = Scatter_nd(indices, x, shape, y, kernel_name)
+    obj = ScatterNd(indices, x, shape, y, kernel_name)
     obj.scatter_nd_compute()
     te.op.add_compile_info("vars", {"ub_size": obj.ub_size,
                                     "core_num": obj.aicore_num})

@@ -1,23 +1,25 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 CceConv3dBackpropInputOp
 """
-from te.platform import cce_params
-from .conv3d_backprop_input_general_schedule import general_schedule
+import te.platform as tbe_platform
+from te.lang.cce.te_schedule import conv3d_backprop_input_general_schedule
 
 
-class CceConv3dBackpropInputOp():   # pylint: disable=R0903
+class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
     """
     The class of conv3d backprop input
 
@@ -29,10 +31,9 @@ class CceConv3dBackpropInputOp():   # pylint: disable=R0903
 
     need_pragma : if need to doing pragma when using calculate
 
-    Returns
-    -------
-    CceConv2dBackpropInputOp_instance : instance of CceConv2dBackpropInputOp
+
     """
+
     def __init__(self, scope, need_tensorize=True, need_pragma=True):
         self._scope = scope
         self._need_tensorize = need_tensorize
@@ -54,10 +55,10 @@ class CceConv3dBackpropInputOp():   # pylint: disable=R0903
 
         Returns
         -------
-        True for sucess, False for no schedule
+        True for success, False for no schedule
         """
         self._res_tensor = res
         self._spec_node_list = spec_node_list
-        cce_params.jump_expand_flag = True
-        sch = general_schedule(res, sch_list)
+        tbe_platform.cce_params.jump_expand_flag = True
+        sch = conv3d_backprop_input_general_schedule.general_schedule(res, sch_list)
         return sch

@@ -1,27 +1,27 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 reduce atomic schedule
 """
 from functools import reduce as reduceIns
+
 from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as pver
-from te.platform import cce_conf
 from . import util
 from .vector_schedule import VectorSchedule
 
@@ -98,6 +98,8 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._is_32b_align = True
         self._last_axis_size = None
         self._final_out_tensor_ub_rf = None
+
+        self._spec_shape_list = [[8,1666980],[8,1428840],[8,1190700]]
 
         # reduce_axis_map: key:reduce_axis_index, value:reduce_axis_var
         # reduce_index_map: key:reduce_axis_index in original index,
@@ -271,7 +273,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         if dtype != "float32":
             return False
         is_support_atomic = pver().is_cloud_version() or \
-                            pver().is_1951_version()
+            pver().is_1951_version()
         if not is_support_atomic:
             return False
         tag = reduce_tensor.op.tag
@@ -364,7 +366,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         if self._is_mix_reduce_nlast_and_nlast(shape_before_reduce, reduce_axis_index):
             return _do_mix_reduce_nlast_and_nlast()
 
-
         def _do_mix_reduce_nlast_and_last():
             # block tiling do not split r1
             # (ak,rk,..,a2,r2,a1,r1)
@@ -379,8 +380,9 @@ class ReduceAtomicSchedule(VectorSchedule):
                 split_axis]
             r1_start_index, r1_end_index = self._find_last_reduce_axis(
                 shape_before_reduce, reduce_axis_index)
-            if block_split_axis >= r1_start_index:
-                return False
+            if shape_before_reduce not in self._spec_shape_list:
+                if block_split_axis >= r1_start_index:
+                    return False
 
             # if ak*..*a2*a1/core_num > rk*..*r2*r2, do not need atomic
             none_reduce_size = 1
@@ -742,7 +744,6 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         return block_split_axis, block_split_inner, ub_split_axis, ub_split_inner
 
-
     def _reorder_reduce_nlast_shape(self, shape_before_reduce, reduce_axis_index):
         """
         reorder shape (ak+1,rk,..,r2,a2,r1,a1) to (ak+1,ak,...,a2, rk,..,r2,,r1,a1)
@@ -802,22 +803,30 @@ class ReduceAtomicSchedule(VectorSchedule):
             reduce_axis_index)
         align_axis = a1_start_index - 1
 
-        align_type = self._res_tensor.dtype
+        # get input align factor
+        input_align_type = self._input_tensors[0].dtype
         # bool is represented by int8
-        if align_type == 'bool':
-            align_type = 'int8'
-        align_factor, _ = util.get_align_factor(align_type)
+        if input_align_type == 'bool':
+            input_align_type = 'int8'
+        input_align_factor, _ = util.get_align_factor(input_align_type)
+
+        # get output align factor
+        output_align_type = self._res_tensor.dtype
+        if output_align_type == 'bool':
+            output_align_type = 'int8'
+        output_align_factor, _ = util.get_align_factor(output_align_type)
 
         for key in self._cache_read_tensors_and_buffer_map:
             cache_read_buffer = self._cache_read_tensors_and_buffer_map[key]
             self._schedule[cache_read_buffer].storage_align(
-                cache_read_buffer.op.axis[align_axis], align_factor, 0)
+                cache_read_buffer.op.axis[align_axis], input_align_factor, 0)
 
         for key in self._cache_write_tensors_and_buffer_map:
             if key != self._res_tensor:
                 cache_write_buffer = self._cache_write_tensors_and_buffer_map[key]
                 self._schedule[cache_write_buffer].storage_align(
-                    cache_write_buffer.op.axis[align_axis], align_factor, 0)
+                    cache_write_buffer.op.axis[align_axis],
+                    output_align_factor, 0)
 
     # pylint: disable=too-many-locals
     def _reduce_not_last_atomic_tiling(self, shape_before_reduce,
@@ -847,8 +856,8 @@ class ReduceAtomicSchedule(VectorSchedule):
 
             total_size_of_reduce = _shape_mul(shape_before_reduce[a1_start_index:])
 
-            max_ub_count = int(total_size_of_reduce / \
-                               (total_size_of_reduce + align_factor - \
+            max_ub_count = int(total_size_of_reduce /
+                               (total_size_of_reduce + align_factor -
                                 total_size_of_reduce % align_factor) * max_ub_count)
 
             return max_ub_count
@@ -920,7 +929,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         loop_size *= ub_inner
 
         self._is_need_dichotomy_add = self._need_dichotomy_add(loop_size, las_axis_size, dtype)
-
 
         return block_split_axis, block_inner, ub_split_axis, ub_inner
 
@@ -1079,7 +1087,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             orignal_to_reorder_axis_map[i] = i
 
         return reordered_shape, reorder_to_orignal_axis_map, \
-               orignal_to_reorder_axis_map
+            orignal_to_reorder_axis_map
 
     # pylint: disable=too-many-locals
     def _reduce_last_axis_32b_align_atomic_tiling(self, shape_before_reduce,
@@ -1114,7 +1122,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             self._find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index)
 
         # if block tiling do not spit r1
-        if block_split_axis < a1_start_index:
+        if block_split_axis < a1_start_index or shape_before_reduce in self._spec_shape_list:
             # block tiling split (rk,..,rb,..,r2,r1) to (rk,..,rbo,rbi,..,r2,r1)
             # use (rbi,..,r2,a1,r1) to do ub tiling
             reorder_to_orignal_map = {}
@@ -1395,8 +1403,9 @@ class ReduceAtomicSchedule(VectorSchedule):
                     if self._tiling_case > 0:
                         shape_before_reduce = self._reduce_info["shape_before_reduce"]
                         reduce_axis_index = self._reduce_info["reduce_axis_index"]
+                        is_keep_dim = self._reduce_info["keep_dims"]
                         none_reduce_index_map = self._find_none_reduce_axis_map(
-                            shape_before_reduce, reduce_axis_index)
+                            shape_before_reduce, reduce_axis_index, is_keep_dim)
                         axis = none_reduce_index_map[ub_split_axis]
                         axis_var = ub_tiling_tensor.op.axis[axis]
                     else:
@@ -1621,7 +1630,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 ub_rf_reordered_axis_list.append(reduce_axis)
 
         none_reduce_index_map = self._find_none_reduce_axis_map(
-            shape_before_reduce, reduce_axis_index)
+            shape_before_reduce, reduce_axis_index, is_keep_dim)
         for i in range(a1_start_index, a1_end_index + 1):
             if is_keep_dim:
                 none_reduce_index = i
@@ -1667,13 +1676,17 @@ class ReduceAtomicSchedule(VectorSchedule):
             shape_before_reduce, reduce_axis_index)
 
         none_reduce_index_map = self._find_none_reduce_axis_map(
-            shape_before_reduce, reduce_axis_index)
+            shape_before_reduce, reduce_axis_index, is_keep_dim)
 
         ub_rf_reordered_axis_list = []
         reduce_index_map = self._reduce_info["reduce_index_map"]
         # rbo
         ub_rf_reordered_axis_list.append(out_tensor_ub_rf.op.axis[-1])
-        if len(out_tensor_ub_rf.op.axis) > 3:
+
+        offset = a1_end_index - a1_start_index + 1
+        if is_keep_dim:
+            offset = offset + len(out_tensor_ub_rf.op.reduce_axis)
+        if len(out_tensor_ub_rf.op.axis) - offset > 2:
             ub_rf_reordered_axis_list.append(out_tensor_ub_rf.op.axis[0])
 
         def __get_reorder_case_num():
@@ -1685,8 +1698,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 return 3
             return 0
 
-        case_num = __get_reorder_case_num()
-        if case_num == 1:
+        def __reorder_case_1():
             block_reduce_index = reduce_index_map[block_split_axis]
             ub_reduce_index = reduce_index_map[ub_split_axis]
             if self._is_multi_core_need_fused:
@@ -1726,7 +1738,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 reduce_axis = out_tensor_ub_rf.op.reduce_axis[i - 1 - offset]
                 ub_rf_reordered_axis_list.append(reduce_axis)
 
-        elif case_num == 2:
+        def __reorder_case_2():
             block_reduce_index = reduce_index_map[block_split_axis]
             ub_reduce_index = reduce_index_map[ub_split_axis]
             if self._is_multi_core_need_fused:
@@ -1765,7 +1777,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 reduce_axis = out_tensor_ub_rf.op.reduce_axis[i - 1 - offset]
                 ub_rf_reordered_axis_list.append(reduce_axis)
 
-        elif case_num == 3:
+        def __reorder_case_3():
             block_reduce_index = reduce_index_map[block_split_axis]
             if self._is_multi_core_need_fused:
                 offset = block_reduce_index
@@ -1783,40 +1795,62 @@ class ReduceAtomicSchedule(VectorSchedule):
                 reduce_axis = out_tensor_ub_rf.op.reduce_axis[i - offset]
                 ub_rf_reordered_axis_list.append(reduce_axis)
 
-            if ub_split_axis == a1_start_index:
-                ub_rf_reordered_axis_list.append(res_ub_outer)
-                ub_rf_reordered_axis_list.append(res_ub_inner)
+            for i in range(a1_start_index, ub_split_axis):
+                if is_keep_dim:
+                    none_reduce_index = i
+                else:
+                    none_reduce_index = none_reduce_index_map[i]
+                ak_axis = out_tensor_ub_rf.op.axis[none_reduce_index]
+                ub_rf_reordered_axis_list.append(ak_axis)
 
-                for i in range(a1_start_index + 1, a1_end_index + 1):
-                    if is_keep_dim:
-                        none_reduce_index = i
-                    else:
-                        none_reduce_index = none_reduce_index_map[i]
-                    ak_axis = out_tensor_ub_rf.op.axis[none_reduce_index]
-                    ub_rf_reordered_axis_list.append(ak_axis)
-                for i in range(reduce_index_map[a1_end_index + 1],
-                               len(out_tensor_ub_rf.op.reduce_axis) + offset):
-                    reduce_axis = out_tensor_ub_rf.op.reduce_axis[i - 1 - offset]
-                    ub_rf_reordered_axis_list.append(reduce_axis)
+            ub_rf_reordered_axis_list.append(res_ub_outer)
+            ub_rf_reordered_axis_list.append(res_ub_inner)
+
+            for i in range(ub_split_axis + 1, a1_end_index + 1):
+                if is_keep_dim:
+                    none_reduce_index = i
+                else:
+                    none_reduce_index = none_reduce_index_map[i]
+                ak_axis = out_tensor_ub_rf.op.axis[none_reduce_index]
+                ub_rf_reordered_axis_list.append(ak_axis)
+
+            for i in range(reduce_index_map[a1_end_index + 1],
+                           len(out_tensor_ub_rf.op.reduce_axis) + offset):
+                reduce_axis = out_tensor_ub_rf.op.reduce_axis[i - 1 - offset]
+                ub_rf_reordered_axis_list.append(reduce_axis)
+
+        case_num = __get_reorder_case_num()
+        if case_num == 1:
+            __reorder_case_1()
+
+        elif case_num == 2:
+            __reorder_case_2()
+
+        elif case_num == 3:
+            __reorder_case_3()
 
         self._schedule[out_tensor_ub_rf].reorder(*ub_rf_reordered_axis_list)
 
     @staticmethod
-    def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index):
+    def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index, keep_dims):
         """
         :param shape_before_reduce:
         :param reduce_axis_index:
         :return:
         """
         none_reduce_index_map = {}
-        count = 0
-        for i in range(0, len(shape_before_reduce)):
-            if i not in reduce_axis_index:
-                none_reduce_index_map[i] = count
-                count += 1
+        if keep_dims:
+            for i in range(0, len(shape_before_reduce)):
+                if i not in reduce_axis_index:
+                    none_reduce_index_map[i] = i
+        else:
+            count = 0
+            for i in range(0, len(shape_before_reduce)):
+                if i not in reduce_axis_index:
+                    none_reduce_index_map[i] = count
+                    count += 1
+
         return none_reduce_index_map
-
-
 
     def _calculate_compute_inline(self):
         """
@@ -2044,7 +2078,6 @@ class ReduceAtomicSchedule(VectorSchedule):
                 "scope": self._schedule[res_tensor].op.axis[0],
                 "instruction": 'dma_copy'}
 
-
     def _calculate_emit_insn_map(self, tensor):
         """
         Get the instruction map of tensor
@@ -2189,7 +2222,6 @@ class ReduceAtomicSchedule(VectorSchedule):
 
             is_keep_dims = len(self._reduce_info["shape_before_reduce"]) == len(tensor.shape)
             self._reduce_info["keep_dims"] = is_keep_dims
-
 
     def _is_broadcast_last_axis_tensor(self, tensor):
         if tensor.op.tag == "broadcast_for_tensor":

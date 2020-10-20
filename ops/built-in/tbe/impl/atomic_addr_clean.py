@@ -1,26 +1,24 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 atomic_addr_clean
 """
-
 from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import *
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 MEMORY_CLEAR_BLOCK_SIZE = 32
 MEMORY_CLEAR_VECTOR_SIZE = 256
@@ -30,111 +28,125 @@ MEMORY_CLEAR_UB_ZERO_BUFF = MEMORY_CLEAR_KB_NUM * MEMORY_CLEAR_ONE_KB
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals,too-many-arguments
-def ceil_align(ori_num, divider):
-    '''
+def _ceil_align(ori_num, divider):
+    """
     dst_num = (ori_num + divider -1) / divider * divider
-    :param ori_num: original number
-    :param divider:
-    :return:
-    '''
+
+    Parameters
+    ----------
+    ori_num: original number
+    divider: divider
+
+    Returns
+    -------
+    """
     return (ori_num + divider - 1) // divider * divider
 
 
-def ceil_divide(ori_num, divider):
-    '''
+def _ceil_divide(ori_num, divider):
+    """
     dst_num = (ori_num + divider -1) / divider
-    :param ori_num:
-    :param divider:
-    :return:
-    '''
+    Parameters
+    ----------
+    ori_num
+    divider
+
+    Returns
+    -------
+    """
     return (ori_num + divider - 1) // divider
 
 
 class AtomicCleaner(object):
-    '''
+    """
     AtmoicAddrCleaner Class implementing the function of operator AtomicClean
-    '''
+    """
 
     def __init__(self, size_list, str_dtype="float16"):
-        '''
+        """
         :param size_list: size list of workspaces
         :param addr_list: address list of workspaces
-        '''
+        """
         self.tik_instance = tik.Tik()
-        self.core_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
+        self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.workspace_sizes = size_list
         self.workspace_addrs = []
         self.workspace_num = len(size_list)
         self.data_type = str_dtype
 
     def gen_zero_ub(self, ub_size, str_dtype="float16"):
-        '''
+        """
         generate an ub tensor of which size is ub_size and set it to be zero
-        :param ub_size: size of ub tensor in byte
-        :return: ub zero tensor
-        '''
+
+        Parameters
+        ----------
+        ub_size: size of ub tensor in byte
+        str_dtype: dtype
+
+        Returns:
+        zero_ub: ub zero tensor
+        """
 
         div = 2
         if str_dtype == "float32":
             div = 4
 
-        repeat_times = ceil_divide(ub_size, MEMORY_CLEAR_VECTOR_SIZE)
+        repeat_times = _ceil_divide(ub_size, MEMORY_CLEAR_VECTOR_SIZE)
         common_mask = MEMORY_CLEAR_VECTOR_SIZE // div
-        zero_ub = self.tik_instance.Tensor(str_dtype, (ub_size // div,),
-                                           tik.scope_ubuf, "zero_ub")
-        self.tik_instance.vector_dup(common_mask, zero_ub, 0, repeat_times, 1,
-                                     8)
+        zero_ub = self.tik_instance.Tensor(str_dtype, (ub_size // div,), tik.scope_ubuf, "zero_ub")
+        self.tik_instance.vector_dup(common_mask, zero_ub, 0, repeat_times, 1, 8)
         return zero_ub
 
     def clean_workspace_single_core(self, data_size, data_addr, zero_ub):
-        '''
+        """
         clean the memory of a workspace
-        :param data_size: memory size of the workspace in byte
-        :param data_addr: memory address of workspace
-        :return:
-        '''
+
+        Parameters
+        ----------
+        data_size: memory size of the workspace in byte
+        data_addr: memory address of workspace
+
+        Returns
+        -------
+        None
+        """
         div = 2
         if self.data_type == "float32":
             div = 4
 
-        loop_num = ceil_divide(data_size, MEMORY_CLEAR_UB_ZERO_BUFF)
+        loop_num = _ceil_divide(data_size, MEMORY_CLEAR_UB_ZERO_BUFF)
         loop_offset = MEMORY_CLEAR_UB_ZERO_BUFF // div
         remain_load_size = data_size % MEMORY_CLEAR_UB_ZERO_BUFF
-        burst_len = ceil_divide(MEMORY_CLEAR_UB_ZERO_BUFF,
-                                MEMORY_CLEAR_BLOCK_SIZE)
+        burst_len = _ceil_divide(MEMORY_CLEAR_UB_ZERO_BUFF, MEMORY_CLEAR_BLOCK_SIZE)
         if remain_load_size > 0:
-            burst_len_last = ceil_divide(remain_load_size,
-                                         MEMORY_CLEAR_BLOCK_SIZE)
+            burst_len_last = _ceil_divide(remain_load_size, MEMORY_CLEAR_BLOCK_SIZE)
             with self.tik_instance.for_range(0, loop_num) as idx:
                 with self.tik_instance.if_scope(idx + 1 == loop_num):
                     with self.tik_instance.if_scope(idx == 0):
-                        self.tik_instance.data_move(data_addr, zero_ub, 0, 1,
-                                                    burst_len_last, 0, 0)
+                        self.tik_instance.data_move(data_addr, zero_ub, 0, 1, burst_len_last, 0, 0)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.data_move(
-                            data_addr[idx * loop_offset], zero_ub, 0, 1,
-                            burst_len_last, 0, 0)
-
+                        self.tik_instance.data_move(data_addr[idx * loop_offset], zero_ub, 0, 1, burst_len_last, 0, 0)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.if_scope(idx == 0):
-                        self.tik_instance.data_move(data_addr, zero_ub, 0, 1,
-                                                    burst_len, 0, 0)
+                        self.tik_instance.data_move(data_addr, zero_ub, 0, 1, burst_len, 0, 0)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.data_move(
-                            data_addr[idx * loop_offset], zero_ub, 0, 1,
-                            burst_len, 0, 0)
+                        self.tik_instance.data_move(data_addr[idx * loop_offset], zero_ub, 0, 1, burst_len, 0, 0)
         else:
             with self.tik_instance.for_range(0, loop_num) as idx:
-                self.tik_instance.data_move(data_addr[idx * loop_offset],
-                                            zero_ub, 0, 1, burst_len, 0, 0)
+                self.tik_instance.data_move(data_addr[idx * loop_offset], zero_ub, 0, 1, burst_len, 0, 0)
 
     def workspaces_distribute_to_cores(self, data_size_list):
-        '''
+        """
         distribute the workspaces to all cores
-        :param data_size_list:
-        :return: workspace segments list of all cores
-        '''
+
+        Parameters
+        ----------
+        data_size_list: list of data size
+
+        Returns
+        -------
+        core_segs_list: workspace segments list of all cores
+        """
         div = 2
         if self.data_type == "float32":
             div = 4
@@ -143,14 +155,14 @@ class AtomicCleaner(object):
             total_size = total_size + ds
 
         total_blockes = total_size // MEMORY_CLEAR_BLOCK_SIZE
-        aver_blocks = ceil_divide(total_blockes, self.core_num)
+        aver_blocks = _ceil_divide(total_blockes, self.core_num)
         aver_size = aver_blocks * MEMORY_CLEAR_BLOCK_SIZE
-        aver_size_aligned = ceil_align(aver_size, MEMORY_CLEAR_UB_ZERO_BUFF)
+        aver_size_aligned = _ceil_align(aver_size, MEMORY_CLEAR_UB_ZERO_BUFF)
 
         # list of workspace segment, cell format of which is [data_addr_index, offset, seg_len]
         workspace_seg_list = []
         for ix, ds in enumerate(data_size_list):
-            num = ceil_divide(ds, aver_size_aligned)
+            num = _ceil_divide(ds, aver_size_aligned)
             rear_size = ds % aver_size_aligned
             if num == 1:
                 workspace_seg_list.append([ix, 0, ds])
@@ -186,8 +198,7 @@ class AtomicCleaner(object):
             workspace_seg_list.pop(0)
             core_seg_len = segs[-1][2]
             for ix in range(len(workspace_seg_list) - 1, -1, -1):
-                if core_seg_len + workspace_seg_list[ix][
-                        2] <= aver_size_aligned:
+                if core_seg_len + workspace_seg_list[ix][2] <= aver_size_aligned:
                     core_seg_len = core_seg_len + workspace_seg_list[ix][2]
                     segs.append(workspace_seg_list[ix])
                     workspace_seg_list.pop(ix)
@@ -198,34 +209,34 @@ class AtomicCleaner(object):
 
         return core_segs_list
 
-    def workspaces_clean_multi_core_integrally(self, data_size_list,
-                                               data_addr_list):
-        '''
+    def workspaces_clean_multi_core_integrally(self, data_size_list, data_addr_list):
+        """
         there is an restriction that in one operator we can apply core loop only one time
         it means that if we want to process more than one workspace
         we should take the core loop as the outer one
         ATTENSION:
         in this function, each workspace is cleaned in one core as possible
-        :param data_size_list:
-        :param data_addr_list:
-        :return:
-        '''
 
+        Parameters
+        ----------
+        data_size_list: list of data size
+        data_addr_list: list of address size
+
+        Returns
+        -------
+        tik_instance
+        """
         core_segs = self.workspaces_distribute_to_cores(data_size_list)
         core_used = len(core_segs)
 
-        with self.tik_instance.for_range(0, core_used,
-                                         block_num=core_used) as block_idx:
-            zero_ub = self.gen_zero_ub(MEMORY_CLEAR_UB_ZERO_BUFF,
-                                       self.data_type)
+        with self.tik_instance.for_range(0, core_used, block_num=core_used) as block_idx:
+            zero_ub = self.gen_zero_ub(MEMORY_CLEAR_UB_ZERO_BUFF, self.data_type)
             for core_index in range(core_used):
                 with self.tik_instance.if_scope(core_index == block_idx):
                     current_segs = core_segs[core_index]
                     for addr_index, offset, data_size in current_segs:
                         data_addr = data_addr_list[addr_index]
-                        self.clean_workspace_single_core(data_size,
-                                                         data_addr[offset],
-                                                         zero_ub)
+                        self.clean_workspace_single_core(data_size, data_addr[offset], zero_ub)
 
     def tik_instance_fun(self, kernel_name):
         for idx in range(0, self.workspace_num):
@@ -244,10 +255,11 @@ class AtomicCleaner(object):
         return self.tik_instance
 
 
-@check_op_params(OPTION_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.OPTION_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def atomic_addr_clean(size_list, kernel_name="atomic_clean"):
     """
     clean memory of workspace list
+
     Parameters
     ----------
     size_list :  list
@@ -262,10 +274,15 @@ def atomic_addr_clean(size_list, kernel_name="atomic_clean"):
 
     for msize in size_list:
         if msize <= 0:
-            raise RuntimeError("workspace size must be greater than 0!")
+            expected_value = "greater than 0"
+            real_value = "less than or equal to 0"
+            error_manager_vector.raise_err_input_value_invalid("atomic_addr_clean", "sizes of workspaces",
+                                                               expected_value, real_value)
         if msize % 32 != 0:
-            raise RuntimeError(
-                "workspace size must be able to be divided by 32!")
+            expected_value = "can be divided by 32"
+            real_value = "can not be divided by 32"
+            error_manager_vector.raise_err_input_value_invalid("atomic_addr_clean", "sizes of workspaces",
+                                                               expected_value, real_value)
 
     atomic_clean = AtomicCleaner(size_list)
     return atomic_clean.tik_instance_fun(kernel_name)

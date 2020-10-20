@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache Licenses for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 pooling3d compute
 """
-
 import math
 from te import tvm
 from te.platform.cce_conf import get_soc_spec
@@ -27,6 +26,7 @@ TENSORFLOW_DATA_MODE = 1
 MIN_VAL_MAP = {"float16": -65504.0, "float32": 3.4e-38, "double": 1.7e-308}
 SIZEOF_DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
 C0_DIMENSION_DATA_SIZE_MAP = {"float16": 32, "float32": 64, "double": 128}
+
 
 # 'pylint: disable=too-many-locals, too-many-arguments, invalid-name
 # 'pylint: disable=unused-argument,too-many-statements, cell-var-from-loop
@@ -69,7 +69,7 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
 
     def _fake(i):
         return tx_ub_c[i] + tx_ub_ft[i] + tx_ub_bk[i] + \
-               tx_ub_t[i] + tx_ub_b[i] + tx_ub_l[i] + tx_ub_r[i]
+            tx_ub_t[i] + tx_ub_b[i] + tx_ub_l[i] + tx_ub_r[i]
 
     # define dict to transfer pooling params
     pooling_params = {}
@@ -303,7 +303,7 @@ def _get_tensorflow_out_and_pad(padding_mode, in_size_d, in_size_h, in_size_w,
         out_size_w = (in_size_w - window[2] + 1 + (stride[2] - 1)) // stride[2]
 
     return out_size_d, out_size_h, out_size_w, pad_front, pad_back, pad_top, \
-           pad_bottom, pad_left, pad_right
+        pad_bottom, pad_left, pad_right
 
 
 def _check_ub_tiling(window_d, window_h, window_w, pooling_mode, dtype):

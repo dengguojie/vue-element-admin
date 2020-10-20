@@ -1,26 +1,26 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 aipp_comm
 """
 # pylint: disable=too-many-lines,invalid-name,too-many-statements,too-many-arguments,no-else-return
 # pylint: disable=too-many-locals,too-many-branches,ungrouped-imports,too-many-boolean-expressions
+import numpy
 
+import te.platform as tbe_platform
 from te import tvm
-from te import platform as cce
-from te import platform as tbe_platform
-import numpy as np
-from te.platform.cce_intrin_md import reset_mask_insn
 
 DEFAULT_MATRIX_R0C0_YUV2RGB = 298
 DEFAULT_MATRIX_R0C1_YUV2RGB = 516
@@ -109,7 +109,7 @@ def get_fp16(value):
 
     if value != 0:
         reslut = 0x3c00
-        data = np.float16(value).tobytes()
+        data = numpy.float16(value).tobytes()
 
         reslut = int((data[0] & 0xff) | (data[1] & 0xff) << 8)
 
@@ -118,7 +118,7 @@ def get_fp16(value):
     return 0
 
 
-def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic):
+def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1HWC0"):
     """
     :param actual_col_size:
     :param dtype:
@@ -128,20 +128,26 @@ def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic):
 
     if dtype == "float16":
         size = 2
-        C0 = 16
+        c0 = 16
     else:
         size = 1
-        C0 = 32
+        c0 = 32
 
-    l1_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
-    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    if output_format == "NC1HWC0_C04":
+        c0 = 4
+
+    l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if is_dynamic:
         ub_size -= (DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
 
     if l1_size >= ub_size:
         buffer_upper_limit = ub_size
 
-    buffer_upper_limit = buffer_upper_limit // size // (C0)
+    if output_format == "NC1HWC0_C04":
+        buffer_upper_limit = (buffer_upper_limit - 64) // size // c0
+    else:
+        buffer_upper_limit = buffer_upper_limit // size // c0
 
     if is_dynamic:
         return buffer_upper_limit
@@ -152,7 +158,7 @@ def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic):
     return actual_col_size
 
 
-def set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp):
+def _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp):
     """
     :param ib:
     :param dtype:
@@ -264,7 +270,7 @@ def set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp):
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", tvm.const(spr4, dtype="uint64")))
 
 
-def set_spr2_spr4_lhisi_dync_by_RGB(ib, dtype, spr, p_ub_buf, tmp):
+def _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp):
     """
     :param ib:
     :param dtype:
@@ -368,19 +374,19 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     :return:
     """
 
-    p_ub = ib.allocate("uint8", (DYNC_PARAM_SIZE,), "p_ub", scope=cce.scope_ubuf)
+    p_ub = ib.allocate("uint8", (DYNC_PARAM_SIZE,), "p_ub", scope=tbe_platform.scope_ubuf)
     p_ub_buf = tvm.decl_buffer((DYNC_PARAM_SIZE,), "uint8", "p_ub_buf",
-                               scope=cce.scope_ubuf, data=p_ub)
+                               scope=tbe_platform.scope_ubuf, data=p_ub)
 
     ib.emit(tvm.call_extern("uint8", 'copy_gm_to_ubuf',
                             p_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                             param_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                            0, 1,DYNC_PARAM_SIZE//32, 0, 0))
+                            0, 1, DYNC_PARAM_SIZE//32, 0, 0))
 
-    spr = ib.allocate("uint64", [17], name="spr", scope=cce.scope_reg)
-    tmp = ib.allocate("uint64", [1], name="tmp", scope=cce.scope_reg)
+    spr = ib.allocate("uint64", [17], name="spr", scope=tbe_platform.scope_reg)
+    tmp = ib.allocate("uint64", [1], name="tmp", scope=tbe_platform.scope_reg)
 
-    input_format_tmp = ib.allocate("uint64", [1], name="input_format_tmp", scope=cce.scope_reg)
+    input_format_tmp = ib.allocate("uint64", [1], name="input_format_tmp", scope=tbe_platform.scope_reg)
     input_format_tmp[0] = tvm.const(0, dtype="uint64")
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
@@ -391,25 +397,25 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
         # the value of input_format:YUV420SP_U8
         with ib.if_scope(input_format_tmp[0] == 1):
-            set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp)
         # the value of input_format:YUYV_U8
         with ib.if_scope(input_format_tmp[0] == 7):
-            set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp)
         # YUV422SP_U8
         with ib.if_scope(input_format_tmp[0] == 8):
-            set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp)
         # AYUV444_U8
         with ib.if_scope(input_format_tmp[0] == 9):
-            set_spr2_spr4_lhisi_dync_by_YUV(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp)
         # XRGB8888_U8
         with ib.if_scope(input_format_tmp[0] == 2):
-            set_spr2_spr4_lhisi_dync_by_RGB(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp)
         # RGB888_U8
         with ib.if_scope(input_format_tmp[0] == 5):
-            set_spr2_spr4_lhisi_dync_by_RGB(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp)
         # ARGB8888
         with ib.if_scope(input_format_tmp[0] == 6):
-            set_spr2_spr4_lhisi_dync_by_RGB(ib, dtype, spr, p_ub_buf, tmp)
+            _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp)
     else:
         # spr2
         ib.emit(tvm.call_extern("int16",
@@ -653,7 +659,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7", spr[7]))
 
 
-def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product):
+def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC0"):
     """
     :param ib:
     :param aipp_config:
@@ -911,14 +917,47 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product):
         elif aipp_config.get('input_format') == "RAW16" or \
                 aipp_config.get('input_format') == "uint16":
             spr9 = spr9 | 12 << 19
+        elif aipp_config.get('input_format') == "RGB16":
+            spr9 = spr9 | 18 << 19
+        elif aipp_config.get('input_format') == "RGB20":
+            spr9 = spr9 | 19 << 19
+        elif aipp_config.get('input_format') == "RGB24":
+            spr9 = spr9 | 20 << 19
+        elif aipp_config.get('input_format') == "RGB8_IR":
+            spr9 = spr9 | 21 << 19
+        elif aipp_config.get('input_format') == "RGB16_IR":
+            spr9 = spr9 | 22 << 19
+        elif aipp_config.get('input_format') == "RGB24_IR":
+            spr9 = spr9 | 23 << 19
     if 'single_line_mode' in aipp_config:
         spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
+
+    n = 8
+    if ('raw_rgbir_to_f16_n') in aipp_config:
+        n = aipp_config.get('raw_rgbir_to_f16_n')
     if aipp_config.get('input_format') in ["RAW10", "RAW12", "RAW16", "uint16"] \
             and dtype == "float16":
         # [33:30]: raw_to_f16_n
-        n = 8
+        # the n = 8
         spr9 = spr9 | (n << 30)
         spr9 = spr9 | (1 << 35)
+
+    if output_format == "NC1HWC0_C04":
+        spr9 = spr9 | (1 << 40)
+
+    if aipp_config.get('input_format') in ["RGB16", "RGB20", "RGB24",
+                                           "RGB16_IR", "RGB24_IR"]:
+        spr9 = spr9 | (n << 30)
+
+    if aipp_config.get('input_format') in ["RGB20", "RGB24", "RGB24_IR"]:
+        mean_chn_2 = 0
+        mean_chn_3 = 0
+        if 'mean_chn_2' in aipp_config:
+            mean_chn_2 = aipp_config.get('mean_chn_2')
+        if 'mean_chn_3' in aipp_config:
+            mean_chn_3 = aipp_config.get('mean_chn_3')
+        spr9 = spr9 | (((mean_chn_2 >> 16) & 0xff) << 48)
+        spr9 = spr9 | (((mean_chn_3 >> 16) & 0xff) << 56)
 
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9",
                             tvm.const(spr9, dtype="uint64")))
@@ -1171,11 +1210,14 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
             spr9 = spr9 | 12 << 19
     if 'single_line_mode' in aipp_config:
         spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
+    n = 8
+    if ('raw_rgbir_to_f16_n') in aipp_config:
+        n = aipp_config.get('raw_rgbir_to_f16_n')
     if aipp_config.get('input_format') in ["RAW10", "RAW12",
                                            "RAW16", "uint16"] and \
             dtype == "float16":
         # [33:30]: raw_to_f16_n
-        n = 8
+        # the n = 8
         spr9 = spr9 | (n << 30)
         spr9 = spr9 | (1 << 35)
 
@@ -1192,35 +1234,35 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
     aipp_map['spr_9'] = tvm.const(spr9, dtype="uint64")
 
 
-def get_tiling_W(W, l1_image_buf_max, w_loop):
+def get_tiling_w(w, l1_image_buf_max, w_loop):
     """
-    :param W:
+    :param w:
     :param l1_image_buf_max:
     :param w_loop:
     :return:
     """
 
-    if W <= l1_image_buf_max:
-        return W, w_loop
+    if w <= l1_image_buf_max:
+        return w, w_loop
     else:
         w_loop = w_loop * 2
-        W = W // w_loop
-        return get_tiling_W(W, l1_image_buf_max, w_loop)
+        w = w // w_loop
+        return get_tiling_w(w, l1_image_buf_max, w_loop)
 
 
-def get_lenBurst_and_nBurst(lenBurst, nBurst):
+def get_lenburst_and_nburst(len_burst, n_burst):
     """
-    :param lenBurst:
-    :param nBurst:
+    :param len_burst:
+    :param n_burst:
     :return:
     """
 
-    if lenBurst <= 65535:
-        return lenBurst, nBurst
+    if len_burst <= 65535:
+        return len_burst, n_burst
     else:
-        nBurst = nBurst*2
-        lenBurst = lenBurst // nBurst
-        return get_lenBurst_and_nBurst(lenBurst, nBurst)
+        n_burst = n_burst*2
+        len_burst = len_burst // n_burst
+        return get_lenburst_and_nburst(len_burst, n_burst)
 
 
 def set_aipp_default_params(aipp_config):
@@ -1273,20 +1315,29 @@ def set_aipp_default_params(aipp_config):
         aipp_config['var_reci_chn_3'] = DEFAULT_VAR_RECI_CHN
 
 
-def raise_RuntimeError(cause_desc):
-    error_info = {}
-    error_info['errCode'] = AIPP_OP_ERROR_CODE
-    error_info['cause_desc'] = cause_desc
+def raise_runtime_error(cause_desc):
+    error_info = {'errCode': AIPP_OP_ERROR_CODE, 'cause_desc': cause_desc}
 
     raise RuntimeError(error_info,
                        "Compile op[aipp] failed, cause: %s." % cause_desc)
 
 
-def check_param_range(param_name, param_value, min, max):
-    if param_value < min or param_value > max:
+def check_param_range(param_name, param_value, min_value, max_value):
+    if param_value < min_value or param_value > max_value:
         cause_desc = "%s[%s] should be within[%d, %d]" % \
-                     (param_name, param_value, min, max)
-        raise_RuntimeError(cause_desc)
+                     (param_name, param_value, min_value, max_value)
+        raise_runtime_error(cause_desc)
+
+
+def check_mean(aipp_config, mean_name, mean_value):
+    if aipp_config.get('input_format') in ["RGB16", "RGB16_IR"]:
+        check_param_range(mean_name, mean_value, 0, 65535)
+    elif aipp_config.get('input_format') in ["RGB20"]:
+        check_param_range(mean_name, mean_value, 0, 1048575)
+    elif aipp_config.get('input_format') in ["RGB24", "RGB24_IR"]:
+        check_param_range(mean_name, mean_value, 0, 16777215)
+    else:
+        check_param_range(mean_name, mean_value, 0, 255)
 
 
 def check_aipp_static_config(input_data, input_format, output_data, aipp_config, cur_cce_product):
@@ -1299,89 +1350,118 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
     """
 
     if input_format == "NHWC":
-        H = input_data[1]
-        W = input_data[2]
-        C = input_data[3]
+        h = input_data[1]
+        w = input_data[2]
+        c = input_data[3]
     elif input_format == "NCHW":
-        C = input_data[1]
-        H = input_data[2]
-        W = input_data[3]
+        c = input_data[1]
+        h = input_data[2]
+        w = input_data[3]
     else:
-        C1 = input_data[1]
-        H = input_data[2]
-        W = input_data[3]
-        C0 = input_data[4]
+        c1 = input_data[1]
+        h = input_data[2]
+        w = input_data[3]
+        c0 = input_data[4]
 
     output_shape = output_data.get('shape')
     output_ori_shape = output_data.get('ori_shape')
     output_ori_format = output_data.get('ori_format')
-    N, C1, H, W, C0 = output_shape
+    n, c1, h, w, c0 = output_shape
 
     if 'input_format' not in aipp_config:
         cause_desc = "the input_format must be setted"
-        raise_RuntimeError(cause_desc)
+        raise_runtime_error(cause_desc)
 
     if input_format == "NC1HWC0_C04":
         if aipp_config.get("input_format") not in ["NC1HWC0DI_FP16", "NC1HWC0DI_S8"]:
             cause_desc = "when aipp op's input format is NC1HWC0_C04, input image's format[%s] " \
                          "must be NC1HWC0DI_FP16 or NC1HWC0DI_S8" % aipp_config.get("input_format")
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") == "YUV400_U8" and \
             ('csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1):
         cause_desc = "when input format is YUV400_U8, " \
                      "it doesn't make sense to convert to RGB, csc_switch[%d]" % \
                      aipp_config.get('csc_switch')
-        raise_RuntimeError(cause_desc)
+        raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
-            ["YUV420SP_U8", "RGB888_U8", "YUYV_U8", "YUV420SP_U8"]:
-        if C != 3:
-            cause_desc = "input C[%d] must be 3 when input_format is %s" % \
-                         (C, aipp_config.get("input_format"))
-            raise_RuntimeError(cause_desc)
+            ["YUV420SP_U8", "RGB888_U8", "YUYV_U8", "YUV420SP_U8", "RGB16", "RGB20", "RGB24"]:
+        if c != 3:
+            cause_desc = "input c[%d] must be 3 when input_format is %s" % \
+                         (c, aipp_config.get("input_format"))
+            raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
-            ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"]:
-        if C != 4:
-            cause_desc = "input C[%d] must be 4 when input_format is %s" % \
-                         (C, aipp_config.get("input_format"))
-            raise_RuntimeError(cause_desc)
+            ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8", "RGB8_IR", "RGB16_IR", "RGB24_IR"]:
+        if c != 4:
+            cause_desc = "input c[%d] must be 4 when input_format is %s" % \
+                         (c, aipp_config.get("input_format"))
+            raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
             ["YUV400_U8", "RAW10", "RAW12", "RAW16", "uint16"]:
-        if C != 1:
-            cause_desc = "input C[%d] must be 1 when input_format is %s" % \
-                         (C, aipp_config.get("input_format"))
-            raise_RuntimeError(cause_desc)
+        if c != 1:
+            cause_desc = "input c[%d] must be 1 when input_format is %s" % \
+                         (c, aipp_config.get("input_format"))
+            raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in ["NC1HWC0DI_FP16", "NC1HWC0DI_S8"]:
-        C0 = input_data[4]
-        if C0 != 4:
-            cause_desc = "input C0[%d] must be 4 when input_format is %s" % \
-                         (C0, aipp_config.get("input_format"))
-            raise_RuntimeError(cause_desc)
+        c0 = input_data[4]
+        if c0 != 4:
+            cause_desc = "input c0[%d] must be 4 when input_format is %s" % \
+                         (c0, aipp_config.get("input_format"))
+            raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") not in ["NC1HWC0DI_S8", "NC1HWC0DI_FP16"]:
-        if C1 != 1:
+        if c1 != 1:
             if output_ori_format == "NCHW":
-                output_ori_C = output_ori_shape[1]
+                output_ori_c = output_ori_shape[1]
             elif output_ori_format == "NHWC":
-                output_ori_C = output_ori_shape[3]
+                output_ori_c = output_ori_shape[3]
             else:
                 cause_desc = "network input format[%s] is not supported" % output_ori_format
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
-            cause_desc = "network input C[%d] should be less than or equal to %d" % \
-                         (output_ori_C, C0)
-            raise_RuntimeError(cause_desc)
+            cause_desc = "network input c[%d] should be less than or equal to %d" % \
+                         (output_ori_c, c0)
+            raise_runtime_error(cause_desc)
 
-    if aipp_config.get("input_format") in \
-            ["RAW10", "RAW12", "RAW16", "uint16",
-             "NC1HWC0DI_S8", "NC1HWC0DI_FP16"]:
-        if ('csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1) or \
-           ('resize' in aipp_config and aipp_config.get('resize') == 1) or \
+    if aipp_config.get("input_format") in ["RGB16"] and \
+        (('csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1) or \
+        ('resize' in aipp_config and aipp_config.get('resize') == 1)):
+        if 'csc_switch' not in aipp_config:
+                aipp_config['csc_switch'] = 0
+        if 'resize' not in aipp_config:
+            aipp_config['resize'] = 0
+
+        cause_desc = "%s not support csc_switch[%d] and resize[%d]" % \
+                     (aipp_config.get("input_format"),
+                      aipp_config.get('csc_switch'),
+                      aipp_config.get('resize'))
+        raise_runtime_error(cause_desc)
+
+    if aipp_config.get("input_format") in ["RGB8_IR"]:
+        if ('resize' in aipp_config and aipp_config.get('resize') == 1) or \
            ('padding' in aipp_config and aipp_config.get('padding') == 1):
+            if 'resize' not in aipp_config:
+                aipp_config['resize'] = 0
+            if 'padding' not in aipp_config:
+                aipp_config['padding'] = 0
+
+            cause_desc = "%s not support resize[%d] and padding[%d]" % \
+                         (aipp_config.get("input_format"),
+                          aipp_config.get('resize'),
+                          aipp_config.get('padding'))
+            raise_runtime_error(cause_desc)
+
+    if ('csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1) or \
+       ('resize' in aipp_config and aipp_config.get('resize') == 1) or \
+       ('padding' in aipp_config and aipp_config.get('padding') == 1):
+        if aipp_config.get("input_format") in \
+                ["RAW10", "RAW12", "RAW16", "uint16",
+                 "NC1HWC0DI_S8", "NC1HWC0DI_FP16",
+                 "RGB20", "RGB24", "RGB16_IR", "RGB24_IR"]:
             if 'csc_switch' not in aipp_config:
                 aipp_config['csc_switch'] = 0
             if 'resize' not in aipp_config:
@@ -1394,7 +1474,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                           aipp_config.get('csc_switch'),
                           aipp_config.get('resize'),
                           aipp_config.get('padding'))
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
     if ('padding' in aipp_config and aipp_config.get('padding') == 1) or \
        ('crop' in aipp_config and aipp_config.get('crop') == 1) or \
@@ -1423,7 +1503,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                           aipp_config.get('padding'),
                           aipp_config.get('src_image_size_w'),
                           aipp_config.get('src_image_size_h'))
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') == "YUV420SP_U8" and \
                 (aipp_config.get('src_image_size_h') % 2 != 0 or
@@ -1432,14 +1512,14 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "should be even for YUV420SP_U8" % \
                          (aipp_config.get('src_image_size_w'),
                           aipp_config.get('src_image_size_h'))
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') in ["YUV422SP_U8", "YUYV_U8"] and \
                 (aipp_config.get('src_image_size_w') % 2 != 0):
             cause_desc = "src_image_size_w[%d] should be even for %s" % \
                          (aipp_config.get('src_image_size_w'),
                           aipp_config.get('input_format'))
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
             if aipp_config.get('input_format') in \
@@ -1449,25 +1529,25 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                     cause_desc = "src_image_size_w[%d] must be multiples of 16 for %s" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["RGB888_U8"]:
                 if (aipp_config.get('src_image_size_w')*3) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*3 must be multiples of 16 for %s" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"]:
                 if (aipp_config.get('src_image_size_w')*4) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*4 must be multiples of 16 for %s" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["YUYV_U8"]:
                 if (aipp_config.get('src_image_size_w')*2) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*2 must be multiples of 16 for %s" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
         if ('crop' in aipp_config and aipp_config.get('crop') == 1):
             if ("load_start_pos_h") not in aipp_config:
@@ -1498,13 +1578,13 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                   aipp_config.get("crop_size_w"),
                                   aipp_config.get('resize'),
                                   aipp_config.get('padding'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
                 if aipp_config.get("crop_size_h") == 0:
-                    aipp_config["crop_size_h"] = H
+                    aipp_config["crop_size_h"] = h
 
                 if aipp_config.get("crop_size_w") == 0:
-                    aipp_config["crop_size_w"] = W
+                    aipp_config["crop_size_w"] = w
 
             if aipp_config.get("load_start_pos_h") + \
                     aipp_config.get("crop_size_h") > \
@@ -1516,7 +1596,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                              (aipp_config.get("load_start_pos_h"),
                               aipp_config.get("crop_size_h"),
                               aipp_config.get("src_image_size_h"))
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if aipp_config.get("load_start_pos_w") + \
                     aipp_config.get("crop_size_w") > \
@@ -1528,7 +1608,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                              (aipp_config.get("load_start_pos_w"),
                               aipp_config.get("crop_size_w"),
                               aipp_config.get("src_image_size_w"))
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if aipp_config.get('input_format') in ["YUV420SP_U8"]:
                 if aipp_config.get("load_start_pos_h") % 2 != 0 or\
@@ -1543,7 +1623,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                   aipp_config.get("load_start_pos_w"),
                                   aipp_config.get("crop_size_h"),
                                   aipp_config.get("crop_size_w"))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
             if aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
                 if aipp_config.get("load_start_pos_w") % 2 != 0 or \
@@ -1554,13 +1634,13 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                  (aipp_config.get('input_format'),
                                   aipp_config.get("load_start_pos_w"),
                                   aipp_config.get("crop_size_w"))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
         if ('resize' in aipp_config and aipp_config.get('resize') == 1):
             if cur_cce_product not in ["Hi3796CV300ES", "Hi3796CV300CS"]:
                 cause_desc = "resize only support " \
                              "Hi3796CV300ES and Hi3796CV300CS"
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if ("resize_input_h") not in aipp_config:
                 if "crop" in aipp_config and aipp_config.get("crop") == 1:
@@ -1568,7 +1648,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                         cause_desc = "when crop and resize is enable, " \
                                      "crop_size_h[%d] must be larger than 0" % \
                                      (aipp_config.get("crop_size_h"))
-                        raise_RuntimeError(cause_desc)
+                        raise_runtime_error(cause_desc)
 
                     aipp_config["resize_input_h"] = aipp_config.get("crop_size_h")
                 else:
@@ -1580,7 +1660,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 cause_desc = "when resize is enable, resize_input_h[%d] should " \
                              "be within [16, 4096]" % \
                              aipp_config["resize_input_h"]
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if ("resize_input_w") not in aipp_config:
                 if "crop" in aipp_config and aipp_config.get("crop") == 1:
@@ -1588,7 +1668,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                         cause_desc = "when crop and resize is enable, " \
                                      "crop_size_w[%d] must be larger than 0" % \
                                      (aipp_config.get("crop_size_w"))
-                        raise_RuntimeError(cause_desc)
+                        raise_runtime_error(cause_desc)
 
                     aipp_config["resize_input_w"] = aipp_config.get("crop_size_w")
                 else:
@@ -1600,7 +1680,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 cause_desc = "when resize is enable, resize_input_w[%d] should " \
                              "be within [16, 4096]" % \
                              aipp_config["resize_input_w"]
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if ("resize_output_h") not in aipp_config:
                 aipp_config["resize_output_h"] = 0
@@ -1612,7 +1692,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 cause_desc = "resize_input_w[%d] should " \
                              "be less than or equal to 4096" % \
                              aipp_config.get("resize_input_w")
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if aipp_config.get("resize_output_h") == 0 or \
                     aipp_config.get("resize_output_w") == 0:
@@ -1623,25 +1703,25 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                  (aipp_config.get("resize_output_h"),
                                   aipp_config.get("resize_output_w"),
                                   aipp_config.get('padding'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
             if aipp_config.get("resize_output_h") == 0:
-                aipp_config["resize_output_h"] = H
+                aipp_config["resize_output_h"] = h
 
             if aipp_config.get("resize_output_w") == 0:
-                aipp_config["resize_output_w"] = W
+                aipp_config["resize_output_w"] = w
 
             if aipp_config.get("resize_output_w") < 16 or \
                     aipp_config.get("resize_output_w") > 1920:
                 cause_desc = "resize_output_w[%d] should be within [16, 1920]" \
                              % aipp_config.get("resize_output_w")
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if aipp_config.get("resize_output_h") < 16 or \
                     aipp_config.get("resize_output_h") > 4096:
                 cause_desc = "resize_output_h[%d] should be within [16, 4096]" \
                              % aipp_config.get("resize_output_h")
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             resize_output_w = aipp_config.get("resize_output_w")
             resize_input_w = aipp_config.get("resize_input_w")
@@ -1653,26 +1733,26 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 cause_desc = "resize_output_w[%d]/resize_input_w[%d] " \
                              "should be within [1/16, 16]" % \
                              (resize_output_w, resize_input_w)
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
             if resize_output_h/resize_input_h < 1/16 or \
                resize_output_h/resize_input_h > 16:
                 cause_desc = "resize_output_h[%d]/resize_input_h[%d] " \
                              "should be within [1/16, 16]" % \
                              (resize_output_h, resize_input_h)
-                raise_RuntimeError(cause_desc)
+                raise_runtime_error(cause_desc)
 
         if ('padding' in aipp_config and aipp_config.get('padding') == 1):
             if cur_cce_product in ["Ascend310", "Ascend610", "Ascend710"]:
-                if W > 1080:
-                    cause_desc = "after padding, aipp output W[%d] should " \
-                                 "be less than or eaqual to 1080" % W
-                    raise_RuntimeError(cause_desc)
+                if w > 1080:
+                    cause_desc = "after padding, aipp output w[%d] should " \
+                                 "be less than or eaqual to 1080" % w
+                    raise_runtime_error(cause_desc)
             if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
-                if W > 4096:
-                    cause_desc = "after padding, aipp output W[%d] should " \
-                                 "be less than or eaqual to 4096" % W
-                    raise_RuntimeError(cause_desc)
+                if w > 4096:
+                    cause_desc = "after padding, aipp output w[%d] should " \
+                                 "be less than or eaqual to 4096" % w
+                    raise_runtime_error(cause_desc)
 
         crop_size_w = 0
         crop_size_h = 0
@@ -1686,99 +1766,99 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
         if left_padding_size > 32 or right_padding_size > 32 or \
                 top_padding_size > 32 or bottom_padding_size > 32:
             cause_desc = "The max padding size is 32, " \
-                         "and left_padding_size[%d] is %d, " \
-                         "right_padding_size[%d] is %d, " \
-                         "top_padding_size[%d] is %d, " \
-                         "bottom_padding_size[%d] is %d" % \
+                         "and left_padding_size is %d, " \
+                         "right_padding_size is %d, " \
+                         "top_padding_size is %d, " \
+                         "bottom_padding_size is %d" % \
                          (left_padding_size, right_padding_size,
                           top_padding_size, bottom_padding_size)
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if ('crop' in aipp_config and aipp_config.get('crop') == 1) and \
            ('resize' not in aipp_config or aipp_config.get('resize') == 0) and \
            ('padding' not in aipp_config or aipp_config.get('padding') == 0):
-            if crop_size_h != H or crop_size_w != W:
+            if crop_size_h != h or crop_size_w != w:
                 cause_desc = "when crop is enable, resize is disable and " \
                              "padding is disable, " \
-                             "crop_size_w[%d] should be equal to output W[%d] and " \
-                             "crop_size_h[%d] should be equal to output H[%d]" % \
-                             (crop_size_w, W, crop_size_h, H)
-                raise_RuntimeError(cause_desc)
+                             "crop_size_w[%d] should be equal to output w[%d] and " \
+                             "crop_size_h[%d] should be equal to output h[%d]" % \
+                             (crop_size_w, w, crop_size_h, h)
+                raise_runtime_error(cause_desc)
 
         if ('resize' in aipp_config and aipp_config.get('resize') == 1) and \
            ('padding' not in aipp_config or aipp_config.get('padding') == 0):
-            if aipp_config.get("resize_output_h") != H or \
-                    aipp_config.get("resize_output_w") != W:
+            if aipp_config.get("resize_output_h") != h or \
+                    aipp_config.get("resize_output_w") != w:
                 cause_desc = "when resize is enable and " \
                              "padding is disable, " \
                              "resize_output_w[%d] should " \
-                             "be equal to output W[%d] " \
+                             "be equal to output w[%d] " \
                              "and resize_output_h[%d] should " \
-                             "be equal to output H[%d]" % \
-                             (aipp_config.get("resize_output_w"), W,
-                              aipp_config.get("resize_output_h"), H)
-                raise_RuntimeError(cause_desc)
+                             "be equal to output h[%d]" % \
+                             (aipp_config.get("resize_output_w"), w,
+                              aipp_config.get("resize_output_h"), h)
+                raise_runtime_error(cause_desc)
 
         if ('crop' in aipp_config and aipp_config.get('crop') == 1) and \
            ('resize' not in aipp_config or aipp_config.get('resize') == 0) and \
            ('padding' in aipp_config and aipp_config.get('padding') == 1):
-            if crop_size_w + left_padding_size + right_padding_size != W or \
-               crop_size_h + top_padding_size + bottom_padding_size != H:
+            if crop_size_w + left_padding_size + right_padding_size != w or \
+               crop_size_h + top_padding_size + bottom_padding_size != h:
                 cause_desc = "when crop is enable, resize is disable and " \
                              "padding is enable, " \
                              "crop_size_w[%d] + left_padding_size[%d] + " \
                              "right_padding_size[%d] " \
-                             "should be equal to output W[%d] " \
+                             "should be equal to output w[%d] " \
                              "and crop_size_h[%d] + top_padding_size[%d] + " \
                              "bottom_padding_size[%d] should " \
-                             "be equal to output H[%d]" % \
+                             "be equal to output h[%d]" % \
                              (crop_size_w, left_padding_size,
-                              right_padding_size, W,
+                              right_padding_size, w,
                               crop_size_h, top_padding_size,
-                              bottom_padding_size, H)
-                raise_RuntimeError(cause_desc)
+                              bottom_padding_size, h)
+                raise_runtime_error(cause_desc)
 
         if ('crop' not in aipp_config or aipp_config.get('crop') == 0) and \
            ('resize' in aipp_config and aipp_config.get('resize') == 1) and \
            ('padding' in aipp_config and aipp_config.get('padding') == 1):
             if aipp_config.get("resize_output_w") + \
-                    left_padding_size + right_padding_size != W or \
+                    left_padding_size + right_padding_size != w or \
                     aipp_config.get("resize_output_h") + \
-                    top_padding_size + bottom_padding_size != H:
+                    top_padding_size + bottom_padding_size != h:
                 cause_desc = "when crop is disable, resize is enable and " \
                              "padding is enable, " \
                              "resize_output_w[%d] + left_padding_size[%d] + " \
                              "right_padding_size[%d] should " \
-                             "be equal to output W[%d] " \
+                             "be equal to output w[%d] " \
                              "and resize_output_h[%d] + top_padding_size[%d] + " \
                              "bottom_padding_size[%d] should " \
-                             "be equal to output H[%d]" % \
+                             "be equal to output h[%d]" % \
                              (aipp_config.get("resize_output_w"),
-                              left_padding_size, right_padding_size, W,
+                              left_padding_size, right_padding_size, w,
                               aipp_config.get("resize_output_h"),
-                              top_padding_size, bottom_padding_size, H)
-                raise_RuntimeError(cause_desc)
+                              top_padding_size, bottom_padding_size, h)
+                raise_runtime_error(cause_desc)
 
         if ('crop' not in aipp_config or aipp_config.get('crop') == 0) and \
            ('resize' not in aipp_config or aipp_config.get('resize') == 0) and \
            ('padding' in aipp_config and aipp_config.get('padding') == 1):
             if aipp_config.get("src_image_size_w") + \
-                    left_padding_size + right_padding_size != W or \
+                    left_padding_size + right_padding_size != w or \
                aipp_config.get("src_image_size_h") + \
-                    top_padding_size + bottom_padding_size != H:
+                    top_padding_size + bottom_padding_size != h:
                 cause_desc = "when crop is disable, resize is disable, " \
                              "padding is enable, " \
                              "src_image_size_w[%d] + left_padding_size[%d] + " \
                              "right_padding_size[%d] should " \
-                             "be equal to output W[%d] and " \
+                             "be equal to output w[%d] and " \
                              "src_image_size_h[%d] + top_padding_size[%d] + " \
                              "bottom_padding_size[%d] should " \
-                             "be equal to output H[%d]" % \
+                             "be equal to output h[%d]" % \
                              (aipp_config.get("src_image_size_w"),
-                              left_padding_size, right_padding_size, W,
+                              left_padding_size, right_padding_size, w,
                               aipp_config.get("src_image_size_h"),
-                              top_padding_size, bottom_padding_size, H)
-                raise_RuntimeError(cause_desc)
+                              top_padding_size, bottom_padding_size, h)
+                raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend310"]:
         if aipp_config.get('input_format') not in \
@@ -1788,7 +1868,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
                          "RGB888_U8, YUV400_U8, current input format is %s" % \
                          aipp_config.get('input_format')
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend610", "Ascend710"]:
         if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8",
@@ -1799,17 +1879,21 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
                          "RGB888_U8, YUV400_U8, " \
                          "current input format is %s" % aipp_config.get('input_format')
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
     if cur_cce_product in ["Ascend615"]:
         if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8",
                                                    "NC1HWC0DI_FP16",
                                                    "NC1HWC0DI_S8",
-                                                   "RGB888_U8", "YUV400_U8",]:
+                                                   "RGB888_U8", "YUV400_U8",
+                                                   "RGB16", "RGB20", "RGB24",
+                                                   "RGB8_IR", "RGB16_IR", "RGB24_IR"]:
             cause_desc = "Ascend615 only support YUV420SP_U8, " \
                          "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
                          "RGB888_U8, YUV400_U8, " \
+                         "RGB16, RGB20, RGB24, " \
+                         "RGB8_IR, RGB16_IR, RGB24_IR" \
                          "current input format is %s" % aipp_config.get('input_format')
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
         if aipp_config.get('input_format') not in \
@@ -1821,74 +1905,74 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400_U8, " \
                          "RAW10, RAW12, RAW16, current input format is %s" % \
                          aipp_config.get('input_format')
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
     if (("crop") not in aipp_config or aipp_config.get("crop") == 0) and \
        (("resize") not in aipp_config or aipp_config.get("resize") == 0) and \
        (("padding") not in aipp_config or aipp_config.get("padding") == 0):
         if (('src_image_size_h' in aipp_config) and \
             aipp_config.get('src_image_size_h') != 0) and \
-                H != aipp_config.get('src_image_size_h'):
-            cause_desc = "input H[%d] of network should be equal to " \
+                h != aipp_config.get('src_image_size_h'):
+            cause_desc = "input h[%d] of network should be equal to " \
                          "src_image_size_h[%d]" % \
-                         (H, aipp_config.get('src_image_size_h'))
-            raise_RuntimeError(cause_desc)
+                         (h, aipp_config.get('src_image_size_h'))
+            raise_runtime_error(cause_desc)
 
         if (('src_image_size_w' in aipp_config) and \
             aipp_config.get('src_image_size_w') != 0) and \
-            W != aipp_config.get('src_image_size_w'):
-            cause_desc = "input W[%d] of network should be equal to " \
+            w != aipp_config.get('src_image_size_w'):
+            cause_desc = "input w[%d] of network should be equal to " \
                          "src_image_size_w[%d]" % \
-                         (W, aipp_config.get('src_image_size_w'))
-            raise_RuntimeError(cause_desc)
+                         (w, aipp_config.get('src_image_size_w'))
+            raise_runtime_error(cause_desc)
 
         if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
             if aipp_config.get('input_format') in \
                 ["YUV420SP_U8", "YUV400_U8", "YUV422SP_U8", "RAW10",
                  "RAW12", "RAW16", "uint16"]:
                 if (('src_image_size_w' in aipp_config) and \
-                        aipp_config.get('src_image_size_w') % 16 != 0) or W % 16 != 0:
+                        aipp_config.get('src_image_size_w') % 16 != 0) or w % 16 != 0:
                     cause_desc = "src_image_size_w[%d] of %s must " \
                                  "be multiples of 16" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["RGB888_U8"]:
                 if (('src_image_size_w' in aipp_config) and \
-                        (aipp_config.get('src_image_size_w')*3) % 16 != 0) or (W*3) % 16 != 0:
+                        (aipp_config.get('src_image_size_w')*3) % 16 != 0) or (w*3) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*3 of %s must " \
                                  "be multiples of 16" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"]:
                 if (('src_image_size_w' in aipp_config) and \
-                        (aipp_config.get('src_image_size_w')*4) % 16 != 0) or (W*4) % 16 != 0:
+                        (aipp_config.get('src_image_size_w')*4) % 16 != 0) or (w*4) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*4 of %s must " \
                                  "be multiples of 16" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["YUYV_U8"]:
                 if (('src_image_size_w' in aipp_config) and \
-                        (aipp_config.get('src_image_size_w')*2) % 16 != 0) or (W*2) % 16 != 0:
+                        (aipp_config.get('src_image_size_w')*2) % 16 != 0) or (w*2) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*2 of %s must " \
                                  "be multiples of 16" % \
                                  (aipp_config.get('src_image_size_w'),
                                   aipp_config.get('input_format'))
-                    raise_RuntimeError(cause_desc)
+                    raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') == "YUV420SP_U8" and \
-                (H % 2 != 0 or W % 2 != 0):
+                (h % 2 != 0 or w % 2 != 0):
             cause_desc = "src_image_size_h[%d] and src_image_size_w[%d] should " \
-                         "be even for YUV420SP_U8" % (H, W)
-            raise_RuntimeError(cause_desc)
+                         "be even for YUV420SP_U8" % (h, w)
+            raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') in ["YUV422SP_U8", "YUYV_U8"] and \
-                (W % 2 != 0):
+                (w % 2 != 0):
             cause_desc = "src_image_size_w[%d] should be even for %s" % \
-                         (W, aipp_config.get('input_format'))
-            raise_RuntimeError(cause_desc)
+                         (w, aipp_config.get('input_format'))
+            raise_runtime_error(cause_desc)
 
     if 'src_image_size_h' not in aipp_config:
         aipp_config['src_image_size_h'] = 0
@@ -1901,43 +1985,43 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
             cause_desc = "src_image_size_h[%d] should " \
                          "be within [0, 4096]" % \
                          aipp_config["src_image_size_h"]
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if aipp_config["src_image_size_h"] == 0:
-            if H < 1 or H > 4096:
+            if h < 1 or h > 4096:
                 cause_desc = "hen src_image_size_h is 0, " \
                              "src_image_size_h is equal to " \
                              "input_H of network, " \
                              "and input_H[%d] of network should be " \
-                             "within [1, 4096]" % H
-                raise_RuntimeError(cause_desc)
+                             "within [1, 4096]" % h
+                raise_runtime_error(cause_desc)
 
     if ('src_image_size_w' in aipp_config):
         if ((aipp_config["src_image_size_w"] < 2 or
-             aipp_config["src_image_size_w"] > 4096) and
-            aipp_config["src_image_size_w"] != 0) :
+            aipp_config["src_image_size_w"] > 4096) and
+            aipp_config["src_image_size_w"] != 0):
             cause_desc = "src_image_size_w[%d] should " \
                          "be within [2, 4096] or equal to 0" % \
                          aipp_config["src_image_size_w"]
-            raise_RuntimeError(cause_desc)
+            raise_runtime_error(cause_desc)
 
         if aipp_config["src_image_size_w"] == 0:
-            if W < 2 or W > 4096:
+            if w < 2 or w > 4096:
                 cause_desc = "when src_image_size_w is 0, " \
                              "src_image_size_w is equal to " \
                              "input_W of network, " \
                              "and input_W[%d] of network should be " \
-                             "within [2, 4096]" % W
-                raise_RuntimeError(cause_desc)
+                             "within [2, 4096]" % w
+                raise_runtime_error(cause_desc)
 
     if 'mean_chn_0' in aipp_config:
-        check_param_range('mean_chn_0', aipp_config.get('mean_chn_0'), 0, 255)
+        check_mean(aipp_config, 'mean_chn_0', aipp_config.get('mean_chn_0'))
     if 'mean_chn_1' in aipp_config:
-        check_param_range('mean_chn_1', aipp_config.get('mean_chn_1'), 0, 255)
+        check_mean(aipp_config, 'mean_chn_1', aipp_config.get('mean_chn_1'))
     if 'mean_chn_2' in aipp_config:
-        check_param_range('mean_chn_2', aipp_config.get('mean_chn_2'), 0, 255)
+        check_mean(aipp_config, 'mean_chn_2', aipp_config.get('mean_chn_2'))
     if 'mean_chn_3' in aipp_config:
-        check_param_range('mean_chn_3', aipp_config.get('mean_chn_3'), 0, 255)
+        check_mean(aipp_config, 'mean_chn_3', aipp_config.get('mean_chn_3'))
 
     if 'min_chn_0' in aipp_config:
         check_param_range('min_chn_0', aipp_config.get('min_chn_0'), 0, 255)
@@ -2017,6 +2101,14 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
             check_param_range('input_bias_3', aipp_config.get('input_bias_3'),
                               0, 255)
 
+    if ('raw_rgbir_to_f16_n') in aipp_config:
+        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+            check_param_range('raw_rgbir_to_f16_n',
+                              aipp_config.get('raw_rgbir_to_f16_n'), 0, 15)
+        elif cur_cce_product in ["Ascend615"]:
+            check_param_range('raw_rgbir_to_f16_n',
+                              aipp_config.get('raw_rgbir_to_f16_n'), 0, 31)
+
 
 def new_alloc(ib, dtype, size):
     """
@@ -2026,13 +2118,18 @@ def new_alloc(ib, dtype, size):
     :return:
     """
 
-    output_cb = ib.allocate(dtype, (size,), "output_cb", scope=cce.scope_cbuf)
-    output_cb_buf = tvm.decl_buffer((size,), dtype, "output_cb_buf",
-                                    scope=cce.scope_cbuf, data=output_cb)
+    if dtype == "float16":
+        size = (((size*2 + 31) // 32)*32) // 2
+    else:
+        size = (((size + 31) // 32)*32)
 
-    output_ub = ib.allocate(dtype, (size,), "output_ub", scope=cce.scope_ubuf)
+    output_cb = ib.allocate(dtype, (size,), "output_cb", scope=tbe_platform.scope_cbuf)
+    output_cb_buf = tvm.decl_buffer((size,), dtype, "output_cb_buf",
+                                    scope=tbe_platform.scope_cbuf, data=output_cb)
+
+    output_ub = ib.allocate(dtype, (size,), "output_ub", scope=tbe_platform.scope_ubuf)
     output_ub_buf = tvm.decl_buffer((size,), dtype, "output_ub_buf",
-                                    scope=cce.scope_ubuf, data=output_ub)
+                                    scope=tbe_platform.scope_ubuf, data=output_ub)
 
     return output_cb_buf, output_ub_buf
 
@@ -2067,11 +2164,11 @@ def get_crop_info(aipp_config):
            crop_size_h, crop_size_w
 
 
-def get_actual_col_size(aipp_config, H, W):
+def get_actual_col_size(aipp_config, h, w):
     """
     :param aipp_config:
-    :param H:
-    :param W:
+    :param h:
+    :param w:
     :return:
     """
 
@@ -2094,8 +2191,8 @@ def get_actual_col_size(aipp_config, H, W):
             top_padding_size = aipp_config.get("top_padding_size")
         if "bottom_padding_size" in aipp_config:
             bottom_padding_size = aipp_config.get("bottom_padding_size")
-        output_h = H - top_padding_size - bottom_padding_size
-        output_w = W
+        output_h = h - top_padding_size - bottom_padding_size
+        output_w = w
         actual_col_size = output_h * output_w
 
     return actual_col_size
@@ -2141,7 +2238,7 @@ def vector_dup(ib, dtype, buf, size):
         with ib.for_range(0, loop_repeat) as i:
             mask = one_cnt
             offset_repeat = i*one_cnt*255
-            reset_mask_insn(ib, dtype, bits=mask)
+            tbe_platform.reset_mask_insn(ib, dtype, bits=mask)
             ib.emit(
                 tvm.call_extern(dtype, "vector_dup",
                                 buf.access_ptr("w", offset=offset_repeat),
@@ -2151,7 +2248,7 @@ def vector_dup(ib, dtype, buf, size):
     offset_remainder = loop_repeat*one_cnt*255
     with ib.if_scope(loop_remainder > 0):
         mask = one_cnt
-        reset_mask_insn(ib, dtype, bits=mask)
+        tbe_platform.reset_mask_insn(ib, dtype, bits=mask)
         ib.emit(
             tvm.call_extern(dtype, "vector_dup",
                             buf.access_ptr("w", offset=offset_remainder),
@@ -2161,7 +2258,7 @@ def vector_dup(ib, dtype, buf, size):
     offset = one_cnt*loop_remainder + loop_repeat*one_cnt*255
     with ib.if_scope(remainder > 0):
         mask = remainder
-        reset_mask_insn(ib, dtype, bits=128)
+        tbe_platform.reset_mask_insn(ib, dtype, bits=128)
         ib.emit(
             tvm.call_extern(dtype, "vector_dup",
                             buf.access_ptr("w", offset=offset),
@@ -2186,7 +2283,7 @@ def conv(ib, output_dtype, src_dtype, output_buf, src_buf, size):
         with ib.for_range(0, loop_repeat) as i:
             mask = one_cnt
             offset_repeat = i*one_cnt*255
-            reset_mask_insn(ib, src_dtype, bits=mask)
+            tbe_platform.reset_mask_insn(ib, src_dtype, bits=mask)
             ib.emit(
                 tvm.call_extern(output_dtype, inst,
                                 output_buf.access_ptr("w", offset=offset_repeat),
@@ -2196,7 +2293,7 @@ def conv(ib, output_dtype, src_dtype, output_buf, src_buf, size):
     offset_remainder = loop_repeat*one_cnt*255
     with ib.if_scope(loop_remainder > 0):
         mask = one_cnt
-        reset_mask_insn(ib, src_dtype, bits=mask)
+        tbe_platform.reset_mask_insn(ib, src_dtype, bits=mask)
         ib.emit(
             tvm.call_extern(output_dtype, inst,
                             output_buf.access_ptr("w", offset=offset_remainder),
@@ -2206,9 +2303,42 @@ def conv(ib, output_dtype, src_dtype, output_buf, src_buf, size):
     offset = one_cnt*loop_remainder + loop_repeat*one_cnt*255
     with ib.if_scope(remainder > 0):
         mask = 128
-        reset_mask_insn(ib, src_dtype, bits=mask)
+        tbe_platform.reset_mask_insn(ib, src_dtype, bits=mask)
         ib.emit(
             tvm.call_extern(output_dtype, inst,
                             output_buf.access_ptr("w", offset=offset),
                             src_buf.access_ptr("rw", offset=offset),
                             1, 1, 1, 4, 8))
+
+
+def copy_ubuf_to_gm_tail(ib, dtype, dst, src, tail_ub, count,
+                         dst_offset=0, src_offset=0):
+    """
+
+    :param ib:
+    :param dtype:
+    :param dst:
+    :param src:
+    :param tail_ub:
+    :param count:
+    :param dst_offset:
+    :param src_offset:
+    :return:
+    """
+
+    if dtype == "float16":
+        block_len = 16
+    else:
+        block_len = 32
+
+    for i in range(block_len):
+        ib.emit(
+            tvm.call_extern(
+                dtype, 'reg_mov', tail_ub.access_ptr('w', offset=i),
+                src.access_ptr('r',
+                               offset=src_offset + count - block_len + i)))
+    ib.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
+                                dst.access_ptr(
+                                    'w',
+                                    offset=dst_offset + count - block_len),
+                                tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))

@@ -1,26 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-basic_lstm_cell_input_grad
+basic_lstm_cell_weight_grad
 """
 import numpy as np
 
-from te import platform as cce
+import te.platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 # pylint: disable=too-many-instance-attributes
@@ -85,15 +84,14 @@ class LstmCellGradInput():
         None
         """
         for shape_check in (self.dgate_shape, self.x_shape, self.h_shape):
-            check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
+            para_check.check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
             for check_dim in (shape_check[2], shape_check[3]):
                 if check_dim != 16:
                     raise RuntimeError("the shape do not match the format!")
 
-        check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
-        check_dtype(self.x_dtype.lower(), ("float16",), param_name="input_x")
-        check_dtype(self.h_dtype.lower(), ("float16",), param_name="hidden_state")
-
+        para_check.check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
+        para_check.check_dtype(self.x_dtype.lower(), ("float16",), param_name="input_x")
+        para_check.check_dtype(self.h_dtype.lower(), ("float16",), param_name="hidden_state")
 
         # check k axis length match
         if self.x_shape[1] != self.dgate_shape[1]:
@@ -162,7 +160,7 @@ class LstmCellGrad(LstmCellGradInput):
         self.ele_each_loop = 0
 
         # get vector compute parameters
-        dtype_bytes_size = cce.cce_intrin.get_bit_len(self.x_dtype) // 8
+        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.x_dtype) // 8
         self.mask_max = 128 // (dtype_bytes_size // 2)
         self.repeat_max = 255
         self.ele_each_block = 32 // dtype_bytes_size
@@ -250,8 +248,7 @@ class LstmCellGrad(LstmCellGradInput):
                     scope=tik.scope_cbuf)
 
                 burst_lens = k_data_size // self.ele_each_block
-                with self.tik_instance.if_scope(
-                        row_num + idx_0 < self.x_shape[0]):
+                with self.tik_instance.if_scope(row_num + idx_0 < self.x_shape[0]):
                     src_offset = (row_num + idx_0) * k_data_size
                     self.tik_instance.data_move(l1_left, self.gm_x[src_offset],
                                                 0, 1, burst_lens, 0, 0)
@@ -265,8 +262,7 @@ class LstmCellGrad(LstmCellGradInput):
                 thread = 2
             else:
                 thread = 1
-            with self.tik_instance.for_range(
-                    0, n_loop, thread_num=thread) as idx_1:
+            with self.tik_instance.for_range(0, n_loop, thread_num=thread) as idx_1:
                 l0a_x = self.tik_instance.Tensor(
                     "float16", (self.l0a_size,),
                     name="l0a_x",
@@ -512,8 +508,7 @@ class LstmCellGrad(LstmCellGradInput):
         Returns:
         None
         """
-        with self.tik_instance.for_range(
-                0, self.aicore_num, block_num=self.aicore_num) as index:
+        with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
             self.compute_each_core(index)
 
         self.tik_instance.BuildCCE(
@@ -523,8 +518,8 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 # pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_weight_grad(x,
                                 h,

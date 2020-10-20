@@ -1,19 +1,23 @@
-/* Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @brief padd maxpool fusion pass
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file padd_maxpool_fusion_pass.cpp
+ * \brief padd maxpool fusion pass
+ */
 #include "padd_maxpool_fusion_pass.h"
 
 #include <iostream>
@@ -32,17 +36,16 @@
 
 using namespace ge;
 namespace fe {
-static const char *PADD = "PadD";
-static const char *MAXPOOL = "MaxPool";
+static const char* PADD = "PadD";
+static const char* MAXPOOL = "MaxPool";
 static const std::string PATTERN_PADD = "FusedNodePadD";
 static const std::string PATTERN_MAXPOOL = "FusedNodeMaxPool";
 
 vector<FusionPattern*> PaddMaxPoolFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
-  FusionPattern *pattern =
-      new (std::nothrow) FusionPattern("PaddMaxPoolFusionPass");
+  vector<FusionPattern*> patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("PaddMaxPoolFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_PADD, {PADD})
       .AddOpDesc(PATTERN_MAXPOOL, {MAXPOOL})
@@ -54,20 +57,29 @@ vector<FusionPattern*> PaddMaxPoolFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
-                                        Mapping& mapping,
-                                        vector<ge::NodePtr> &fusionNodes) {
+Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get all nodes
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADD, mapping);
   ge::NodePtr maxpool_node = GetNodeFromMapping(PATTERN_MAXPOOL, mapping);
-  FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(maxpool_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(maxpool_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  // check output link
+  FUSION_PASS_CHECK(pad_node->GetOutDataAnchor(0)->GetPeerAnchorsSize() != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "pad_node output size is [%d], which not equal to 1.",
+                            pad_node->GetOutDataAnchor(0)->GetPeerAnchorsSize()),
+                    return NOT_CHANGED);
 
   // get all node's desc
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
   ge::OpDescPtr maxpool_desc = maxpool_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(maxpool_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(maxpool_desc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool_node's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // get shape and format
   ge::GeTensorDesc input_desc = pad_desc->GetInputDesc(0);
@@ -97,6 +109,11 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
     OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr strides failed.");
     return GRAPH_FAILED;
   }
+  std::string padding;
+  if (ge::GRAPH_SUCCESS != op_maxpool.GetAttr("padding", padding)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr padding failed.");
+    return GRAPH_FAILED;
+  }
 
   // verify
   if ((input_format != FORMAT_NHWC) && (input_format != FORMAT_NCHW)) {
@@ -113,6 +130,10 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
   }
   if (strides.size() != 4) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of strides is not match.");
+    return NOT_CHANGED;
+  }
+  if (strcmp(padding.c_str(), "VALID") != 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "padding is not VALID.");
     return NOT_CHANGED;
   }
 
@@ -148,11 +169,11 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
   std::shared_ptr<ge::OpDesc> pool_desc = nullptr;
   pool_desc = std::make_shared<ge::OpDesc>(pad_node->GetName() + "_pooling", "Pooling");
   FUSION_PASS_CHECK(pool_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pool_desc is null, fusion failed."),
-           return PARAM_INVALID);
-  FUSION_PASS_CHECK(pool_desc->AddInputDesc(input_desc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(pool_desc->AddInputDesc(input_desc) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."),
+                    return FAILED);
   FUSION_PASS_CHECK(pool_desc->AddOutputDesc(output_desc) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "add output failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add output failed."), return FAILED);
   ge::NodePtr pool_node = graph.AddNode(pool_desc);
   fusionNodes.push_back(pool_node);
 
@@ -209,44 +230,36 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph,
   op_pool.SetAttr("global_pooling", false);
 
   // attr:dilation
-  std::vector<int32_t> dilation {1,1,1,1};
+  std::vector<int32_t> dilation{1, 1, 1, 1};
   op_pool.SetAttr("dilation", dilation);
 
   // connect input edge
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(
-               pad_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-               pool_node->GetInDataAnchor(0)) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                   pad_node->GetInDataAnchor(0)
-                       ->GetPeerOutAnchor()
-                       ->GetOwnerNode()
-                       ->GetName()
-                       .c_str(),
-                   pool_node->GetName().c_str()),
-           return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pad_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                            pool_node->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            pad_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                            pool_node->GetName().c_str()),
+                    return FAILED);
 
   // connect output edge
-  for (auto inDataAnchor :
-       maxpool_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(maxpool_node->GetOutDataAnchor(0),
-                                        inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pool_node->GetOutDataAnchor(0),
-                                     inDataAnchor) != SUCCESS,
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+  for (auto inDataAnchor : maxpool_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(maxpool_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pool_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
 
   // set node type
   pool_node->GetOpDesc()->SetType("Pooling");
 
   // delete fused nodes
-  FUSION_PASS_CHECK(graph.RemoveNode(pad_node) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove pad_node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(pad_node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove pad_node failed."),
+                    return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(maxpool_node) != SUCCESS,
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove maxpool_node failed."), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove maxpool_node failed."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "PaddMaxPoolFusionPass graph fusion success!");
   return SUCCESS;
 }
 REGISTER_PASS("PaddMaxPoolFusionPass", BUILT_IN_GRAPH_PASS, PaddMaxPoolFusionPass);
-}
+}  // namespace fe

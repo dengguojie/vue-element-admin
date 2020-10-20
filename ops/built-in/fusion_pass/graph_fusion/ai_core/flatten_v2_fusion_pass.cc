@@ -1,11 +1,23 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2019. All rights reserved.
+ * Copyright 2019 Huawei Technologies Co., Ltd
  *
- * @brief diag flatten_v2 pass
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * @author w00504245
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
+/*!
+ * \file flatten_v2_fusion_pass.cpp
+ * \brief diag flatten_v2 pass
+ */
 #include <iostream>
 #include <vector>
 #include <string>
@@ -28,17 +40,16 @@ using namespace ge;
 
 namespace fe {
 static const string PATTERN_FLATTEN_V2 = "FlattenV2";
-static const char *FLATTEN_V2 = "FlattenV2";
-static const char *FLATTEN_V2_ATTR_AXIS = "axis";
-static const char *FLATTEN_V2_ATTR_END_AXIS = "end_axis";
+static const char* FLATTEN_V2 = "FlattenV2";
+static const char* FLATTEN_V2_ATTR_AXIS = "axis";
+static const char* FLATTEN_V2_ATTR_END_AXIS = "end_axis";
 
-vector<FusionPattern *> FlattenV2Pass::DefinePatterns() {
-  vector<FusionPattern *> patterns;
+vector<FusionPattern*> FlattenV2Pass::DefinePatterns() {
+  vector<FusionPattern*> patterns;
   // define Fusion
-  FusionPattern *pattern =
-    new (std::nothrow) FusionPattern("FlattenV2Pass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("FlattenV2Pass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-    return patterns);
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_FLATTEN_V2, {FLATTEN_V2}).SetOutput(PATTERN_FLATTEN_V2);
 
@@ -47,14 +58,12 @@ vector<FusionPattern *> FlattenV2Pass::DefinePatterns() {
   return patterns;
 }
 
-Status FlattenV2Pass::Fusion(ge::ComputeGraph &graph,
-                             Mapping &mapping,
-                             vector<ge::NodePtr> &fusionNodes) {
+Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into FlattenV2Pass");
   // diag node
   ge::NodePtr flattenV2Node = GetNodeFromMapping(PATTERN_FLATTEN_V2, mapping);
-  FUSION_PASS_CHECK(flattenV2Node == nullptr,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "flattenV2Node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(flattenV2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "flattenV2Node is null, fusion failed."),
+                    return PARAM_INVALID);
 
   ge::InDataAnchorPtr oriInAnchorPtr0 = flattenV2Node->GetInDataAnchor(0);
   ge::OutDataAnchorPtr oriBottomPeerAnchorPtr0 = oriInAnchorPtr0->GetPeerOutAnchor();
@@ -74,10 +83,10 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph &graph,
   int64_t flattenV2EndAxis = -1;
   ge::AttrUtils::GetInt(flattenV2Desc, FLATTEN_V2_ATTR_AXIS, flattenV2Axis);
   ge::AttrUtils::GetInt(flattenV2Desc, FLATTEN_V2_ATTR_END_AXIS, flattenV2EndAxis);
-  if(flattenV2Axis < 0) {
+  if (flattenV2Axis < 0) {
     flattenV2Axis += dimCnt;
   }
-  if(flattenV2EndAxis < 0) {
+  if (flattenV2EndAxis < 0) {
     flattenV2EndAxis += dimCnt;
   }
 
@@ -86,15 +95,14 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph &graph,
     outputShape.push_back(inputShape[i]);
   }
   int64_t dimVal = 1;
-  for(int64_t i = flattenV2Axis; i < flattenV2EndAxis+1; i++) {
+  for (int64_t i = flattenV2Axis; i < flattenV2EndAxis + 1; i++) {
     dimVal = dimVal * inputShape[i];
   }
   outputShape.push_back(dimVal);
 
-  for(int64_t i = flattenV2EndAxis+1; i < dimCnt; i++) {
+  for (int64_t i = flattenV2EndAxis + 1; i < dimCnt; i++) {
     outputShape.push_back(inputShape[i]);
   }
-
 
   for (auto inAnchor : flattenV2Node->GetAllInDataAnchors()) {
     if (inAnchor != nullptr) {
@@ -118,19 +126,18 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph &graph,
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0,
-                                                oriTopPeerAnchorPtri),
-             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                     inputNode->GetName().c_str(), outputNode->GetName().c_str()),
-             return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, oriTopPeerAnchorPtri),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              inputNode->GetName().c_str(), outputNode->GetName().c_str()),
+                      return FAILED);
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(flattenV2Node),
-           OP_LOGE(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"), return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "FlattenV2Pass success!!!!");
 
   return SUCCESS;
 }
 REGISTER_PASS("FlattenV2Pass", BUILT_IN_GRAPH_PASS, FlattenV2Pass);
-}
+}  // namespace fe

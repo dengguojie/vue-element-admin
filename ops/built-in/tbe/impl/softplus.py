@@ -1,36 +1,36 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file except
-in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 softplus
 """
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te.utils import para_check
+from te.utils import shape_util
 from te import tvm
-from te import platform as tbe_platform
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from functools import reduce as functools_reduce
-from te.utils.op_utils import *
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
 NEG_LN_2 = - 0.69314718055994530941723212145818
 NEG_ONE = -1
 
+
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("softplus")
+@tbe_platform.fusion_manager.fusion_manager.register("softplus")
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """
     Compute for softplus.
@@ -53,35 +53,35 @@ def softplus_compute(input_x, y, kernel_name="softplus"):
     """
     dtype = input_x.dtype
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
+            tbe_platform.api_check_support("te.lang.cce.vexp",
                                                     "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
 
-    positive_part = te.lang.cce.vmaxs(input_x, tvm.const(0, dtype="float32"))
-    negative_part = te.lang.cce.vmins(input_x, tvm.const(0, dtype="float32"))
+    positive_part = tbe.vmaxs(input_x, tvm.const(0, dtype="float32"))
+    negative_part = tbe.vmins(input_x, tvm.const(0, dtype="float32"))
 
     # calculate positive part softplus
-    pos_to_neg = te.lang.cce.vmuls(positive_part, tvm.const(NEG_ONE, dtype="float32"))
-    exp_pos = te.lang.cce.vexp(pos_to_neg)
-    exp_add_one = te.lang.cce.vadds(exp_pos, SCALAR_ONE)
-    log_pos = te.lang.cce.vlog(exp_add_one)
-    res_positive = te.lang.cce.vadd(log_pos, positive_part)
+    pos_to_neg = tbe.vmuls(positive_part, tvm.const(NEG_ONE, dtype="float32"))
+    exp_pos = tbe.vexp(pos_to_neg)
+    exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
+    log_pos = tbe.vlog(exp_add_one)
+    res_positive = tbe.vadd(log_pos, positive_part)
 
     #calculate positive part softplus
-    exp_neg = te.lang.cce.vexp(negative_part)
-    add_one = te.lang.cce.vadds(exp_neg, SCALAR_ONE)
-    res_negative = te.lang.cce.vlog(add_one)
+    exp_neg = tbe.vexp(negative_part)
+    add_one = tbe.vadds(exp_neg, SCALAR_ONE)
+    res_negative = tbe.vlog(add_one)
 
-    res_tmp = te.lang.cce.vadd(res_positive, res_negative)
-    res = te.lang.cce.vadds(res_tmp, NEG_LN_2)
+    res_tmp = tbe.vadd(res_positive, res_negative)
+    res = tbe.vadds(res_tmp, NEG_LN_2)
 
     if dtype == "float16":
-        res = te.lang.cce.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def softplus(x, y, kernel_name="softplus"):
     """
     Compute for softplus.
@@ -103,21 +103,21 @@ def softplus(x, y, kernel_name="softplus"):
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
 
-    check_shape(shape_input, param_name="x")
+    para_check.check_shape(shape_input, param_name="x")
 
     check_list = ("float16", "float32")
-    check_dtype(dtype_input.lower(), check_list, param_name="x")
+    para_check.check_dtype(dtype_input.lower(), check_list, param_name="x")
 
-    shape = util.shape_refine(shape_input)
+    shape = shape_util.shape_refine(shape_input)
     input_dtype = dtype_input.lower()
-    shape_x = (functools_reduce(lambda x, y: x*y, shape[:]),)
+    shape_x = (functools.reduce(lambda x, y: x*y, shape[:]),)
     data = tvm.placeholder(shape_x, name="data", dtype=input_dtype)
 
     res = softplus_compute(data, y, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)
 

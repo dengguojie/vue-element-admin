@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 generate the cheque from best result python file by rl search
 """
 import os
@@ -356,9 +356,8 @@ def proc_reduce_split(sch, sch_targets, cheque_list, stage_get_axis_dict, specif
             update_after_split(sch_targets, split_stage_idx, split_reduce_axis_name, sch,
                                split_stage_obj, factor, code_line, cheque_list)
 
-
         elif split_stage_name.endswith('_rfactor') and \
-            split_axis in specify_axis_name_dict.values():
+                split_axis in specify_axis_name_dict.values():
             # split_axis is specify_axis_name: ub_split_reduce_axis
             if not stage_get_axis_dict.get(split_stage_name, False):
                 # get comm axis and get reduce axis
@@ -529,7 +528,7 @@ def proc_allocate_at(sch, sch_targets, cheque_list, code_line):  # pylint: disab
     if ".allocate_at(" in code_line:
         stage_name = code_line.split("allocate_at")[0].split("[")[1].split("]")[0]
         at_stage_name = \
-        code_line.split("allocate_at")[1].split("[")[1].split("]")[0]
+            code_line.split("allocate_at")[1].split("[")[1].split("]")[0]
         at_axis_name = code_line.split(",")[1].split(")")[0]
         run_once_axes_name = []
         if code_line.count(",") > 1:
@@ -903,14 +902,26 @@ def proc_reused_by(sch, sch_targets, cheque_list, code_line):
         # get stage_name
         stage_name = code_line.split(".reused_by(")[0].split("[")[1].split("]")[0]
         stage_idx, stage_obj = get_stage_by_name(stage_name, sch_targets)
-        # get reused_stage_name
-        reused_stage_name = code_line.split(".reused_by(")[1].split(")")[0]
-        reused_stage_idx, reused_stage_obj = get_stage_by_name(reused_stage_name, sch_targets)
-        # gen cheque
-        cheque = [stage_idx, get_primitive_id("reused_by"), reused_stage_idx]
-        cheque_list.append(cheque)
-        # do action
-        sch[stage_obj].reused_by(reused_stage_obj)
+        # get reused_data
+        reused_by_params = code_line.split(".reused_by(")[1].split(")")[0].strip().split(",")
+        reuse_data = False
+        if "reuse_data=" in reused_by_params[-1]:
+            if reused_by_params[-1].split("reuse_data=")[-1] == "True":
+                reuse_data = True
+            # gen cheque
+            cheque = [stage_idx, get_primitive_id("reused_by"), -1, int(reuse_data)]
+            cheque_list.append(cheque)
+            # do action
+            sch[stage_obj].reused_by(reuse_data=reuse_data)
+        else:
+            # get reused_stage_name
+            reused_stage_name = reused_by_params[0]
+            reused_stage_idx, reused_stage_obj = get_stage_by_name(reused_stage_name, sch_targets)
+            # gen cheque
+            cheque = [stage_idx, get_primitive_id("reused_by"), reused_stage_idx, int(reuse_data)]
+            cheque_list.append(cheque)
+            # do action
+            sch[stage_obj].reused_by(reused_stage_obj)
 
 
 def proc_storage_align(sch, sch_targets, cheque_list, code_line):  # pylint: disable=too-many-locals
@@ -966,7 +977,7 @@ def proc_cce_special(sch, sch_targets, cheque_list, code_line, cce_special_chequ
                     if '_v%s' % idx in tensor_name:
                         tensor_nums += 1
                         stage_name = tensor_name.split('_v%s' % idx)[0] + \
-                                     tensor_name.split('_v%s' % idx)[1]
+                            tensor_name.split('_v%s' % idx)[1]
                     else:
                         other_tensor_list.append(tensor_name)
                 if tensor_nums > 0:
@@ -1209,13 +1220,13 @@ def judge_equal_or_not(cheque_list, new_cheque_list):
     for cheque in cheque_list:
         if cheque not in new_cheque_list:
             log.error("sub cheque %s not in comment, its primitive is %s", cheque,
-                           PRIMITIVE_DICT[cheque[1]])
+                      PRIMITIVE_DICT[cheque[1]])
             return False
     if len(cheque_list) == len(new_cheque_list):
         return True
 
 
-def gen_cheque(py_path, kernel_name=""):
+def gen_cheque(code_line_list, kernel_name=""):
     '''
     gen_cheque
     :param py_path:
@@ -1223,10 +1234,6 @@ def gen_cheque(py_path, kernel_name=""):
     :return:
     '''
 
-    with open(py_path, 'r') as file_handler:
-        schedule_code_str = file_handler.read()
-
-    code_line_list = schedule_code_str.split("\n")
     # new_cheque_list by py should equal to cheque_list by code
     cheque_list = gen_cheque_by_code(code_line_list, kernel_name)
     log.debug("cheque_list from code:%s", cheque_list)

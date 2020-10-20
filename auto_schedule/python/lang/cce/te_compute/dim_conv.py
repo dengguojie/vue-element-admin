@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 div compute
 """
-
 from te import tvm
 from te.platform import cce_intrin as intrin
 from te.platform import cce_params as param
@@ -339,7 +338,7 @@ def _four2five_ir(input_tensor, shape_4d, output):
     if c1_tail != 0:
         c1_loop = c1_range - 1  # remove tail
     buf_cube_range = (actual_col_size + vnchwconv_cube_col_size - 1
-                     ) // vnchwconv_cube_col_size
+                      ) // vnchwconv_cube_col_size
 
     def _four2five_intrin(ib_expr, c0_loop, c1_begin, c1_end):
         '''
@@ -410,7 +409,7 @@ def _four2five_ir(input_tensor, shape_4d, output):
                                     input_tensor.dtype, tail_cube_size // 16,
                                     input_ub, col*vnchwconv_cube_col_size,
                                     input_tensor, idx_n*shape_c*shape_h*shape_w
-                                    + ((idx_c1 + c1_begin)*shape_c0 + col)*
+                                    + ((idx_c1 + c1_begin)*shape_c0 + col) *
                                     actual_col_size +
                                     cube_i*vnchwconv_cube_col_size)
 
@@ -426,8 +425,8 @@ def _four2five_ir(input_tensor, shape_4d, output):
                             _emit_copy_gm_ubuf(
                                 ib_expr, 'copy_ubuf_to_gm', output.dtype,
                                 (actual_col_size % vnchwconv_cube_col_size
-                                )*shape_c0,
-                                output, idx_n*(c1_range*shape_c0)*shape_h*
+                                 )*shape_c0,
+                                output, idx_n*(c1_range*shape_c0)*shape_h *
                                 shape_w + (idx_c1 + c1_begin) *
                                 shape_c0*actual_col_size +
                                 cube_i*vnchwconv_cube_buf_max,
@@ -519,7 +518,7 @@ def _five2four_ir(input_tensor, shape_4d, output):
     if c1_tail != 0:
         c1_loop = c1_range - 1  # remove tail
     buf_cube_range = (actual_col_size + vnchwconv_cube_col_size - 1
-                     ) // vnchwconv_cube_col_size
+                      ) // vnchwconv_cube_col_size
     hw_tail_size = actual_col_size % vnchwconv_cube_col_size
 
     if hw_tail_size != 0 and hw_tail_size % shape_c0 != 0 and buf_cube_range > 1:

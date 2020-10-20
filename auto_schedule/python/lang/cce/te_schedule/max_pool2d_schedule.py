@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the Licenses.
+max_pool2d_schedule
 """
-
 from te import platform as cce
 from te import tvm
 from te.platform import cce_emitinsn_params as cce_params
@@ -43,6 +42,7 @@ STRIDED_WRITE_TAG = "strided_write"
 DEFAULT_VALUE = -1
 L1_DEPTH_FUSION = 0
 L1_BREADTH_FUSION = 1
+
 
 def _is_placeholder(tensor):
     return isinstance(tensor.op, tvm.tensor.PlaceholderOp)
@@ -160,7 +160,7 @@ def _tiling(context, core_n):
     fused_quant = context["fused_quant"]
     bind_core_axis = context["bind_core_axis"]
     # pool shape
-    p_c1, p_w = context["c1"], context["w"]
+    p_c1, _ = context["c1"], context["w"]
     o_h, o_w = context["ho"], context["wo"]
     k_h, k_w = context["kh"], context["kw"]
     s_h, s_w = context["sh"], context["sw"]
@@ -518,8 +518,8 @@ def schedule(res, sch_list):
         return res_list
 
     res_select_or_strided_write, fused_quant, \
-        quant_res, quant_tensors, pool_res, hwc0 = \
-            _preprocess_fusion()
+        quant_res, quant_tensors, pool_res, _ = \
+        _preprocess_fusion()
 
     def _get_l1_fusion_params(pooling2d_res):
         fusion_params_map = pooling2d_res.op.attrs['fusion_params']
@@ -658,7 +658,10 @@ def schedule(res, sch_list):
             else:
                 round_mode = res.op.attrs["round_mode"]
             _schedule_quant(quant_res, sch, quant_tensors, context, round_mode)
-            sch[quant_tensors["input_ub"]].compute_inline()
+            # if c1 % 2 != 0, input_ub is not equal to pooling2d_res,
+            # inline will cost more time
+            if p_c1 % 2 == 0:
+                sch[quant_tensors["input_ub"]].compute_inline()
             _set_scope(sch, [pool_res], cce.scope_ubuf)
             sch[pool_res].compute_at(sch[res], res3o)
             tx_rh_name = "tx_rh" + str(k_h - 1)
@@ -669,7 +672,8 @@ def schedule(res, sch_list):
         if fused_dequant:
             _schedule_dequant(dequant_res, sch, dequant_tensors, context)
             _set_scope(sch, [dequant_res], cce.scope_ubuf)
-            sch[pool_tensors["tx_ub_c"]].compute_inline()
+            if p_c1 % 2 == 0:
+                sch[pool_tensors["tx_ub_c"]].compute_inline()
             sch[dequant_res].compute_at(sch[res], res3o)
             sch[dequant_tensors["reform_by_vmuls"]].reused_by(dequant_res)
             sch[dequant_res].emit_insn(dequant_res.op.axis[1], "phony_insn")
@@ -683,7 +687,7 @@ def schedule(res, sch_list):
             _, _, swrite_h, swrite_w, swrite_c0 = list(
                 i.value for i in res.shape)
             sch[res].bind_buffer(res.op.axis[0],
-                swrite_stride * swrite_h * swrite_w * swrite_c0, 0)
+                                 swrite_stride * swrite_h * swrite_w * swrite_c0, 0)
 
     _stirde_write_for_ub_fusion()
 

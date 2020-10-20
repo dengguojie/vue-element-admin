@@ -13,26 +13,28 @@
 # limitations under the License.
 # ============================================================================
 
-set(_proto_srcs
-  ${CANN_ROOT}/ops/built-in/op_proto/max_pool_v3.cc
-)
-
 set(_ut_proto_files
   ops_test/max_pool_v3/test_max_pool_v3_proto.cpp
 )
 
 add_executable(ops_cpp_proto_utest
-  ${_proto_srcs}
   ${_ut_proto_files}
 )
 
 target_include_directories(ops_cpp_proto_utest PRIVATE
+  ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/ops/built-in/op_proto
+  ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
+  ${CANN_ROOT}/third_party/fwkacllib/inc
+  ${CANN_ROOT}/third_party/metadef/inc
+  ${CANN_ROOT}/third_party/metadef/inc/external
+  ${CANN_ROOT}/third_party/metadef/inc/external/graph
   ${GTEST_INCLUDE}
 )
 
 target_link_libraries(ops_cpp_proto_utest PRIVATE
+  opsproto
   ${graph}
   ${regiser}
   ${slog}

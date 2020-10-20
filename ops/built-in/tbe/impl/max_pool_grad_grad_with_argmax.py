@@ -1,35 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 max_pool_grad_grad_with_argmax op,
 computes second-order gradients of the maxpooling function.
 """
 import math
 
-from te import platform as tbe_platform
+import te.platform as tbe_platform
 from te import tvm
-from te.lang.cce.te_compute import common
-from te.platform import insn_cmd
-from te.platform.cce_build import build_config, build_config_update
-from te.platform.fusion_manager import fusion_manager
-from te.utils import op_utils
+from te.lang import cce as tbe
+from te.utils import para_check
 
 # 16, 32B = 16 * sizeof(float16)
-BLOCK_SIZE = tbe_platform.cce_params.BLOCK_REDUCE
+BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
 
 def _ceil_to(value, ceil_value):
@@ -42,10 +37,8 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
-# pylint: disable=locally-disabled, too-many-arguments, invalid-name
-# pylint: disable=locally-disabled, too-many-locals, too-many-statements
-def get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size,
-                      max_next_valid_size, dtype):
+# pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
+def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
     """
     get load3d tiling in davinci.
     ----------
@@ -76,20 +69,18 @@ def get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size,
         is_l0_ub_double_buffer:
             True or False or None
     """
-    data_size = tbe_platform.cce_intrin.get_bit_len(
-        dtype.lower()) // 8  # 8bits = 1bytes
+    data_size = tbe_platform.get_bit_len(dtype.lower()) // 8  # 8bits = 1bytes
     max_l1_valid_num = max_l1_valid_size // data_size
     max_next_valid_num = max_next_valid_size // data_size
 
     fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape
-    fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = \
-        fmap_n.value, fmap_c1.value, fmap_h.value, fmap_w.value, fmap_c0.value
+    fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_n.value, fmap_c1.value, fmap_h.value, fmap_w.value, fmap_c0.value
     kernel_h, kernel_w = ksize
     stride_h, stride_w = strides
-    output_h, _, _ = common.tf_get_windowed_output_size_verbose(
-        fmap_h, kernel_h, stride_h, padding.upper())
-    output_w, _, _ = common.tf_get_windowed_output_size_verbose(
-        fmap_w, kernel_w, stride_w, padding.upper())
+    output_h, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(fmap_h, kernel_h, stride_h,
+                                                                               padding.upper())
+    output_w, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(fmap_w, kernel_w, stride_w,
+                                                                               padding.upper())
 
     l1_n = 1  # init param
     l1_c1 = 1  # init param
@@ -169,15 +160,12 @@ def get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size,
     # get min howo in l1 and l0/ub
     l0ub_howo = min(l0ub_howo, max_ho_l1 * output_w)
 
-    return True, (l1_n, l1_c1, l1_hi, l1_wi,
-                  l1_c0), l1_double_buffer, (l0ub_n, l0ub_howo, l0ub_c1,
-                                             l0ub_khkw,
-                                             l0ub_c0), l0_double_buffer
+    return True, (l1_n, l1_c1, l1_hi, l1_wi, l1_c0), l1_double_buffer, (l0ub_n, l0ub_howo, l0ub_c1, l0ub_khkw,
+                                                                        l0ub_c0), l0_double_buffer
 
 
-# pylint: disable=locally-disabled, too-many-branches
-def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
-                                   kernel_name):
+# pylint: disable=too-many-branches
+def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
     """
     check whether the input param valid or not
     """
@@ -200,64 +188,56 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
     if padding not in ("SAME", "VALID"):
         raise RuntimeError("Padding must be SAME or VALID.")
 
-    op_utils.check_shape(shape_x, param_name="x")
-    op_utils.check_shape(shape_argmax, param_name="argmax")
-    op_utils.check_shape(shape_grad, param_name="grad")
-    op_utils.check_shape(shape_y, param_name="y")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_argmax, param_name="argmax")
+    para_check.check_shape(shape_grad, param_name="grad")
+    para_check.check_shape(shape_y, param_name="y")
 
     dtype_x = x.get("dtype").lower()
     dtype_argmax = argmax.get("dtype").lower()
     dtype_grad = grad.get("dtype").lower()
     dtype_y = y.get("dtype").lower()
 
-    op_utils.check_dtype(dtype_x, ("float16", ), param_name="x")
-    op_utils.check_dtype(dtype_argmax, ("uint16", ), param_name="argmax")
-    op_utils.check_dtype(dtype_grad, ("float16", ), param_name="grad")
-    op_utils.check_dtype(dtype_y, ("float16", ), param_name="y")
+    para_check.check_dtype(dtype_x, ("float16", ), param_name="x")
+    para_check.check_dtype(dtype_argmax, ("uint16", ), param_name="argmax")
+    para_check.check_dtype(dtype_grad, ("float16", ), param_name="grad")
+    para_check.check_dtype(dtype_y, ("float16", ), param_name="y")
 
     fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_x
     _, _, grad_h, grad_w, _ = shape_grad
 
-    shape_max_pool_h, pad_top, pad_bottom = \
-        common.tf_get_windowed_output_size_verbose(fmap_h, kernel_h, stride_h,
-                                                   padding)
+    shape_max_pool_h, pad_top, pad_bottom = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
+        fmap_h, kernel_h, stride_h, padding)
 
-    shape_max_pool_w, pad_left, pad_right = \
-        common.tf_get_windowed_output_size_verbose(fmap_w, kernel_w, stride_w,
-                                                   padding)
+    shape_max_pool_w, pad_left, pad_right = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
+        fmap_w, kernel_w, stride_w, padding)
 
     # check whether grad_h and grad_w are valid
     dilation_rate = 1
-    for input_size, kernel_size, stride in ((grad_h, kernel_h, stride_h),
-                                            (grad_w, kernel_w, stride_w)):
+    for input_size, kernel_size, stride in ((grad_h, kernel_h, stride_h), (grad_w, kernel_w, stride_w)):
         effective_kernel_size = (kernel_size - 1) * dilation_rate + 1
         if padding == "SAME":
             output_size = (input_size + stride - 1) // stride
-            padding_needed = (output_size - 1) * stride + \
-                             effective_kernel_size - input_size
+            padding_needed = (output_size - 1) * stride + effective_kernel_size - input_size
             if padding_needed < 0:
                 raise RuntimeError("Not supported shape.")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.SOC_VERSION) == "Ascend910" and \
-            (shape_max_pool_h != 1 or shape_max_pool_w != 1):
+    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (shape_max_pool_h != 1
+                                                                               or shape_max_pool_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
-            raise RuntimeError("Invalid params in the platform of cloud, "
-                               "it must be fmap_w + pad_l + pad_r - kernel_w "
-                               ">= stride_w")
+            raise RuntimeError("Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w"
+                               " >= stride_w")
 
-    shape_max_pool = (fmap_n, fmap_c1, shape_max_pool_h, shape_max_pool_w,
-                      fmap_c0)
+    shape_max_pool = (fmap_n, fmap_c1, shape_max_pool_h, shape_max_pool_w, fmap_c0)
 
     pad_list = (pad_top, pad_bottom, pad_left, pad_right)
 
-    expect_shape_argmax_1 = \
-        (fmap_n, fmap_c1, kernel_h * kernel_w,
-         (shape_max_pool[2] * shape_max_pool[3] + 31) // 16, 16)
+    expect_shape_argmax_1 = (fmap_n, fmap_c1, kernel_h * kernel_w, (shape_max_pool[2] * shape_max_pool[3] + 31) // 16,
+                             16)
 
-    expect_shape_argmax_2 = \
-        (fmap_n, fmap_c1, kernel_h * kernel_w,
-         (shape_max_pool[2] * shape_max_pool[3] + 31) // 16 * 16, 1)
+    expect_shape_argmax_2 = (fmap_n, fmap_c1, kernel_h * kernel_w,
+                             (shape_max_pool[2] * shape_max_pool[3] + 31) // 16 * 16, 1)
 
     if list(shape_x) != list(shape_grad):
         raise RuntimeError("shape_x and shape_grad must be equal.")
@@ -265,40 +245,33 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
     if list(shape_y) != list(shape_max_pool):
         raise RuntimeError("shape_y and shape_max_pool must be equal.")
 
-    if list(expect_shape_argmax_1) != list(shape_argmax) and \
-            list(expect_shape_argmax_2) != list(shape_argmax):
+    if list(expect_shape_argmax_1) != list(shape_argmax) and list(expect_shape_argmax_2) != list(shape_argmax):
         raise RuntimeError("shape_argmax not support.")
 
     if kernel_h <= 0 or kernel_w <= 0 or stride_h <= 0 or stride_w <= 0:
-        raise RuntimeError("kernel_h <= 0 or kernel_w <= 0 "
-                           "or stride_h <= 0 or stride_w <= 0")
+        raise RuntimeError("kernel_h <= 0 or kernel_w <= 0 or stride_h <= 0 or stride_w <= 0")
 
-    if len(shape_x) != 5 or len(shape_grad) != 5 or len(shape_y) != 5 \
-            or len(shape_argmax) != 5:
+    if len(shape_x) != 5 or len(shape_grad) != 5 or len(shape_y) != 5 or len(shape_argmax) != 5:
         raise RuntimeError("the length of shape must be 5!")
 
-    if shape_x[4] != 16 or shape_y[4] != 16 or shape_grad[4] != 16 or \
-            (shape_argmax[4] != 16 and shape_argmax[4] != 1):
-        raise RuntimeError("c0 of x, grad, y must be 16,"
-                           "c0 of argmax must be 1 or 16")
+    if shape_x[4] != 16 or shape_y[4] != 16 or shape_grad[4] != 16 or (shape_argmax[4] != 16 and shape_argmax[4] != 1):
+        raise RuntimeError("c0 of x, grad, y must be 16, c0 of argmax must be 1 or 16")
 
     return shape_max_pool, pad_list
 
 
-# pylint: disable=locally-disabled, too-many-arguments, unused-argument,
-# pylint: disable=locally-disabled, unnecessary-lambda, too-many-locals
-@fusion_manager.register("max_pool_grad_grad_with_argmax")
-def _max_pool_grad_grad_with_argmax_compute(
-        placeholders,
-        x,
-        argmax,
-        grad,
-        y,
-        ksize,
-        strides,
-        padding="VALID",
-        ori_format_x="NCHW",
-        kernel_name="cce_max_pool_grad_grad_with_argmax"):
+# pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,too-many-locals
+@tbe_platform.fusion_manager.fusion_manager.register("max_pool_grad_grad_with_argmax")
+def max_pool_grad_grad_with_argmax_compute(placeholders,
+                                           x,
+                                           argmax,
+                                           grad,
+                                           y,
+                                           ksize,
+                                           strides,
+                                           padding="VALID",
+                                           ori_format_x="NCHW",
+                                           kernel_name="cce_max_pool_grad_grad_with_argmax"):
     """
     Computes second-order gradients of the maxpooling function.
 
@@ -358,13 +331,11 @@ def _max_pool_grad_grad_with_argmax_compute(
         _, _, kernel_h, kernel_w = ksize
         _, _, stride_h, stride_w = strides
 
-    shape_max_pool_h, pad_top, pad_bottom = \
-        common.tf_get_windowed_output_size_verbose(
-            grad_h, kernel_h, stride_h, padding)
+    shape_max_pool_h, pad_top, pad_bottom = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
+        grad_h, kernel_h, stride_h, padding)
 
-    shape_max_pool_w, pad_left, pad_right = \
-        common.tf_get_windowed_output_size_verbose(
-            grad_w, kernel_w, stride_w, padding)
+    shape_max_pool_w, pad_left, pad_right = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
+        grad_w, kernel_w, stride_w, padding)
 
     pad_list = (pad_top, pad_bottom, pad_left, pad_right)
     stride = (stride_h, stride_w)
@@ -373,21 +344,15 @@ def _max_pool_grad_grad_with_argmax_compute(
     howo = _ceil_to(shape_max_pool_h * shape_max_pool_w, BLOCK_SIZE)
 
     # copy argmax from ub to gm
-    shape_argmax_ub = (grad_n, grad_c1 * kernel_h * kernel_w,
-                       howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
-    argmax_ub = tvm.compute(shape_argmax_ub,
-                            lambda *i: argmax_tensor(*i),
-                            name='argmax_ub')
+    shape_argmax_ub = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    argmax_ub = tvm.compute(shape_argmax_ub, lambda *i: argmax_tensor(*i), name='argmax_ub')
 
     # load3d compute
     shape_grad = (grad_n, grad_c1, grad_h, grad_w, grad_c0)
-    grad_in_l1 = tvm.compute(shape_grad,
-                             lambda *i: grad_tensor[i],
-                             name="grad_in_l1")
+    grad_in_l1 = tvm.compute(shape_grad, lambda *i: grad_tensor[i], name="grad_in_l1")
     # n howo c1 kh kw c0
-    shape_grad_vm = (grad_n, shape_max_pool_h * shape_max_pool_w, grad_c1,
-                     kernel_h, kernel_w, grad_c0)
-    grad_im2col = common.img2col(
+    shape_grad_vm = (grad_n, shape_max_pool_h * shape_max_pool_w, grad_c1, kernel_h, kernel_w, grad_c0)
+    grad_im2col = tbe.te_compute.common.img2col(
         grad_in_l1,
         shape_grad_vm,
         kernel_h,
@@ -396,48 +361,36 @@ def _max_pool_grad_grad_with_argmax_compute(
         stride,
     )
     # n hw c1 kh kw c0  ->  n c1 kh kw hw c0
-    shape_fractal = (grad_n, howo // BLOCK_SIZE, grad_c1 * kernel_h * kernel_w,
-                     BLOCK_SIZE, BLOCK_SIZE)
-    grad_fractal = common.im2col_fractal(shape_fractal,
-                                         grad_im2col,
-                                         "ca",
-                                         tag='')
+    shape_fractal = (grad_n, howo // BLOCK_SIZE, grad_c1 * kernel_h * kernel_w, BLOCK_SIZE, BLOCK_SIZE)
+    grad_fractal = tbe.te_compute.common.im2col_fractal(shape_fractal, grad_im2col, "ca", tag='')
 
     # (n, howo/16, c1khkw, 16, c0) -> (n, c1khkw, howo/16, 16, c0)
-    shape_grad_fratical_transp = (grad_n, grad_c1 * kernel_h * kernel_w,
-                                  howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
-    grad_fractal_transp = tvm.compute(
-        shape_grad_fratical_transp,
-        lambda i, j, k, l, m: grad_fractal[i, k, j, l, m],
-        name='grad_fractal_transp')
+    shape_grad_fratical_transp = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    grad_fractal_transp = tvm.compute(shape_grad_fratical_transp,
+                                      lambda i, j, k, l, m: grad_fractal[i, k, j, l, m],
+                                      name='grad_fractal_transp')
 
     # declare a zero tensor, and move to ub for vsel
     dtype_tensor_zero = grad_tensor.dtype
     shape_tensor_zero = (BLOCK_SIZE, )
-    tensor_zero_ub = tvm.compute(
-        shape_tensor_zero,
-        lambda *i: tvm.const(0, dtype=dtype_tensor_zero),
-        name='tensor_zero_ub')
+    tensor_zero_ub = tvm.compute(shape_tensor_zero,
+                                 lambda *i: tvm.const(0, dtype=dtype_tensor_zero),
+                                 name='tensor_zero_ub')
 
     # vsel compute
-    shape_grad_grad_col = (grad_n, grad_c1 * kernel_h * kernel_w,
-                           howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
-    grad_grad_col = tvm.compute(
-        shape_grad_grad_col,
-        lambda i, j, k, l, m: tvm.select(argmax_ub[
-            i, j, k, l, m], grad_fractal_transp[i, j, k, l, m], tensor_zero_ub[
-                m]),
-        name='grad_grad_col')
+    shape_grad_grad_col = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    grad_grad_col = tvm.compute(shape_grad_grad_col,
+                                lambda i, j, k, l, m: tvm.select(argmax_ub[i, j, k, l, m], grad_fractal_transp[
+                                    i, j, k, l, m], tensor_zero_ub[m]),
+                                name='grad_grad_col')
 
     # reduce_sum
     # (n, c1khkw, howo/16, 16, c0) -> (n, c1, howo/16, 16, c0)
     m = tvm.reduce_axis((0, kernel_h * kernel_w), "m")
-    shape_grad_grad = (grad_n, grad_c1, howo // BLOCK_SIZE, BLOCK_SIZE,
-                       BLOCK_SIZE)
+    shape_grad_grad = (grad_n, grad_c1, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
     grad_grad = tvm.compute(
         shape_grad_grad,
-        lambda i, j, n, p, q: tvm.sum(
-            grad_grad_col[i, j * kernel_h * kernel_w + m, n, p, q], axis=[m]),
+        lambda i, j, n, p, q: tvm.sum(grad_grad_col[i, j * kernel_h * kernel_w + m, n, p, q], axis=[m]),
         name="grad_grad")
 
     extract_params = {}
@@ -467,21 +420,19 @@ def _max_pool_grad_grad_with_argmax_compute(
     }
 
     # UB to OUT
-    output_res = tvm.compute(
-        (grad_n, grad_c1, shape_max_pool_h * shape_max_pool_w, BLOCK_SIZE),
-        lambda i, j, l, m: grad_grad[i, j, l // 16, l % 16, m],
-        name="ub_to_out",
-        attrs={
-            'extract_params': extract_params,
-            'setfmatrix_dict': setfmatrix_dict
-        })
+    output_res = tvm.compute((grad_n, grad_c1, shape_max_pool_h * shape_max_pool_w, BLOCK_SIZE),
+                             lambda i, j, l, m: grad_grad[i, j, l // 16, l % 16, m],
+                             name="ub_to_out",
+                             attrs={
+                                 'extract_params': extract_params,
+                                 'setfmatrix_dict': setfmatrix_dict
+                             })
 
-    return grad_in_l1, grad_im2col, grad_fractal, grad_fractal_transp, \
-           argmax_ub, tensor_zero_ub, grad_grad_col, grad_grad, output_res
+    return grad_in_l1, grad_im2col, grad_fractal, grad_fractal_transp, argmax_ub, tensor_zero_ub, grad_grad_col, \
+           grad_grad, output_res
 
 
-# pylint: disable=locally-disabled, too-many-statements
-# pylint: disable=locally-disabled, too-many-locals
+# pylint: disable=too-many-statements,too-many-locals
 def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     """
     Computes second-order gradients of the maxpooling function.
@@ -549,34 +500,24 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[grad_fractal_transp].compute_inline()
 
     # Last axis of grad_im2col instr has to be an integer multiple of 16
-    sch[grad_grad].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE),
-                                (1, BLOCK_SIZE), (1, 1))
-    sch[grad_im2col].buffer_align((1, 1), (1, shape_max_pool_w), (1, 1),
-                                  (1, 1), (1, 1), (1, BLOCK_SIZE))
+    sch[grad_grad].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE), (1, 1))
+    sch[grad_im2col].buffer_align((1, 1), (1, shape_max_pool_w), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
 
     # get tiling shape value
-    max_l1_valid_size = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.L1_SIZE)
-    max_ub_size = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.UB_SIZE)
-    max_next_valid_size = max_ub_size * 16 * kernel_h * kernel_w // \
-                          (49 * kernel_h * kernel_w + 16)
+    max_l1_valid_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+    max_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    max_next_valid_size = max_ub_size * 16 * kernel_h * kernel_w // (49 * kernel_h * kernel_w + 16)
 
-    is_tiling_valid, shape_in_l1, is_l1_double_buffer, \
-    shape_after_load3d, is_l0_ub_double_buffer = \
-        get_load3d_tiling(fmap_shape, (kernel_h, kernel_w),
-                          (stride_h, stride_w), padding, max_l1_valid_size,
-                          max_next_valid_size, "float16")
+    is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d, is_l0_ub_double_buffer = _get_load3d_tiling(
+        fmap_shape, (kernel_h, kernel_w), (stride_h, stride_w), padding, max_l1_valid_size, max_next_valid_size,
+        "float16")
 
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
-            is_l0_ub_double_buffer) == \
-            (False, None, None, None, None):
+            is_l0_ub_double_buffer) == (False, None, None, None, None):
         raise RuntimeError(
-            "Not supported fmap shape = (%u, %u, %u, %u, %u),"
-            " kernel = (1, %u, %u, 1),"
-            " stride = (1, %u, %u, 1)" %
-            (fmap_shape[0], fmap_shape[1], fmap_shape[2], fmap_shape[3],
-             fmap_shape[4], kernel_h, kernel_w, stride_h, stride_w))
+            "Not supported fmap shape = (%u, %u, %u, %u, %u), kernel = (1, %u, %u, 1), stride = (1, %u, %u, 1)" %
+            (fmap_shape[0], fmap_shape[1], fmap_shape[2], fmap_shape[3], fmap_shape[4], kernel_h, kernel_w, stride_h,
+             stride_w))
 
     _, _, l1_hi, l1_wi, _ = shape_in_l1
 
@@ -591,46 +532,34 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
             tile_l1_wo = (l1_wi + stride[1] - kernel_size[1]) // stride[1]
         return tile_l1_ho, tile_l1_wo
 
-    tile_l1_ho, tile_l1_wo, = _get_output_length(l1_hi, l1_wi,
-                                                 (stride_h, stride_w),
-                                                 (kernel_h, kernel_w))
+    tile_l1_ho, tile_l1_wo, = _get_output_length(l1_hi, l1_wi, (stride_h, stride_w), (kernel_h, kernel_w))
     (_, ub_howo, _, ub_khkw, _) = shape_after_load3d
 
     # tiling
     split_factor_howo = ub_howo
 
     # cut grad_grad
-    grad_grad_n_outer, grad_grad_n_inner = sch[grad_grad].split(
-        grad_grad.op.axis[0], factor=1)
-    grad_grad_c1_outer, grad_grad_c1_inner = sch[grad_grad].split(
-        grad_grad.op.axis[1], factor=1)
-    grad_grad_howo_outer, grad_grad_howo_inner = sch[grad_grad].split(
-        grad_grad.op.axis[2], factor=(split_factor_howo + 15) // 16)
-    grad_grad_k_outer, grad_grad_k_inner = sch[grad_grad].split(
-        grad_grad.op.reduce_axis[0], factor=ub_khkw)
-    sch[grad_grad].reorder(grad_grad_n_outer, grad_grad_c1_outer,
-                           grad_grad_howo_outer, grad_grad_k_outer,
-                           grad_grad_n_inner, grad_grad_c1_inner,
-                           grad_grad_howo_inner, grad_grad.op.axis[3],
+    grad_grad_n_outer, grad_grad_n_inner = sch[grad_grad].split(grad_grad.op.axis[0], factor=1)
+    grad_grad_c1_outer, grad_grad_c1_inner = sch[grad_grad].split(grad_grad.op.axis[1], factor=1)
+    grad_grad_howo_outer, grad_grad_howo_inner = sch[grad_grad].split(grad_grad.op.axis[2],
+                                                                      factor=(split_factor_howo + 15) // 16)
+    grad_grad_k_outer, grad_grad_k_inner = sch[grad_grad].split(grad_grad.op.reduce_axis[0], factor=ub_khkw)
+    sch[grad_grad].reorder(grad_grad_n_outer, grad_grad_c1_outer, grad_grad_howo_outer, grad_grad_k_outer,
+                           grad_grad_n_inner, grad_grad_c1_inner, grad_grad_howo_inner, grad_grad.op.axis[3],
                            grad_grad_k_inner, grad_grad.op.axis[4])
 
     # cut res
     res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
     res_c1_outer, res_c1_inner = sch[res].split(res.op.axis[1], factor=1)
     # gm->l1
-    res_howo_outer, res_howo_inner = \
-        sch[res].split(res.op.axis[2], factor=(tile_l1_ho * tile_l1_wo))
+    res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[2], factor=(tile_l1_ho * tile_l1_wo))
     # l1->ub
-    res_mwo_outer, res_mwo_inner = sch[res].split(res_howo_inner,
-                                                  factor=split_factor_howo)
+    res_mwo_outer, res_mwo_inner = sch[res].split(res_howo_inner, factor=split_factor_howo)
 
-    sch[res].reorder(res_n_outer, res_c1_outer, res_howo_outer, res_mwo_outer,
-                     res_n_inner, res_c1_inner, res_mwo_inner, res.op.axis[3])
+    sch[res].reorder(res_n_outer, res_c1_outer, res_howo_outer, res_mwo_outer, res_n_inner, res_c1_inner, res_mwo_inner,
+                     res.op.axis[3])
 
-    res_fused_n_c1_howo_outer = sch[res].fuse(res_n_outer, res_c1_outer,
-                                              res_howo_outer)
-    core_number = tbe_platform.cce_conf.get_soc_spec(
-        tbe_platform.cce_conf.CORE_NUM)
+    res_fused_n_c1_howo_outer = sch[res].fuse(res_n_outer, res_c1_outer, res_howo_outer)
 
     sch[grad_in_l1].compute_at(sch[res], res_fused_n_c1_howo_outer)
     sch[grad_im2col].compute_at(sch[res], res_fused_n_c1_howo_outer)
@@ -640,15 +569,14 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[grad_grad_col].compute_at(sch[grad_grad], grad_grad_k_outer)
     sch[grad_grad].compute_at(sch[res], res_mwo_outer)
 
-    sch[grad_in_l1].emit_insn(grad_in_l1.op.axis[0], insn_cmd.DMA_COPY)
-    sch[grad_im2col].emit_insn(grad_im2col.op.axis[0], 'set_fmatrix',
-                               setfmatrix_dict)
-    sch[grad_fractal].emit_insn(grad_fractal.op.axis[0], insn_cmd.IM2COL)
-    sch[argmax_ub].emit_insn(argmax_ub.op.axis[0], insn_cmd.DMA_COPY)
-    sch[tensor_zero_ub].emit_insn(tensor_zero_ub.op.axis[0], insn_cmd.DUP)
-    sch[grad_grad_col].emit_insn(grad_grad_col.op.axis[0], insn_cmd.SELECT)
-    sch[grad_grad].emit_insn(grad_grad_n_inner, insn_cmd.REDUCE_SUM)
-    sch[res].emit_insn(res_n_inner, insn_cmd.DMA_COPY)
+    sch[grad_in_l1].emit_insn(grad_in_l1.op.axis[0], tbe_platform.DMA_COPY)
+    sch[grad_im2col].emit_insn(grad_im2col.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+    sch[grad_fractal].emit_insn(grad_fractal.op.axis[0], tbe_platform.IM2COL)
+    sch[argmax_ub].emit_insn(argmax_ub.op.axis[0], tbe_platform.DMA_COPY)
+    sch[tensor_zero_ub].emit_insn(tensor_zero_ub.op.axis[0], tbe_platform.DUP)
+    sch[grad_grad_col].emit_insn(grad_grad_col.op.axis[0], tbe_platform.SELECT)
+    sch[grad_grad].emit_insn(grad_grad_n_inner, tbe_platform.REDUCE_SUM)
+    sch[res].emit_insn(res_n_inner, tbe_platform.DMA_COPY)
 
     # for double buffer
     if is_l0_ub_double_buffer:
@@ -665,13 +593,10 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[res].bind(res_fused_n_c1_howo_outer, block)
 
 
-# pylint: disable=locally-disabled, too-many-arguments
-# pylint: disable=locally-disabled, too-many-locals, too-many-statements
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT,
-                          op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_ATTR_LIST_INT,
-                          op_utils.REQUIRED_ATTR_LIST_INT,
-                          op_utils.REQUIRED_ATTR_STR, op_utils.KERNEL_NAME)
+# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def max_pool_grad_grad_with_argmax(x,
                                    grad,
                                    argmax,
@@ -679,8 +604,7 @@ def max_pool_grad_grad_with_argmax(x,
                                    ksize,
                                    strides,
                                    padding="VALID",
-                                   kernel_name="cce_max_pool_grad_grad"
-                                   "_with_argmax"):
+                                   kernel_name="cce_max_pool_grad_grad_with_argmax"):
     """
     Computes second-order gradients of the maxpooling function.
 
@@ -712,13 +636,11 @@ def max_pool_grad_grad_with_argmax(x,
     -------
     None
     """
-    check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding,
-                                   kernel_name)
+    check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding)
     shape_x = x.get("shape")
     shape_grad = grad.get("shape")
     shape_argmax = argmax.get("shape")
-    shape_argmax = (shape_argmax[0], shape_argmax[1], shape_argmax[2],
-                    shape_argmax[3] * shape_argmax[4], 1)
+    shape_argmax = (shape_argmax[0], shape_argmax[1], shape_argmax[2], shape_argmax[3] * shape_argmax[4], 1)
 
     dtype_x = x.get("dtype").lower()
     dtype_grad = grad.get("dtype").lower()
@@ -729,27 +651,20 @@ def max_pool_grad_grad_with_argmax(x,
 
     # argmax is continuous bool, real type is uint16
     _, _, _, howo, _ = shape_argmax
-    shape_argmax_boolean = (shape_argmax[0], shape_argmax[1] * shape_argmax[2],
-                            howo // 16, 16, shape_argmax[4])
-    shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + list(
-        [shape_argmax_boolean[-1] * 16])
-    argmax_tensor = tvm.placeholder(shape_argmax_boolean,
-                                    dtype="bool",
-                                    name="argmax")
+    shape_argmax_boolean = (shape_argmax[0], shape_argmax[1] * shape_argmax[2], howo // 16, 16, shape_argmax[4])
+    shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + list([shape_argmax_boolean[-1] * 16])
+    argmax_tensor = tvm.placeholder(shape_argmax_boolean, dtype="bool", name="argmax")
 
-    grad_tensor = tvm.placeholder(shape_grad,
-                                  dtype=dtype_grad,
-                                  name="input_grad")
+    grad_tensor = tvm.placeholder(shape_grad, dtype=dtype_grad, name="input_grad")
 
-    compute_list = _max_pool_grad_grad_with_argmax_compute(
-        [x_tensor, argmax_tensor, grad_tensor], x, argmax, grad, y, ksize,
-        strides, padding, ori_format_x, kernel_name)
+    compute_list = max_pool_grad_grad_with_argmax_compute([x_tensor, argmax_tensor, grad_tensor], x, argmax, grad, y,
+                                                          ksize, strides, padding, ori_format_x, kernel_name)
 
     res = compute_list[-1]
     sch = tvm.create_schedule(res.op)
     _max_pool_grad_grad_with_argmax_schedule(compute_list, [sch])
 
     tensor_list = [x_tensor, grad_tensor, argmax_tensor, res]
-    new_config = build_config_update(build_config, "dummy_placeholder", True)
+    new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
     with new_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)

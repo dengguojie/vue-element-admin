@@ -1,38 +1,36 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-proposal
+proposal_d
 """
-
 # pylint: disable=R0902
 # pylint: disable=R0903
 # pylint: disable=R0913
 # pylint: disable=R0914
 # pylint: disable=W0613
 # pylint: disable=too-many-branches
-from topi.cce import util
+
+import te.platform as tbe_platform
+from te.utils import para_check
 from te import tik
-from te import platform as tbe_platform
-from te.utils.op_utils import *
 from impl import decoded_bbox
 from impl import nms
 from impl import topk
 
 
-
-def get_dtype_size(input_dtype):
+def _get_dtype_size(input_dtype):
     """
     :param input_dtype:
     :return:
@@ -45,24 +43,23 @@ def get_dtype_size(input_dtype):
     return size
 
 
-def get_ub_size():
+def _get_ub_size():
     """
     :return:
     """
-    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     return ub_size
 
 
-def filte_device_core(batch):
+def _filte_device_core(batch):
     """
     :param batch:
     :return:
     """
-    device_core_num = \
-        tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if batch >= device_core_num:
-        batch_factor = batch//device_core_num
-        batch_factor_tail = batch - batch_factor*device_core_num
+        batch_factor = batch // device_core_num
+        batch_factor_tail = batch - batch_factor * device_core_num
     else:
         batch_factor = batch
         batch_factor_tail = 0
@@ -71,14 +68,13 @@ def filte_device_core(batch):
     return device_core_num, batch_factor, batch_factor_tail
 
 
-def call_topk_sort(tik_instance, input_data, output):
+def _call_topk_sort(tik_instance, input_data, output):
     """
     :param tik_instance:
     :param input_data:
     :param output:
     :return:
     """
-
     score_threshold = 0
     k = input_data[0]
     regions_orig = input_data[1]
@@ -131,8 +127,8 @@ class InitProposalProcess:
         channel = self.input_shape[1]
         height = self.input_shape[2]
         width = self.input_shape[3]
-        num_anchor = channel//4
-        num = (num_anchor*height*width + 127) // 128
+        num_anchor = channel // 4
+        num = (num_anchor * height * width + 127) // 128
         self.num = num
 
 
@@ -150,72 +146,72 @@ class ProposalProcess(InitProposalProcess):
         input_dtype = feature_dic.get('dtype')
         input_shape = feature_dic.get('shape')
         batch, channel, height, width = input_shape
-        num_anchor = channel//4
-        num = (num_anchor*height*width + 127) // 128
+        num_anchor = channel // 4
+        num = (num_anchor * height * width + 127) // 128
 
         self.cls_prob = self.tik_instance.Tensor(input_dtype,
-                                                 (batch, channel//2,
+                                                 (batch, channel // 2,
                                                   height, width),
                                                  name="cls_prob",
-                                                 scope=tik.scope_gm)
+                                                 scope=tbe_platform.scope_gm)
         self.bbox_delta = self.tik_instance.Tensor(input_dtype,
                                                    self.input_shape,
                                                    name="bbox_delta",
-                                                   scope=tik.scope_gm)
+                                                   scope=tbe_platform.scope_gm)
         self.rpn_bbox = self.tik_instance.Tensor(input_dtype,
                                                  self.input_shape,
                                                  name="rpn_bbox",
-                                                 scope=tik.scope_gm)
+                                                 scope=tbe_platform.scope_gm)
 
         self.im_info = self.tik_instance.Tensor(input_dtype,
                                                 self.im_info_dic.get('shape'),
                                                 name="im_info",
-                                                scope=tik.scope_gm)
+                                                scope=tbe_platform.scope_gm)
 
-        size = get_dtype_size(self.input_dtype)
-        burst = ((num*128 - num_anchor*height*width)*8*size + 31)//32
-        tail = burst*32//(8*size) - (num*128 - num_anchor*height*width)
+        size = _get_dtype_size(self.input_dtype)
+        burst = ((num * 128 - num_anchor * height * width) * 8 * size + 31) // 32
+        tail = burst * 32 // (8 * size) - (num * 128 - num_anchor * height * width)
         self.output_region_proposal = \
             self.tik_instance.Tensor(input_dtype,
-                                     (batch, num*128+tail, 8),
+                                     (batch, num * 128 + tail, 8),
                                      name="output_region_proposal",
                                      is_workspace=True,
-                                     scope=tik.scope_gm)
+                                     scope=tbe_platform.scope_gm)
 
         self.mem_swap = self.tik_instance.Tensor(input_dtype,
-                                                 (batch, num*128+tail, 8),
+                                                 (batch, num * 128 + tail, 8),
                                                  name="mem_swap",
                                                  is_workspace=True,
-                                                 scope=tik.scope_gm)
+                                                 scope=tbe_platform.scope_gm)
 
         self.topk_output_proposal = \
             self.tik_instance.Tensor(input_dtype,
                                      (batch,
-                                      ((self.pre_nms_topn+15)//16)*16 + 4, 8),
+                                      ((self.pre_nms_topn + 15) // 16) * 16 + 4, 8),
                                      name="topk_output_proposal",
                                      is_workspace=True,
-                                     scope=tik.scope_gm)
+                                     scope=tbe_platform.scope_gm)
 
         self.temp_proposal_out = \
             self.tik_instance.Tensor(input_dtype,
-                                     (batch, ((self.post_nms_topn + 15) // 16)*16, 8),
+                                     (batch, ((self.post_nms_topn + 15) // 16) * 16, 8),
                                      name="temp_proposal_out",
                                      is_workspace=True,
-                                     scope=tik.scope_gm)
+                                     scope=tbe_platform.scope_gm)
 
         self.rois = self.tik_instance.Tensor(input_dtype,
-                                             (batch, 5, ((self.post_nms_topn + 15) // 16)*16),
+                                             (batch, 5, ((self.post_nms_topn + 15) // 16) * 16),
                                              name="rois",
-                                             scope=tik.scope_gm)
+                                             scope=tbe_platform.scope_gm)
         if self.output_actual_rois_num == 1:
             self.actual_rois_num = self.tik_instance.Tensor("int32", (batch, 8),
                                                             name="actual_rois_num",
-                                                            scope=tik.scope_gm)
+                                                            scope=tbe_platform.scope_gm)
         else:
             self.actual_rois_num = self.tik_instance.Tensor("int32", (batch, 8),
                                                             name="actual_rois_num",
                                                             is_workspace=True,
-                                                            scope=tik.scope_gm)
+                                                            scope=tbe_platform.scope_gm)
 
     def init_tail_zero(self, batch_id, size):
         """
@@ -232,22 +228,22 @@ class ProposalProcess(InitProposalProcess):
         height = self.input_shape[2]
         width = self.input_shape[3]
 
-        num_anchor = channel//4
+        num_anchor = channel // 4
         num = (num_anchor*height*width + 127) // 128
 
         tik_instance = self.tik_instance
 
-        if num*128 > num_anchor*height*width:
+        if num*128 > num_anchor * height * width:
             with tik_instance.if_scope(True):
-                burst = ((num*128 - num_anchor*height*width)*8*size + 31)//32
+                burst = ((num * 128 - num_anchor * height * width) * 8 * size + 31) // 32
 
                 tmp_ub = tik_instance.Tensor(self.input_dtype, (128, 8),
                                              name="tmp_ub",
-                                             scope=tik.scope_ubuf)
-                tik_instance.vector_dup(128//ratio, tmp_ub, 0, 8*ratio, 1, 8)
+                                             scope=tbe_platform.scope_ubuf)
+                tik_instance.vector_dup(128 // ratio, tmp_ub, 0, 8 * ratio, 1, 8)
                 tik_instance.data_move(
                     self.output_region_proposal[batch_id,
-                                                num_anchor*height*width, 0],
+                                                num_anchor * height * width, 0],
                     tmp_ub, 0, 1, burst, 0, 0)
 
     def cce_proposal(self, kernel_name="proposal"):
@@ -255,16 +251,15 @@ class ProposalProcess(InitProposalProcess):
         :param kernel_name:
         :return:
         """
-
         device_core_num, batch_factor, batch_factor_tail = \
-            filte_device_core(self.input_shape[0])
+            _filte_device_core(self.input_shape[0])
 
-        size = get_dtype_size(self.input_dtype)
+        size = _get_dtype_size(self.input_dtype)
 
         with self.tik_instance.for_range(
                 0, device_core_num, block_num=device_core_num) as block_id:
 
-            ub_size = get_ub_size()
+            ub_size = _get_ub_size()
             one_core_process_object = \
                 decoded_bbox.OneCoreProcess((self.tik_instance,
                                              self.min_box_size,
@@ -274,7 +269,7 @@ class ProposalProcess(InitProposalProcess):
                                              ub_size))
 
             with self.tik_instance.for_range(0, batch_factor) as batch_index:
-                batch_id = block_id*batch_factor + batch_index
+                batch_id = block_id * batch_factor + batch_index
 
                 one_core_process_object.one_core_process_decode_bbox(
                     batch_id, self.cls_prob, self.bbox_delta, self.rpn_bbox, self.im_info,
@@ -285,13 +280,13 @@ class ProposalProcess(InitProposalProcess):
                 topk_output_actual_proposal_num = \
                     self.tik_instance.Scalar(dtype="int32")
 
-                call_topk_sort(self.tik_instance,
-                               (self.pre_nms_topn, self.output_region_proposal,
-                                self.mem_swap, self.num*128),
-                               (batch_id, self.topk_output_proposal,
-                                topk_output_actual_proposal_num))
+                _call_topk_sort(self.tik_instance,
+                                (self.pre_nms_topn, self.output_region_proposal,
+                                 self.mem_swap, self.num * 128),
+                                (batch_id, self.topk_output_proposal,
+                                 topk_output_actual_proposal_num))
 
-                input_offset = batch_id*(((self.pre_nms_topn+15)//16)*16 + 4)*8
+                input_offset = batch_id * (((self.pre_nms_topn + 15) // 16) * 16 + 4) * 8
                 nms.cce_nms((self.input_dtype, ub_size,
                              self.nms_threshold, batch_id,
                              self.pre_nms_topn, self.post_nms_topn,
@@ -303,7 +298,7 @@ class ProposalProcess(InitProposalProcess):
                             self.actual_rois_num, self.rois)
 
             with self.tik_instance.if_scope(block_id < batch_factor_tail):
-                batch_id = batch_factor*device_core_num + block_id
+                batch_id = batch_factor * device_core_num + block_id
 
                 one_core_process_object.one_core_process_decode_bbox(
                     batch_id, self.cls_prob, self.bbox_delta, self.rpn_bbox, self.im_info,
@@ -314,13 +309,13 @@ class ProposalProcess(InitProposalProcess):
                 topk_output_actual_proposal_num = \
                     self.tik_instance.Scalar(dtype="int32")
 
-                call_topk_sort(self.tik_instance,
-                               (self.pre_nms_topn, self.output_region_proposal,
-                                self.mem_swap, self.num*128),
-                               (batch_id, self.topk_output_proposal,
-                                topk_output_actual_proposal_num))
+                _call_topk_sort(self.tik_instance,
+                                (self.pre_nms_topn, self.output_region_proposal,
+                                 self.mem_swap, self.num * 128),
+                                (batch_id, self.topk_output_proposal,
+                                 topk_output_actual_proposal_num))
 
-                input_offset = batch_id*(((self.pre_nms_topn+15)//16)*16 + 4)*8
+                input_offset = batch_id * (((self.pre_nms_topn + 15) // 16) * 16 + 4) * 8
                 nms.cce_nms((self.input_dtype, ub_size,
                              self.nms_threshold, batch_id,
                              self.pre_nms_topn, self.post_nms_topn,
@@ -344,35 +339,44 @@ class ProposalProcess(InitProposalProcess):
         return self.tik_instance
 
 
-def check_datatype(tik_name, dtype):
+def _check_datatype(dtype):
     """
-    :param tik_name:
     :param dtype:
     :return:
     """
-    if not tbe_platform.cce_conf.api_check_support("tik.vrelu", "float32"):
-        check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
+    if not tbe_platform.api_check_support("tik.vrelu", "float32"):
+        para_check.check_dtype(dtype.lower(), ["float16"], param_name="rpn_bbox_dic")
     else:
-        check_dtype(dtype.lower(), ["float16", "float32"], param_name="rpn_bbox_dic")
+        para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="rpn_bbox_dic")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, OPTION_OUTPUT, OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_LIST_FLOAT, OPTION_ATTR_LIST_FLOAT,
-                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_FLOAT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                rois_dic, actual_rois_num_dic,
                feat_stride, base_size, min_size,
                ratio, scale, pre_nms_topn,
                post_nms_topn, iou_threshold, output_actual_rois_num, kernel_name="cce_proposal"):
     """
-    :param feature_dic:
-    :param im_info:
-    :param min_box_size:
+    :param cls_prob_dic:
+    :param bbox_delta_dic:
+    :param im_info_dic:
+    :param rpn_bbox_dic:
+    :param rois_dic:
+    :param actual_rois_num_dic:
+    :param feat_stride:
+    :param base_size:
+    :param min_size:
+    :param ratio:
+    :param scale:
     :param pre_nms_topn:
     :param post_nms_topn:
     :param iou_threshold:
+    :param output_actual_rois_num:
     :param kernel_name:
     :return:
     """
@@ -383,17 +387,16 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
     feature_dic = {"shape": input_shape, "dtype": input_dtype}
 
     tik_instance = tik.Tik(tik.Dprofile())
-    tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    check_datatype(tik_name, input_dtype)
+    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    _check_datatype(input_dtype)
 
     if min_size <= 0:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'proposal_d'
-        error_info['param_name'] = 'min_size'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = 'inf'
-        error_info['real_value'] = min_size
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                      'op_name': 'proposal_d',
+                      'param_name': 'min_size',
+                      'min_value': '0',
+                      'max_value': 'inf',
+                      'real_value': min_size}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %
@@ -401,18 +404,16 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
 
-
     min_box_size = [min_size, min_size]
 
     for ratio_value in ratio:
         if ratio_value <= 0:
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_002
-            error_info['op_name'] = 'proposal_d'
-            error_info['param_name'] = 'ratio_value'
-            error_info['min_value'] = '0'
-            error_info['max_value'] = 'inf'
-            error_info['real_value'] = ratio_value
+            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                          'op_name': 'proposal_d',
+                          'param_name': 'ratio_value',
+                          'min_value': '0',
+                          'max_value': 'inf',
+                          'real_value': ratio_value}
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s] should be in the range "
                                "of [%s, %s], but actually is [%s]." %
@@ -422,13 +423,12 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
 
     for scale_value in scale:
         if scale_value <= 0:
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_002
-            error_info['op_name'] = 'proposal_d'
-            error_info['param_name'] = 'scale_value'
-            error_info['min_value'] = '0'
-            error_info['max_value'] = 'inf'
-            error_info['real_value'] = scale_value
+            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                          'op_name': 'proposal_d',
+                          'param_name': 'scale_value',
+                          'min_value': '0',
+                          'max_value': 'inf',
+                          'real_value': scale_value}
             raise RuntimeError(error_info,
                                "In op[%s], the parameter[%s] should be in the range"
                                " of [%s, %s], but actually is [%s]." %
@@ -442,13 +442,12 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                            "and post_nms_topn must be greater than 0")
 
     if pre_nms_topn > 6000 or post_nms_topn > 6000:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'proposal_d'
-        error_info['param_name'] = 'pre_nms_topn or post_nms_topn'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = '6000'
-        error_info['real_value'] = ','.join((str(pre_nms_topn), str(post_nms_topn)))
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                      'op_name': 'proposal_d',
+                      'param_name': 'pre_nms_topn or post_nms_topn',
+                      'min_value': '0',
+                      'max_value': '6000',
+                      'real_value': ','.join((str(pre_nms_topn), str(post_nms_topn)))}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range"
                            " of [%s, %s], but actually is [%s]." %
@@ -456,22 +455,21 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
 
-    if tik_name in ("Hi3796CV300ES",) and \
+    if tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS) and \
             (pre_nms_topn > 3000 or post_nms_topn > 3000):
         raise RuntimeError("pre_nms_topn and post_nms_topn "
-                           "must be <=3000 on hisi-es!")
+                           "must be <=3000 on hisi!")
 
     if channel % 4 != 0:
         raise RuntimeError("the channel must be multiples of 16!")
 
     if iou_threshold <= 0 or iou_threshold >= 1:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_002
-        error_info['op_name'] = 'proposal_d'
-        error_info['param_name'] = 'iou_threshold'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = '1'
-        error_info['real_value'] = str(iou_threshold)
+        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
+                      'op_name': 'proposal_d',
+                      'param_name': 'iou_threshold',
+                      'min_value': '0',
+                      'max_value': '1',
+                      'real_value': str(iou_threshold)}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range "
                            "of [%s, %s], but actually is [%s]." %
@@ -479,9 +477,7 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
 
-    proposal_result = ProposalProcess((tik_instance, feature_dic, im_info_dic,
-                                       min_box_size,
-                                       pre_nms_topn,
+    proposal_result = ProposalProcess((tik_instance, feature_dic, im_info_dic, min_box_size, pre_nms_topn,
                                        post_nms_topn, iou_threshold, output_actual_rois_num))
 
     return proposal_result.cce_proposal(kernel_name)

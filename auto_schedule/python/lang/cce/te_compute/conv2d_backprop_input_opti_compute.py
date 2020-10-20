@@ -1,14 +1,27 @@
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2018 Huawei Technologies Co., Ltd
-
 conv2d_backprop_input_opti_compute
 """
-from te import tvm
-from te.platform import CUBE_MKN
-from te.platform import intrinsic_check_support
-from .cube_util import CubeDslPattern
-from .cube_util import ConvDslPattern
+from te.lang.cce.te_compute.cube_util import ConvDslPattern
+from te.lang.cce.te_compute.cube_util import CubeDslPattern
+from te.lang.cce.te_compute.cube_util import is_support_v200
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.platform import cce_conf
+from te.platform import cce_params
+from te.tvm import api as tvm
 
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
@@ -28,16 +41,32 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
 
     output_shape : shape of dE/dX, [N, C, H, W]
 
+    fusion_para : parameters of l1 fusion
+
+    dynamic_para : parameters of dynamic shape
+
+    kernel_name : kernel name of operator
+
+    offset_x : offset_x of x
+
     Returns
     -------
     deconv_pattern_instance : instance of deconv pattern
     """
 
-    fusion_para = None
+    fusion_para = {}
     dedy = None
 
-    def __init__(self, kernel_size, strides, pad, # pylint:disable=R0913
-                 output_shape, fusion_para, dynamic_para, kernel_name):
+    def __init__(
+            self,  # pylint:disable=R0913,W0613
+            kernel_size,
+            strides,
+            pad,
+            output_shape,
+            fusion_para,
+            dynamic_para,
+            kernel_name,
+            offset_x):
         super(DeConvKernelSize1Pattern, self).__init__()
         _, _, kernel_h, kernel_w = kernel_size
         stride_h, stride_w = strides
@@ -47,84 +76,89 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         if not (kernel_h <= stride_h and kernel_w <= stride_w):
             raise RuntimeError("not match stride HW[{}, {}],kernel HW[{}, {}]"
                                .format(stride_h, stride_w, kernel_h, kernel_w))
-        self._m0 = CUBE_MKN["float16"]["mac"][0]
+        self._m0 = cce_params.CUBE_MKN["float16"]["mac"][0]
         self._output_shape = output_shape
         self._stride_h, self._stride_w = strides
         _, _, self._kernel_h, self._kernel_w = kernel_size
         self._kernel_name = kernel_name
         self._img_h, self._img_w = [0, 0]
-        self.fusion_para = fusion_para
+        self._fusion_para = fusion_para
         self._dynamic_para = dynamic_para
+        self._offset_x = offset_x
 
-    def _dilate_tensor(self, raw_tensor,  # pylint:disable=R0913,R0914
-                       out_shape_h, out_shape_w, dilate_h, dilate_w, up_pad):
+    def _dilate_tensor(
+            self,  # pylint:disable=R0913,R0914
+            raw_tensor,
+            out_shape_h,
+            out_shape_w,
+            dilate_h,
+            dilate_w):
         (shape_n, shape_c1, _, shape_c0) = raw_tensor.shape
         new_h = out_shape_h  # dilate_h * (shape_h - 1) + 1
         new_w = out_shape_w  # dilate_w * (shape_w - 1) + 1
         dilate_shape = (shape_n, shape_c1, new_h * new_w, shape_c0)
-        dx_zero = tvm.compute(
-            dilate_shape,
-            lambda *indice: tvm.convert(0).astype(raw_tensor.dtype),
-            name=raw_tensor.name + "_dx_zero",
-            tag="init_zero")
+        dx_zero = tvm.compute(dilate_shape,
+                              lambda *indice: tvm.convert(self._offset_x).
+                              astype(raw_tensor.dtype),
+                              name=raw_tensor.name + "_dx_zero",
+                              tag="init_zero")
         if self._dynamic_para \
                 and self._dynamic_para['dynamic_mode'] == 'dynamic_hw':
             # because tvm.select not support dynamic shape
+            dx_zero = tvm.compute(
+                (dilate_h, dilate_w, shape_c0),
+                lambda *indice: tvm.convert(0).astype(raw_tensor.dtype),
+                name=raw_tensor.name + "_dx_zero",
+                tag="init_zero")
+            dx_one = tvm.compute(
+                (1, 1, shape_c0),
+                lambda *indice: tvm.convert(1).astype(raw_tensor.dtype),
+                name=raw_tensor.name + "_dx_one",
+                tag="init_one")
+            vn_tensor = tvm.compute(
+                (dilate_h, dilate_w, shape_c0),
+                lambda *indice: dx_zero(*indice) + dx_one(*indice),
+                name="vn_" + raw_tensor.name,
+                tag="conv2d_backprop_input_opti")
             dilate_tensor = tvm.compute(
                 dilate_shape,
                 lambda n, c1, hw, c0:
                 raw_tensor[n,
-                           c1, ((hw // new_w) // dilate_h)
-                           * self._img_w + (hw % new_w // dilate_w),
-                           c0],
+                           c1,
+                           ((hw // new_w) // dilate_h) *
+                           self._img_w + (hw % new_w // dilate_w),
+                           c0] *
+                vn_tensor[(hw // new_w) % dilate_h,
+                          (hw % new_w) % dilate_w,
+                          c0],
                 name=raw_tensor.name + "_dilation",
                 tag="conv2d_backprop_input_opti",
                 attrs={'dilate': [dilate_h, dilate_w],
                        'out_hw': [out_shape_h, out_shape_w],
-                       "img_w":  self._img_w})
-            vn_dilate_tensor = tvm.compute(
-                dilate_shape,
-                lambda *indice:dx_zero(*indice) + dilate_tensor(*indice),
-                name="vn_" + raw_tensor.name + "_dilation",
-                tag="conv2d_backprop_input_opti",
-                attrs={'dilate': [dilate_h, dilate_w],
-                       'out_hw': [out_shape_h, out_shape_w],
-                       "img_w":  self._img_w})
-            return vn_dilate_tensor
+                       'img_w': self._img_w})
+            dilate_tensor_res = dilate_tensor
         else:
             dilate_tensor = tvm.compute(
                 dilate_shape,
                 lambda n, c1, hw, c0:
-                    tvm.select(tvm.all((hw // new_w - up_pad) % dilate_h == 0,
-                                       (hw % new_w) % dilate_w == 0),
-                               raw_tensor[n,
-                                          c1,
-                                          ((hw // new_w - up_pad)
-                                           // dilate_h) * self._img_w
-                                           + (hw % new_w // dilate_w),
-                                          c0]+dx_zero[n, c1, hw, c0],
-                               dx_zero[n, c1, hw, c0]),
-                    name=raw_tensor.name + "_dilation",
-                    tag="conv2d_backprop_input_opti",
-                    attrs={'dilate': [dilate_h, dilate_w],
-                           'out_hw': [out_shape_h, out_shape_w],
-                           "img_w": self._img_w})
-            return dilate_tensor
+                tvm.select(tvm.all((hw // new_w) % dilate_h == 0,
+                                   (hw % new_w) % dilate_w == 0),
+                           raw_tensor[n,
+                                      c1,
+                                      ((hw // new_w)
+                                       // dilate_h) * self._img_w
+                                      + (hw % new_w // dilate_w),
+                                      c0]+dx_zero[n, c1, hw, c0],
+                           dx_zero[n, c1, hw, c0]),
+                name=raw_tensor.name + "_dilation",
+                tag="conv2d_backprop_input_opti",
+                attrs={'dilate': [dilate_h, dilate_w],
+                       'out_hw': [out_shape_h, out_shape_w],
+                       'img_w': self._img_w})
+            dilate_tensor_res = dilate_tensor
+        return dilate_tensor_res
 
-    def _cal_padding(self, fusion_para, strideh):
-        up_pad = 0
-        valid_shape = fusion_para.get("valid_shape")
-        slice_offset = fusion_para.get("slice_offset")
-        output_offset = fusion_para.get("output_offset")
-        l1_fusion_type = fusion_para.get("l1_fusion_type")
-
-        if l1_fusion_type != -1 and valid_shape and slice_offset[2] != 0:
-            outputh_offset = output_offset[2]
-            up_pad = (strideh - 1) - (outputh_offset % strideh)
-
-        return up_pad
-
-    def generate_a(self, dedy): # pylint:disable=R0914
+    def generate_a(self, dedy):  # pylint:disable=R0914
         """
         generate dedy_col_fractal tensor for mad
 
@@ -141,7 +175,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             if b_factor == 0:
                 raise RuntimeError("division by zero")
             return (a_factor + b_factor - 1) // b_factor
-        DeConvKernelSize1Pattern.fusion_para = self.fusion_para
+        DeConvKernelSize1Pattern.fusion_para = self._fusion_para
         DeConvKernelSize1Pattern.dedy = dedy
         batch_dim, co1_dim, ho_dim, wo_dim, co0_dim = shape_to_list(dedy.shape)
 
@@ -149,10 +183,10 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         self._img_w = wo_dim
         hw_dim = _int_ceil_div(wo_dim * ho_dim, self._m0)
         real_hwdim = ho_dim * wo_dim
-        valid_shape = self.fusion_para.get("valid_shape")
-        slice_offset = self.fusion_para.get("slice_offset")
-        input_mem = self.fusion_para.get("input_memory_type")
-        l1_fusion_type = self.fusion_para.get("l1_fusion_type")
+        valid_shape = self._fusion_para.get("valid_shape")
+        slice_offset = self._fusion_para.get("slice_offset")
+        input_mem = self._fusion_para.get("input_memory_type")
+        l1_fusion_type = self._fusion_para.get("l1_fusion_type")
 
         # select_read_from_l1_flag  L1 in select read
         from_l1_flag = bool(input_mem == 1 and l1_fusion_type != -1)
@@ -255,7 +289,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                 lambda *indice:
                 in_tensor0(*indice) +
                 in_tensor1(
-                    indice[1]*CUBE_MKN[in_tensor0.dtype]['mac'][2] + indice[3]
+                    indice[1]*cce_params.CUBE_MKN[in_tensor0.dtype]['mac'][2] + indice[3]
                 ),
                 name="bias_add_vector",
             )
@@ -276,20 +310,20 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             if matrix_a.dtype == "int8" and matrix_b.dtype == "int8":
                 c_type = "int32"
                 mode = "s8"
-            elif intrinsic_check_support("Intrinsic_mmad", "f162f32"):
+            elif cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
                 c_type = "float32"
                 mode = "f162f32"
             else:
                 c_type = "float16"
                 mode = "f162f16"
 
+            offset_x = self._offset_x if is_support_v200() else 0
             mmad = tvm.compute(
                 shape_c,
-                lambda n, co1, m, co0:
-                tvm.sum(
-                    (matrix_a[n, m // self._m0, k1_axis,
-                              m % self._m0, k0_axis]
-                     * matrix_b[k1_axis, co1, co0, k0_axis]).astype(c_type),
+                lambda n, co1, m, co0: tvm.sum(
+                    ((matrix_a[n, m // self._m0, k1_axis, m % self._m0, k0_axis
+                               ] - offset_x) * matrix_b[
+                                   k1_axis, co1, co0, k0_axis]).astype(c_type),
                     axis=[k1_axis, k0_axis]),
                 name="C",
                 attrs={'mode': mode})
@@ -301,12 +335,12 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                 shape_c = mmad.shape
                 bias_ub_brc_shape = list(shape_c)
                 bias_ub_brc_shape[2] = bias_ub_brc_shape[2] // \
-                                       BRC_STANDARD_BLOCK_SIZE
+                    BRC_STANDARD_BLOCK_SIZE
                 bias_ub_brc = tvm.compute(
                     bias_ub_brc_shape,
                     lambda *indices:
                     tensor_bias(
-                        indices[1] * CUBE_MKN[tensor_bias.dtype]['mac'][2] +
+                        indices[1] * cce_params.CUBE_MKN[tensor_bias.dtype]['mac'][2] +
                         indices[3]
                     ),
                     name="bias_ub_brc",
@@ -342,21 +376,19 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             lambda *indice: res_c[indice].astype(res_c_dtype),
             name='CUB')
 
-        fusion_up_pad = self._cal_padding(self.fusion_para, self._stride_h)
-
         if self._stride_h > 1 or self._stride_w > 1:
             res_cub = self._dilate_tensor(res_cub, h_dim, w_dim,
-                                          self._stride_h, self._stride_w,
-                                          fusion_up_pad)
+                                          self._stride_h, self._stride_w)
 
         if tensor_bias is not None and \
-                (tensor_bias.dtype == "float16" or \
+                (tensor_bias.dtype == "float16" or
                  (self._stride_h > 1 or self._stride_w > 1)):
             res_cub = _add_bias_in_ub(res_cub, tensor_bias)
 
         output_shape = [n_dim, c1_dim, h_dim * w_dim, c0_dim]
         img_c = tvm.compute(output_shape,
-                            lambda n, c1, hw, c0: res_cub(n, c1, hw, c0),
+                            lambda n, c1, hw, c0:  # pylint: disable=W0108
+                            res_cub(n, c1, hw, c0),
                             tag="conv2d_backprop_input_opti",
                             name=res_cub.name + "_img",
                             attrs={"hw_dim": h_dim * w_dim,

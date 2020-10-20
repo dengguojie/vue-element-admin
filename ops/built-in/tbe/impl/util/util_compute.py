@@ -1,24 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this
-file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 common function
 """
-
-from te import tvm
-import te.lang.cce
-
+from te.tvm import api as tvm
+from te.lang.cce.te_compute.elewise_compute import vmuls
+from te.lang.cce.te_compute.elewise_compute import vabs
+from te.lang.cce.te_compute.elewise_compute import vadds
+from te.lang.cce.te_compute.elewise_compute import vdiv
 
 
 def sign(input_data):
@@ -44,9 +45,9 @@ def sign(input_data):
     else:
         raise RuntimeError(
             "The type must be float16 or float32.")
-    new_data = te.lang.cce.vmuls(input_data, fp_max)
-    abs_data = te.lang.cce.vabs(new_data)
-    denominator = te.lang.cce.vadds(abs_data, fp_min)
-    res = te.lang.cce.vdiv(new_data, denominator)
+    new_data = vmuls(input_data, fp_max)
+    abs_data = vabs(new_data)
+    denominator = vadds(abs_data, fp_min)
+    res = vdiv(new_data, denominator)
 
     return res

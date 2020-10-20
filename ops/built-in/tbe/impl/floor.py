@@ -1,30 +1,30 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 floor
 """
+import functools
+
 from te import tvm
-import te.lang.cce
+import te.lang.cce as tbe
+from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from functools import reduce as reduceIns
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # pylint: disable=locally-disabled,unused-argument
-@fusion_manager.register("floor")
+@tbe_platform.fusion_manager.fusion_manager.register("floor")
 def floor_compute(input_x, output_y, kernel_name="floor"):
     """
     floor compute
@@ -44,13 +44,14 @@ def floor_compute(input_x, output_y, kernel_name="floor"):
     res: TVM tensor
         the result of floor(input_x)
     """
-    res_int32 = te.lang.cce.floor(input_x)
-    res = te.lang.cce.cast_to(res_int32, input_x.dtype)
+    res_int32 = tbe.floor(input_x)
+    res = tbe.cast_to(res_int32, input_x.dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def floor(input_x, output_y, kernel_name="floor"):
     """
     algorithm: floor
@@ -73,18 +74,18 @@ def floor(input_x, output_y, kernel_name="floor"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
 
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
     check_list = {"float16", "float32"}
-    check_dtype(dtype, check_list, param_name="input_x")
+    para_check.check_dtype(dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
-    fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, dtype=dtype, name="data")
     res = floor_compute(data, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data, res]}
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -1,19 +1,20 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic sparse_apply_ftrl_d
 """
-
 from te import tvm
 import te.lang.dynamic
 from topi.cce import util
@@ -117,22 +118,22 @@ class SparseApplyFtrl():
         # check shape
         if len(var_shape) != len(accum_shape):
             error_detail = "the shape of var and accum must be equal"
-            error_manager_vector.raise_err_two_input_shpae_invalid(self.kernel_name, "var", "accum", error_detail)
+            error_manager_vector.raise_err_two_input_shape_invalid(self.kernel_name, "var", "accum", error_detail)
         if len(var_shape) != len(linear_shape):
             error_detail = "the shape of var and accum must be equal"
-            error_manager_vector.raise_err_two_input_shpae_invalid(self.kernel_name, "var", "linear", error_detail)
+            error_manager_vector.raise_err_two_input_shape_invalid(self.kernel_name, "var", "linear", error_detail)
         if len(var_shape) != len(grad_shape):
             error_detail = "the shape of var and linear must be equal"
-            error_manager_vector.raise_err_two_input_shpae_invalid(self.kernel_name, "var", "grad", error_detail)
+            error_manager_vector.raise_err_two_input_shape_invalid(self.kernel_name, "var", "grad", error_detail)
         if len(var_shape) != len(var_out_shape):
             error_detail = "the shape of var and var_out must be equal"
-            error_manager_vector.raise_err_two_input_shpae_invalid(self.kernel_name, "var", "var_out", error_detail)
+            error_manager_vector.raise_err_two_input_shape_invalid(self.kernel_name, "var", "var_out", error_detail)
         if len(indices_shape) != 1:
             error_detail = "the shape of indices must be 1"
-            error_manager_vector.raise_err_input_shpae_invalid(self.kernel_name, "indices", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid(self.kernel_name, "indices", error_detail)
         if len(var_shape) < 2:
             error_detail = "the dim of var can not be smaller than 2"
-            error_manager_vector.raise_err_input_shpae_invalid(self.kernel_name, "var", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid(self.kernel_name, "var", error_detail)
 
     def __init__(self, input_dicts, input_attrs, output_dicts, kernel_name):
         """
@@ -801,13 +802,11 @@ class SparseApplyFtrl():
         tmp_ub = ub_tuples[4][offset]
         tmp2_ub = ub_tuples[5][offset]
 
-        # tmp: grad*grad
         self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
         # linear += grad, grad will not used after this operation
         self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
-        # grad: ln(accum)
         self.tik_instance.vln(mask, grad_ub, accum_ub,
                               repeat, 1, 1, 8, 8)
 
@@ -817,7 +816,6 @@ class SparseApplyFtrl():
         self.tik_instance.vexp(mask, grad_ub, grad_ub,
                                repeat, 1, 1, 8, 8)
 
-        # accum_new = accum + grad*grad
         self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
 
@@ -833,7 +831,6 @@ class SparseApplyFtrl():
         self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_attr_rec,
                                 repeat, 1, 1, 8, 8)
 
-        # tmp: accum^(-lr_power)- accum_new^(-lr_power)
         self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
 
@@ -847,7 +844,6 @@ class SparseApplyFtrl():
         self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
 
-        # x_res = max(min(linear, l1), -l1) - linear
         self.tik_instance.vector_dup(mask, tmp_ub, self.l1_attr,
                                      repeat, 1, 8)
         self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub,
@@ -859,11 +855,9 @@ class SparseApplyFtrl():
         self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
 
-        # y_res = accum_new^(-lr_power)/lr + 2*l2
         self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2_attr,
                                 repeat, 1, 1, 8, 8)
 
-        # var = x_res/y_res
         self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub,
                                repeat, 1, 1, 1, 8, 8, 8)
 

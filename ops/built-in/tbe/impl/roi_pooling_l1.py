@@ -1,33 +1,26 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 roi_pooling_l1
 """
-
-from te import tik
-from te import platform as cce
-from te import platform as tbe_platform
-
-from impl.roi_pooling_base import RoiClass
-from impl.roi_pooling_base import TYPELEN_DICT
-from impl.roi_pooling_base import INDEX_C1
-from impl.roi_pooling_base import INDEX_C0
+import te.platform as tbe_platform
+from impl import roi_pooling_base
 
 
 # pylint: disable=too-many-instance-attributes
-class RoiClassL1(RoiClass):
+class RoiClassL1(roi_pooling_base.RoiClass):
     """
     Class that execute roi_pooling using L1
     """
@@ -51,7 +44,6 @@ class RoiClassL1(RoiClass):
         self.max_bin_h = None
         self.max_bin_w = None
 
-
     def init_param(self, roinum_pooledimg, shapedict_list,
                    spatial_scale_list, kernel_name):
         """
@@ -66,13 +58,12 @@ class RoiClassL1(RoiClass):
                                            kernel_name)
         self.roi_actual_num_effect = True
 
-        self.l1_byte_size = \
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+        self.l1_byte_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         self.c1_loops = self.fm_c1
         self.c1_num_in_l1 = self.l1_byte_size // (self.fm_h *
                                                   self.fm_w *
                                                   self.fm_c0 *
-                                                  TYPELEN_DICT[self.dtype])
+                                                  roi_pooling_base.TYPELEN_DICT[self.dtype])
         if self.fm_c1 <= self.c1_num_in_l1:
             self.c1_num_in_l1 = self.fm_c1
         self.max_bin_h = self.fm_h // self.pooled_h + 2
@@ -105,11 +96,11 @@ class RoiClassL1(RoiClass):
         None
         """
         ub_cost = self.pooled_h * self.pooled_w * self.fm_c0 * \
-                  TYPELEN_DICT[self.dtype]
+                  roi_pooling_base.TYPELEN_DICT[self.dtype]
         ub_cost = ub_cost + \
                   self.max_bin_h * self.max_bin_w * self.fm_c0 * \
-                  TYPELEN_DICT[self.dtype]
-        ub_cost = ub_cost + self.fm_c0 * TYPELEN_DICT[self.dtype]
+                  roi_pooling_base.TYPELEN_DICT[self.dtype]
+        ub_cost = ub_cost + self.fm_c0 * roi_pooling_base.TYPELEN_DICT[self.dtype]
         return ub_cost
 
     def roi_pooling_main(self):
@@ -124,24 +115,24 @@ class RoiClassL1(RoiClass):
                     self.tik_instance.Tensor(dtype="int32",
                                              shape=(self.feature_batch, 8),
                                              name="roi_actual_num",
-                                             scope=tik.scope_gm)
+                                             scope=tbe_platform.scope_gm)
 
         self.x = self.tik_instance.Tensor(self.dtype, self.shape, name="x",
-                                          scope=tik.scope_gm)
+                                          scope=tbe_platform.scope_gm)
 
         self.rois = self.tik_instance.Tensor(self.dtype,
                                              shape=(self.feature_batch,
                                                     5, self.roi_max_num),
-                                             name="rois", scope=tik.scope_gm)
+                                             name="rois", scope=tbe_platform.scope_gm)
 
         self.y = self.tik_instance.Tensor(self.dtype,
                                           shape=(self.feature_batch * \
                                                  self.roi_max_num,
-                                                 self.shape[INDEX_C1],
+                                                 self.shape[roi_pooling_base.INDEX_C1],
                                                  self.pooled_h, self.pooled_w,
-                                                 self.shape[INDEX_C0]),
+                                                 self.shape[roi_pooling_base.INDEX_C0]),
                                           name="y",
-                                          scope=tik.scope_gm)
+                                          scope=tbe_platform.scope_gm)
 
         if self.feature_batch == 1:
             self.proposal_pooling_multibatch()
@@ -152,7 +143,7 @@ class RoiClassL1(RoiClass):
                                    inputs=(self.x,
                                            self.rois,
                                            self.roi_actual_num),
-                                   outputs=(self.y),
+                                   outputs=(self.y,),
                                    enable_l2=False)
 
     def proposal_pooling_multibatch(self):
@@ -181,7 +172,7 @@ class RoiClassL1(RoiClass):
                                                         self.fm_h,
                                                         self.fm_w,
                                                         self.fm_c0),
-                                                 scope=tik.scope_cbuf,
+                                                 scope=tbe_platform.scope_cbuf,
                                                  name="fm_in_l1")
 
         with self.tik_instance.for_range(0, self.c1_loops) as ci_loop:
@@ -196,7 +187,7 @@ class RoiClassL1(RoiClass):
                         self.fm_h *
                         self.fm_w *
                         self.fm_c0 *
-                        TYPELEN_DICT[self.dtype]) // 32,
+                        roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32,
                     0, 0)
             else:
                 with self.tik_instance.if_scope(
@@ -209,7 +200,7 @@ class RoiClassL1(RoiClass):
                             self.fm_h *
                             self.fm_w *
                             self.fm_c0 *
-                            TYPELEN_DICT[self.dtype]) // 32,
+                            roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32,
                         0, 0)
 
             with self.tik_instance.for_range(0, self.tiling_num) \
@@ -230,7 +221,7 @@ class RoiClassL1(RoiClass):
                                                      shape=(self.pooled_h,
                                                             self.pooled_w,
                                                             self.fm_c0),
-                                                     scope=tik.scope_ubuf,
+                                                     scope=tbe_platform.scope_ubuf,
                                                      name="pooled_fm_for_a_roi")
                         with self.tik_instance.for_range(0, self.pooled_h) \
                                 as ph_index:
@@ -240,7 +231,7 @@ class RoiClassL1(RoiClass):
                                     dtype=self.dtype,
                                     shape=(self.max_bin_h, self.max_bin_w,
                                            self.fm_c0),
-                                    scope=tik.scope_ubuf,
+                                    scope=tbe_platform.scope_ubuf,
                                     name="window_fm")
 
                                 window_start_h = self.tik_instance.Scalar(
@@ -262,14 +253,14 @@ class RoiClassL1(RoiClass):
                                                              roi_index])
                                 burst_len = self.tik_instance.Scalar("int32")
                                 burst_len.set_as((window_w * self.fm_c0 * \
-                                    TYPELEN_DICT[self.dtype]) // 32)
+                                    roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32)
                                 src_gap = self.tik_instance.Scalar("int32")
                                 src_gap.set_as(((self.fm_w - window_w) * \
                                     self.fm_c0 * \
-                                    TYPELEN_DICT[self.dtype]) // 32)
+                                    roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32)
                                 dst_gap = self.tik_instance.Scalar("int32")
                                 dst_gap.set_as((self.max_bin_w - window_w) * \
-                                    self.fm_c0 * TYPELEN_DICT[self.dtype] // 32)
+                                    self.fm_c0 * roi_pooling_base.TYPELEN_DICT[self.dtype] // 32)
                                 self.tik_instance.data_move(
                                     self.window_fm[0, 0, 0],
                                     self.fm_in_l1[ci_loop % self.c1_num_in_l1,
@@ -290,7 +281,7 @@ class RoiClassL1(RoiClass):
                             self.pooled_fm_for_a_roi,
                             0,
                             1, (self.pooled_h * self.pooled_w * self.fm_c0 *
-                                TYPELEN_DICT[self.dtype]) // 32,
+                                roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32,
                             0, 0)
                 self.calced_rois.set_as(self.calced_rois +
                                         self.proposal_ub_validnum)
@@ -305,13 +296,13 @@ class RoiClassL1(RoiClass):
         with self.tik_instance.new_stmt_scope():
             max_val = self.tik_instance.Tensor(dtype=self.dtype,
                                                shape=(self.fm_c0,),
-                                               scope=tik.scope_ubuf,
+                                               scope=tbe_platform.scope_ubuf,
                                                name="max_val")
             self.tik_instance.data_move(max_val, self.window_fm[0, 0, 0],
                                         0,
                                         1,
                                         (self.fm_c0 *
-                                         TYPELEN_DICT[self.dtype]) // 32,
+                                         roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32,
                                         0, 0)
             bin_h = self.tik_instance.Scalar("int32")
             bin_w = self.tik_instance.Scalar("int32")
@@ -320,12 +311,12 @@ class RoiClassL1(RoiClass):
             with self.tik_instance.for_range(0, bin_h) as b_h_index:
                 with self.tik_instance.for_range(0, bin_w) as b_w_index:
                     self.tik_instance.vec_max(self.fm_c0,
-                                           max_val,
-                                           max_val,
-                                           self.window_fm[b_h_index, b_w_index,
-                                                          0],
-                                           1,
-                                           8, 8, 8)
+                                              max_val,
+                                              max_val,
+                                              self.window_fm[b_h_index, b_w_index,
+                                                             0],
+                                              1,
+                                              8, 8, 8)
 
             self.tik_instance.data_move(self.pooled_fm_for_a_roi[ph_index,
                                                                  pw_index, 0],
@@ -333,5 +324,5 @@ class RoiClassL1(RoiClass):
                                         0,
                                         1,
                                         (self.fm_c0 *
-                                         TYPELEN_DICT[self.dtype]) // 32,
+                                         roi_pooling_base.TYPELEN_DICT[self.dtype]) // 32,
                                         0, 0)

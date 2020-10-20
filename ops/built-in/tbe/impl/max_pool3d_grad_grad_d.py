@@ -1,27 +1,25 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-tf max_pool3d
+max_pool3d_grad_grad_d
 """
-from __future__ import absolute_import
-
 # pylint: disable=E0401
-import te.lang.cce
 import time
+
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
 
 # shape limit
 # int32's max value
@@ -32,11 +30,9 @@ CAFFE_DATA_MODE = 0
 TENSORFLOW_DATA_MODE = 1
 MAX_BUILD_ROUND_FOR_RECALC_UB = 8
 
+
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,too-many-boolean-expressions
-#@util.check_input_type(dict, dict, dict, dict, dict,
-#                      (list, tuple), (list, tuple), (list, tuple),
-#                      str,str)
 def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
                            ksize, strides, pads=(0, 0, 0, 0, 0, 0),
                            data_format="NDHWC",
@@ -68,8 +64,8 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
     -------
     None
     """
-    if (pads[0] == 0 and pads[1] == 0 and pads[2] == 0 and\
-        pads[3] == 0 and pads[4] == 0 and pads[5] == 0):
+    if (pads[0] == 0 and pads[1] == 0 and pads[2] == 0 and \
+            pads[3] == 0 and pads[4] == 0 and pads[5] == 0):
         padding = "VALID"
     else:
         padding = "SAME"
@@ -102,25 +98,25 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
     #UB size can not be calculated accurately, so retry 8 times at most
     build_count = 0
     while build_count <= MAX_BUILD_ROUND_FOR_RECALC_UB:
-        res = te.lang.cce.pooling3d_max_grad_grad(orig_input_tensor,
-                                              orig_output_tensor,
-                                              grad_grad_tensor,
-                                              assist_tensor,
-                                              (window_d, window_h, window_w),
-                                              (stride_d, stride_h, stride_w),
-                                              pads, data_format, padding)
+        res = tbe.pooling3d_max_grad_grad(orig_input_tensor,
+                                          orig_output_tensor,
+                                          grad_grad_tensor,
+                                          assist_tensor,
+                                          (window_d, window_h, window_w),
+                                          (stride_d, stride_h, stride_w),
+                                          pads, data_format, padding)
         try:
             with tvm.target.cce():
                 #because of attr could be assigned only once, so use attr name in schedule to judge tiling round.
                 res.op.attrs["recalc_ub_round_"+str(build_count)] = build_count
                 build_count = build_count + 1
-                sch = generic.auto_schedule(res)
+                sch = tbe.auto_schedule(res)
                 config = {
                     "name": kernel_name,
                     "dummy_placeholder": True,
                     "tensor_list": [orig_input_tensor, orig_output_tensor,
                                     grad_grad_tensor, assist_tensor, res]}
-                te.lang.cce.cce_build_code(sch, config)
+                tbe.cce_build_code(sch, config)
                 break
         except tvm.TVMError as e:
             if str(e).find("VMError: Allocation exceed bound of memory tag:local.UB") != -1:

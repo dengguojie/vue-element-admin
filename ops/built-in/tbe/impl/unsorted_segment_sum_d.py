@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright 2019 Huawei Technologies Co., Ltd
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 unsorted_segment_sum_d
 """
 # pylint: disable=locally-disabled,too-many-lines
@@ -58,16 +61,30 @@ def op_select_format(x, segment_ids, y, num_segments,
     """
     select format dynamically
     """
-    input0_dtype = "float,float"
-    input0_format = "NC1HWC0,ND"
-    input1_dtype = "int32,int32"
-    input1_format = "ND,ND"
-    input0_ori_dtype = "float16,float16,float,float,int8,int8,uint8,uint8," \
-                       "int32,int32"
-    input0_ori_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
-    input1_ori_dtype = "int32,int32,int32,int32,int32,int32,int32,int32," \
-                       "int32,int32"
-    input1_ori_format = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
+    segment_ids_shape = list(segment_ids.get("shape"))
+    if len(segment_ids_shape) == 1:
+
+        input0_dtype = "float,float"
+        input0_format = "NC1HWC0,ND"
+        input1_dtype = "int32,int32"
+        input1_format = "ND,ND"
+        input0_ori_dtype = "float16,float16,float,float,int8,int8,uint8,uint8," \
+                           "int32,int32"
+        input0_ori_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
+        input1_ori_dtype = "int32,int32,int32,int32,int32,int32,int32,int32," \
+                           "int32,int32"
+        input1_ori_format = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
+    else:
+        input0_dtype = "float"
+        input0_format = "ND"
+        input1_dtype = "int32"
+        input1_format = "ND"
+        input0_ori_dtype = "float16,float,int8,uint8," \
+                           "int32"
+        input0_ori_format = "ND,ND,ND,ND,ND"
+        input1_ori_dtype = "int32,int32,int32," \
+                           "int32,int32"
+        input1_ori_format = "ND,ND,ND,ND,ND"
     ori_dtype = x.get("dtype").lower()
     ori_shape = list(x.get("shape"))
     cce_product = get_cce_product_version()
@@ -101,21 +118,29 @@ def op_select_format(x, segment_ids, y, num_segments,
 
 def _ceil_div(val, block):
     """
-    return: (val + block - 1) // block
+    Calculate (val + block - 1) // block
+    :param val: First input
+    :param block: Second input
+    :return: result
     """
     return (val + block - 1) // block
 
 
 def _ceil_fill(val, block):
     """
-    return: ((val + block - 1) // block)*block
+    Calculate ((val + block - 1) // block)*block
+    :param val: First input
+    :param block: Second input
+    :return: result
     """
     return _ceil_div(val, block) * block
 
 
 def _prod(values):
     """
-    return: prod of values
+    prod of values
+    :param values: input
+    :return: prod of values
     """
     res = 1
     for value in values:
@@ -181,7 +206,8 @@ class SegmentParams():
                                       name="mask",
                                       scope=cce_params.scope_reg)
 
-        self.align_offset = ib_.allocate("int32", (2, ),
+        scalar_dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+        self.align_offset = ib_.allocate(scalar_dtype, (2, ),
                                          name="align_offset",
                                          scope=cce_params.scope_reg)
 
@@ -224,13 +250,13 @@ class SegmentParams():
     def get_align(self, offset):
         """
         offset: offset value to be convert
-        return: converted mask
+        return: align_offset
         """
         if isinstance(offset, int):
             return offset % self.cp_align_len
 
         # avoid canonical.cc bug
-        self.align_offset[0] = 1
+        self.align_offset[0] = 1 if tvm.api_config.query_bit_width() == 32 else tvm.const(1, "int64")
         self.align_offset[0] = \
             offset % (self.cp_align_len * self.align_offset[0])
 
@@ -238,7 +264,7 @@ class SegmentParams():
 
     def get_mask_head(self, align_offset):
         """
-        offset: offset value to be convert
+        align_offset: offset value to be convert
         return: converted mask
         """
         return [self.mask_all_one, self.uint64_all_one - \
@@ -246,7 +272,7 @@ class SegmentParams():
 
     def get_mask_tail(self, data_len):
         """
-        offset: offset value to be convert
+        data_len: data length
         return: converted mask
         """
 
@@ -262,7 +288,8 @@ class SegmentParams():
 
     def get_mask(self, align, data_len):
         """
-        offset: offset value to be convert
+        align: align_offset,offset value to be convert
+        data_len: data length
         return: converted mask
         """
         if isinstance(align, int) and isinstance(data_len, int):
@@ -926,7 +953,7 @@ def _all_in_fun(num_segments, input_buf, segment_ids, params):
          output_offset : output_offset
          input_offset: input_offset
          mask1 : mask1
-         massk2 : massk2
+         massk2 : mask2
         """
 
         _do_vadd(data_len, output_offset, input_offset, masks, params)
@@ -1319,6 +1346,10 @@ def _multi_in_multi_out_fun(num_segments, input_buf, segment_ids, params):
             return False
 
     else:
+        if params.src_dtype == "float16" and element_len < 16:
+            params.device_core_num = 1
+        if params.src_dtype in("float32", "int32") and element_len < 8:
+            params.device_core_num = 1
         if _apply_bufs(ids_len, input_len, element_len, params) is False:
             return False
 
@@ -1410,6 +1441,10 @@ def _multi_in_multi_out_fun_large(num_segments, input_buf, segment_ids,
             params.device_core_num = 1
 
     else:
+        if params.src_dtype == "float16" and params.element_len % one_time_len < 16:
+            params.device_core_num = 1
+        if params.src_dtype in("float32", "int32") and params.element_len % one_time_len < 8:
+            params.device_core_num = 1
         if ids_buf_len > params.unified_buffer_len // 2 or one_time_len <= 0:
             return False
     element_len = params.element_len
@@ -1564,6 +1599,10 @@ def _multi_in_multi_out_fun_ids(num_segments, input_buf, segment_ids, params):
             params.device_core_num = 1
 
     else:
+        if params.src_dtype == "float16" and (params.element_len % one_time_len < 16 or one_time_len < 16):
+            params.device_core_num = 1
+        if params.src_dtype in ("int32", "float32") and (params.element_len % one_time_len < 8 or one_time_len < 8):
+            params.device_core_num = 1
         _apply_bufs(max_ids_len, one_time_len, one_time_len, params)
     _do_cp_ids(params.segment_ids_ub, segment_ids, 0, 1, params)
 
@@ -2618,7 +2657,6 @@ def unsorted_segment_sum_d(x,
                                       name="segment_ids",
                                       dtype='int32')
         output_shape = list((num_segments, shape_x[1]))
-
     res = tvm.extern([output_shape, [1]], [data_a, segment_ids],
                      lambda ins, outs: _intrin_factor(
                          shape_x, num_segments, dtype, ins, outs[0], outs[1]),
