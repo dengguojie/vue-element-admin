@@ -1,3 +1,6 @@
+# binary files
+*.so
+
 # distribution and packaging
 build/
 output/
@@ -26,4 +29,3 @@ data/
 # cann tmp
 lib/
 kernel_meta/
-tools/python/op_test_frame/libs/*.so

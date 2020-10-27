@@ -27,18 +27,18 @@ CANN_ST_OUT="$CANN_LLT_OUT/st"
 set_ut_env() {
   local base_path="$1"
   export BASE_HOME="${base_path}"
-  export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/python"
+  export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/op_test_frame/python"
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
-  export PYTHONPATH=$PYTHONPATH:$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME
-  export LD_LIBRARY_PATH=$BASE_HOME/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
-  export PATH=$PATH:$BASE_HOME/ccec_compiler/bin
+  export PYTHONPATH=$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME:$PYTHONPATH
+  export LD_LIBRARY_PATH=$BASE_HOME/atc/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
+  export PATH=$PATH:$BASE_HOME/atc/ccec_compiler/bin
 }
 
 run_ut() {
   local pr_file="$1"
   local supported_soc="Ascend310,Ascend910"
   python3.7 run_ut.py --soc_version="${supported_soc}" \
-                      --simulator_lib_path="${BASE_HOME}/simulator" \
+                      --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
                       --pr_changed_file="${pr_file}"
   if [[ $? -ne 0 ]]; then
     exit $STATUS_FAILED

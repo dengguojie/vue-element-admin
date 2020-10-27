@@ -1,0 +1,77 @@
+LOCAL_PATH := $(call my-dir)
+
+local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
+                           kernels/normalized/meshgrid_kernels.cc \
+                           kernels/normalized/expanddims_kernel.cc \
+                           kernels/normalized/reshape_kernels.cc \
+                           kernels/normalized/less_kernels.cc \
+                           kernels/normalized/top_k_v2_kernels.cc \
+                           kernels/normalized/edit_distance_kernels.cc \
+                           kernels/normalized/search_cache_idx_kernels.cc \
+                           kernels/normalized/cache_swap_hashmap_kernels.cc \
+                           kernels/normalized/cache_swap_table_kernels.cc \
+                           kernels/normalized/update_cache_kernels.cc \
+                           kernels/normalized/gather_kernels.cc \
+                           kernels/normalized/identity_kernels.cc \
+                           kernels/normalized/unique_with_pad_kernels.cc \
+                           kernels/normalized/ceil_kernels.cc \
+                           kernels/normalized/realdiv_kernels.cc \
+                           kernels/normalized/sparse_to_dense_kernels.cc \
+                           kernels/normalized/deformable_offsets_kernels.cc\
+                           utils/sparse_group.cc \
+                           utils/eigen_tensor.cc \
+                           utils/sparse_tensor.cc \
+                           utils/bcast.cc \
+
+local_host_kernels := kernels/host/add_kernel.cc \
+                      kernels/host/mul_kernel.cc \
+                      kernels/host/random_uniform_kernel.cc \
+
+local_kernels_inc_path := $(LOCAL_PATH) \
+                          $(LOCAL_PATH)/utils \
+                          $(TOPDIR)inc/aicpu/cpu_kernels \
+                          $(TOPDIR)inc/external/aicpu \
+                          ${TOPDIR}third_party/eigen/src/eigen-3.3.7 \
+                          $(TOPDIR)inc \
+                          $(TOPDIR)libc_sec/include \
+
+#built libcpu_kernels.so for device
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libcpu_kernels
+LOCAL_SRC_FILES := $(local_normalized_kernels)
+LOCAL_C_INCLUDES := $(local_kernels_inc_path)
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -std=c++14
+LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
+LOCAL_SHARED_LIBRARIES := libslog libc_sec libcpu_kernels_context
+
+include $(BUILD_SHARED_LIBRARY)
+
+
+#built libcpu_kernels.so for host
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libcpu_kernels
+LOCAL_SRC_FILES := $(local_normalized_kernels) \
+                   $(local_host_kernels)
+LOCAL_C_INCLUDES := $(local_kernels_inc_path)
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv
+LOCAL_CFLAGS += -fvisibility-inlines-hidden
+LOCAL_CFLAGS += -fvisibility=hidden
+LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
+LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
+LOCAL_SHARED_LIBRARIES := libslog libc_sec libcpu_kernels_context
+
+include $(BUILD_HOST_SHARED_LIBRARY)
+
+
+#built libcpu_kernels.a for host
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libcpu_kernels
+LOCAL_SRC_FILES := $(local_normalized_kernels) \
+                   $(local_host_kernels)
+LOCAL_C_INCLUDES := $(local_kernels_inc_path)
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11
+
+include $(BUILD_HOST_STATIC_LIBRARY)

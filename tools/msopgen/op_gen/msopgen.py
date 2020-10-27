@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+# coding=utf-8
+"""
+Function:
+This file mainly involves main function of op generation module.
+Copyright Information:
+Huawei Technologies Co., Ltd. All Rights Reserved © 2020
+"""
+
+try:
+    import sys
+    import time
+    import os
+    import argparse
+    import itertools
+    from op_gen.interface.arg_parser import ArgParser
+    from op_gen.interface.op_file_generator import OpFileGenerator
+    from op_gen.interface.op_info_parser import OpInfoParser
+    from op_gen.interface import utils
+except (ImportError,) as import_error:
+    sys.exit("[ERROR][msopgen] Unable to import module: %s." % str(
+        import_error))
+
+
+def _do_gen_cmd(argument):
+    try:
+        op_file_generator = OpFileGenerator(argument)
+        op_file_generator.generate()
+    except utils.MsOpGenException as ex:
+        sys.exit(ex.error_info)
+
+
+def _do_mi_cmd(argument):
+    try:
+        if argument.mi_cmd == utils.INPUT_ARGUMENT_CMD_MI_QUERY:
+            OpInfoParser(argument)
+    except utils.MsOpGenException as ex:
+        sys.exit(ex.error_info)
+
+
+def main():
+    """main function"""
+    # 1.parse input argument and check arguments valid
+    try:
+        argument = ArgParser()
+    except utils.MsOpGenException as ex:
+        sys.exit(ex.error_info)
+    # 2.generate file, according to gen and mi
+    if argument.gen_flag:
+        _do_gen_cmd(argument)
+    else:
+        _do_mi_cmd(argument)
+    utils.print_info_log("Generation completed.")
+    sys.exit(utils.MS_OP_GEN_NONE_ERROR)
+
+
+if __name__ == "__main__":
+    main()
