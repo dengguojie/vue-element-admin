@@ -16,9 +16,9 @@
 function(cann_install)
   cmake_parse_arguments(
     MY_INSTALL
-    "OPTIONAL"
+    "COPY_CONTENTS"
     "TARGET;DESTINATION"
-    "FILES;DIRECTORY"
+    "FILES;DIRECTORIES"
     ${ARGN}
   )
   if(NOT MY_INSTALL_TARGET)
@@ -32,13 +32,26 @@ function(cann_install)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MY_INSTALL_FILES} ${MY_INSTALL_DESTINATION}
       COMMENT "Install files: ${MY_INSTALL_FILES} to ${MY_INSTALL_DESTINATION}"
     )
-  elseif(MY_INSTALL_DIRECTORY)
+  endif()
+  foreach(_src_path ${MY_INSTALL_DIRECTORIES})
+    if(NOT IS_DIRECTORY ${_src_path})
+      message(FATAL_ERROR "Directory is not exist. ${_src_path}")
+    endif()
+
+    set(_dest_path ${MY_INSTALL_DESTINATION})
+    if(MY_INSTALL_COPY_CONTENTS)
+      # copy contents of the directory
+    else()
+      # copy directory itself
+      get_filename_component(_dir_name ${_src_path} NAME)
+      set(_dest_path ${MY_INSTALL_DESTINATION}/${_dir_name})
+    endif()
     add_custom_command(
       TARGET "${MY_INSTALL_TARGET}" POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${MY_INSTALL_DIRECTORY} ${MY_INSTALL_DESTINATION}
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${_src_path} ${_dest_path}
       COMMENT "Install dirs: ${MY_INSTALL_DIRECTORY} to ${MY_INSTALL_DESTINATION}"
     )
-  endif()
+  endforeach()
 endfunction()
 
 function(protobuf_generate_cc h_files cc_files output_path)

@@ -151,3 +151,11 @@ cann_install(
   FILES       $<TARGET_FILE:opsproto>
   DESTINATION "${OPS_PROTO_PATH}"
 )
+
+
+add_custom_target(copy_op_proto_inc ALL)
+cann_install(
+  TARGET      copy_op_proto_inc
+  DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  DESTINATION "${OPS_PROTO_PATH}"
+)

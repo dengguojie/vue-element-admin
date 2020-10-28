@@ -81,7 +81,7 @@ target_compile_options(op_tiling PRIVATE
   "-fno-strict-aliasing"
 )
 
-set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_tiling/built-in")
+set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe/op_tiling")
 cann_install(
   TARGET      op_tiling
   FILES       $<TARGET_FILE:op_tiling>

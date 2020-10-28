@@ -22,11 +22,11 @@ foreach(_file ${OP_FILES})
     message(FATAL_ERROR "Cannot find the the ini parser ${INI_PARSER}")
   endif()
 
-  get_filename_component(_ini_name "${_file}" NAME)
-  get_filename_component(_parent_dir "${_file}" DIRECTORY)
-  get_filename_component(_kind "${_parent_dir}" NAME)
+  string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/ "" _rel_path "${_file}")
+  get_filename_component(_ini_name "${_rel_path}" NAME)
+  get_filename_component(_parent_dir "${_rel_path}" DIRECTORY)
   string(REPLACE ".ini" ".json" _json_name "${_ini_name}")
-  set(_out_path "${CMAKE_CURRENT_BINARY_DIR}/config/${_kind}")
+  set(_out_path "${CMAKE_CURRENT_BINARY_DIR}/config/${_parent_dir}")
   file(MAKE_DIRECTORY "${_out_path}")
 
   set(_out_json "${_out_path}/${_json_name}")
@@ -37,19 +37,24 @@ foreach(_file ${OP_FILES})
   list(APPEND ALL_JSON_FILES "${_out_json}")
 endforeach()
 
-set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
-add_custom_target(parse_op_ini ALL
+set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in")
+
+add_custom_target(copy_tbe_op ALL
   DEPENDS ${ALL_JSON_FILES}
 )
 cann_install(
-  TARGET      parse_op_ini
-  DIRECTORY   "${CMAKE_CURRENT_BINARY_DIR}/config"
-  DESTINATION "${TBE_OP_PATH}/config"
+  TARGET      copy_tbe_op
+  DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/impl"
+  DESTINATION "${TBE_OP_PATH}/ai_core/tbe"
 )
-
-add_custom_target(copy_tbe_op ALL)
 cann_install(
   TARGET      copy_tbe_op
-  DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/impl"
-  DESTINATION "${TBE_OP_PATH}/impl"
+  COPY_CONTENTS
+  DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/config/ai_core"
+  DESTINATION "${TBE_OP_PATH}/ai_core/tbe/config"
+)
+cann_install(
+  TARGET      copy_tbe_op
+  FILES       "${CMAKE_CURRENT_BINARY_DIR}/config/vector_core/vector_core_tbe_ops_info.json"
+  DESTINATION "${TBE_OP_PATH}/vector_core/tbe/config"
 )

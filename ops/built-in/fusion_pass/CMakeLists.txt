@@ -285,5 +285,5 @@ add_dependencies(ops_fusion_pass_vectorcore json_headers)
 cann_install(
   TARGET      ops_fusion_pass_vectorcore
   FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
-  DESTINATION "${ops_fusion_pass_path}"
+  DESTINATION "${ops_fusion_pass_path}/vector_core"
 )
