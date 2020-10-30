@@ -15,14 +15,11 @@
 """
 l2_normalize_grad
 """
-import te.lang.cce
-from te.lang.cce.te_compute.util import shape_to_list
+import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 
 # shape limit for aicore equals 2**31
@@ -31,7 +28,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,too-many-locals
-@fusion_manager.register("l2_normalize_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("l2_normalize_grad")
 def l2_normalize_grad_compute(input_data_x,
                               input_data_y,
                               input_data_dy,
@@ -70,43 +67,45 @@ def l2_normalize_grad_compute(input_data_x,
     # max(||x||, eps)
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.sum", "float32"):
-        input_data_x = te.lang.cce.cast_to(input_data_x, "float32")
+        input_data_x = tbe.cast_to(input_data_x, "float32")
 
-    x_square = te.lang.cce.vmul(input_data_x, input_data_x)
-    x_l2norm = te.lang.cce.sum(x_square, dim, keepdims=True)
-    x_l2norm = te.lang.cce.vsqrt(x_l2norm)
-    x_l2norm = te.lang.cce.vmaxs(x_l2norm, tvm.const(eps, dtype))
-    x_l2norm_broadcast = te.lang.cce.broadcast(x_l2norm,
-                                               shape_to_list(
+    x_square = tbe.vmul(input_data_x, input_data_x)
+    x_l2norm = tbe.sum(x_square, dim, keepdims=True)
+    x_l2norm = tbe.vsqrt(x_l2norm)
+    x_l2norm = tbe.vmaxs(x_l2norm, tvm.const(eps, dtype))
+    x_l2norm_broadcast = tbe.broadcast(x_l2norm,
+                                               shape_util.shape_to_list(
                                                    input_data_x.shape))
 
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.sum", "float32"):
-        input_data_y = te.lang.cce.cast_to(input_data_y, "float32")
-        input_data_dy = te.lang.cce.cast_to(input_data_dy, "float32")
+        input_data_y = tbe.cast_to(input_data_y, "float32")
+        input_data_dy = tbe.cast_to(input_data_dy, "float32")
 
-    y_mul_dy = te.lang.cce.vmul(input_data_y, input_data_dy)
-    sum_y_mul_dy = te.lang.cce.sum(y_mul_dy, dim, keepdims=True)
-    sum_y_mul_dy_broadcast = te.lang.cce.broadcast(sum_y_mul_dy,
-                                                   shape_to_list(
+    y_mul_dy = tbe.vmul(input_data_y, input_data_dy)
+    sum_y_mul_dy = tbe.sum(y_mul_dy, dim, keepdims=True)
+    sum_y_mul_dy_broadcast = tbe.broadcast(sum_y_mul_dy,
+                                                   shape_util.shape_to_list(
                                                        input_data_x.shape))
 
     # dx = (dy - y * sum(dy*y)) / max(||x||, eps)
-    numerator = te.lang.cce.vsub(input_data_dy,
-                                 te.lang.cce.vmul(input_data_y,
+    numerator = tbe.vsub(input_data_dy,
+                                 tbe.vmul(input_data_y,
                                                   sum_y_mul_dy_broadcast))
-    result = te.lang.cce.vdiv(numerator, x_l2norm_broadcast)
+    result = tbe.vdiv(numerator, x_l2norm_broadcast)
 
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.sum", "float32"):
-        result = te.lang.cce.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 (REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_INT), REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT),
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def l2_normalize_grad(input_x,
                       input_y,
                       input_dy,
@@ -148,22 +147,22 @@ def l2_normalize_grad(input_x,
     """
     input_shape_x = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
-    check_shape(input_shape_x, param_name="input_x")
-    check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
+    para_check.check_shape(input_shape_x, param_name="input_x")
+    para_check.check_dtype(input_dtype, ("float16", "float32"), param_name="input_x")
     input_data_x = tvm.placeholder(
         input_shape_x, name="input_data_x", dtype=input_dtype)
 
     input_shape_y = input_y.get("shape")
     input_dtype_y = input_y.get("dtype").lower()
-    check_shape(input_shape_y, param_name="input_y")
-    check_dtype(input_dtype_y, input_dtype, param_name="input_y")
+    para_check.check_shape(input_shape_y, param_name="input_y")
+    para_check.check_dtype(input_dtype_y, input_dtype, param_name="input_y")
     input_data_y = tvm.placeholder(
         input_shape_y, name="input_data_y", dtype=input_dtype)
 
     input_shape_dy = input_dy.get("shape")
     input_dtype_dy = input_dy.get("dtype").lower()
-    check_shape(input_shape_dy, param_name="input_dy")
-    check_dtype(input_dtype_dy, input_dtype, param_name="input_dy")
+    para_check.check_shape(input_shape_dy, param_name="input_dy")
+    para_check.check_dtype(input_dtype_dy, input_dtype, param_name="input_dy")
     input_data_dy = tvm.placeholder(
         input_shape_dy, name="input_data_dy", dtype=input_dtype)
 
@@ -175,7 +174,7 @@ def l2_normalize_grad(input_x,
                                        kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {
         "print_ir": False,
@@ -183,5 +182,5 @@ def l2_normalize_grad(input_x,
         "tensor_list": [input_data_x, input_data_y, input_data_dy, result]
     }
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)
 

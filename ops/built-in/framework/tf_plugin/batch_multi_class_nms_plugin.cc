@@ -43,6 +43,7 @@ static const char* const scoreRetinanetConstKey = "map/while/Greater";
 static const char* const sizeRetinanetConstKey = "map/while/Minimum";
 static const char* const retinanet_out_num = "map/while/non_max_suppression_5/NonMaxSuppressionV3";
 
+static const char* const SfscoreConstKey = "map/while/MultiClassNonMaxSuppression/GreaterEqual";
 static const char* const scoreFaceboxConstKey = "map/while/GreaterEqual";
 static const char* const sizeFaceboxConstKey = "map/while/non_max_suppression/NonMaxSuppressionV3";
 static const char* const Facebox_out_num = "map/while/non_max_suppression/NonMaxSuppressionV3";
@@ -119,7 +120,8 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
     }
     // get facebox_net score const node name
     if ((scoreConstNodeName == "") && (nodeDef->op() == "GreaterEqual") &&
-        (nodeName.find(scoreFaceboxConstKey) != std::string::npos)) {
+        ((nodeName.find(scoreFaceboxConstKey) != std::string::npos) ||
+         (nodeName.find(SfscoreConstKey) != std::string::npos))) {
       scoreConstNodeName = nodeDef->input(1);
       OP_LOGI(op.GetName().c_str(), "get facebox_net score GreaterEqual node name %s .", scoreConstNodeName.c_str());
     }

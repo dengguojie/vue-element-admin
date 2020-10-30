@@ -825,7 +825,7 @@ REG_OP(SliceD)
 
 * @attention Constraints:
 * @li k =< 5120
-* @li Size of the last dimension =< 65500
+* @li Size of the last dimension =< 1458176
 * @li sorted = true
 * @li It's unstable sorted indices on the platform of Ascend310
 

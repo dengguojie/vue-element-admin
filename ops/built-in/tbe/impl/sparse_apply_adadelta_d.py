@@ -18,6 +18,7 @@ sparse_apply_adadelta_d
 import te.platform as tbe_platform
 from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 class SparseApplyAdadelta(SparseApply):
@@ -102,7 +103,8 @@ class SparseApplyAdadelta(SparseApply):
         self.vdiv_support = tbe_platform.api_check_support("tik.vdiv", "float32")
 
         if self.var_dtype == "float32" and not add_support:
-            raise RuntimeError("Input dtype is float32, but do not support on the platform")
+            error_manager_vector.raise_err_input_dtype_not_supported("sparse_apply_adadelta_d", "var", [],
+                                                                     self.var_dtype)
 
         para_check.check_shape(self.var_shape, param_name="var")
         para_check.check_shape(self.accum_shape, param_name="accum")
@@ -117,10 +119,13 @@ class SparseApplyAdadelta(SparseApply):
         para_check.check_dtype(self.rho_dtype, ("float32", ), param_name="rho")
 
         if self.accum_shape != self.var_shape:
-            raise RuntimeError("accum's shape must be the same as var's shape")
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_adadelta_d", "accum", "var",
+                                                                  self.accum_shape, self.var_shape, self.var_shape)
 
         if self.accum_update_shape != self.var_shape:
-            raise RuntimeError("accum_update's shape must be the same as var's shape")
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_adadelta_d", "accum_update", "var",
+                                                                  self.accum_update_shape, self.var_shape,
+                                                                  self.var_shape)
 
     def _calculate(self, repeat_times, mask, offset):
         tmp1_ub = self._get_ub("tmp1_ub")[offset]

@@ -778,11 +778,8 @@ class RoiAlign():
                                   1, 8, 8, 8)
 
             with self.tik_inst.for_range(0, roisnum) as i:
-                with self.tik_inst.if_scope(cmp16_ub[i] != 0):
-                    count.set_as(count + 1)
-                    cont[i].set_as(tmp_value)
-                with self.tik_inst.else_scope():
-                    pass
+                count.set_as(count + 1)
+                cont[i].set_as(tmp_value)
 
             # transpose and reshape RoI coordinate
             with self.tik_inst.for_range(0, BLOCKNUM) as i:
@@ -3491,7 +3488,7 @@ def roi_align(feature_map_dict,
     dtype = feature_map_dict.get("dtype")
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
-    if ((cce_product in (tbe_platform.ASCEND_610,)) \
+    if ((cce_product in (tbe_platform.ASCEND_610, "Ascend615")) \
         and (dtype == "float16") and \
         (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
         return roi_align_vbi.roi_align_vbi(feature_map_dict, rois_dict, kernel_name)

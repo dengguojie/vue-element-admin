@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
@@ -48,8 +49,8 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     """
     dtype = x.dtype.lower()
     cast_support = tbe_platform.api_check_support("te.lang.cce.cast_to", "f322f16")
-    if dtype == "float32" and not cast_support:
-        raise RuntimeError("float32 transfer to float16 is only supported on mini and cloud platform")
+    if not cast_support:
+        para_check.check_dtype(dtype, ("float16", ), param_name="x")
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     vsub_support = tbe_platform.api_check_support("te.lang.cce.vsub", "float32")
     if dtype == "float16":
@@ -94,9 +95,9 @@ def sigmoid_grad(x, y, z, kernel_name="sigmoid_grad"):
     dtype = x.get("dtype")
     dtype_y = y.get("dtype")
     if dtype != dtype_y:
-        raise RuntimeError("Input dtype must be equal")
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'x', 'y', dtype, dtype_y)
     if not operator.eq(list(shape_sig), list(shape_d)):
-        raise RuntimeError("Input shapes must be equal")
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'x', 'y', shape_sig, shape_d, shape_sig)
     para_check.check_shape(shape_sig, param_name="x")
     input_dtype = dtype.lower()
     para_check.check_dtype(input_dtype, ("float16", "float32"), param_name="x")

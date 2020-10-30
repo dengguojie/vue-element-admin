@@ -423,10 +423,11 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
     def _calc_padding_ext(pooling_params):
         if pooling_params["align_axis"] == "axis_w":
             return 0, 0, 2000
-        elif pooling_params["align_axis"] == "axis_h":
+        if pooling_params["align_axis"] == "axis_h":
             return 0, 2000, 0
-        elif pooling_params["align_axis"] == "axis_d":
+        if pooling_params["align_axis"] == "axis_d":
             return 2000, 0, 0
+        return 0, 0, 0
 
     if _check_max_grad_grad_params():
         raise RuntimeError("Failed to check max grad grad params.")

@@ -143,9 +143,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
         format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1
-                                                       or y_cdim // 16 == 1) and (x_ndim == y_ndim or x_ndim == 1
-                                                                                  or y_ndim == 1):
+                if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16
+                                                       == 1) and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
                     format_list.append("NC1HWC0")
                 if format_x == format_y == "HWCN":
                     if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
@@ -211,8 +210,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     # NZ+ND,ND+ND,5HD+5HD,FZ+FZ,ND+NZ
     elif len(shape_x) >= 2 and len(shape_y) >= 2 and (
-            (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
-            (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
+        (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
+        (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
@@ -511,7 +510,7 @@ def _infer_shape(format_pattern, x, y):
                                                                          param_name_input1="x",
                                                                          param_name_input2="y")
         if shape_y[-2] == ori_shape_x[-2] and shape_y[-1] == ori_shape_x[-1]:
-            raise RuntimeError("the inputshape of y is illegal")
+            error_manager_vector.raise_err_check_params_rules("mul", "the input shape of y is illegal", 'y', shape_y)
 
         if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
             shape_y.append(1)
@@ -537,7 +536,7 @@ def _infer_shape(format_pattern, x, y):
                                                                          param_name_input1="x",
                                                                          param_name_input2="y")
         if shape_x[-2] == ori_shape_y[-2] and shape_x[-1] == ori_shape_y[-1]:
-            raise RuntimeError("the inputshape of x is illegal")
+            error_manager_vector.raise_err_check_params_rules("mul", "the input shape of x is illegal", 'x', shape_x)
 
         if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
             shape_x.append(1)
@@ -690,14 +689,15 @@ def mul(x, y, output, kernel_name="mul"):
     para_check.check_shape(shape_y, param_name="y")
 
     if dtype_x != dtype_y:
-        raise RuntimeError("dtype of inputs should be consistent")
-    dtype = dtype_x
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'x', 'y', dtype_x, dtype_y)
     check_list = ("int32", "float16", "float32", "int16")
-    para_check.check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype_x, check_list, param_name="x")
 
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
-    if dtype_x == "float32" and not vmul_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+    if not vmul_support:
+        new_check_list = list(check_list)
+        new_check_list.remove("float32")
+        para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
     shape_x, shape_y, shape_max = operate_shape.broadcast_shapes(shape_x,
                                                                  shape_y,
@@ -705,8 +705,8 @@ def mul(x, y, output, kernel_name="mul"):
                                                                  param_name_input2="y")
 
     shape_x, shape_y = operate_shape.refine_shapes_for_broadcast(shape_x, shape_y)
-    input_x = tvm.placeholder(shape_x, dtype=dtype, name="x")
-    input_y = tvm.placeholder(shape_y, dtype=dtype, name="y")
+    input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
+    input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")
 
     res = mul_compute(input_x, input_y, output, kernel_name)
 

@@ -30,9 +30,9 @@ from te.platform import cce_params
 # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
 VERSION_CLOUD = "1980"
 VERSION_MINI = "1910"
-VERSION_MINI_1951 = "1951dc"
-VERSION_MINI_1951M = "1951mdc"
-VERSION_MINI_1951PG2 = "1951pg2"
+VERSION_MINI_NG1 = "ng1dc"
+VERSION_MINI_NG1M = "ng1mdc"
+VERSION_MINI_NG1PG2 = "ng1pg2"
 VERSION_SHISI = "smallhisi"
 AIC = "AiCore"
 AIV = "VectorCore"
@@ -49,21 +49,36 @@ SOC_VERSION_MAP = {
     "Ascend910Lite": {
         AIC: {"AICoreNum": 30, "ProductVersion": VERSION_CLOUD},
     },
+    "Ascend910A": {
+        AIC: {"AICoreNum": 32, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910ProA": {
+        AIC: {"AICoreNum": 32, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910PremiumA": {
+        AIC: {"AICoreNum": 32, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910B": {
+        AIC: {"AICoreNum": 30, "ProductVersion": VERSION_CLOUD},
+    },
+    "Ascend910ProB": {
+        AIC: {"AICoreNum": 30, "ProductVersion": VERSION_CLOUD},
+    },
     "Ascend710": {
-        AIC: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951},
-        AIV: {"AICoreNum": 7, "ProductVersion": VERSION_MINI_1951},
+        AIC: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_NG1},
+        AIV: {"AICoreNum": 7, "ProductVersion": VERSION_MINI_NG1},
     },
     "Ascend710Pro": {
-        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_1951},
-        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951},
+        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_NG1},
+        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_NG1},
     },
     "Ascend610": {
-        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_1951M},
-        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951M},
+        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_NG1M},
+        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_NG1M},
     },
     "Ascend615": {
-        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_1951PG2},
-        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_1951PG2 + AIV},
+        AIC: {"AICoreNum": 10, "ProductVersion": VERSION_MINI_NG1PG2},
+        AIV: {"AICoreNum": 8, "ProductVersion": VERSION_MINI_NG1PG2 + AIV},
     },
     "Hi3796CV300ES": {
         AIC: {"AICoreNum": 1, "ProductVersion": VERSION_SHISI},
@@ -221,17 +236,17 @@ class CceProductParams(object):
 
     # This is used for DSL/AutoSchedule ONLY!
     # For other components, use te.platform.get_soc_spec("SOC_VERSION")!
-    def is_1951_version(self):
+    def is_ng1_version(self):
         """
-        check if 1951/1951m version
+        check if ng1/ng1m version
         ----------
 
         Returns
         -------
-        True: 1951 version
+        True: ng1 version
         False: Other version
         """
-        if self.cce_product in (VERSION_MINI_1951, VERSION_MINI_1951M, VERSION_MINI_1951PG2):
+        if self.cce_product in (VERSION_MINI_NG1, VERSION_MINI_NG1M, VERSION_MINI_NG1PG2):
             return True
         return False
 
@@ -422,6 +437,7 @@ def te_set_l2_mode(l2_mode):
 
 
 SOC_VERSION = "SOC_VERSION"
+FULL_SOC_VERSION = "FULL_SOC_VERSION"
 AICORE_TYPE = "AICORE_TYPE"
 CORE_NUM = "CORE_NUM"
 UB_SIZE = "UB_SIZE"
@@ -451,7 +467,7 @@ def get_soc_spec(key):
     support_key = (SOC_VERSION, AICORE_TYPE, CORE_NUM, UB_SIZE,
                    L2_SIZE, L1_SIZE, CUBE_SIZE, UNZIP,
                    L0A_SIZE, L0B_SIZE, L0C_SIZE, SMASK_SIZE, VREG_SIZE,
-                   AREG_SIZE, PREG_SIZE, UREG_SIZE)
+                   AREG_SIZE, PREG_SIZE, UREG_SIZE, FULL_SOC_VERSION)
     if key not in support_key:
         raise RuntimeError("Unsupported Key Value of get_soc_spec(): %s" % key)
 
@@ -637,16 +653,16 @@ def get_product_version():
     soc_version = get_soc_spec("SOC_VERSION")
     if soc_version in ["Ascend310"]:
         version = VERSION_MINI
-    elif soc_version in ["Ascend910", "Ascend910Lite", "Ascend910Pro"]:
+    elif soc_version in ["Ascend910"]:
         version = VERSION_CLOUD
     elif soc_version in ["Hi3796CV300ES", "Hi3796CV300CS"]:
         version = VERSION_SHISI
     elif soc_version in ["Ascend710"]:
-        version = VERSION_MINI_1951
+        version = VERSION_MINI_NG1
     elif soc_version in ["Ascend610"]:
-        version = VERSION_MINI_1951M
+        version = VERSION_MINI_NG1M
     elif soc_version in ["Ascend615"]:
-        version = VERSION_MINI_1951PG2
+        version = VERSION_MINI_NG1PG2
     else:
         raise RuntimeError("Current product version is wrong!Please check!!")
 
@@ -671,16 +687,16 @@ def is_lhisi_version():
 
 def is_v200_version():
     """
-    check if 1951/1951m version
+    check if ng1/ng1m version
     ----------
 
     Returns
     -------
-    True: 1951 version
+    True: ng1 version
     False: Other version
     """
     version = get_product_version()
-    if version in (VERSION_MINI_1951, VERSION_MINI_1951M):
+    if version in (VERSION_MINI_NG1, VERSION_MINI_NG1M):
         return True
     return False
 

@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def _isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -66,15 +67,7 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     dtype = input_x.dtype
     f322f16_support = tbe_platform.api_check_support("te.lang.cce.cast_to", "f322f16")
     if dtype == "float32" and not f322f16_support:
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name'] = 'input_x'
-        error_info['op_name'] = 'log'
-        error_info['expect_value'] = "float16"
-        error_info['real_value'] = dtype
-        raise RuntimeError(
-            error_info, "In op[%s], the parameter[%s]'s dtype should be [%s], but actually is [%s]." %
-            (error_info['op_name'], error_info['param_name'], error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', "float16", dtype)
 
     if _isclose(scale, 1.0) and _isclose(shift, 0.0):
         x_log = tbe.vlog(input_x)
@@ -126,15 +119,7 @@ def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     if base <= 0 and (not _isclose(base, -1.0)):
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'base'
-        error_info['op_name'] = 'log'
-        error_info['expect_value'] = "strictly positive or -1"
-        error_info['real_value'] = base
-        raise RuntimeError(
-            "In op[%s], the parameter[%s] should be [%s], but actually is [%s]." %
-            (error_info['op_name'], error_info['param_name'], error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'base', "strictly positive or -1", base)
 
     fused_shape = [functools.reduce(lambda x, y: x * y, shape[:])]
     data_input = tvm.placeholder(fused_shape, name="data_input", dtype=input_dtype)

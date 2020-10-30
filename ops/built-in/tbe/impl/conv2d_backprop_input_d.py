@@ -45,30 +45,29 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
     Parameters
     ----------
     filter: dict with keys(shape and dtype) or Tensor
-            input weight tensor
+        input weight tensor
 
     out_backprop: dict with keys(shape and dtype) or Tensor
-                  The shape of gradients.
+        The shape of gradients.
 
     y: dict with keys(shape and dtype)
-       conv2d_backprop_input output tensor, dtype must be assigned
+        conv2d_backprop_input output tensor, dtype must be assigned.
 
     input_size: The shape of feature map.
-                 4-D with shape [batch, channels, height, weight].
+        4-D with shape [batch, channels, height, weight].
 
     strides: tuple/list of 4 integers
-             filter move stride
+        filter move stride.
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input
+        filter expand size of dilated conv2d_backprop_input.
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
 
     topi_flag: input para from topi or compute
-               0: compute;1: topi, Defaults to 0
-
+        0: compute;1: topi. Default to 0.
 
     Returns
     -------
@@ -149,34 +148,36 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     Parameters
     ----------
     filter: dict with keys(shape and dtype)
-            input weight tensor
+        input weight tensor.
 
     out_backprop: dict with keys(shape and dtype)
-                  The shape of gradients.
+        The shape of gradients.
 
     y: dict with keys(shape and dtype)
-       conv2d_backprop_input output tensor, dtype must be assigned
+        conv2d_backprop_input output tensor, dtype must be assigned.
 
-    input_size: The shape of feature map.
-                 4-D with shape [batch, channels, height, weight].
+    input_size: tuple/list of 4 integers
+        The shape of feature map. 4-D with shape [batch, height, width, channels]
+        or [batch, channels, height, filter].
 
     strides: tuple/list of 4 integers
-             filter move stride
+        filter move stride.
 
     pads: tuple/list of 4 integers
-             [pad_top, pad_bottom, pad_left, pad_right]
+        [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input, Defaults to (1, 1, 1, 1]).
+        filter expand size of dilated conv2d_backprop_input. Default to (1, 1, 1, 1).
+
     groups: int
-            param for group conv2d_backprop_input,  Defaults to 1.
+        param for group conv2d_backprop_input. Default to 1.
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
 
     kernel_name: str
-                 kernel name, default value is "conv2d_backprop_input"
+        kernel name. Default to "conv2d_backprop_input".
 
     Returns
     -------
@@ -266,32 +267,36 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     Parameters
     ----------
     filter: Tensor
-            input weight tensor
+        input weight tensor.
 
     out_backprop: Tensor
-                  conv2d output gradients tenosr.
+        conv2d output gradients tenosr.
 
     y: dict with keys(shape and dtype)
-       conv2d_backprop_input output tensor, dtype must be assigned
+        conv2d_backprop_input output tensor, dtype must be assigned.
 
-    input_size: The shape of feature map.
-                 4-D with shape [batch, channels, height, weight].
+    input_size: tuple/list of 4 integers
+        The shape of feature map. 4-D with shape [batch, height, width, channels]
+        or [batch, channels, height, filter].
 
     strides: tuple/list of 4 integers
-             filter move stride
+        filter move stride.
 
     pads: tuple/list of 4 integers
-             [pad_top, pad_bottom, pad_left, pad_right]
+        [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input,  Defaults to [1, 1, 1, 1].
+        filter expand size of dilated conv2d_backprop_input. Default to (1, 1, 1, 1).
+
     groups: int
-            param for group conv2d_backprop_input,  Defaults to 1.
+        param for group conv2d_backprop_input. Default to 1.
+
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
     kernel_name: str
-                 kernel name, default value is "conv2d_backprop_input"
+        kernel name. Default to "conv2d_backprop_input".
 
     Returns
     -------
@@ -373,31 +378,31 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     Parameters:
     ----------
-    shape_filter : The shape of filter.
-                   4-D with shape [batch, channels, height, weight].
+    shape_filter: The shape of filter.
+        4-D with shape [batch, channels, height, weight].
 
-    shape_out_backprop : The shape of gradients.
-                         4-D with shape [batch, channels, height, weight].
+    shape_out_backprop: The shape of gradients.
+        4-D with shape [batch, channels, height, weight].
 
-    input_sizes : The shape of feature map.
-                  4-D with shape [batch, channels, height, weight].
+    input_sizes: The shape of feature map.
+        4-D with shape [batch, channels, height, weight].
 
-    strides : A list of ints. The stride of the sliding window.
+    strides: A tuple/list of ints. The stride of the sliding window.
 
-    pads : "SAME"or"VALID" indicating the type of pads algorithm to use,
-           or list.
+    pads: "SAME"or"VALID" indicating the type of pads algorithm to use,
+        or tuple/list.
 
-    dilations : An optional list of ints. Default value is [1, 1, 1, 1].
+    dilations: An optional tuple/list of ints. Default to (1, 1, 1, 1).
 
-    filter_dtype : The dtype of filter data. Default value is float16.
+    filter_dtype: The dtype of filter data. Default to float16.
 
-    out_backprop_dtype : The dtype of gradients data. Default value is float16.
+    out_backprop_dtype: The dtype of gradients data. Default to float16.
 
-    res_dtype : The dtype of result(De/Dx) data. Default value is float16.
+    res_dtype: The dtype of result(De/Dx) data. Default to float16.
 
-    kernel_name : Cce kernel name. Default value is "conv2d_backprop_input_cce"
+    kernel_name: Cce kernel name. Default to "conv2d_backprop_input_cce".
 
-    Returns : None
+    Returns: None
     ----------
     """
 

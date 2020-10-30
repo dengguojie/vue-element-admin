@@ -134,9 +134,9 @@ class conv_buffer_ex(object):
 # represent 5 soc, currently contains in tik
 ASCEND_310 = "Ascend310"
 ASCEND_910 = "Ascend910"
-ASCEND_910H = "Ascend910Lite"
-ASCEND_910M = "Ascend910"
-ASCEND_910P = "Ascend910Pro"
+ASCEND_910H = "Ascend910B"
+ASCEND_910M = "Ascend910A"
+ASCEND_910P = "Ascend910ProA"
 HI3796CV300ES = "Hi3796CV300ES"
 HI3796CV300CS = "Hi3796CV300CS"
 ASCEND_610 = "Ascend610"
@@ -240,6 +240,8 @@ ONLY_TIK_API_MAP = {
         VEC_710: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
                   'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
         VEC_610: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
+                  'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
+        VEC_615: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
                   'f322s32z', 'f162f32', 'f322f16', 'f322f16o'],
         AIC_615: ['s322f32', 'f322s32r', 'f322s32a', 'f322s32f', 'f322s32c',
                   'f322s32z', 'f162f32', 'f322f16', 'f322f16o']
@@ -486,6 +488,7 @@ ONLY_TIK_API_MAP = {
         VEC_610: [],
         HI3796CV300ESAIC: [],
         HI3796CV300CSAIC: [],
+        VEC_615: [],
         AIC_615: []
     },
     "set_small_channel": {
@@ -581,7 +584,11 @@ ONLY_TIK_API_MAP = {
     },
     "conv2d": {
         ASCEND_310AIC: ["s8s8s32", "u8s8s32", "f16f16f32"],
-        ASCEND_910AIC: ["s8s8s32", "u8s8s32", "f16f16f32"]
+        ASCEND_910AIC: ["s8s8s32", "u8s8s32", "f16f16f32"],
+        AIC_710: ["s8s8s32", "u8s8s32", "f16f16f32"],
+        AIC_610: ["s8s8s32", "u8s8s32", "f16f16f32"],
+        AIC_615: ["s8s8s32", "u8s8s32", "f16f16f32"]
+
     },
     "fixpipe": {
         ASCEND_310AIC: ["f32f16", "f32f32", "s32s32", "s32f16"],

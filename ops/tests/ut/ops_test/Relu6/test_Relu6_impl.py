@@ -1,5 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+"""
+Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use this file
+except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Relu6 ut case
+"""
+import numpy as np
+from op_test_frame.common import precision_info
 from op_test_frame.ut import ElementwiseOpUT
 
 ut_case = ElementwiseOpUT("Relu6", None, None)
@@ -25,6 +40,46 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], 
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 13))
 
 # ============ auto gen ["Ascend910"] test cases end =================
+def calc_expect_func(input_x, output_y):
+    dtype = input_x["dtype"]
+    if dtype == "fp16" or dtype == "float16":
+        sdtype = np.float16
+    elif dtype == "fp32" or dtype == "float32":
+        sdtype = np.float32
+    else:
+        raise RuntimeError("unsupported dtype:%s " % dtype)
 
+    tmpResult = np.maximum(input_x["value"], 0).astype(sdtype)
+    result = np.minimum(tmpResult, 6).astype(sdtype)
+    return result
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 512, 1), "shape": (1, 512, 1), "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 512, 1), "shape": (1, 512, 1), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 2, 4, 32), "shape": (16, 2, 4, 32), "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 2, 4, 32), "shape": (16, 2, 4, 32), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 if __name__ == '__main__':
     ut_case.run("Ascend910")

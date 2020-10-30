@@ -158,25 +158,23 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   Shape accum_shape = op.GetInputDesc("accum").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  TensorDesc td_one = op.GetOutputDesc("accum");
-  td.SetShape(ge::Shape(var_shape));
-  td_one.SetShape(ge::Shape(accum_shape));
-  td.SetDataType(input_dtype);
-  td_one.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
-  (void)op.UpdateOutputDesc("accum", td_one);
+  TensorDesc out_var_desc = op.GetOutputDesc("var");
+  TensorDesc out_accum_desc = op.GetOutputDesc("accum");
+  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_accum_desc.SetShape(ge::Shape(accum_shape));
+  out_var_desc.SetDataType(input_dtype);
+  out_accum_desc.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("var", out_var_desc);
+  (void)op.UpdateOutputDesc("accum", out_accum_desc);
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradD, SparseApplyAdagradDVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType accum_dtype = op.GetInputDesc(1).GetDataType();
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
     OpsTwoInputDtypeErrReport(op.GetName(), "var", "accum", ConcatString(var_dtype), ConcatString(accum_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_adagrad op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_adagrad op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -190,20 +188,18 @@ VERIFY_FUNC_REG(SparseApplyAdagradD, SparseApplyAdagradDVerify);
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  TensorDesc out_var_desc = op.GetOutputDesc("var");
+  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_var_desc.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("var", out_var_desc);
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagrad, SparseApplyAdagradVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType accum_dtype = op.GetInputDesc(1).GetDataType();
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_adagrad op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_adagrad op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -221,13 +217,10 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2DInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify) {
-  std::map<std::string, std::vector<DataType>> inputTensorMap = {
-      {"var", {DT_FLOAT}},
-      {"accum", {DT_FLOAT}},
-  };
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
 
   // input tensor params, must have same shape and dtype
-  if (!CheckInputDtypeAndShape(op, inputTensorMap)) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
 
@@ -242,21 +235,18 @@ VERIFY_FUNC_REG(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify);
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2InferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  TensorDesc out_var_desc = op.GetOutputDesc("var");
+  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_var_desc.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("var", out_var_desc);
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradV2, SparseApplyAdagradV2Verify) {
-  std::map<std::string, std::vector<DataType>> inputTensorMap = {
-      {"var", {DT_FLOAT}},
-      {"accum", {DT_FLOAT}},
-  };
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
 
   // input tensor params, must have same shape and dtype
-  if (!CheckInputDtypeAndShape(op, inputTensorMap)) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
 
@@ -328,10 +318,9 @@ VERIFY_FUNC_REG(ApplyAdagradD, ApplyAdagradDVerify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyAdagradV2, ApplyAdagradV2Verify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdagradV2 proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "accum", "grad"};
-  std::vector<std::string> inputScalarList{"lr", "epsilon"};
-
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  const std::vector<std::string> kInputTensorList{"var", "accum", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "epsilon"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -352,13 +341,13 @@ VERIFY_FUNC_REG(ApplyAdagradV2, ApplyAdagradV2Verify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyAdagradV2D, ApplyAdagradV2DVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdagradV2D proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "accum", "grad"};
-  std::vector<std::string> inputScalarList{"lr"};
-  std::vector<float> constAttr;
-  if (!GetConstAttr(op, {"epsilon"}, constAttr)) {
+  const std::vector<std::string> kInputTensorList{"var", "accum", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr"};
+  std::vector<float> const_attr;
+  if (!GetConstAttr(op, {"epsilon"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
   }
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -661,10 +650,10 @@ VERIFY_FUNC_REG(ApplyMomentumD, ApplyMomentumDVerify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyKerasMomentum, ApplyKerasMomentumVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyKerasMomentum proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "accum", "grad"};
-  std::vector<std::string> inputScalarList{"lr", "momentum"};
+  const std::vector<std::string> kInputTensorList{"var", "accum", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "momentum"};
 
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -685,10 +674,9 @@ VERIFY_FUNC_REG(ApplyKerasMomentum, ApplyKerasMomentumVerify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyKerasMomentumD, ApplyKerasMomentumDVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyKerasMomentum proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "accum", "grad"};
-  std::vector<std::string> inputScalarList{"lr", "momentum"};
-  std::vector<float> constAttr;
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  const std::vector<std::string> kInputTensorList{"var", "accum", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "momentum"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1220,18 +1208,10 @@ VERIFY_FUNC_REG(ApplyAdamD, ApplyAdamDVerify);
 // Check the dtype, input and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyRMSProp, ApplyRMSPropVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyRMSProp proto verifyFunction!");
-  std::vector<std::string> inputTensorList;
-  inputTensorList.push_back("var");
-  inputTensorList.push_back("ms");
-  inputTensorList.push_back("mom");
-  inputTensorList.push_back("grad");
-  std::vector<std::string> inputScalarList;
-  inputScalarList.push_back("lr");
-  inputScalarList.push_back("rho");
-  inputScalarList.push_back("momentum");
-  inputScalarList.push_back("epsilon");
+  const std::vector<std::string> kInputTensorList{"var", "ms", "mom", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "rho", "momentum", "epsilon"};
 
-  if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+  if (ApplyVerifyFunc(op, kInputTensorList, kInputScalarList) == false) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1256,20 +1236,14 @@ VERIFY_FUNC_REG(ApplyRMSProp, ApplyRMSPropVerify);
 IMPLEMT_VERIFIER(ApplyRMSPropD, ApplyRMSPropDVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyRMSPropD proto verifyFunction!");
   // check input const attr for rho, momentum, epsilon
-  std::vector<float> constAttr;
-  if (!GetConstAttr(op, {"rho", "momentum", "epsilon"}, constAttr)) {
+  std::vector<float> const_attr;
+  if (!GetConstAttr(op, {"rho", "momentum", "epsilon"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
   }
 
-  std::vector<std::string> inputTensorList;
-  inputTensorList.push_back("var");
-  inputTensorList.push_back("ms");
-  inputTensorList.push_back("mom");
-  inputTensorList.push_back("grad");
-  std::vector<std::string> inputScalarList;
-  inputScalarList.push_back("lr");
-
-  if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+  const std::vector<std::string> kInputTensorList{"var", "ms", "mom", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr"};
+  if (ApplyVerifyFunc(op, kInputTensorList, kInputScalarList) == false) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1295,24 +1269,15 @@ VERIFY_FUNC_REG(ApplyRMSPropD, ApplyRMSPropDVerify);
 // Check the dtype, input and attr of the input tensor description.
 IMPLEMT_VERIFIER(SparseApplyRMSProp, SparseApplyRMSPropVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter SparseApplyRMSProp verifyFunction!");
-  std::vector<std::string> inputTensorList;
-  inputTensorList.push_back("var");
-  inputTensorList.push_back("ms");
-  inputTensorList.push_back("mom");
-
-  std::vector<std::string> inputScalarList;
-  inputScalarList.push_back("lr");
-  inputScalarList.push_back("rho");
-  inputScalarList.push_back("momentum");
-  inputScalarList.push_back("epsilon");
-
-  if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+  const std::vector<std::string> kInputTensorList{"var", "ms", "mom"};
+  const std::vector<std::string> kInputScalarList{"lr", "rho", "momentum", "epsilon"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
 
   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
-    OP_LOGE(op.GetName().c_str(), "indices must be one-dimensional");
+    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
     return GRAPH_FAILED;
   }
 
@@ -1321,7 +1286,7 @@ IMPLEMT_VERIFIER(SparseApplyRMSProp, SparseApplyRMSPropVerify) {
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
-      OP_LOGE(op.GetName().c_str(), "var and grad must match in dimension (%d)", dim_index);
+      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
       return GRAPH_FAILED;
     }
   }
@@ -1330,7 +1295,7 @@ IMPLEMT_VERIFIER(SparseApplyRMSProp, SparseApplyRMSPropVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(SparseApplyRMSPropInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SparseApplyRMSProp  inferfunction!");
+  OP_LOGI(op.GetName().c_str(), "Enter SparseApplyRMSProp inferfunction!");
   ApplyInferShapeAndDtype(op, "var", "var");
   return GRAPH_SUCCESS;
 }
@@ -1353,21 +1318,15 @@ VERIFY_FUNC_REG(SparseApplyRMSProp, SparseApplyRMSPropVerify);
 //     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
 //   }
 // 
-//   std::vector<std::string> inputTensorList;
-//   inputTensorList.push_back("var");
-//   inputTensorList.push_back("ms");
-//   inputTensorList.push_back("mom");
-// 
-//   std::vector<std::string> inputScalarList;
-//   inputScalarList.push_back("lr");
-// 
-//   if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+//   const std::vector<std::string> kInputTensorList{"var", "ms", "mom"};
+//   const std::vector<std::string> kInputScalarList{"lr"};
+//   if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
 //     return GRAPH_FAILED;
 //   }
 // 
 //   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
 //   if (vector_dims.size() != 1) {
-//     OP_LOGE(op.GetName().c_str(), "indices must be one-dimensional");
+//     OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
 //     return GRAPH_FAILED;
 //   }
 // 
@@ -1376,29 +1335,28 @@ VERIFY_FUNC_REG(SparseApplyRMSProp, SparseApplyRMSPropVerify);
 // 
 //   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
 //     if (var_dims[dim_index] != grad_dims[dim_index]) {
-//       OP_LOGE(op.GetName().c_str(), "var and grad must match in dimension (%u)", dim_index);
+//       OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
 //       return GRAPH_FAILED;
 //     }
 //   }
 // 
 //   return GRAPH_SUCCESS;
 // }
+// ----------------SparseApplyRMSPropD Op End-------------------
 
 // ----------------SparseApplyAdadelta Op Begin-------------------
 // Check the dtype, input and attr of the input tensor description.
 IMPLEMT_VERIFIER(SparseApplyAdadelta, SparseApplyAdadeltaVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter SparseApplyAdadelta verifyFunction!");
-  std::vector<std::string> inputTensorList = {"var", "accum", "accum_update"};
-
-  std::vector<std::string> inputScalarList = {"lr", "rho", "epsilon"};
-
-  if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+  const std::vector<std::string> kInputTensorList = {"var", "accum", "accum_update"};
+  const std::vector<std::string> kInputScalarList = {"lr", "rho", "epsilon"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
 
   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
-    OP_LOGE(op.GetName().c_str(), "indices must be one-dimensional");
+    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
     return GRAPH_FAILED;
   }
 
@@ -1407,7 +1365,7 @@ IMPLEMT_VERIFIER(SparseApplyAdadelta, SparseApplyAdadeltaVerify) {
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
-      OP_LOGE(op.GetName().c_str(), "var and grad must match in dimension (%d)", dim_index);
+      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
       return GRAPH_FAILED;
     }
   }
@@ -1416,7 +1374,7 @@ IMPLEMT_VERIFIER(SparseApplyAdadelta, SparseApplyAdadeltaVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdadeltaInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SparseApplyAdadelta  inferfunction!");
+  OP_LOGI(op.GetName().c_str(), "Enter SparseApplyAdadelta inferfunction!");
   ApplyInferShapeAndDtype(op, "var", "var");
   return GRAPH_SUCCESS;
 }
@@ -1434,24 +1392,22 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter SparseApplyAdadeltaD verifyFunction!");
 
   // check input const attr for rho, epsilon
-  std::vector<float> constAttr;
-  if (!GetConstAttr(op, {"epsilon"}, constAttr)) {
+  std::vector<float> const_attr;
+  if (!GetConstAttr(op, {"epsilon"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
     return GRAPH_FAILED;
   }
 
-  std::vector<std::string> inputTensorList = {"var", "accum", "accum_update"};
-
-  std::vector<std::string> inputScalarList = {"lr", "rho"};
-
-  if (ApplyVerifyFunc(op, inputTensorList, inputScalarList) == false) {
+  const std::vector<std::string> kInputTensorList = {"var", "accum", "accum_update"};
+  const std::vector<std::string> kInputScalarList = {"lr", "rho"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
 
   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
     OpsAttrValueErrReport(op.GetName(), "indices", ConcatString(1), ConcatString(vector_dims.size()));
-    OP_LOGE(op.GetName().c_str(), "indices must be one-dimensional");
+    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
     return GRAPH_FAILED;
   }
 
@@ -1460,7 +1416,7 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
-      OP_LOGE(op.GetName().c_str(), "var and grad must match in dimension (%u)", dim_index);
+      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
       return GRAPH_FAILED;
     }
   }
@@ -1488,21 +1444,19 @@ VERIFY_FUNC_REG(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify);
 bool CheckSgdDimension(const Operator& op) {
   OP_LOGI(op.GetName().c_str(), "Enter SGD op_proto inferfunction!");
   // input tensor dim check
-  auto varDims = op.GetInputDesc("parameters").GetShape().GetDims();
-  if (varDims.size() > 8 || varDims.size() <= 0) {
+  auto var_dims = op.GetInputDesc("parameters").GetShape().GetDims();
+  if (var_dims.size() > 8 || var_dims.size() <= 0) {
     OP_LOGE(op.GetName().c_str(), "Only support 1 ~ 8 dims!");
     return false;
   }
-
   return true;
 }
 
 // Check tensor description.
 IMPLEMT_VERIFIER(SGD, SGDVerify) {
-  if (CheckSgdDimension(op) == false) {
+  if (!CheckSgdDimension(op)) {
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -1510,20 +1464,19 @@ IMPLEMT_VERIFIER(SGD, SGDVerify) {
 IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter SGD op_proto inferfunction!");
   float dampening, weight_decay;
-  bool nesterov = false;
-  if (op.GetAttr("dampening", dampening) == ge::GRAPH_SUCCESS &&
-      op.GetAttr("nesterov", nesterov) == ge::GRAPH_SUCCESS) {
+  bool nesterov{false};
+  if (op.GetAttr("dampening", dampening) == GRAPH_SUCCESS && op.GetAttr("nesterov", nesterov) == GRAPH_SUCCESS) {
     if (nesterov) {
       if (dampening != 0.0) {
-        OP_LOGE(op.GetName().c_str(), "dampening(%f) must == 0 when nesterov == true", dampening);
+        OP_LOGE(op.GetName().c_str(), "Attr dampening(%f) must == 0 when nesterov == true", dampening);
         return GRAPH_FAILED;
       }
     }
   }
 
-  if (op.GetAttr("weight_decay", weight_decay) == ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("weight_decay", weight_decay) == GRAPH_SUCCESS) {
     if (weight_decay < 0) {
-      OP_LOGE(op.GetName().c_str(), "weight_decay(%f) must >= 0", weight_decay);
+      OP_LOGE(op.GetName().c_str(), "Attr weight_decay(%f) must >= 0", weight_decay);
       return GRAPH_FAILED;
     }
   }
@@ -1532,7 +1485,7 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   DataType variabl_dtype = variable_desc.GetDataType();
 
   TensorDesc variable_update_desc = op.GetOutputDesc("parameters");
-  variable_update_desc.SetShape(ge::Shape(variabl_shape));
+  variable_update_desc.SetShape(Shape(variabl_shape));
   variable_update_desc.SetDataType(variabl_dtype);
   op.UpdateOutputDesc("parameters", variable_update_desc);
 
@@ -1548,21 +1501,20 @@ VERIFY_FUNC_REG(SGD, SGDVerify);
 // ----------------FusedMulApplyMomentum-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(FusedMulApplyMomentum, FusedMulApplyMomentumVerify) {
-  std::map<std::string, std::vector<DataType>> input_tensor_map = {
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {
       {"var", {DT_FLOAT16, DT_FLOAT}}, {"accum", {DT_FLOAT16, DT_FLOAT}}, {"x1", {DT_FLOAT16, DT_FLOAT}}};
-  std::map<std::string, std::vector<DataType>> input_scalar_map = {{"lr", {DT_FLOAT16, DT_FLOAT}},
-                                                                   {"momentum", {DT_FLOAT16, DT_FLOAT}}};
+  const std::map<std::string, std::vector<DataType>> kInputScalarMap = {{"lr", {DT_FLOAT16, DT_FLOAT}},
+                                                                        {"momentum", {DT_FLOAT16, DT_FLOAT}}};
 
-  if (CheckInputDataType(op, "x2", {DT_FLOAT16, DT_FLOAT}) == false) {
+  if (!CheckInputDataType(op, "x2", {DT_FLOAT16, DT_FLOAT})) {
     return GRAPH_FAILED;
   }
   // input tensor params, must have same shape and dtype
-  if (CheckInputDtypeAndShape(op, input_tensor_map) == false ||
-      CheckInputDtypeAndShape(op, input_scalar_map) == false) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap) || !CheckInputDtypeAndShape(op, kInputScalarMap)) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(op.GetName().c_str(), "The op verify end");
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(FusedMulApplyMomentumInferShape) {
@@ -1577,27 +1529,19 @@ VERIFY_FUNC_REG(FusedMulApplyMomentum, FusedMulApplyMomentumVerify);
 // ----------------FusedMulApplyMomentumExtern-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(FusedMulApplyMomentumExtern, FusedMulApplyMomentumExternVerify) {
-  std::vector<DataType> support_list;
-  support_list.push_back(DT_FLOAT);
-  if (CheckInputDataType(op, "var", support_list) == false) {
+  if (!CheckInputDataType(op, "var", {DT_FLOAT})) {
     return GRAPH_FAILED;
   }
-
-  support_list.clear();
-  support_list.push_back(DT_FLOAT16);
-  if (CheckInputDataType(op, "var_copy", support_list) == false) {
+  if (!CheckInputDataType(op, "var_copy", {DT_FLOAT16})) {
     return GRAPH_FAILED;
   }
-
-  std::map<std::string, std::vector<DataType>> inputTensorMap = {
-      {"accum", {DT_FLOAT16, DT_FLOAT}},
-      {"x1", {DT_FLOAT16, DT_FLOAT}},
-  };
-  std::map<std::string, std::vector<DataType>> inputScalarMap = {
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"accum", {DT_FLOAT16, DT_FLOAT}},
+                                                                        {"x1", {DT_FLOAT16, DT_FLOAT}}};
+  const std::map<std::string, std::vector<DataType>> kInputScalarMap = {
       {"lr", {DT_FLOAT16, DT_FLOAT}}, {"momentum", {DT_FLOAT16, DT_FLOAT}}, {"x2", {DT_FLOAT16, DT_FLOAT}}};
 
   // input tensor params, must have same shape and dtype
-  if (CheckInputDtypeAndShape(op, inputTensorMap) == false || CheckInputDtypeAndShape(op, inputScalarMap) == false) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap) || !CheckInputDtypeAndShape(op, kInputScalarMap)) {
     return GRAPH_FAILED;
   }
 
@@ -1639,17 +1583,14 @@ VERIFY_FUNC_REG(LarsV2, LarsV2InferVerify);
 // ----------------LarsV2Update Begin------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(LarsV2Update, LarsV2UpdateInferVerify) {
-  std::map<std::string, std::vector<DataType>> inputTensorMap = {
-      {"g", {DT_FLOAT}},
-      {"w", {DT_FLOAT}},
-  };
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"g", {DT_FLOAT}}, {"w", {DT_FLOAT}}};
 
   // input tensor params, must have same shape and dtype
-  if (!CheckInputDtypeAndShape(op, inputTensorMap)) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(op.GetName().c_str(), "The op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -1658,20 +1599,19 @@ VERIFY_FUNC_REG(LarsV2Update, LarsV2UpdateInferVerify);
 // ----------------LarsV2Update End-------------------
 
 // ----------------SparseApplyFtrl-------------------
-
 void DynamicApplyInferShapeAndDtype(Operator& op, const string& input_name, const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr inputTensorDesc = op_desc->MutableInputDesc(input_name);
-  GeTensorDescPtr outputTensorDesc = op_desc->MutableOutputDesc(output_name);
+  GeTensorDescPtr Input_tensor_desc = op_desc->MutableInputDesc(input_name);
+  GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc(output_name);
 
-  auto inputShape = inputTensorDesc->GetShape();
-  DataType inputType = inputTensorDesc->GetDataType();
-  std::vector<std::pair<int64_t, int64_t>> inputShapeRange;
-  inputTensorDesc->GetShapeRange(inputShapeRange);
+  auto input_shape = Input_tensor_desc->GetShape();
+  DataType input_type = Input_tensor_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+  Input_tensor_desc->GetShapeRange(input_shape_range);
 
-  outputTensorDesc->SetShape(inputShape);
-  outputTensorDesc->SetDataType(inputType);
-  outputTensorDesc->SetShapeRange(inputShapeRange);
+  output_tensor_desc->SetShape(input_shape);
+  output_tensor_desc->SetDataType(input_type);
+  output_tensor_desc->SetShapeRange(input_shape_range);
 }
 
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SparseApplyFtrlDInferShape)
@@ -1684,42 +1624,40 @@ IMPLEMT_VERIFIER(SparseApplyFtrlD, SparseApplyFtrlDVerify) {
   DataType var_dtype = op.GetInputDesc(0).GetDataType();
   DataType accum_dtype = op.GetInputDesc(1).GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_ftrl op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   float lr, l1, l2, lr_power;
-  if (op.GetAttr("lr", lr) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("lr", lr) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr lr failed!");
     return GRAPH_FAILED;
   }
   if (lr <= 0) {
-    OP_LOGE(op.GetName().c_str(), "lr(%f) must > 0", lr);
+    OP_LOGE(op.GetName().c_str(), "Attr lr(%f) must > 0", lr);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("l1", l1) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("l1", l1) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr l1 failed!");
     return GRAPH_FAILED;
   }
   if (l1 < 0) {
-    OP_LOGE(op.GetName().c_str(), "l1(%f) must >= 0", l1);
+    OP_LOGE(op.GetName().c_str(), "Attr l1(%f) must >= 0", l1);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("l2", l2) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("l2", l2) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr l2 failed!");
     return GRAPH_FAILED;
   }
   if (l2 < 0) {
-    OP_LOGE(op.GetName().c_str(), "l2(%f) must >= 0", l2);
+    OP_LOGE(op.GetName().c_str(), "Attr l2(%f) must >= 0", l2);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("lr_power", lr_power) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("lr_power", lr_power) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr lr_power failed!");
     return GRAPH_FAILED;
   }
   if (lr_power > 0) {
-    OP_LOGE(op.GetName().c_str(), "lr_power(%f) must <= 0", lr_power);
+    OP_LOGE(op.GetName().c_str(), "Attr lr_power(%f) must <= 0", lr_power);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1731,10 +1669,10 @@ VERIFY_FUNC_REG(SparseApplyFtrlD, SparseApplyFtrlDVerify);
 IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlInferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  TensorDesc out_tensor_desc = op.GetOutputDesc("var");
+  out_tensor_desc.SetShape(Shape(var_shape));
+  out_tensor_desc.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("var", out_tensor_desc);
   return GRAPH_SUCCESS;
 }
 
@@ -1742,9 +1680,7 @@ IMPLEMT_VERIFIER(SparseApplyFtrl, SparseApplyFtrlVerify) {
   DataType var_dtype = op.GetInputDesc(0).GetDataType();
   DataType accum_dtype = op.GetInputDesc(1).GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_ftrl op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1765,53 +1701,51 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2DInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType accum_dtype = op.GetInputDesc(1).GetDataType();
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_ftrl op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   float lr, l1, l2, l2_shrinkage, lr_power;
-  if (op.GetAttr("lr", lr) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("lr", lr) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr lr failed!");
     return GRAPH_FAILED;
   }
   if (lr <= 0) {
-    OP_LOGE(op.GetName().c_str(), "lr(%f) must > 0", lr);
+    OP_LOGE(op.GetName().c_str(), "Attr lr(%f) must > 0", lr);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("l1", l1) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("l1", l1) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr l1 failed!");
     return GRAPH_FAILED;
   }
   if (l1 < 0) {
-    OP_LOGE(op.GetName().c_str(), "l1(%f) must >= 0", l1);
+    OP_LOGE(op.GetName().c_str(), "Attr l1(%f) must >= 0", l1);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("l2", l2) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("l2", l2) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr l2 failed!");
     return GRAPH_FAILED;
   }
   if (l2 < 0) {
-    OP_LOGE(op.GetName().c_str(), "l2(%f) must >= 0", l2);
+    OP_LOGE(op.GetName().c_str(), "Attr l2(%f) must >= 0", l2);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("l2_shrinkage", l2_shrinkage) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("l2_shrinkage", l2_shrinkage) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr l2_shrinkage failed!");
     return GRAPH_FAILED;
   }
   if (l2_shrinkage < 0) {
-    OP_LOGE(op.GetName().c_str(), "l2_shrinkage(%f) must >= 0", l2_shrinkage);
+    OP_LOGE(op.GetName().c_str(), "Attr l2_shrinkage(%f) must >= 0", l2_shrinkage);
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("lr_power", lr_power) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("lr_power", lr_power) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr lr_power failed!");
     return GRAPH_FAILED;
   }
   if (lr_power < 0) {
-    OP_LOGE(op.GetName().c_str(), "lr_power(%f) must >= 0", lr_power);
+    OP_LOGE(op.GetName().c_str(), "Attr lr_power(%f) must >= 0", lr_power);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1823,20 +1757,18 @@ VERIFY_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify);
 IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2InferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  TensorDesc out_tensor_desc = op.GetOutputDesc("var");
+  out_tensor_desc.SetShape(ge::Shape(var_shape));
+  out_tensor_desc.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("var", out_tensor_desc);
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SparseApplyFtrlV2, SparseApplyFtrlV2Verify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType accum_dtype = op.GetInputDesc(1).GetDataType();
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the sparse_apply_ftrl op inputs "
-            "should have the same dtype!");
+    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1851,13 +1783,12 @@ VERIFY_FUNC_REG(SparseApplyFtrlV2, SparseApplyFtrlV2Verify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyAdamWithAmsgrad, ApplyAdamWithAmsgradVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamWithAmsgrad proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "m", "v", "vhat", "grad"};
-  std::vector<std::string> inputScalarList{"lr", "beta1", "beta2", "beta1_power", "beta2_power", "epsilon"};
+  const std::vector<std::string> kInputTensorList{"var", "m", "v", "vhat", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "beta1", "beta2", "beta1_power", "beta2_power", "epsilon"};
 
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -1865,7 +1796,6 @@ IMPLEMT_VERIFIER(ApplyAdamWithAmsgrad, ApplyAdamWithAmsgradVerify) {
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamWithAmsgradInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamWithAmsgrad op_proto inferfunction!");
   ApplyInferShapeAndDtype(op, "var", "var");
-
   return GRAPH_SUCCESS;
 }
 
@@ -1877,19 +1807,17 @@ VERIFY_FUNC_REG(ApplyAdamWithAmsgrad, ApplyAdamWithAmsgradVerify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(ApplyAdamWithAmsgradD, ApplyAdamWithAmsgradDVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamWithAmsgrad proto verifyFunction!");
-  std::vector<std::string> inputTensorList{"var", "m", "v", "vhat", "grad"};
-  std::vector<std::string> inputScalarList{"lr", "beta1_power", "beta2_power"};
+  const std::vector<std::string> kInputTensorList{"var", "m", "v", "vhat", "grad"};
+  const std::vector<std::string> kInputScalarList{"lr", "beta1_power", "beta2_power"};
   // check input const attr for beta1, beta2, epsilon
-  std::vector<float> constAttr;
-  if (!GetConstAttr(op, {"beta1", "beta2", "epsilon"}, constAttr)) {
+  std::vector<float> const_attr;
+  if (!GetConstAttr(op, {"beta1", "beta2", "epsilon"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
     return GRAPH_FAILED;
   }
-
-  if (!ApplyVerifyFunc(op, inputTensorList, inputScalarList)) {
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 

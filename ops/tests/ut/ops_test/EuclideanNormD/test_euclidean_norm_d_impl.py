@@ -14,55 +14,132 @@ http://www.apache.org/licenses/LICENSE-2.0
 euclidean_norm_d ut case
 """
 from op_test_frame.ut import ReduceOpUT
+from op_test_frame.ut import OpUT
+import numpy as np
+from op_test_frame.common import precision_info
 
 ut_case = ReduceOpUT("EuclideanNormD", None, None)
+
 ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1,), (0,), True)
 ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1,), 0, False)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1,), False)
 ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 1), (1,), True)
 ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 1), (1,), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (101, 10241), (-1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (101, 10241), (-1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1023*255, ), (-1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1023*255, ), (-1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (1, 2), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (1, 2), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (0, 1, 2), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (51, 101, 1023), (0, 1, 2), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (99991, 10), (0, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (99991, 10), (0, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 99991), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 99991), (1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 99991, 10), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 99991, 10), (1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (33, 33, 33), (), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (5,6,3,4,8,7), (1, 3, -5), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (5,6,3,4,8,7,2), (1, 3, 4), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (5,6,3,4), (1, 2), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (5,6,3,4), (0,2), False)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1023*25, ), (-1, ), False)
 
 ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1,), (0,), True)
 ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1,), 0, False)
 ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 1), (1,), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 1), (1,), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (101, 10241), (-1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (101, 10241), (-1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1023*255, ), (-1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1023*255, ), (-1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (51, 101, 1023), (1, 2), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (51, 101, 1023), (1, 2), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (51, 101, 1023), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (99991, 10), (0, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 99991), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 99991), (1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 99991, 10), (1, ), True)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (1, 99991, 10), (1, ), False)
-# ut_case.add_reduce_case_simple(["Ascend310"], ["float16", "int32"], (33, 33, 33), (), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "int32"], (5,6,3,4,8,7), (1, 3, -5), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "int32"], (5,6,3,4,8,7,2), (1, 3, 4), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "int32"], (5,6,3,4), (1, 2), False)
-# ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "int32"], (5,6,3,4), (0,2), False)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "int32"], (5,6,3,4), (0,2), False)
+
+def calc_expect_func(x, output, axis, keepdims):
+    shape_x=x.get("shape")
+    x_value=x.get("value")
+    res_mul=np.multiply(x_value, x_value)
+    res_sum=np.sum(res_mul, axis=axis, keepdims=keepdims)
+    output=np.sqrt(res_sum)
+    return output
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND',  "param_type": "output"},
+               0, True,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND',  "param_type": "output"},
+               0, False,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1, 1), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1, 1), 'ori_format': 'ND',  "param_type": "output"},
+               (1,), True,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1, 1), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1, 1), 'ori_format': 'ND',  "param_type": "output"},
+               (1,), False,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "output"},
+               0, True,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "output"},
+               (-1,), True,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (2,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (2,), 'ori_format': 'ND',  "param_type": "output"},
+               (-1,), False,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (1023*25, ), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1023*25, ), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (1023*25, ), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1023*25, ), 'ori_format': 'ND',  "param_type": "output"},
+               (-1,), True,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{'shape': (5,6,3,4), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (5,6,3,4), 'ori_format': 'ND',  "param_type": "input"},
+               {'shape': (5,6,3,4), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (5,6,3,4), 'ori_format': 'ND',  "param_type": "output"},
+               (0,2), False,
+               ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+

@@ -124,14 +124,6 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
 
     axis = shape_util.axis_check(len(shape1), axis)
 
-    if not isinstance(axis, int):
-        for i in axis:
-            if list(shape1)[i] == 1:
-                raise RuntimeError("Cannot reduce on an axis with dimension 1")
-    else:
-        if list(shape1)[axis] == 1:
-            raise RuntimeError("Cannot reduce on an axis with dimension 1")
-
     if not operator.eq(list(shape1), list(shape2)):
         raise RuntimeError("all input shape must be equal")
 

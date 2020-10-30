@@ -15,14 +15,16 @@
 
 namespace fe {
 class PadV3FusionPass : public PatternFusionBasePass {
- protected:
+protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
   bool GetConstValue(const ge::Operator& op, const ge::Tensor& const_tensor, const ge::DataType& dtype,
                      std::vector<int64_t>& const_data);
-  Status PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& pad_node, const string& attr_name, int32_t index);
+  bool AutoRemoveInput(ge::ComputeGraph &graph, ge::NodePtr &pad_node, ge::Operator &op,
+                       const string input_name);
+  Status PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& pad_node);
   const string FUSED_OP_TYPE = "PadV3D";
 };
 

@@ -92,7 +92,7 @@ def write_select(input_x, output_x, kernel_name="write_select"):
     para_check.check_kernel_name(kernel_name)
 
     if tbe_platform.is_lhisi_version():
-        check_list = ["int32", "float16", "int8"]
+        check_list = ["int32", "float16", "int8", "int16"]
     else:
         check_list = ["int32", "float16", "float32", "int8"]
 

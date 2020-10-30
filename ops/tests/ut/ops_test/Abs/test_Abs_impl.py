@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import ElementwiseOpUT
+import numpy as np
+from op_test_frame.common import precision_info
 
 ut_case = ElementwiseOpUT("Abs", None, None)
 
@@ -23,17 +25,36 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], 
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 12))
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 13))
 
+def calc_expect_func(x, output):
+    shape_x = x.get("shape")
+    x_value = x.get("value")
+    output = np.abs(x_value)
+    return output
 
-# def test_abs(test_arg):
-#     from impl import abs
-#     abs({"dtype": "float16", "format": "ND", "ori_format": "ND", "shape": (2, 3, 4), "ori_shape": (2, 3, 4)},
-#         {"dtype": "float16", "format": "ND", "ori_format": "ND", "shape": (2, 3, 4), "ori_shape": (2, 3, 4)})
-#     pass
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 
+ut_case.add_precision_case("all", {"params": [{"shape": (3, 16, 32), "dtype": "float16", "format": "ND", "ori_shape": (3, 16, 32),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (3, 16, 32), "dtype": "float16", "format": "ND", "ori_shape": (3, 16, 32),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 
-# ut_case.add_cust_test_func(test_func=test_abs)
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 3, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 100, 16),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 3, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 100, 16),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+

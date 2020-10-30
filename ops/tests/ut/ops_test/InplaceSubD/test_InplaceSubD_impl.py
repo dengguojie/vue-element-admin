@@ -14,6 +14,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 InplaceSubD ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import tensorflow as tf
+from tensorflow.python.ops import gen_array_ops
+
 ut_case = OpUT("InplaceSubD", None, None)
 
 case1 = {"params": [{"shape": (2,4,32), "dtype": "float16", "format": "NHWC", "ori_shape": (2,4,32),"ori_format": "NHWC"}, #x
@@ -68,6 +72,29 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
+def calc_expect_func(x, y, output, indices):
+    out = gen_array_ops.inplace_sub(x['value'],indices,y['value'])
+    sess = tf.Session()
+    out = sess.run(out)
+    return out
+
+precision_case1 = {"params": [{"shape": (2,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (2,4,32,2),"ori_format": "ND","param_type":"input"},
+                              {"shape": (2,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (2,4,32,2),"ori_format": "ND","param_type":"input"},
+                              {"shape": (2,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (2,4,32,2),"ori_format": "ND","param_type":"output"},
+                              [0, 1]],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case2 = {"params": [{"shape": (4,4,5), "dtype": "float32", "format": "ND", "ori_shape": (4,4,5),"ori_format": "ND","param_type":"input"},
+                              {"shape": (4,4,5), "dtype": "float32", "format": "ND", "ori_shape": (4,4,5),"ori_format": "ND","param_type":"input"},
+                              {"shape": (4,4,5), "dtype": "float32", "format": "ND", "ori_shape": (4,4,5),"ori_format": "ND","param_type":"output"},
+                              [0, -6, 2, 5]],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+
+ut_case.add_precision_case("Ascend910",precision_case1)
+ut_case.add_precision_case("Ascend910",precision_case2)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)

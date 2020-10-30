@@ -1396,27 +1396,29 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
 
 
 class ScheduleDispatch:
+    """Schedule Dispatch"""
     @generic_dispatch(key=1)
     def handle_case(self, case):
+        """handle case"""
         raise RuntimeError("Unknown key %d in generic_dispatch" % (key))
 
     @handle_case.register('segment')
     def _(self, case, templet_name, tensor, scope, spec_node_list, sch_list):
         if templet_name == 'global':
-            op = CceSegmentOp(scope, need_tensorize=True, need_pragma=True)
+            cce_op = CceSegmentOp(scope, need_tensorize=True, need_pragma=True)
         if templet_name == 'speel':
-            op = CceSegmentSpeelOp(scope, need_tensorize=True, need_pragma=True)
-        return op.schedule(tensor, spec_node_list, sch_list)
+            cce_op = CceSegmentSpeelOp(scope, need_tensorize=True, need_pragma=True)
+        return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('inplace')
     def _(self, case, tensor, scope, spec_node_list, sch_list):
-        op = CceInplaceOp(scope)
-        return op.schedule(tensor, spec_node_list, sch_list)
+        cce_op = CceInplaceOp(scope)
+        return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('concat')
     def _(self, case, tensor, scope, spec_node_list, sch_list):
-        op = CceConcatOp(scope, need_tensorize=True, need_pragma=True)
-        return op.schedule(tensor, spec_node_list, sch_list)
+        cce_op = CceConcatOp(scope, need_tensorize=True, need_pragma=True)
+        return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('gemm')
     def _(self, case, tensor, sch_list):
@@ -1433,13 +1435,13 @@ class ScheduleDispatch:
 
     @handle_case.register('conv2d_backprop_input')
     def _(self, case, tensor, spec_node_list, sch_list):
-        op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
-        return op.schedule(tensor, spec_node_list, sch_list)
+        cce_op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
+        return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('conv2d_backprop_filter')
     def _(self, case, tensor, spec_node_list, sch_list):
-        op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
-        return op.schedule(tensor, spec_node_list, sch_list)
+        cce_op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
+        return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('pooling2d')
     def _(self, case, tensor, sch_list):

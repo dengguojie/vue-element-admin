@@ -21,16 +21,21 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_GEMM_TRANSPOSE_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_GEMM_TRANSPOSE_FUSION_PASS_H_
 
+#include <vector>
+#include <string>
+
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class GemmTransFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  Status Relink(ge::NodePtr aNode, ge::NodePtr transposeANode, ge::NodePtr gemmNode, const int Anchor);
+  Status Relink(ge::NodePtr aNode, ge::NodePtr transpose_a_node,
+                ge::NodePtr gemm_node, const int anchor);
   const string FUSED_OP_TYPE = "GEMM";
 };
 }  // namespace fe

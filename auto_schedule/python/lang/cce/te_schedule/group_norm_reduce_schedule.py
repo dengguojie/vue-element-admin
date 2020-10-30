@@ -553,7 +553,7 @@ def _is_supported_atomic_add(reduce_tensor):
     if dtype != "float32":
         return False
     is_version_support = pver().is_cloud_version() or \
-        pver().is_1951_version()
+        pver().is_ng1_version()
     if not is_version_support:
         return False
     tag = reduce_tensor.op.tag

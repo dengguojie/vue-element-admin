@@ -131,7 +131,7 @@ class CceConv3dOp:
                         'second_value_BL1': str(tiling["BL1_shape"][1])
                     }
                     raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                                       error_manager_util.get_error_message(dict_args))
 
                 if tiling["BL1_shape"][
                         1] > 1 and tiling["BL1_shape"][1] % 2 != 0:
@@ -140,7 +140,7 @@ class CceConv3dOp:
                         'second_value_BL1': str(tiling["BL1_shape"][1])
                     }
                     raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                                       error_manager_util.get_error_message(dict_args))
 
             if len(tiling["BL1_shape"]) == 1:
                 tiling["BL1_shape"] = tiling["BL1_shape"] + [1]

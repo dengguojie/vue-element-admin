@@ -245,16 +245,8 @@ def _shape_check(
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     if len(shape_a) == 2 and len(shape_b) == 2:
-        if trans_a:
-            km_shape = shape_a[0]
-        else:
-            km_shape = shape_a[1]
-
-        if trans_b:
-            kn_shape = shape_b[1]
-        else:
-            kn_shape = shape_b[0]
-
+        km_shape = shape_a[0] if trans_a else shape_a[1]
+        kn_shape = shape_b[1] if trans_b else shape_b[0]
         if km_shape != kn_shape:
             args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
             raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
@@ -315,16 +307,8 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
         shape_a = list(input_x1["ori_shape"])
         shape_b = list(input_x2["ori_shape"])
         shape_bias = list(bias["ori_shape"])
-
-        if trans_a:
-            a_m = shape_a[1]
-        else:
-            a_m = shape_a[0]
-
-        if trans_b:
-            b_n = shape_b[0]
-        else:
-            b_n = shape_b[1]
+        a_m = shape_a[1] if trans_a else shape_a[0]
+        b_n = shape_b[0] if trans_b else shape_b[1]
         if shape_bias != [a_m, b_n]:
             args_dict = {
                 "errCode": "E60000",

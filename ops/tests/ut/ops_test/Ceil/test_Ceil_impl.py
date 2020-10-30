@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import ElementwiseOpUT
+import numpy as np
+from op_test_frame.common import precision_info
 
 ut_case = ElementwiseOpUT("Ceil", None, None)
 
@@ -26,7 +28,39 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (10, 13))
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
+def calc_expect_func(x, y):
+    x_shape = x.get("shape")
+    x_value = x.get("value")
+
+    output_data=np.ceil(x_value)
+    result = output_data.astype(np.float32)
+    return (result,)
+
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (2, 16, 32), "dtype": "float32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (2, 16, 32), "dtype": "float32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 24, 1, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 24, 1, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+
+# ============ auto gen ["Ascend910"] test cases end =================
+
 if __name__ == '__main__':
-    # ut_case.run("Ascend910")
-    ut_case.run()
-    exit(0)
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
+

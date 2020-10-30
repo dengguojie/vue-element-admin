@@ -22,6 +22,7 @@ from impl.util.util_apply_op_schedule import common_apply_op_process
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
@@ -78,7 +79,7 @@ def sgd_compute(parameters,
     dtype = parameters.dtype
     support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if not support:
-        raise RuntimeError("only support float16 while need to cast to float32")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'parameters', [], dtype)
     if dtype == "float16":
         parameters = tbe.cast_to(parameters, "float32")
         accum = tbe.cast_to(accum, "float32")
@@ -193,9 +194,12 @@ def sgd(parameters,
     None
     """
     if nesterov and dampening != 0:
-        raise RuntimeError("Nesterov requires zero dampening!")
+        error_manager_vector.raise_err_check_params_rules(kernel_name,
+                                                          "nesterov requires zero dampening when nesterov is true",
+                                                          'dampening', dampening)
     if weight_decay < 0:
-        raise RuntimeError("weight_decay must >=0.")
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "weight_decay can not be less than 0",
+                                                          'weight_decay', weight_decay)
 
     input_dict = (parameters, gradient, learning_rate, accum, momentum, stat)
     args = ApplyOpConfig.TensorArgs(

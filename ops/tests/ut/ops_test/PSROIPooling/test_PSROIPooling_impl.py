@@ -32,7 +32,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "int32", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_01", "RuntimeError"))
+                     "psroipooling_01", RuntimeError))
 
 # invalid dtype 2
 ut_case.add_case("Ascend310",
@@ -44,7 +44,7 @@ ut_case.add_case("Ascend310",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_02", "RuntimeError"))
+                     "psroipooling_02", RuntimeError))
 
 # invalid dtype 3
 ut_case.add_case("Ascend710",
@@ -56,7 +56,7 @@ ut_case.add_case("Ascend710",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_03", "RuntimeError"))
+                     "psroipooling_03", RuntimeError))
 
 # invalid shape 1
 ut_case.add_case("all",
@@ -68,7 +68,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_04", "RuntimeError"))
+                     "psroipooling_04", RuntimeError))
 
 # invalid shape 2
 ut_case.add_case("all",
@@ -80,7 +80,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_05", "RuntimeError"))
+                     "psroipooling_05", RuntimeError))
 
 # invalid shape 3
 ut_case.add_case("all",
@@ -92,7 +92,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_06", "RuntimeError"))
+                     "psroipooling_06", RuntimeError))
 
 # invalid shape 4
 ut_case.add_case("all",
@@ -104,7 +104,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 3, 0.0625,
-                     "psroipooling_07", "RuntimeError"))
+                     "psroipooling_07", RuntimeError))
 
 # invalid group_size
 ut_case.add_case("all",
@@ -116,7 +116,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 4, 0.0625,
-                     "psroipooling_08", "RuntimeError"))
+                     "psroipooling_08", RuntimeError))
 
 # invalid group_size 2
 ut_case.add_case("all",
@@ -128,7 +128,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 129, 129, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 129, 129, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 129, 0.0625,
-                     "psroipooling_09", "RuntimeError"))
+                     "psroipooling_09", RuntimeError))
 
 # invalid output_dim
 ut_case.add_case("all",
@@ -140,7 +140,7 @@ ut_case.add_case("all",
                      {"shape": (15, 2, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (15, 2, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      33, 3, 0.0625,
-                     "psroipooling_10", "RuntimeError"))
+                     "psroipooling_10", RuntimeError))
 
 # normal shape 1
 ut_case.add_case("all",
@@ -224,7 +224,7 @@ ut_case.add_case("all",
                      {"shape": (6, 2, 7, 7, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (6, 2, 7, 7, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 7, 0.125,
-                     "psroipooling_17", "RuntimeError"))
+                     "psroipooling_17", RuntimeError))
 
 # invalid rois shape 2
 ut_case.add_case("all",
@@ -236,7 +236,7 @@ ut_case.add_case("all",
                      {"shape": (6, 2, 7, 7, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (6, 2, 7, 7, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      21, 7, 0.125,
-                     "psroipooling_18", "RuntimeError"))
+                     "psroipooling_18", RuntimeError))
 
 # normal shape 7, Hi3796CV300CS
 ut_case.add_case("Hi3796CV300CS",

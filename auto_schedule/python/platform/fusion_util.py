@@ -90,6 +90,8 @@ def trans_shape(data_node, op_list):
                 trans_arequant_s16(data_node, node)
             elif node["type"] == "BatchMatMul":
                 trans_batch_matmul_shape(data_node, node)
+            elif node["type"] == "Pooling":
+                trans_pooling_shape(data_node, node)
             else:
                 continue
     except Exception:           # 'pylint: disable=broad-except
@@ -202,7 +204,8 @@ def trans_mul_shape(data_node, node, op_list):
             if node["input_desc"][0]["name"] == \
                 node_list["output_desc"][0]["name"] and \
                 (node_list["type"] == "AvgPool" or
-                 node_list["type"] == "AscendDequant"):
+                 node_list["type"] == "AscendDequant" or
+                 node_list["type"] == "Pooling"):
                 shape = data_node["shape"]
                 data_node["shape"] = [shape[0], shape[1], 1,
                                       shape[2] * shape[3], shape[4]]
@@ -222,18 +225,44 @@ def trans_avgpool_shape(data_node, node):
         ksize = all_out[1]
         format_attr = all_out[4]
         if format_attr == "NHWC":
-            ksize_hw = ksize[1]
+            ksize_h = ksize[1]
+            ksize_w = ksize[2]
         else:
-            ksize_hw = ksize[2]
+            ksize_h = ksize[2]
+            ksize_w = ksize[3]
 
         if len(shape) == 4 and data_node["data_type"] != "int8":
-            data_node["shape"] = [shape[0] // (ksize_hw * ksize_hw),
-                                  ksize_hw, ksize_hw, shape[2], shape[3]]
+            data_node["shape"] = [shape[0] // (ksize_h * ksize_w),
+                                  ksize_h, ksize_w, shape[2], shape[3]]
 
         if len(shape) == 6 and data_node["data_type"] == "int8":
             shape = data_node["shape"]
             data_node["shape"] = [shape[0],
-                                  ksize_hw, ksize_hw, 32, 32]
+                                  ksize_h, ksize_w, 32, 32]
+
+    if data_node["name"] == node["input_desc"][2]["name"]:
+        ori_shape = data_node["ori_shape"]
+        data_node["shape"] = ori_shape
+
+
+def trans_pooling_shape(data_node, node):
+    """
+    tansform avgpool shape
+    :param data_node:
+    :param node:
+    """
+    all_out = []
+    if data_node["name"] == node["input_desc"][1]["name"]:
+        shape = data_node["shape"]
+        for arg in node['prebuild_outs_attrs']['list_args']:
+            all_out.append(arg)
+
+        window = all_out[1]
+        window_h = window[0]
+        window_w = window[1]
+        if len(shape) == 4 and data_node["data_type"] != "int8":
+                data_node["shape"] = [shape[0] // (window_h * window_w),
+                                  window_h, window_w, shape[2], shape[3]]
 
     if data_node["name"] == node["input_desc"][2]["name"]:
         ori_shape = data_node["ori_shape"]

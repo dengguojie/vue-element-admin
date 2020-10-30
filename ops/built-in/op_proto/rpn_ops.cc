@@ -30,31 +30,31 @@ namespace ge {
 IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
   float iou_threshold;
-  if (op.GetAttr("iou_threshold", iou_threshold) == ge::GRAPH_SUCCESS) {
+  if (op.GetAttr("iou_threshold", iou_threshold) == GRAPH_SUCCESS) {
     if (iou_threshold <= 0) {
-      OP_LOGE(op.GetName().c_str(), "iou_threshold(%f) must > 0", iou_threshold);
+      OP_LOGE(op.GetName().c_str(), "Attr iou_threshold(%f) must > 0", iou_threshold);
       return GRAPH_FAILED;
     }
   }
 
-  TensorDesc outBoxDesc = op.GetOutputDesc("selected_boxes");
-  TensorDesc outIdxDesc = op.GetOutputDesc("selected_idx");
-  TensorDesc outMaskDesc = op.GetOutputDesc("selected_mask");
-  TensorDesc inDesc = op.GetInputDesc("box_scores");
+  TensorDesc out_box_desc = op.GetOutputDesc("selected_boxes");
+  TensorDesc out_idx_desc = op.GetOutputDesc("selected_idx");
+  TensorDesc out_mask_desc = op.GetOutputDesc("selected_mask");
+  TensorDesc in_desc = op.GetInputDesc("box_scores");
 
-  outBoxDesc.SetShape(inDesc.GetShape());
-  outBoxDesc.SetDataType(inDesc.GetDataType());
-  (void)op.UpdateOutputDesc("selected_boxes", outBoxDesc);
+  out_box_desc.SetShape(in_desc.GetShape());
+  out_box_desc.SetDataType(in_desc.GetDataType());
+  (void)op.UpdateOutputDesc("selected_boxes", out_box_desc);
 
-  std::vector<int64_t> dims_in = inDesc.GetShape().GetDims();
+  std::vector<int64_t> dims_in = in_desc.GetShape().GetDims();
 
-  outIdxDesc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
-  outIdxDesc.SetDataType(DT_INT32);
-  (void)op.UpdateOutputDesc("selected_idx", outIdxDesc);
+  out_idx_desc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
+  out_idx_desc.SetDataType(DT_INT32);
+  (void)op.UpdateOutputDesc("selected_idx", out_idx_desc);
 
-  outMaskDesc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
-  outMaskDesc.SetDataType(DT_UINT8);
-  (void)op.UpdateOutputDesc("selected_mask", outMaskDesc);
+  out_mask_desc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
+  out_mask_desc.SetDataType(DT_UINT8);
+  (void)op.UpdateOutputDesc("selected_mask", out_mask_desc);
 
   return GRAPH_SUCCESS;
 }

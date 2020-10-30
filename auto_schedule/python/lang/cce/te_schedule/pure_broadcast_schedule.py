@@ -365,7 +365,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                     block_split_nparts = i
                     block_split_axis = axis
                     break
-                hdw_tsch = pver().is_cloud_version() or pver().is_1951_version()
+                hdw_tsch = pver().is_cloud_version() or pver().is_ng1_version()
                 if not hdw_tsch:
                     if core_num >= self.device_core_num:
                         break

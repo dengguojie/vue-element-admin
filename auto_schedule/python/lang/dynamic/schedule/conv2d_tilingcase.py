@@ -75,6 +75,7 @@ class Conv2dTiling(CubeTilingOp):
         self.c_info = tiling_info['c_shape']
         self._get_calc_info()
         self.key = 'A_shape'
+        self.op_type = "conv2d"
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)

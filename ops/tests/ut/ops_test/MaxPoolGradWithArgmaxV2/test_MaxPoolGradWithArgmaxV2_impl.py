@@ -22,7 +22,7 @@ case2 = {"params": [{"shape": (32,1,70,514,16), "dtype": "float16", "format": "N
                     [1, 5, 6, 1],
                     [1, 1, 1, 1]],
          "case_name": "max_pool_grad_with_arxmax_v2_2",
-         "expect": "success",
+         "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
 

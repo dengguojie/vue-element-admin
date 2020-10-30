@@ -755,23 +755,17 @@ class Scatter:
         var_out_dtype = var_out.get("dtype").lower()
         if var_out_dtype == "bool":
             var_out_dtype = "int8"
-        para_check.check_kernel_name(self.kernel_name)
-        para_check.check_shape_rule(self.var_shape)
-        para_check.check_shape_rule(self.indices_shape)
-        para_check.check_shape_rule(self.updates_shape)
-        para_check.check_shape_rule(var_out_shape)
-
-        para_check.check_tensor_shape_size(self.var_shape)
-        para_check.check_tensor_shape_size(self.indices_shape)
-        para_check.check_tensor_shape_size(self.updates_shape)
-        para_check.check_tensor_shape_size(var_out_shape)
+        para_check.check_shape(self.var_shape, param_name="var")
+        para_check.check_shape(self.indices_shape, param_name="indices")
+        para_check.check_shape(self.updates_shape, param_name="updates")
+        para_check.check_shape(var_out_shape, param_name="var_out")
 
         check_list_var = ("float16", "float32", "int32", "int8", "uint8")
         check_list_indices = ("int32")
-        para_check.check_dtype_rule(self.var_dtype, check_list_var)
-        para_check.check_dtype_rule(self.indices_dtype, check_list_indices)
-        para_check.check_dtype_rule(self.updates_dtype, check_list_var)
-        para_check.check_dtype_rule(var_out_dtype, check_list_var)
+        para_check.check_dtype(self.var_dtype, check_list_var, param_name="var")
+        para_check.check_dtype(self.indices_dtype, check_list_indices, param_name="indices")
+        para_check.check_dtype(self.updates_dtype, check_list_var, param_name="updates")
+        para_check.check_dtype(var_out_dtype, check_list_var, param_name="var_out")
 
         if var_out_shape != self.var_shape:
             raise RuntimeError(

@@ -342,8 +342,8 @@ def _simplify_shape(d_1, d_2):
 
 def _get_strict_pattern(shape1, shape2):
     def get_axis_type(_a, _b):
-        a_ = -1 if _a < 0 else 2 if _a > 1 else 1
-        b_ = -1 if _b < 0 else 2 if _b > 1 else 1
+        axis_a = -1 if _a < 0 else 2 if _a > 1 else 1
+        axis_b = -1 if _b < 0 else 2 if _b > 1 else 1
         # axis type consists of three binary digits
         #     No.1: common axis
         #     No.2: a broadcast to b
@@ -362,7 +362,7 @@ def _get_strict_pattern(shape1, shape2):
             (2, 1): 0b001,
             (2, 2): 0b100,
         }
-        return d_1[(a_, b_)]
+        return d_1[(axis_a, axis_b)]
 
     return [get_axis_type(a, b) for a, b in zip(shape1, shape2)]
 

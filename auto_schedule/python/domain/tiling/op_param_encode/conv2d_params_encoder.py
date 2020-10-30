@@ -52,6 +52,12 @@ SHAPE_LENGTH5 = 5
 MAX_UINT32 = 4294967295
 MAX_UINT16 = 65535
 
+# Define the c04 mode in ascend610, ascend710 and hi3796CV300cs
+# 0 represent for default mode
+# 1 represent for v100 c04 mode
+# 2 represent for v200 c04 mode
+c04_mode = [0, 1, 2]
+
 
 def decode_for_dynamic(tiling, input_args):
     """
@@ -225,8 +231,7 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         self.check_param_type(params_in.get('pooling_shape'), [list])
         self.check_param_type(params_in.get('pooling_stride'), [list])
         self.check_param_type(params_in.get('special_mode'), [dict])
-        params_in['special_mode']['use_c04_mode'] = params_in['special_mode'].get('use_c04_mode', 0)
-        self.check_param_type(params_in.get('special_mode').get("use_c04_mode"), [int])
+        self.check_param_type(params_in['special_mode'].get("use_c04_mode", CONST_VALUE0), [int])
 
         # check the length of param
         self.check_param_length(params_in.get('a_shape'), [SHAPE_LENGTH5])
@@ -246,7 +251,7 @@ class Conv2dParamsEncoder(BaseClassParamsEncoder):
         self.check_support_range(params_in.get('c_dtype'), self.dtype_dict)
         self.check_support_range(params_in.get('mad_dtype'), self.dtype_dict)
         self.check_support_range(params_in.get('op_type', 'conv2d'), self.op_type_dict)
-        self.check_support_range(params_in['special_mode'].get('use_c04_mode', 0), self.c04_mode)
+        self.check_support_range(params_in['special_mode'].get('use_c04_mode', CONST_VALUE0), c04_mode)
 
         # check the pooling params
         pooling_shape = params_in.get('pooling_shape')

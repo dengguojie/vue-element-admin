@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 SHAPE_DIM_SIZE = 5
 BLOCK_SIZE = 16
@@ -31,7 +32,9 @@ VSEL_MAX_SUPPORT_REPEAT = 255
 def _check_dict_key(input_dict, input_key, input_name):
     for key in input_key:
         if key not in input_dict.keys():
-            raise RuntimeError("Input parameter must have attr.")
+            error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
+                                                              "input parameter must have key of %s" % key, input_name,
+                                                              input_dict.keys())
 
 
 def _check_dtype(orig_x_dict, orig_y_dict, grads_dict, output_dict):
@@ -40,9 +43,16 @@ def _check_dtype(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_type = grads_dict.get('dtype').lower()
     output_type = output_dict.get('dtype').lower()
 
-    if orig_input_type != orig_output_type or orig_input_type != grads_type or orig_input_type != output_type\
-         or orig_input_type != "float16":
-        raise RuntimeError("Type must be same in orig_input/orig_output/grads/outputm, and only supported float16.")
+    para_check.check_dtype(orig_input_type, ("float16", ), "orig_input")
+
+    def _check_dtype_same_with_input(param, dtype):
+        if orig_input_type != dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal('max_pool_grad_grad', 'orig_x', param,
+                                                                  orig_input_type, dtype)
+
+    _check_dtype_same_with_input('orig_y', orig_output_type)
+    _check_dtype_same_with_input('grads', grads_type)
+    _check_dtype_same_with_input('output', output_type)
 
 
 def _check_shape(orig_x_dict, orig_y_dict, grads_dict, output_dict):
@@ -51,11 +61,27 @@ def _check_shape(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_shape = list(grads_dict.get('shape'))
     output_shape = list(output_dict.get('shape'))
 
-    if orig_input_shape != grads_shape or len(grads_shape) != SHAPE_DIM_SIZE or grads_shape[-1] != BLOCK_SIZE:
-        raise RuntimeError("The shape of orig_input and grads must be same, and shape must be 5HD.")
-    if orig_output_shape != output_shape or len(
-            orig_output_shape) != SHAPE_DIM_SIZE or orig_output_shape[-1] != BLOCK_SIZE:
-        raise RuntimeError("The shape of orig_output and output must be same, and shape must be 5HD.")
+    if len(orig_input_shape) != SHAPE_DIM_SIZE:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'orig_x', SHAPE_DIM_SIZE,
+                                                                 SHAPE_DIM_SIZE, len(orig_input_shape))
+    if orig_input_shape[-1] != BLOCK_SIZE:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
+                                                          'the last dimension must be equal to %d' % BLOCK_SIZE,
+                                                          'orig_x', orig_input_shape)
+    if orig_input_shape != grads_shape:
+        error_manager_vector.raise_err_inputs_shape_not_equal('max_pool_grad_grad', 'orig_x', 'grads', orig_input_shape,
+                                                              grads_shape, orig_input_shape)
+
+    if len(orig_output_shape) != SHAPE_DIM_SIZE:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'orig_y', SHAPE_DIM_SIZE,
+                                                                 SHAPE_DIM_SIZE, len(orig_output_shape))
+    if orig_output_shape[-1] != BLOCK_SIZE:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
+                                                          'the last dimension must be equal to %d' % BLOCK_SIZE,
+                                                          'orig_y', orig_output_shape)
+    if orig_output_shape != output_shape:
+        error_manager_vector.raise_err_inputs_shape_not_equal('max_pool_grad_grad', 'orig_y', 'output',
+                                                              orig_output_shape, output_shape, orig_output_shape)
 
 
 def _check_format(orig_x_dict, orig_y_dict, grads_dict, output_dict):
@@ -63,9 +89,10 @@ def _check_format(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     orig_y_format = orig_y_dict.get('format')
     grads_format = grads_dict.get('format')
     output_format = output_dict.get('format')
-    if orig_x_format not in ("NC1HWC0", "5HD") or orig_y_format not in ("NC1HWC0", "5HD") or grads_format not in (
-            "NC1HWC0", "5HD") or output_format not in ("NC1HWC0", "5HD"):
-        raise RuntimeError("The format must be NC1HWC0 in orig_input/orig_output/grads/output.")
+    para_check.check_format(orig_x_format, ("NC1HWC0", ), "orig_x")
+    para_check.check_format(orig_y_format, ("NC1HWC0", ), "orig_y")
+    para_check.check_format(grads_format, ("NC1HWC0", ), "grads")
+    para_check.check_format(output_format, ("NC1HWC0", ), "output")
 
 
 def _ceil_to(value, ceil_value):
@@ -387,13 +414,19 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         fmap_h, kernel_h, stride_h, padding)
     output_w, pad_l, pad_r = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
         fmap_w, kernel_w, stride_w, padding)
-    if output_h != out_h or output_w != out_w:
-        raise RuntimeError("The shape of the ori_input does not match the shape of the ori_output.")
+    if output_h != out_h:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
+                                                          'height in ori_output must be %d' % out_h, 'ho', output_h)
+    if output_w != out_w:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
+                                                          'width in ori_output must be %d' % out_w, 'ho', output_w)
     # cloud,dc out_size_h = 1 or out_size_w = 1, img2col does not act normally
     if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Ascend910", "Ascend710") and (out_h != 1 or out_w != 1):
         if fmap_w + pad_l + pad_r - kernel_w < stride_w:
-            raise RuntimeError("Platform cloud and DC DO NOT support these invalid params, it must be fmap_w +"
-                               " pad_l + pad_r - kernel_w >= stride_w")
+            error_manager_vector.raise_err_specific_reson(
+                'max_pool_grad_grad',
+                "Platform cloud and DC DO NOT support these invalid params, it must be fmap_w +  pad_l + pad_r - kernel_w >= stride_w"
+            )
 
     BUFFER_SIZE_IN_SEL_GRAD = 4
     BUFFER_SIZE_OF_INPUT = 4
@@ -405,16 +438,16 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         (fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0), (kernel_h, kernel_w), (stride_h, stride_w), padding,
         tbe_platform.get_soc_spec(tbe_platform.L1_SIZE) // 2, max_valid_ub_for_load3d, "float16")
     if not tiling["result"]:
-        raise RuntimeError("Calculate tiling failed.")
+        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad', "calculate tiling failed.")
     block_tiling = tiling["block_tiling"]
     l1_tiling = tiling["l1_tiling"]
     ub_tiling = tiling["l0ub_tiling"]
     if block_tiling["type"] != BlockTilingType.DIVISIBLE and block_tiling["type"] != BlockTilingType.FUSED:
-        raise RuntimeError("Block tiling is invalid.")
+        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad', "Block tiling is invalid.")
     if l1_tiling["type"] != L1TilingType.CUT_H and l1_tiling["type"] != L1TilingType.CUT_W:
-        raise RuntimeError("L1 tiling is not supported.")
+        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad', "L1 tiling is not supported.")
     if ub_tiling["type"] != L0ubTilingType.CUT_HOWO:
-        raise RuntimeError("UB tiling is not supported.")
+        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad', "UB tiling is not supported.")
 
     l1_hi = l1_tiling["shape"]["hi"]
     tiling_l1_ho_i = l1_tiling["shape"]["ho"]
@@ -945,19 +978,26 @@ def max_pool_grad_grad(orig_x_dict,
 
     padding = padding.upper()
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("Padding must be SAME or VALID.")
+        error_manager_vector.raise_err_input_value_invalid('max_pool_grad_grad', 'padding', ("SAME", "VALID"), padding)
     data_format = data_format.upper()
     if data_format not in ("NHWC", "NCHW"):
-        raise RuntimeError("The orig_format in x must be NCHW or NHWC.")
+        error_manager_vector.raise_err_input_format_invalid("max_pool_grad_grad", "orig_x", ('NHWC', 'NCHW'),
+                                                            data_format)
 
     n_pos = data_format.find("N")
     c_pos = data_format.find("C")
     h_pos = data_format.find("H")
     w_pos = data_format.find("W")
-    if len(ksize) != 4 or ksize[n_pos] != 1 or ksize[c_pos] != 1:
-        raise RuntimeError("The shape of ksize must be (4,), N-dim and C-dim must be 1.")
-    if len(strides) != 4 or strides[n_pos] != 1 or strides[c_pos] != 1:
-        raise RuntimeError("The shape of strides must be (4,), N-dim and C-dim must be 1.")
+    if len(ksize) != 4:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'ksize', 4, 4, len(ksize))
+    if ksize[n_pos] != 1 or ksize[c_pos] != 1:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad', "N-dim and C-dim must be 1", "ksize",
+                                                          ksize)
+    if len(strides) != 4:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'strides', 4, 4, len(strides))
+    if strides[n_pos] != 1 or strides[c_pos] != 1:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad', "N-dim and C-dim must be 1", "strides",
+                                                          strides)
 
     shape_in = orig_x_dict.get('shape')
     para_check.check_shape(shape_in, min_rank=SHAPE_DIM_SIZE, max_rank=SHAPE_DIM_SIZE, param_name="orig_x_dict")
@@ -966,9 +1006,9 @@ def max_pool_grad_grad(orig_x_dict,
     para_check.check_shape(shape_out, min_rank=SHAPE_DIM_SIZE, max_rank=SHAPE_DIM_SIZE, param_name="output_dict")
 
     if strides[h_pos] > 63 or strides[h_pos] < 1 or strides[w_pos] > 63 or strides[w_pos] < 1:
-        raise RuntimeError("Invalid strides params, stride size must be [1, 63].")
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad', "strides", 1, 63, strides)
     if ksize[h_pos] > 255 or ksize[h_pos] < 1 or ksize[w_pos] > 255 or ksize[w_pos] < 1:
-        raise RuntimeError("Invalid ksize params, ksize size must be [1, 255].")
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad', "ksize", 1, 255, ksize)
 
     out_n, out_c1, out_ho, out_wo, out_c0 = shape_out
     howo_pad = ((out_ho * out_wo + out_c0 - 1) // out_c0) * out_c0

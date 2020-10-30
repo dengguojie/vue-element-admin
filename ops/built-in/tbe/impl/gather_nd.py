@@ -21,6 +21,7 @@ import functools
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def _new_alloc(ir_build, dtype, shape, name, scope):
@@ -103,12 +104,14 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
     params_total_size = 1
     # max dimension is 8
     if shape_indices[-1] > 8:
-        raise RuntimeError("gather_nd only support 1D ~ 8D")
+        error_manager_vector.raise_err_check_params_rules(
+            'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
+            shape_indices)
     # allocate 8 register space to reg
     reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
-        raise RuntimeError("only allocating 24 registers spaces")
+        error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
     reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
@@ -378,12 +381,14 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
     params_total_size = 1
     # max dimension is 8
     if shape_indices[-1] > 8:
-        raise RuntimeError("gather_nd only support 1D ~ 8D")
+        error_manager_vector.raise_err_check_params_rules(
+            'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
+            shape_indices)
     # allocate 8 register space to reg
     reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
-        raise RuntimeError("only allocating 24 registers spaces")
+        error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
     reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
@@ -549,12 +554,14 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
     params_total_size = 1
     # max dimension is 8
     if shape_indices[-1] > 8:
-        raise RuntimeError("gather_nd only support 1D ~ 8D")
+        error_manager_vector.raise_err_check_params_rules(
+            'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
+            shape_indices)
     # allocate 8 register space to reg
     reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
-        raise RuntimeError("only allocating 24 registers spaces")
+        error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
     reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
@@ -1033,10 +1040,12 @@ def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
         # check whether dimension of indices is 1
         if len(shape_indices) == 1:
             if shape_indices[-1] > param_dim:
-                raise RuntimeError("the 1D size of shap_indices must be less than params dimensions")
+                error_manager_vector.raise_err_specific_reson(
+                    kernel_name, 'the 1D size of shap_indices must be less than params dimensions')
 
         if shape_indices[-1] > param_dim:
-            raise RuntimeError("the size of shap_indices must be less than params dimensions")
+            error_manager_vector.raise_err_specific_reson(
+                kernel_name, 'the size of shap_indices must be less than params dimensions')
 
         for i in range(0, shape_indices[-1]):
             step_indices *= tvm.const(shape_data[i], dtype=indice_dtype)

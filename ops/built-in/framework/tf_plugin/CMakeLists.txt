@@ -422,18 +422,19 @@ set(_tf_scope_fusion_passes
 add_library(ops_all_plugin SHARED
   ${_tf_plugins}
   ${_tf_scope_fusion_passes}
-  ${_proto_cc}
+  ${_proto_h}
 )
 
 target_include_directories(ops_all_plugin PRIVATE
   ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef
   ${CANN_ROOT}/third_party/metadef/inc
   ${CANN_ROOT}/third_party/metadef/inc/external
   ${CANN_ROOT}/third_party/metadef/inc/external/graph
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
   ${_proto_include}
   ${Protobuf_INCLUDE}
 )

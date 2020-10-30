@@ -1,37 +1,92 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 
 ut_case = OpUT("CumulativeLogsumexp", "impl.cumulativelogsumexp_d", "cumulative_logsumexp_d")
 
-ut_case.add_case("all", {
+def calc_expect_func(input, output, axis, exclusive, reverse):
+    value_exp = np.exp(input["value"])
+    value_exp = np.swapaxes(value_exp, 0, axis)
+    if reverse:
+        value_exp = value_exp[::-1, ...]
+    cum_exp = np.cumsum(value_exp, axis=0)
+    np_log = np.log(cum_exp)
+    if exclusive:
+        value = 1
+        if input["dtype"] == "float16":
+            value = -2 ** 15 * 1.9991
+        elif input["dtype"] == "float32":
+            value = -2 ** 127 * 1.9999999
+        np_to_broad_cast = np.ones_like(np_log[0:1]) * value
+        np_log = np.concatenate([np_to_broad_cast, np_log])[:-1, ...]
+
+    if reverse:
+        np_log = np_log[::-1, ...]
+
+    np_res = np.swapaxes(np_log, 0, axis)
+
+    return np_res
+
+ut_case.add_precision_case("all", {
     "params": [
         {"shape": (1,), "dtype": "float16", "format": "ND",
-         "ori_shape": (1,), "ori_format": "ND"},
+         "ori_shape": (1,), "ori_format": "ND", "param_type":"input"},
         {"shape": (1,), "dtype": "float16", "format": "ND",
-         "ori_shape": (1,), "ori_format": "ND"},
+         "ori_shape": (1,), "ori_format": "ND", "param_type":"output"},
         0, False, False],
-    "expect": "success"
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_case("Ascend910", {
+ut_case.add_precision_case("Ascend910", {
     "params": [
         {"shape": (1, 16, 16), "dtype": "float32", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"input"},
         {"shape": (1, 16, 16), "dtype": "float32", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"output"},
         0, False, False],
-    "expect": "success"
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
 })
 
-ut_case.add_case("all", {
+ut_case.add_precision_case("all", {
     "params": [
         {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"input"},
         {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"output"},
         0, True, False],
-    "expect": "success"
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [
+        {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"input"},
+        {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
+         "ori_shape": (1, 16, 16), "ori_format": "ND", "param_type":"output"},
+        0, True, True],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [
+        {"shape": (1, 16, 13), "dtype": "float16", "format": "ND",
+         "ori_shape": (1, 16, 13), "ori_format": "ND", "param_type":"input"},
+        {"shape": (1, 16, 13), "dtype": "float16", "format": "ND",
+         "ori_shape": (1, 16, 13), "ori_format": "ND", "param_type":"output"},
+        0, True, True],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
 })
 
 ut_case.add_case("all", {
@@ -41,27 +96,7 @@ ut_case.add_case("all", {
         {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
          "ori_shape": (1, 16, 16), "ori_format": "ND"},
         0, False, True],
-    "expect": "success"
-})
-
-ut_case.add_case("all", {
-    "params": [
-        {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
-        {"shape": (1, 16, 16), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 16), "ori_format": "ND"},
-        0, True, True],
-    "expect": "success"
-})
-
-ut_case.add_case("all", {
-    "params": [
-        {"shape": (1, 16, 13), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 13), "ori_format": "ND"},
-        {"shape": (1, 16, 13), "dtype": "float16", "format": "ND",
-         "ori_shape": (1, 16, 13), "ori_format": "ND"},
-        0, True, True],
-    "expect": "success"
+    "expect": "success",
 })
 
 ut_case.add_case("Ascend910", {
@@ -193,5 +228,8 @@ ut_case.add_case("Ascend910", {
     "expect": RuntimeError
 })
 
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+

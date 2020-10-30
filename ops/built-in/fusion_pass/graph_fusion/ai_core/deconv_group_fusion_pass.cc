@@ -56,60 +56,60 @@ vector<FusionPattern*> DeconvGroupFusionPass::DefinePatterns() {
 }
 
 Status DeconvGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                     vector<ge::NodePtr>& fusionNodes) {
+                                     vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvGroupPass::Fusion.");
-  NodePtr deconvNode = GetNodeFromMapping(PATTERN_DECONV, mapping);
-  OpDescPtr deconvDesc = deconvNode->GetOpDesc();
+  NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
+  OpDescPtr deconv_desc = deconv_node->GetOpDesc();
 
   // 1.if the deconv node doesn't have the attribute groups or the value is 1,
   // just return not changed.
   int64_t groups = 1;
-  bool hasGroup = ge::AttrUtils::GetInt(deconvDesc, "groups", groups);
-  if (!hasGroup || groups == 1) {
+  bool has_group_flag = ge::AttrUtils::GetInt(deconv_desc, "groups", groups);
+  if (!has_group_flag || groups == 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(),
             "The deconv node[name=%s, type=%s] doesn't have the attribute "
             "groups, or the value is 1.",
-            deconvDesc->GetName().c_str(), deconvDesc->GetType().c_str());
+            deconv_desc->GetName().c_str(), deconv_desc->GetType().c_str());
     return NOT_CHANGED;
   }
 
-  GeTensorDesc inputDesc = deconvDesc->GetInputDesc(0);
-  size_t inChannelIdx = -1;
+  GeTensorDesc input_desc = deconv_desc->GetInputDesc(0);
+  size_t in_channel_index = -1;
   FUSION_PASS_CHECK(
-      SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
+      SUCCESS != PatternFusionUtil::ParseChannelIdx(input_desc, in_channel_index),
       OP_LOGE(
           FUSED_OP_TYPE.c_str(),
           "The original format of the deconv node[name=%s, type=%s]'s input0 "
           "is %s, which is unsupportable.",
-          deconvDesc->GetName().c_str(), deconvDesc->GetType().c_str(),
-          ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
+          deconv_desc->GetName().c_str(), deconv_desc->GetType().c_str(),
+          ge::TypeUtils::FormatToSerialString(input_desc.GetFormat()).c_str()),
       return FAILED);
-  int64_t inChn = inputDesc.GetOriginShape().GetDim(inChannelIdx);
+  int64_t input_channel = input_desc.GetOriginShape().GetDim(in_channel_index);
 
-  GeTensorDesc outputDesc = deconvDesc->GetOutputDesc(0);
-  size_t outChannelIdx = -1;
+  GeTensorDesc output_desc = deconv_desc->GetOutputDesc(0);
+  size_t out_channel_index = -1;
   FUSION_PASS_CHECK(
-      SUCCESS != PatternFusionUtil::ParseChannelIdx(outputDesc, outChannelIdx),
+      SUCCESS != PatternFusionUtil::ParseChannelIdx(output_desc, out_channel_index),
       OP_LOGE(
           FUSED_OP_TYPE.c_str(),
           "The original format of the deconv node[name=%s, type=%s]'s output0 "
           "is %s, which is unsupportable.",
-          deconvDesc->GetName().c_str(), deconvDesc->GetType().c_str(),
-          ge::TypeUtils::FormatToSerialString(outputDesc.GetFormat()).c_str()),
+          deconv_desc->GetName().c_str(), deconv_desc->GetType().c_str(),
+          ge::TypeUtils::FormatToSerialString(output_desc.GetFormat()).c_str()),
       return FAILED);
-  int64_t outChn = outputDesc.GetOriginShape().GetDim(outChannelIdx);
+  int64_t output_channel = output_desc.GetOriginShape().GetDim(out_channel_index);
 
   // 2. if the number of input channel and output channel are both divisible by
   // groups, then process group padding, otherwise, return failed.
-  if (groups != 0 && inChn % groups == 0 && outChn % groups == 0) {
-    return PatternFusionUtil::ProcessGroupPadding(graph, deconvNode, groups);
+  if (groups != 0 && input_channel % groups == 0 && output_channel % groups == 0) {
+    return PatternFusionUtil::ProcessGroupPadding(graph, deconv_node, groups);
   } else {
     OP_LOGE(
         FUSED_OP_TYPE.c_str(),
         "The number of input channel(%lld) or output channel(%lld) of "
         "the deconv node[name=%s, type=%s] is not divisible by groups(%lld)",
-        inChn, outChn, deconvDesc->GetName().c_str(),
-        deconvDesc->GetType().c_str(), groups);
+        input_channel, output_channel, deconv_desc->GetName().c_str(),
+        deconv_desc->GetType().c_str(), groups);
     return FAILED;
   }
 }

@@ -1431,15 +1431,15 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
 
   // check value of aixs and num
-  int64_t axis = 0;
-  if (op.GetAttr("axis", axis) == ge::GRAPH_FAILED) {
+  int64_t axis{0};
+  if (op.GetAttr("axis", axis) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "axis");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue axis failed!");
     return GRAPH_FAILED;
   }
 
-  int64_t num = 0;
-  if (op.GetAttr("num", num) == ge::GRAPH_FAILED) {
+  int64_t num{0};
+  if (op.GetAttr("num", num) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "num");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue num failed!");
     return GRAPH_FAILED;
@@ -1465,7 +1465,7 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     }
     output_shape = Shape(output_vec);
   } else {
-    Shape unknown_shape(ge::UNKNOWN_SHAPE);
+    Shape unknown_shape(UNKNOWN_SHAPE);
     output_shape = unknown_shape;
   }
   for (int64_t i = 0; i < num; i++) {
@@ -1484,20 +1484,20 @@ COMMON_INFER_FUNC_REG(Unpack, UnpackInferShape);
 // ----------------ExtractImagePatches-------------------
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, list)) {
+  if (op.GetAttr(key_name, list) != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
 }
 
-static bool CheckListEmptyAndValue(const std::string& opName, const std::vector<int64_t>& list,
-                                   const std::string& attrName) {
+static bool CheckListEmptyAndValue(const std::string& op_name, const std::vector<int64_t>& list,
+                                   const std::string& attr_name) {
   if (list.empty()) {
-    OP_LOGE(opName.c_str(), "the %s is empty !", attrName.c_str());
+    OP_LOGE(op_name.c_str(), "The %s is empty !", attr_name.c_str());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(0) != 1) {
-    OP_LOGE(opName.c_str(), "the %s value is wrong !", attrName.c_str());
+    OP_LOGE(op_name.c_str(), "The %s value is wrong !", attr_name.c_str());
     return false;
   }
   return true;
@@ -1540,21 +1540,21 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
 
   Tensor input_size_tensor;
-  int64_t in_n = 0;
-  int64_t in_h = 0;
-  int64_t in_w = 0;
-  int64_t in_c = 0;
-  int64_t out_h = 0;
-  int64_t out_w = 0;
-  int64_t out_c = 0;
-  int64_t filter_h = 0;
-  int64_t filter_w = 0;
-  int64_t dilation_h = 0;
-  int64_t dilation_w = 0;
-  int64_t stride_h = 0;
-  int64_t stride_w = 0;
-  int64_t effective_filter_h = 0;
-  int64_t effective_filter_w = 0;
+  int64_t in_n{0};
+  int64_t in_h{0};
+  int64_t in_w{0};
+  int64_t in_c{0};
+  int64_t out_h{0};
+  int64_t out_w{0};
+  int64_t out_c{0};
+  int64_t filter_h{0};
+  int64_t filter_w{0};
+  int64_t dilation_h{0};
+  int64_t dilation_w{0};
+  int64_t stride_h{0};
+  int64_t stride_w{0};
+  int64_t effective_filter_h{0};
+  int64_t effective_filter_w{0};
 
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksizes");
@@ -1571,18 +1571,18 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto tensorDescIn = op.GetInputDesc(0);
-  auto tensorDescOut = op.GetInputDesc(0);
-  auto dtype = tensorDescIn.GetDataType();
-  auto shapeIn = tensorDescIn.GetShape();
-  auto shapeOut = tensorDescOut.GetShape();
-  tensorDescIn.SetShape(shapeIn);
+  auto tensor_desc_in = op.GetInputDesc(0);
+  auto tensor_desc_out = op.GetInputDesc(0);
+  auto dtype = tensor_desc_in.GetDataType();
+  auto shape_in = tensor_desc_in.GetShape();
+  auto shape_out = tensor_desc_out.GetShape();
+  tensor_desc_in.SetShape(shape_in);
 
   // NHWC
-  in_n = shapeIn.GetDim(0);
-  in_h = shapeIn.GetDim(1);
-  in_w = shapeIn.GetDim(2);
-  in_c = shapeIn.GetDim(3);
+  in_n = shape_in.GetDim(0);
+  in_h = shape_in.GetDim(1);
+  in_w = shape_in.GetDim(2);
+  in_c = shape_in.GetDim(3);
 
   // NHWC
   filter_h = ksize.at(1);
@@ -1603,13 +1603,13 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   }
   out_c = in_c * filter_h * filter_w;
   // NHWC
-  shapeOut.SetDim(0, in_n);
-  shapeOut.SetDim(1, out_h);
-  shapeOut.SetDim(2, out_w);
-  shapeOut.SetDim(3, out_c);
+  shape_out.SetDim(0, in_n);
+  shape_out.SetDim(1, out_h);
+  shape_out.SetDim(2, out_w);
+  shape_out.SetDim(3, out_c);
 
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(Shape(shapeOut));
+  tensordesc_output.SetShape(Shape(shape_out));
   tensordesc_output.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -1628,14 +1628,14 @@ static std::vector<int64_t> GetAttrValueVolume(const ge::Operator& op, const std
   return list;
 }
 
-static bool CheckListEmptyAndValueVolume(const std::string& opName, const std::vector<int64_t>& list,
-                                         const std::string& attrName) {
+static bool CheckListEmptyAndValueVolume(const std::string& op_name, const std::vector<int64_t>& list,
+                                         const std::string& attr_name) {
   if (list.empty()) {
-    OP_LOGE(opName.c_str(), "the %s is empty !", attrName.c_str());
+    OP_LOGE(op_name.c_str(), "the %s is empty !", attr_name.c_str());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(3) < 1 || list.at(4) != 1) {
-    OP_LOGE(opName.c_str(), "the %s value is wrong !", attrName.c_str());
+    OP_LOGE(op_name.c_str(), "the %s value is wrong !", attr_name.c_str());
     return false;
   }
   return true;
@@ -1685,18 +1685,18 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto tensorDescIn = op.GetInputDesc(0);
-  auto tensorDescOut = op.GetInputDesc(0);
-  auto dtype = tensorDescIn.GetDataType();
-  auto shapeIn = tensorDescIn.GetShape();
-  auto shapeOut = tensorDescOut.GetShape();
+  auto tensor_desc_in = op.GetInputDesc(0);
+  auto tensor_desc_out = op.GetInputDesc(0);
+  auto dtype = tensor_desc_in.GetDataType();
+  auto shape_in = tensor_desc_in.GetShape();
+  auto shape_out = tensor_desc_out.GetShape();
 
   // NDHWC
-  int64_t in_n = shapeIn.GetDim(0);
-  int64_t in_d = shapeIn.GetDim(1);
-  int64_t in_h = shapeIn.GetDim(2);
-  int64_t in_w = shapeIn.GetDim(3);
-  int64_t in_c = shapeIn.GetDim(4);
+  int64_t in_n = shape_in.GetDim(0);
+  int64_t in_d = shape_in.GetDim(1);
+  int64_t in_h = shape_in.GetDim(2);
+  int64_t in_w = shape_in.GetDim(3);
+  int64_t in_c = shape_in.GetDim(4);
 
   // NDHWC
   int64_t filter_d = ksize.at(1);
@@ -1720,23 +1720,23 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   }
   int64_t out_c = in_c * filter_d * filter_h * filter_w;
   // NDHWC
-  shapeOut.SetDim(0, in_n);
-  shapeOut.SetDim(1, out_d);
-  shapeOut.SetDim(2, out_h);
-  shapeOut.SetDim(3, out_w);
-  shapeOut.SetDim(4, out_c);
+  shape_out.SetDim(0, in_n);
+  shape_out.SetDim(1, out_d);
+  shape_out.SetDim(2, out_h);
+  shape_out.SetDim(3, out_w);
+  shape_out.SetDim(4, out_c);
 
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
 
-  tensorDescIn.SetFormat(FORMAT_NDHWC);
-  tensorDescIn.SetOriginFormat(FORMAT_NDHWC);
+  tensor_desc_in.SetFormat(FORMAT_NDHWC);
+  tensor_desc_in.SetOriginFormat(FORMAT_NDHWC);
   tensordesc_output.SetFormat(FORMAT_NDHWC);
   tensordesc_output.SetOriginFormat(FORMAT_NDHWC);
 
-  tensordesc_output.SetShape(Shape(shapeOut));
+  tensordesc_output.SetShape(Shape(shape_out));
   tensordesc_output.SetDataType(dtype);
 
-  (void)op.UpdateInputDesc("x", tensorDescIn);
+  (void)op.UpdateInputDesc("x", tensor_desc_in);
 
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;

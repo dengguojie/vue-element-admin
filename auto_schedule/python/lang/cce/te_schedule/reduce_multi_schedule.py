@@ -750,7 +750,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 if cur_factor <= cur_shape[i]:
                     cur_align_status = True
                     if (res_align_dim == util.DEFAULT_INDEX or res_align_dim > i or
-                        (res_align_dim == i and cur_factor > res_align_factor)) and \
+                            (res_align_dim == i and cur_factor > res_align_factor)) and \
                             i not in self._tiling_barrier:
                         res_align_dim = i
                         res_align_factor = cur_factor

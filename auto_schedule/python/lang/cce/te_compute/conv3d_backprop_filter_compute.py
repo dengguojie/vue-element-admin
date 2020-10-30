@@ -219,8 +219,8 @@ class Conv3dBackpropFilter:
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
         if (self.stride[1:] == [1, 1] and self.shape_x_6hd[3:5] == [1, 1]
-            and self.shape_grads_6hd[3:5] == [1, 1]
-            and self.weight_shape[3:5] == [1, 1]):
+                and self.shape_grads_6hd[3:5] == [1, 1]
+                and self.weight_shape[3:5] == [1, 1]):
             self.flag_all_one_case = True
 
         self.flag_load3d_special_case = False

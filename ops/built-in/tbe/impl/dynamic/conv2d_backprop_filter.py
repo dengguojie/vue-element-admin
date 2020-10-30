@@ -318,20 +318,13 @@ def _get_output(x_in, k_size, pads, stride, dilation):
 
 
 def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
+    if padding == "VALID":
+        padding = (0, 0, 0, 0)
     if padding == "SAME":
         out_h_lower = _ceil(fmap_range[2][0], stride[0])
         out_h_upper = _ceil(fmap_range[2][1], stride[0])
         out_w_lower = _ceil(fmap_range[3][0], stride[1])
         out_w_upper = _ceil(fmap_range[3][1], stride[1])
-    elif padding == "VALID":
-        out_h_lower = _get_output(fmap_range[2][0], kernel[2], (0, 0), stride[0],
-                                  dilation[2])
-        out_h_upper = _get_output(fmap_range[2][1], kernel[2], (0, 0), stride[0],
-                                  dilation[2])
-        out_w_lower = _get_output(fmap_range[3][0], kernel[3], (0, 0), stride[1],
-                                  dilation[3])
-        out_w_upper = _get_output(fmap_range[3][1], kernel[3], (0, 0), stride[1],
-                                  dilation[3])
     else:
         out_h_lower = _get_output(fmap_range[2][0], kernel[2],
                                   (padding[0], padding[1]), stride[0], dilation[2])
@@ -533,12 +526,16 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         # Forth : L1 limitation, Mainly required by chip
         al1_min_byte = C0_SIZE * C0_SIZE * 2
         kl1_min = upper_fmap_w
-        bl1_min_byte = filter_h_dilation * kl1_min * C0_SIZE * 2
+        bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0_SIZE * 2
 
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
             dict_args = {}
-            dict_args["errCode"] = "E60026"
+            dict_args["errCode"] = "E60108"
+            dict_args["op_name"] = "conv2d_backprop_filter"
+            dict_args["reason"] = \
+                "for this input shape range, the minimum tiling may exceed \
+                L1_Buffer, please lower the upper_bound of fmap_w and retry"
             raise RuntimeError(dict_args,
                                error_manager.get_error_message(dict_args))
 

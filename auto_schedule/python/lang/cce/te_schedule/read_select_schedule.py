@@ -34,7 +34,7 @@ def _tilling_axis(valid_shape, input_dtype):
             split_axis = i - 1
             split_factor = total_ele // ele_cnt
             break
-        elif i == len(valid_shape) - 1:
+        if i == len(valid_shape) - 1:
             split_axis = i
             split_factor = total_ele
             break

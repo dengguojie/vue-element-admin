@@ -42,7 +42,7 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int> v_pads = {};
   std::string v_pad = "SAME";
   std::vector<int> DefaultStride = {1, 1};
-  std::vector<int> DefaultPads = {1, 1, 1, 1};
+  std::vector<int> DefaultPads = {0, 0, 0, 0};
 
   bool set_ksizes_flag = false;
   bool set_strides_flag = false;

@@ -66,15 +66,18 @@ else:
     from .cce_params import BLOCK_REDUCE_INT8
     from .cce_params import VECTOR_INST_BLOCK_WIDTH
     from .cce_params import VECTOR_INST_BLOCK_NUM
+    from .cce_params import VECTOR_INST_MAX_REPEAT_TIMES
     from .cce_params import HI3796CV300ES
     from .cce_params import HI3796CV300CS
     from .cce_params import ASCEND_310
     from .cce_params import ASCEND_910
     from .cce_params import ASCEND_610
     from .cce_params import ASCEND_710
+    from .cce_params import GEMM_MODE
     from . import cce_intrin
     from .cce_intrin import get_bit_len
     from . import cce_intrin_md
+    from .cce_intrin_md import reset_mask_insn
     from .cce_build import get_pass_list
     from .cce_build import build_config
     from .cce_build import build_config_update
@@ -118,8 +121,11 @@ else:
     from .insn_cmd import MUL
     from .insn_cmd import MAD
     from .insn_cmd import DUP
+    from .insn_cmd import ADD
     from .insn_cmd import SET_FMATRIX
     from .insn_cmd import REDUCE_SUM
     from .insn_cmd import DMA_PADDING
     from .log_util import except_msg
     from .fusion_manager import get_fusion_build_cfg
+    from .cce_util import get_const
+    from .cce_util import get_type_bits

@@ -38,11 +38,11 @@ DEFAULT_MAX_SHAPE_NUM = 1000000
     para_check.REQUIRED_ATTR_LIST_INT,
     para_check.REQUIRED_ATTR_LIST_INT,
     para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_INT,
-    para_check.REQUIRED_ATTR_STR,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_INT,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
     para_check.KERNEL_NAME,
 )
 def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
@@ -55,7 +55,7 @@ def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
     strides,
     pads,
     dilations=(1, 1, 1, 1),
-    groups=None,
+    groups=1,
     data_format="NHWC",
     output_padding=(0, 0, 0, 0),
     offset_x=0,
@@ -67,43 +67,48 @@ def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
     Parameters
     ----------
     x: dict with keys(shape and dtype)
-                  The shape of gradients.
+        The shape of gradients.
 
     filter: dict with keys(shape and dtype)
-            input filter tensor
-
-    offset_w: the offset for filter
+        input filter tensor.
 
     bias: dict with keys(shape and dtype)
         The shape of bias.
 
-    y: dict with keys(shape and dtype)
-       conv2d_transpose_d output tensor, dtype must be assigned
+    offset_w: dict with keys(shape and dtype) or None
+        Input offset_w tensor.
 
-    input_size: The shape of feature map.
-                 4-D with shape [batch, channels, height, filter].
+    y: dict with keys(shape and dtype)
+       conv2d_transpose_d output tensor, dtype must be assigned.
+
+    input_size: tuple/list of 4 integers
+        The shape of feature map. 4-D with shape [batch, height, width, channels]
+        or [batch, channels, height, filter].
 
     strides: tuple/list of 4 integers
-             filter move stride
+        filter move stride.
 
     pads: tuple/list of 4 integers
-             [pad_top, pad_bottom, pad_left, pad_right]
+        [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_transpose_d
+        filter expand size of dilated conv2d_transpose_d. Default to (1, 1, 1, 1).
+
     groups: int
-            param for group conv2d_transpose_d
+        param for group conv2d_transpose_d. Default to 1.
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
+    output_padding: tuple/list of 4 integers
+        The size will be added in the output shape. Default to (0, 0, 0, 0).
+
+    offset_x: int
+        offset of gradients in quant mode. Default to 1.
 
     kernel_name: str
-                 kernel name, default value is "conv2d_transpose_d"
-
-    output_padding: The size will be added in the output shape.
-
-    offset_x: the offset for x
+        kernel name. Default to "conv2d_transpose_d".
 
     Returns
     -------
@@ -200,7 +205,7 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     strides,
     pads,
     dilations=(1, 1, 1, 1),
-    groups=None,
+    groups=1,
     data_format="NHWC",
     output_padding=(0, 0, 0, 0),
     offset_x=0,
@@ -211,40 +216,48 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     Parameters
     ----------
     x: dict with keys(shape and dtype)
-                  The shape of gradients.
+        The shape of gradients.
 
     filter: dict with keys(shape and dtype)
-            input filter tensor
-
-    offset_w: the offset for filter
+        input filter tensor
 
     bias: dict with keys(shape and dtype)
         The shape of bias.
 
+    offset_w: dict with keys(shape and dtype) or None
+        Input offset_w tensor.
+
     y: dict with keys(shape and dtype)
-       conv2d_transpose_d output tensor, dtype must be assigned
+       conv2d_transpose_d output tensor, dtype must be assigned.
+
+    input_size: tuple/list of 4 integers
+        The shape of feature map. 4-D with shape [batch, height, filter, channels]
+        or [batch, channels, height, filter].
 
     strides: tuple/list of 4 integers
-             filter move stride
+        filter move stride.
 
     pads: tuple/list of 4 integers
-             [pad_top, pad_bottom, pad_left, pad_right]
+        [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_transpose_d
+        filter expand size of dilated conv2d_transpose_d. Default to (1, 1, 1, 1).
+
     groups: int
-            param for group conv2d_transpose_d
+        param for group conv2d_transpose_d. Default to 1.
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Defaults to "NHWC".
+
+    output_padding: tuple/list of 4 integers
+        The size will be added in the output shape. Default to (0, 0, 0, 0).
+
+    offset_x: int
+        offset of gradients in quant mode. Default to 1.
 
     kernel_name: str
-                 kernel name, default value is "conv2d_transpose_d"
-
-    output_padding: The size will be added in the output shape.
-
-    offset_x: the offset for x
+        kernel name. Default to "conv2d_transpose_d".
 
     Returns
     -------
@@ -353,33 +366,34 @@ def _conv2d_transpose_cce(
 
     Parameters:
     ----------
-    shape_filter : The shape of filter.
-                   4-D with shape [batch, channels, height, width].
+    shape_filter: The shape of filter.
+        4-D with shape [batch, channels, height, width].
 
-    shape_x : The shape of gradients.
-              4-D with shape [batch, channels, height, width].
+    shape_x: The shape of gradients.
+        4-D with shape [batch, channels, height, width].
 
-    input_size : The shape of feature map.
-                  4-D with shape [batch, channels, height, width].
+    input_size: The shape of feature map.
+        4-D with shape [batch, channels, height, width].
 
-    strides : A list of ints. The stride of the sliding window.
+    strides: A tuple/list of ints.
+        The stride of the sliding window.
 
-    pads : "SAME"or"VALID" indicating the type of pads algorithm to use,
-           or list.
+    pads: "SAME"or"VALID", indicating the type of pads algorithm to use,
+        or tuple/list .
 
-    dilations : An optional list of ints. Default value is [1, 1, 1, 1].
+    dilations: An optional tuple/list of ints. Default to (1, 1, 1, 1).
 
-    filter_dtype : The dtype of filter data. Default value is float16.
+    filter_dtype: The dtype of filter data. Default to float16.
 
-    x_dtype : The dtype of gradients data. Default value is float16.
+    x_dtype: The dtype of gradients data. Default to float16.
 
-    res_dtype : The dtype of result(De/Dx) data. Default value is float16.
+    res_dtype: The dtype of result(De/Dx) data. Default to float16.
 
-    bias: False: no bias, True: have bias
+    bias: False: no bias, True: have bias. Default to 0.
 
-    kernel_name : Cce kernel name. Default value is "conv2d_transpose_cce"
+    kernel_name: Cce kernel name. Default to "conv2d_transpose_cce".
 
-    Returns : None
+    Returns: None
     ----------
     """
 

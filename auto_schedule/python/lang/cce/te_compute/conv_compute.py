@@ -27,7 +27,7 @@ from te.platform.operation import get_te_var
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
-FMAP_W_MAX = 4096
+FMAP_W_MAX = 2**32-1
 FMAP_H_MAX = 100000
 
 FMAP_W_MIN_SPLIT_W = 1

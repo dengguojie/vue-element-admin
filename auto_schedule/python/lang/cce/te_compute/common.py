@@ -400,7 +400,7 @@ def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
     """
     mad
     """
-    if res_type == "int32" or res_type == "uint32":
+    if res_type in ('int32', 'uint32'):
         r_k0 = tvm.reduce_axis((0, BLOCK_INT8_SIZE), name='k0')
     else:
         r_k0 = tvm.reduce_axis((0, BLOCK_SIZE), name='k0')
@@ -418,7 +418,7 @@ def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
         lambda n, cg, j1, i, j0: tvm.sum((in_a[
             n, cg, i // BLOCK_SIZE, r_k1, i % BLOCK_SIZE, r_k0] - offset_x).astype(
                 res_type) * in_b[cg, r_k1, j1, j0, r_k0].astype(res_type),
-            axis=[r_k1, r_k0]),
+                                         axis=[r_k1, r_k0]),
         name='mad',
         tag='gemm',
         attrs={'mode': crmode})

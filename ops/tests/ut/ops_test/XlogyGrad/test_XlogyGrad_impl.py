@@ -15,9 +15,56 @@ http://www.apache.org/licenses/LICENSE-2.0
 XlogyGrad ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 
 ut_case = OpUT("XlogyGrad")
 
+def produce_shapes(shape1, shape2):
+    """
+    two input shapes produce three output shape
+    """
+    shape1 = list(shape1)
+    shape2 = list(shape2)
+    flag = 0
+    if len(shape1) < len(shape2):
+        shape1, shape2 = shape2, shape1
+        flag = 1
+
+    output_shape_len = len(shape1)
+    dec = output_shape_len - len(shape2)
+    for i in range(dec):
+        shape2 = [1] + shape2
+
+    if flag == 1:
+        shape1, shape2 = shape2, shape1
+
+    return shape1, shape2
+
+def broadcast_gradient_args(x,y):
+    rx = []
+    ry = []
+    for i in range(len(x)):
+        if x[i] < y[i]:
+            rx.append(i)
+        elif x[i] > y[i]:
+            ry.append(i)
+    return rx, ry
+
+def calc_expect_func(x1, x2, grad, y1, y2):
+    shape1, shape2 = produce_shapes(x1['shape'], x2['shape'])
+    rx, ry = broadcast_gradient_args(shape1, shape2)
+    m1 = np.array(x1['value'])
+    m2 = np.nonzero(m1)
+    m1[m2] = 1
+    log_Arr2 = np.log(x2['value'])
+    mul_Arr1 = np.multiply(m1, log_Arr2)
+    grad_Arr1 = np.multiply(mul_Arr1, grad['value'])
+    outputArr1 = np.sum(grad_Arr1, tuple(rx)).astype(y1['dtype'])
+    div_Arr2 = np.divide(x1['value'], x2['value'])
+    grad_Arr2 = np.multiply(div_Arr2, grad['value'])
+    outputArr2 = np.sum(grad_Arr2, tuple(ry)).astype(y2['dtype'])
+    return outputArr1, outputArr2
 
 case_small_shape_scalar_fp16 = {
     "params":
@@ -286,9 +333,155 @@ ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910"], case_multi_core_single_not_aligned_fp16)
 
 
-# ut_case.add_case(["Ascend310"], case1)
+precision_case1 = {
+    "params":
+        [
+            {
+                "shape": (33, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (33, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (33, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (33, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (33, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (33, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (33, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (33, ),
+                "ori_format": "ND",
+                "param_type": "output"
+            },
+            {
+                "shape": (33, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (33, ),
+                "ori_format": "ND",
+                "param_type": "output"
+            }
+        ],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+}
 
+precision_case2 = {
+    "params":
+        [
+            {
+                "shape": (1, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (1, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (1, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (1, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, ),
+                "ori_format": "ND",
+                "param_type": "output"
+            },
+            {
+                "shape": (1, ),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, ),
+                "ori_format": "ND",
+                "param_type": "output"
+            }
+        ],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+}
+precision_case3 = {
+    "params":
+        [
+            {
+                "shape": (16, 32, 16),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (16, 32, 16),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (16, 32, 16),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (16, 32, 16),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (16, 32, 16),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (16, 32, 16),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (16, 32, 16),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (16, 32, 16),
+                "ori_format": "ND",
+                "param_type": "output"
+            },
+            {
+                "shape": (16, 32, 16),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (16, 32, 16),
+                "ori_format": "ND",
+                "param_type": "output"
+            }
+        ],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+}
+ut_case.add_precision_case("Ascend910", precision_case1)
+ut_case.add_precision_case("Ascend910", precision_case2)
+ut_case.add_precision_case("Ascend910", precision_case3)
 
 if __name__ == '__main__':
-    ut_case.run('Ascend910')
-    exit(0)
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

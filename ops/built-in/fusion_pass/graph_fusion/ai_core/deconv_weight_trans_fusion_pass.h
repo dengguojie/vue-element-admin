@@ -28,15 +28,15 @@ namespace fe {
 class DeconvWeightTransFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  void GetShapeUsedByIntermediateProcessInDeconvWeightTrans(const ge::Format& filterFormat,
-                                                            const vector<int64_t>& shapeNCHW, vector<int64_t>& dimComp,
-                                                            vector<int64_t>& reshapeIn, vector<int64_t>& transPerm,
-                                                            vector<int64_t>& reverseAxis, vector<int64_t>& reshapeOut);
-  Status Relink(ge::NodePtr filterNode, ge::NodePtr dimCompNode, ge::NodePtr transposeNode, ge::NodePtr reformatNode,
-                ge::NodePtr reshapeInNode, ge::NodePtr reverseNode, ge::NodePtr reshapeOutNode, ge::NodePtr deconvNode);
+  void GetShapeUsedByIntermediateProcessInDeconvWeightTrans(const ge::Format& filter_format,
+                                                            const vector<int64_t>& shape_NCHW, vector<int64_t>& complement_dimension,
+                                                            vector<int64_t>& reshape_in, vector<int64_t>& permute_shape,
+                                                            vector<int64_t>& reverse_axis, vector<int64_t>& reshape_out);
+  Status Relink(ge::NodePtr filter_node, ge::NodePtr complement_dimension_node, ge::NodePtr transpose_node, ge::NodePtr reformat_node,
+                ge::NodePtr reshape_in_node, ge::NodePtr reverse_node, ge::NodePtr reshape_out_node, ge::NodePtr deconv_node);
   const string FUSED_OP_TYPE = "Deconvolution";
 };
 }  // namespace fe

@@ -328,7 +328,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             batch_dim_factor = tvm.max(1, batch_dim_factor)
             if self.dynamic_mode == "dynamic_batch":
                 batch_core, batch_in = sch[res_cc].split(
-                        batch, factor=batch_dim_factor)
+                    batch, factor=batch_dim_factor)
             else:
                 batch_core, batch_in = sch[res_cc].split(
                         batch, nparts=block_dim_batch)
@@ -810,7 +810,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         def _dynamic_bl1_buffer_tile():
             if self.dynamic_mode and not flag_all_one_case:
                 bl1_hw_allin_flag = dynamic_para.get('bl1_hw_allin_flag')
-                if bl1_hw_allin_flag and block_dim_hw == 1:
+                if block_dim_hw == 1 and bl1_hw_allin_flag:
                     # hw is fully loaded on L1 without multi-core
                     sch[fmap_l1].buffer_tile((None, None),
                                              (None, None),
@@ -818,7 +818,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                               pad_up + pad_down),
                                              (None, None),
                                              (None, None))
-                elif block_dim_hw == 1:
+                elif block_dim_hw == 1 and self.dynamic_mode == 'dynamic_hw':
                     # hw does not bind multi-core
                     bl1_k = tiling.get("BL1_shape")[0]
                     if tiling.get("AL1_shape"):
@@ -926,6 +926,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                           " using special branch")
             if height_all_one and not width_all_one:
                 flag_conv1d_case = True
+            if self.dynamic_mode == "dynamic_hw":
+                flag_conv1d_case = dynamic_para.get("flag_conv1d_case")
             return flag_all_one_case, flag_conv1d_case
         flag_all_one_case, flag_conv1d_case = _flag_all_one()
         tiling = _get_tiling()
@@ -1265,8 +1267,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 block_div = block_dim_batch * block_dim_cout * block_dim_cin
                 hw_block_offset = fused_multi_core // block_div * \
                     _ceil_div(hw_pad_1, block_dim_hw) * CUBE_DIM
-                if tiling["BL1_shape"] and\
-                        (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1):
+                if self.dynamic_mode:
+                    bool_dw_cc = dynamic_bl1_attach == "dw_cc"
+                else:
+                    bool_dw_cc = tiling["BL1_shape"] and\
+                        (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
+                if bool_dw_cc:
                     if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
                         # hw splited one time before BL1  attach
                         hw_parts_offset = \
@@ -1331,11 +1337,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 bl1_bound = bl1_k * tiling.get("BL1_shape")[1] * \
                             tiling.get("BL0_matrix")[1] // \
                             (kernel_height * kernel_width) * c0_fmap
-                if self.dynamic_mode == "dynamic_batch" \
-                    and dynamic_bl1_attach == "dw_ddr":
-                    batch_dim_factor = _ceil_div(batch_fmap, block_dim_batch)
-                    batch_dim_factor = tvm.max(1, batch_dim_factor)
-                    bl1_bound *= batch_dim_factor
             else:
                 bl1_k = _ceil_div(width_fmap * height_fmap, block_dim_hw)
                 bl1_k = _align(bl1_k, CUBE_DIM)
@@ -1349,11 +1350,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                               tiling.get("AL0_matrix")[0] * CUBE_DIM
                 al1_k = tiling.get("AL1_shape")[0]
                 al1_bound = al1_k * al1_m
-                if self.dynamic_mode == "dynamic_batch" \
-                    and dynamic_al1_attach == "dw_ddr":
-                    batch_dim_factor = _ceil_div(batch_fmap, block_dim_batch)
-                    batch_dim_factor = tvm.max(1, batch_dim_factor)
-                    al1_bound *= batch_dim_factor
             else:
                 al1_m = grads_matrix_c1 * grads_matrix_c0
                 al1_bound = grads_matrix_howo * al1_m

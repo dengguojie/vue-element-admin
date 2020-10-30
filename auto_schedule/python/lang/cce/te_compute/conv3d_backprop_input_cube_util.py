@@ -271,8 +271,8 @@ class CubeDslPattern(object):
                 tensor_a(n_index, (deep_index + pad_head)//stride_d,
                          m_index // a_m0, axis_k1, m_index % a_m0,
                          axis_k0).astype(type_c) *
-                    tensor_b((deep_index + pad_head) % stride_d, axis_k1,
-                             co1_index, co0_index, axis_k0).astype(type_c),
+                tensor_b((deep_index + pad_head) % stride_d, axis_k1,
+                         co1_index, co0_index, axis_k0).astype(type_c),
                 tvm.const(0.0, type_c))
             return tensor_c
 

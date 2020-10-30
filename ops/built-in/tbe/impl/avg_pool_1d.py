@@ -19,6 +19,8 @@ avg_pool_1d
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments
@@ -26,12 +28,12 @@ def _parameter_check(shape, div_shape, shape_out, dtype, ksize, pads):
     para_check.check_shape(shape, param_name="x")
     para_check.check_shape(div_shape, param_name="div")
     para_check.check_shape(shape_out, param_name="out")
+    para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     half_kernel_size = ksize // 2
-    if dtype != "float16" and dtype != "float32":
-        raise RuntimeError("input dtype only support float16, float32")
     if pads[0] > half_kernel_size:
-        raise RuntimeError("pad should be smaller than half of kernel size, but got pad = %d, ksize = %d" %
-                           (pads[0], ksize))
+        error_manager_vector.raise_err_check_params_rules(
+            "avg_pool_1d", 'pad should be smaller than half of kernel size, kernel_size is {}'.format(ksize), 'pad',
+            pads)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
@@ -74,8 +76,13 @@ def avg_pool_1d_compute(x,
         x_wo = ((x_wi + pad_l + pad_r) - kernel) // stride + 1
 
     if x_wo <= 0:
-        raise RuntimeError("Given input Win num: %d. Calculated output Wout num: %d. should keep Woutput > 0" %
-                           (x_wi, x_wo))
+        dict_args = {
+            'errCode': 'E50044',
+            'op_name': 'avg_pool_1d',
+            'w_of_x': x_wi + pad_l + pad_r,
+            'w_of_filter': kernel
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
     if pad_l:
         # ensure that the last pooling starts inside the image needed to avoid problems in ceil mode
@@ -93,16 +100,19 @@ def avg_pool_1d_compute(x,
         lambda x_fused_axis, w, c0: tvm.select(tvm.any(w < pad_l, w >= x_wi + pad_l), tvm.const(0, dtype=x.dtype), x[
             x_fused_axis, w - pad_l, c0]),
         name="tensor_mid_shape_in_ub")
+
     # reduce w
     reduce_tensor_list = []
     re_shape = (x_fused_axis, x_wo, x_c0)
     if kernel > 1:
+        # Add the first and second points of the sliding window
         tensor_w = tvm.compute(
             re_shape,
             lambda fused_axis, w, c0: tvm.sum(tensor_mid_shape_in_ub[fused_axis, w * stride + 0, c0],
                                               tensor_mid_shape_in_ub[fused_axis, w * stride + 1, c0]),
             name="tensor_w")
         reduce_tensor_list.append(tensor_w)
+        # then accumulate the Nth point in sequence.
         for j in range(2, kernel):
             tensor_w_tmp = tvm.compute(
                 re_shape,
@@ -161,19 +171,19 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list):
         else:
             w_block_factor = _ceil(wo_out, _ceil(core_num, fused_axis_block_factor))
             fused_axis_block_factor = 1
-        wo_buffer_num = 4
-        wi_buffer_num = 2
 
         # for wi = (wo - 1) * stride + kernel
         # wo_buffer_num * N * C1 * H * Wo * C0 + wi_buffer_num * N * C1 * H * Wi * C0 <= total_ele
-        nc1wo_limit = (total_ele // (c0) +
-                       (stride - kernel) * wi_buffer_num) // (wo_buffer_num + stride * wi_buffer_num)
-        nc1_limit = (total_ele // (c0)) // (wo_buffer_num * wo_out + wi_buffer_num * wo_out * stride - wi_buffer_num *
-                                            (stride - kernel))
+        wo_buffer_num = 4
+        wi_buffer_num = 2
+        nc1wo_limit = (total_ele // c0 + (stride - kernel) * wi_buffer_num) // (wo_buffer_num + stride * wi_buffer_num)
+        nc1_limit = (total_ele // c0) // (wo_buffer_num * wo_out + wi_buffer_num * wo_out * stride - wi_buffer_num *
+                                          (stride - kernel))
 
         if nc1_limit > 1:
             fused_factor, wo_factor = min(fused_axis_block_factor, nc1_limit), w_block_factor
         else:
+            # To align 8 blocks, round down to a multiple of 8.
             fused_factor, wo_factor = 1, nc1wo_limit // 8 * 8
         return [fused_axis_block_factor, w_block_factor], [fused_factor, wo_factor]
 

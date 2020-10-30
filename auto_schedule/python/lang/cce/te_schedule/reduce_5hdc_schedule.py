@@ -247,9 +247,9 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
                 intermediate.insert(0, available_axis[-1])
                 satisfiable_factor = min(last_available_axis_size, satisfiable_need_size)
                 self.tiling_calculation_unit_factor = satisfiable_factor
+                return self.calculate_tiling(intermediate)
             else:
                 self.device_core_num = 1
-            return self.calculate_tiling(intermediate)
         if rule_two_tail_flag:
             self.tiling_calculation_unit_factor -= 1
             return self.calculate_tiling(intermediate)

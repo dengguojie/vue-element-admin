@@ -16,8 +16,8 @@ SliceD ut case
 from op_test_frame.ut import OpUT
 ut_case = OpUT("SliceD", None, None)
 
-case1 = {"params": [{"shape": (5, 13, 4), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW"}, #x
-                    {"shape": (2, 12, 3), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 12, 3),"ori_format": "NCHW"},
+case1 = {"params": [{"shape": (5, 13, 4), "dtype": "int32", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW"}, #x
+                    {"shape": (2, 12, 3), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 12, 3),"ori_format": "NCHW"},
                     (0, 1, 1), (2, -1, -1),
                     ],
          "case_name": "SliceD_1",
@@ -40,28 +40,91 @@ case3 = {"params": [{"shape": (13, 7, 5, 3), "dtype": "int8", "format": "NCHW", 
          "expect": "success",
          "support_expect": True}
 
-case4 = {"params": [{"shape": (160000, 16), "dtype": "int64", "format": "NCHW", "ori_shape": (160000, 16),"ori_format": "NCHW"}, #x
-                    {"shape": (16000, 16), "dtype": "int64", "format": "NCHW", "ori_shape": (16000, 16),"ori_format": "NCHW"},
-                    (0, 0), (160000, 16),
+case4 = {"params": [{"shape": (13, 7, 5, 3), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 3),"ori_format": "NCHW"}, #x
+                    {"shape": (1, 1, 3, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (1, 1, 3, 1),"ori_format": "NCHW"},
+                    (0, 0, 0, 0), (1, 1, 3, 1),
                     ],
          "case_name": "SliceD_4",
          "expect": "success",
          "support_expect": True}
 
-case5 = {"params": [{"shape": (459999,), "dtype": "float32", "format": "NCHW", "ori_shape": (459999,),"ori_format": "NCHW"}, #x
-                    {"shape": (458752,), "dtype": "float32", "format": "NCHW", "ori_shape": (458752,),"ori_format": "NCHW"},
-                    (3,), (458752,), 
+case5 = {"params": [{"shape": (13, 7, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 1, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (2, 2, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (2, 2, 1, 1),"ori_format": "NCHW"},
+                    (0, 0, 0, 0), (2, 2, 1, 1),
                     ],
          "case_name": "SliceD_5",
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (13, 7, 5, 5), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 5),"ori_format": "NCHW"}, #x
+                    {"shape": (1, 1, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (1, 1, 1, 1),"ori_format": "NCHW"},
+                    (0, 0, 0, 0), (1, 1, 1, 1),
+                    ],
+         "case_name": "SliceD_6",
+         "expect": "success",
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (2, 70000), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 70000),"ori_format": "NCHW"}, #x
+                    {"shape": (2, 69999), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 69999),"ori_format": "NCHW"},
+                    (0, 0), (2, 69999),
+                    ],
+         "case_name": "SliceD_7",
+         "expect": "success",
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (7, 200, 600), "dtype": "float16", "format": "NCHW", "ori_shape": (7, 200, 600),"ori_format": "NCHW"}, #x
+                    {"shape": (3, 128, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (3, 128, 512),"ori_format": "NCHW"},
+                    (1, 1, 1), (3, 128, 512), 
+                    ],
+         "case_name": "SliceD_8",
+         "expect": "success",
+         "support_expect": True}
+
+case9 = {"params": [{"shape": (9, 11, 270000), "dtype": "float16", "format": "NCHW", "ori_shape": (9, 11, 270000),"ori_format": "NCHW"}, #x
+                    {"shape": (3, 5, 262144), "dtype": "float16", "format": "NCHW", "ori_shape": (3, 5, 262144),"ori_format": "NCHW"},
+                    (3, 4, 5), (3, 5, 262144), 
+                    ],
+         "case_name": "SliceD_9",
+         "expect": "success",
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (459999, ), "dtype": "float16", "format": "NCHW", "ori_shape": (459999, ),"ori_format": "NCHW"}, #x
+                    {"shape": (458752, ), "dtype": "float16", "format": "NCHW", "ori_shape": (458752, ),"ori_format": "NCHW"},
+                    (3, ), (458752, ), 
+                    ],
+         "case_name": "SliceD_10",
+         "expect": "success",
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (65536, 31748), "dtype": "int64", "format": "NCHW", "ori_shape": (65536, 31748),"ori_format": "NCHW"}, #x
+                    {"shape": (0, 0), "dtype": "int64", "format": "NCHW", "ori_shape": (0, 0),"ori_format": "NCHW"},
+                    (0, 0), (65536, 31748), 
+                    ],
+         "case_name": "SliceD_11",
+         "expect": "success",
+         "support_expect": True}
+
+case12 = {"params": [{"shape": (160000, 16), "dtype": "int64", "format": "NCHW", "ori_shape": (160000, 16),"ori_format": "NCHW"}, #x
+                    {"shape": (160000, 16), "dtype": "int64", "format": "NCHW", "ori_shape": (160000, 16),"ori_format": "NCHW"},
+                    (0, 0), (160000, 16), 
+                    ],
+         "case_name": "SliceD_12",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case("Ascend910", case1)
+ut_case.add_case("Ascend910", case2)
+ut_case.add_case("Ascend910", case3)
+ut_case.add_case("Ascend910", case4)
+ut_case.add_case("Ascend910", case5)
+ut_case.add_case("Ascend910", case6)
+ut_case.add_case("Ascend910", case7)
+ut_case.add_case("Ascend910", case8)
+ut_case.add_case("Ascend910", case9)
+ut_case.add_case("Ascend910", case10)
+ut_case.add_case("Ascend910", case11)
+ut_case.add_case("Ascend910", case12)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run("Ascend910")

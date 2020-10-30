@@ -452,11 +452,11 @@ def _calc_align_num(context, d_factor, h_factor, w_factor):
         if _aligin_up_8(w_factor * context["kw"]) % 16 == 0:
             return 8
         return 16
-    elif context["align_axis"] == "axis_h":
+    if context["align_axis"] == "axis_h":
         if (_aligin_up_8(h_factor * context["kh"]) * w_factor * context["kw"]) % 16 == 0:
             return 8
         return 16
-    elif context["align_axis"] == "axis_d":
+    if context["align_axis"] == "axis_d":
         if (_aligin_up_8(d_factor * context["kd"]) * h_factor * context["kh"] * w_factor * context["kw"]) % 16 == 0:
             return 8
         return 16

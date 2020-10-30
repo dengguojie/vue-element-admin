@@ -59,15 +59,21 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.c_info = self.tiling_info['C_shape']
         self._get_calc_info()
         self.key = 'C_shape'
+        self.op_type = "conv2d_bp_input"
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
+        res_list = []
         for m in tiling_list:
             if m["C_shape"][2] == 0:
                 m["C_shape"][2] = m["A_shape"][2] * self.stride_h
             if m["C_shape"][3] == 0:
                 m["C_shape"][3] = m["A_shape"][3] * self.stride_w
-        return tiling_list
+            t_h, t_w = self._get_input_h(m["C_shape"][2]), \
+                self._get_input_w(m["C_shape"][3])
+            if t_h == m["A_shape"][2] and t_w == m["A_shape"][3]:
+                res_list.append(m)
+        return res_list
 
     def get_costmodel_tiling(self, shape):
         """
@@ -87,14 +93,11 @@ class Conv2dBpInputTiling(CubeTilingOp):
             self.c_info[0] = shape
         elif self.dynamic_mode == "dynamic_hw":
             self.c_info[2], self.c_info[3] = shape[0], shape[1]
-            self._set_padding_list(self.c_info[2], self.c_info[3])
-            self.tiling_info['padl'] = self.cur_pads[0]
-            self.tiling_info['padr'] = self.cur_pads[1]
-            self.tiling_info['padu'] = self.cur_pads[2]
-            self.tiling_info['padd'] = self.cur_pads[3]
             self.a_info[2] = self._get_input_h(self.c_info[2])
             self.a_info[3] = self._get_input_w(self.c_info[3])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
+        for pad in ("padl", "padr", "padu", "padd"):
+            self.tiling_info[pad] = 0
 
         cost_seeds = get_tiling(self.tiling_info)
         if cost_seeds:
@@ -114,11 +117,12 @@ class Conv2dBpInputTiling(CubeTilingOp):
         if not tiling["AL1_shape"]:
             return [1, h_o, 1, w_o]
 
-        self._set_padding_list(h_o, w_o)
-
         # get min value
-        ho_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1)
-        wo_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1)
+        ho_min, wo_min = 1, 1
+        if self.pad_mode != "SAME":
+            ho_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1)
+            wo_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1)
+        support_w_min = wo_min
 
         # get max value
         ho_max = H_RANGE
@@ -127,7 +131,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             return [0, 0, 0, 0]
 
         while self._check_tiling_match(tiling, cur_w_size, h_o) and \
-            cur_w_size > max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1):
+                cur_w_size > support_w_min:
             wo_min = cur_w_size
             cur_w_size = cur_w_size - W_DELTA
 
@@ -169,10 +173,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
         if self.dynamic_mode == "dynamic_hw":
             dx_h_low, dx_h_high = int(coverage[0]), int(coverage[1])
             dx_w_low, dx_w_high = int(coverage[2]), int(coverage[3])
-            self._set_padding_list(dx_h_low, dx_w_low)
             dedy_h_low = self._get_input_h(dx_h_low)
             dedy_w_low = self._get_input_w(dx_w_low)
-            self._set_padding_list(dx_h_high, dx_w_high)
             dedy_h_high = self._get_input_h(dx_h_high)
             dedy_w_high = self._get_input_w(dx_w_high)
 
@@ -260,20 +262,11 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.dilate_h, self.dilate_w = self.tiling_info["dilationH"], \
                                        self.tiling_info["dilationW"],
 
-        if isinstance(self.tiling_info["padl"], Expr):
-            self.pad_mode = "SAME"
-            self.cur_pads = [-1, -1, -1, -1]
-            for pad in ("padl", "padr", "padu", "padd"):
-                self.tiling_info[pad] = -1
-        else:
-            self.pad_mode = "FIX"
-            self.cur_pads = [
-                self.tiling_info["padl"], self.tiling_info["padr"],
-                self.tiling_info["padu"], self.tiling_info["padd"]
-            ]
-
-        self.k_h_dilation = (self.k_h - 1) * self.dilate_h + 1
-        self.k_w_dilation = (self.k_w - 1) * self.dilate_w + 1
+        self.pad_mode = "SAME" if isinstance(self.tiling_info["padl"], Expr) else "FIX"
+        self.cur_pads = []
+        for pad in ("padl", "padr", "padu", "padd"):
+            self.cur_pads.append(self.tiling_info[pad])
+            self.tiling_info[pad] = -1
 
     def _preprocess_tiling(self, tiling_in):
         """
@@ -288,24 +281,6 @@ class Conv2dBpInputTiling(CubeTilingOp):
             tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
                 (self.k_h * self.k_w * utils.CUBE_SIZE)
         return tiling
-
-    def _set_padding_list(self, cur_h, cur_w):
-        """
-        get padding list in cur dx shape
-        """
-
-        if self.pad_mode == "SAME":
-            pad_h = max(
-                utils.align(cur_h, self.stride_h) - self.stride_h + self.k_h_dilation -
-                cur_h, 0)
-            pad_up = pad_h // 2
-            pad_down = pad_h - pad_up
-            pad_w = max(
-                utils.align(cur_w, self.stride_w) - self.stride_w + self.k_w_dilation -
-                cur_w, 0)
-            pad_left = pad_w // 2
-            pad_right = pad_w - pad_left
-            self.cur_pads = [pad_left, pad_right, pad_up, pad_down]
 
     def _get_al1_bound(self, tiling, curent_size):
         """
@@ -325,7 +300,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         # shape info
         out_w = curent_size
-        w_i = self._get_input_w_extend(out_w)
+        w_i = self._get_input_w(out_w, stride=1)
 
         if len(tiling['AL1_shape']) == 1:
             tiling['AL1_shape'].append(1)
@@ -333,7 +308,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
         al1_m_data = tiling['CL0_matrix'][1] * utils.FP16_M * tiling['AL1_shape'][1]
 
         # load2d ::
-        if sum(self.cur_pads) == 0 and self.k_h * self.k_w == 1:
+        if (self.pad_mode == "SAME" or sum(self.cur_pads) == 0) and \
+                self.k_h * self.k_w == 1:
             return al1_m_data
 
         # load3d ::
@@ -371,9 +347,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         # shape info
         w_o, h_o = current_w, current_h
-        self._set_padding_list(h_o, w_o)
-        h_i = self._get_input_h_extend(h_o)
-        w_i = self._get_input_w_extend(w_o)
+        h_i = self._get_input_h(h_o, stride=1)
+        w_i = self._get_input_w(w_o, stride=1)
 
         # fmap size
         if tiling['AL1_shape']:
@@ -400,18 +375,18 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         return fmap_l1_size + filter_l1_size <= utils.L1BUFFER
 
-    def _get_input_h(self, h_o):
-        return (h_o + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
-                (self.k_h - 1) - 1) // self.stride_h + 1
+    def _get_input_h(self, fmap_h, stride=None):
+        if not stride:
+            stride = self.stride_h
+        if self.pad_mode == "SAME":
+            return utils.icd(fmap_h, stride)
+        return (fmap_h + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
+                (self.k_h - 1) - 1) // stride + 1
 
-    def _get_input_w(self, w_o):
-        return (w_o + self.cur_pads[0] + self.cur_pads[1] - self.dilate_h *
-                (self.k_w - 1) - 1) // self.stride_w + 1
-
-    def _get_input_h_extend(self, h_o):
-        return (h_o + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
-                (self.k_h - 1) - 1) + 1
-
-    def _get_input_w_extend(self, w_o):
-        return (w_o + self.cur_pads[0] + self.cur_pads[1] - self.dilate_h *
-                (self.k_w - 1) - 1) + 1
+    def _get_input_w(self, fmap_w, stride=None):
+        if not stride:
+            stride = self.stride_w
+        if self.pad_mode == "SAME":
+            return utils.icd(fmap_w, stride)
+        return (fmap_w + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
+                (self.k_w - 1) - 1) // stride + 1

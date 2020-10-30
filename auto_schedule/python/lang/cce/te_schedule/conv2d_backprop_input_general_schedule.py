@@ -15,16 +15,15 @@
 """
 conv2d backprop input general schedule.
 """
+from te import tvm
 from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
-from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import \
-    DeConvPattern
+from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.lang.cce.te_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
-from te import tvm
 from te.tvm.schedule import InferBound
 from te.tvm.schedule import ScheduleOps
 from te.utils.error_manager import error_manager_util
@@ -32,7 +31,7 @@ from te.utils.error_manager import error_manager_util
 # default false
 DEBUG_MODE = False  # pylint: disable=C0302
 # Don't modify, used in log_util
-DX_SUPPORT_TAG_LOG_PREFIX = '#Conv2DBackpropInput only support#'
+DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
 
@@ -43,10 +42,7 @@ def _raise_dx_general_err(msg):
     msg for discribe the error info
     the error info only for Conv2DBackpropInput_general's developers
     """
-    args_dict = {
-        "errCode": "E60108",
-        "reason": msg
-    }
+    args_dict = {"errCode": "E60108", "reason": msg}
     msg = error_manager_util.get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
 
@@ -100,9 +96,9 @@ def _align(x_1, x_2):
     return (x_1 + x_2 - 1) // x_2 * x_2
 
 
-def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
-                     tiling_case=None,
-                     var_range=None):
+def general_schedule(
+    tensor, sch_list, tiling_case=None, var_range=None
+):  # pylint:disable=R0914,R0915
     """
     auto_schedule for cce AI-CORE.
     For now, only one convolution operation is supported.
@@ -162,7 +158,6 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         return None
 
     def _fetch_tensor_info(dynamic_mode):  # pylint:disable=R0914,R0912,R0915
-
         def _get_vadd_tensors(vadd_res_tensor):
             left_tensor = vadd_res_tensor.op.input_tensors[0]
             right_tensor = vadd_res_tensor.op.input_tensors[1]
@@ -180,30 +175,32 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 tensor_attr["n0_32_flag"] = True
                 tensor_attr["q_mode"] = deconv_res.op.attrs["round_mode"].value
             while temp_tensor.op.input_tensors:
-                if temp_tensor.op.tag in ("dequant_vector",
-                                          "dequant1_vector"):
+                if temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
                     tensor_map["c_ub"] = temp_tensor
                     tensor_attr["deq_vector"] = True
                     tensor_attr["quant_fuse"] = True
                     tensor_map["deq"] = temp_tensor.op.input_tensors[1]
-                elif temp_tensor.op.tag in ("dequant_scale",
-                                            "dequant1_scale"):
+                elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
                     tensor_map["c_ub"] = temp_tensor
                     tensor_attr["quant_fuse"] = True
                     tensor_map["deq"] = temp_tensor.op.input_tensors[1]
                     tensor_attr["deq_vector"] = False
-                elif len(temp_tensor.op.input_tensors) == 2 \
-                        and "elewise" in temp_tensor.op.tag:
+                elif (
+                    len(temp_tensor.op.input_tensors) == 2
+                    and "elewise" in temp_tensor.op.tag
+                ):
                     input_tensor = temp_tensor.op.input_tensors[0]
                     if not input_tensor.op.input_tensors:
                         temp_tensor = temp_tensor.op.input_tensors[1]
                         continue
-                elif "dequant_remove_pad" in temp_tensor.op.tag \
-                        and deconv_res.op.tag != temp_tensor.op.tag:
+                elif (
+                    "dequant_remove_pad" in temp_tensor.op.tag
+                    and deconv_res.op.tag != temp_tensor.op.tag
+                ):
                     sch[temp_tensor].compute_inline()
                 temp_tensor = temp_tensor.op.input_tensors[0]
 
-        def fetch_elewise_fusion():
+        def _fetch_elewise_fusion():
             ub_list = []
             input_tensor_list = []
             temp_tensor = deconv_res
@@ -211,8 +208,9 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             while temp_tensor.op.input_tensors:
                 if len(temp_tensor.op.input_tensors) == 2:
                     input_tensor = temp_tensor.op.input_tensors[0]
-                    input_tensor_des = c_ub_res \
-                        if temp_tensor == deconv_res else temp_tensor
+                    input_tensor_des = (
+                        c_ub_res if temp_tensor == deconv_res else temp_tensor
+                    )
                     if not input_tensor.op.input_tensors:
                         temp_tensor = temp_tensor.op.input_tensors[1]
                     else:
@@ -233,13 +231,15 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             tensor_map["input_tensor_list"] = input_tensor_list
             return c_ub_cut
 
-        def fetch_quant_info():
+        def _fetch_quant_info():
             ub_list = []
             input_cache_buffer = []
             temp_tensor = deconv_res
             while temp_tensor.op.input_tensors:
-                if len(temp_tensor.op.input_tensors) == 2 \
-                        and "elewise" in temp_tensor.op.tag:
+                if (
+                    len(temp_tensor.op.input_tensors) == 2
+                    and "elewise" in temp_tensor.op.tag
+                ):
                     input_tensor = temp_tensor.op.input_tensors[0]
                     c_ub_res = temp_tensor
                     if deconv_res.op.tag == temp_tensor.op.tag:
@@ -250,12 +250,18 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                         continue
                     input_tensor = temp_tensor.op.input_tensors[1]
                     input_cache_buffer.append([input_tensor, c_ub_res])
-                elif temp_tensor.op.name in ("cast_i8_ub", "scale_sqrt_ub",
-                                             "offset_ub", "reform_by_vmuls",
-                                             "reform_by_vadds"):
+                elif temp_tensor.op.name in (
+                    "cast_i8_ub",
+                    "scale_sqrt_ub",
+                    "offset_ub",
+                    "reform_by_vmuls",
+                    "reform_by_vadds"
+                ):
                     ub_list.append(temp_tensor)
-                elif temp_tensor.op.name in ("dequant2", "dequant_relu") \
-                        or "elewise" in temp_tensor.op.tag:
+                elif (
+                    temp_tensor.op.name in ("dequant2", "dequant_relu")
+                    or "elewise" in temp_tensor.op.tag
+                ):
                     if deconv_res.op.tag == temp_tensor.op.tag:
                         c_ub_res = sch.cache_write(deconv_res, cce_params.scope_ubuf)
                         ub_list.append(c_ub_res)
@@ -270,8 +276,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             tensor_map["input_tensor"] = input_cache_buffer
             tensor_map["ub_list"] = ub_list
 
-        def _fill_tensor_map(c_col,  # pylint: disable=R0915
-                             dynamic_mode, tensor_map):
+        def _fill_tensor_map(c_col, dynamic_mode, tensor_map):  # pylint: disable=R0915
             a_col = c_col.op.input_tensors[0]  # im2col_fractal in L0A
             b_col = c_col.op.input_tensors[1]  # weight_transform in L0B
             b_ddr = b_col.op.input_tensors[0]  # weight in ddr
@@ -281,8 +286,10 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 a_col_before = a_col.op.input_tensors[0]
             else:
                 a_col_before = a_col
-                kernel_h, kernel_w = \
-                    a_col.op.attrs["kernel_h"], a_col.op.attrs["kernel_w"]
+                kernel_h, kernel_w = (
+                    a_col.op.attrs["kernel_h"],
+                    a_col.op.attrs["kernel_w"]
+                )
                 tensor_attr["kernel_h"] = int(kernel_h)
                 tensor_attr["kernel_w"] = int(kernel_w)
             padding = shape_to_list(a_col_before.op.attrs["padding"])
@@ -297,16 +304,18 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             tensor_attr["dilations"] = dilations
 
             def _fill_a_tensormap_dynamic():
-                if a_col_before.op.input_tensors[0].op.tag == "dy_l1" or \
-                        a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut":
+                if (
+                    a_col_before.op.input_tensors[0].op.tag == "dy_l1"
+                    or a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"
+                ):
                     a_l1 = a_col_before.op.input_tensors[0]
                     a_filling = a_l1.op.input_tensors[0]
                     vn_tensor = a_filling.op.input_tensors[1]
                     a_zero = vn_tensor.op.input_tensors[0]
                     a_one = vn_tensor.op.input_tensors[1]
-                    stride_h, stride_w = \
-                        list(i.value for i in
-                             a_filling.op.attrs["stride_expand"])
+                    stride_h, stride_w = list(
+                        i.value for i in a_filling.op.attrs["stride_expand"]
+                    )
                     a_ddr = a_filling.op.input_tensors[0]  # dEdY in ddr
 
                     tensor_map["a_l1"] = a_l1
@@ -336,9 +345,9 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 def _fill_a_dilate():
                     a_l1 = a_col_before.op.input_tensors[0]
                     a_filling = a_l1.op.input_tensors[0]
-                    stride_h, stride_w = \
-                        list(i.value for i in
-                             a_filling.op.attrs["stride_expand"])
+                    stride_h, stride_w = list(
+                        i.value for i in a_filling.op.attrs["stride_expand"]
+                    )
                     a_zero = a_filling.op.input_tensors[1]  # dEdY_zero in ub
                     tensor_map["a_filling"] = a_filling
                     tensor_map["a_zero"] = a_zero
@@ -361,23 +370,28 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                             sch[read_select].set_scope(cce_params.scope_cbuf_fusion)
                             tensor_map["a_l1_full"] = read_select
                             a_ub = sch.cache_read(
-                                read_select, cce_params.scope_ubuf, [a_filling])
+                                read_select, cce_params.scope_ubuf, [a_filling]
+                            )
                             tensor_map["a_ub"] = a_ub
                     else:
                         a_ddr = a_filling.op.input_tensors[0]
                         if input_mem[0] == 0 and l1_fusion_type != 1:
                             a_ub = sch.cache_read(
-                                a_ddr, cce_params.scope_ubuf, [a_filling])
+                                a_ddr, cce_params.scope_ubuf, [a_filling]
+                            )
                         elif input_mem[0] == 1:
                             a_ub = sch.cache_read(
-                                a_ddr, cce_params.scope_ubuf, [a_filling])
+                                a_ddr, cce_params.scope_ubuf, [a_filling]
+                            )
                             sch[a_ddr].set_scope(cce_params.scope_cbuf_fusion)
                         elif l1_fusion_type == 1:
                             a_l1_full = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf_fusion, [a_filling])
+                                a_ddr, cce_params.scope_cbuf_fusion, [a_filling]
+                            )
                             tensor_map["a_l1_full"] = a_l1_full
-                            a_ub = sch.cache_read(a_l1_full, cce_params.scope_ubuf,
-                                                  [a_filling])
+                            a_ub = sch.cache_read(
+                                a_l1_full, cce_params.scope_ubuf, [a_filling]
+                            )
                         tensor_map["a_ub"] = a_ub
                     if tensor_map.get("a_l1_full") is not None:
                         a_l1_full = tensor_map.get("a_l1_full")
@@ -387,7 +401,8 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                             (1, 1),
                             (al1_shape[2], al1_shape[2]),
                             (al1_shape[3], al1_shape[3]),
-                            (1, 1))
+                            (1, 1)
+                        )
                     tensor_map["a_ddr"] = a_ddr
                     tensor_attr["stride_h"] = stride_h
                     tensor_attr["stride_w"] = stride_w
@@ -405,10 +420,12 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                         stride_w = 1
                         if l1_fusion_type != -1:
                             a_l1 = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf_fusion, [a_col_before])
+                                a_ddr, cce_params.scope_cbuf_fusion, [a_col_before]
+                            )
                         else:
                             a_l1 = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf, [a_col_before])
+                                a_ddr, cce_params.scope_cbuf, [a_col_before]
+                            )
                         if input_mem[0] == 1:
                             sch[a_ddr].set_scope(cce_params.scope_cbuf_fusion)
                     tensor_map["a_l1"] = a_l1
@@ -419,15 +436,20 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                             (1, 1),
                             (al1_shape[2], al1_shape[2]),
                             (al1_shape[3], al1_shape[3]),
-                            (1, 1))
+                            (1, 1)
+                        )
                     tensor_map["a_ddr"] = a_ddr
                     tensor_attr["stride_h"] = stride_h
                     tensor_attr["stride_w"] = stride_w
-                if a_col_before.op.input_tensors[0].op.tag == "dy_l1" or \
-                   a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut":
+
+                if (
+                    a_col_before.op.input_tensors[0].op.tag == "dy_l1"
+                    or a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"
+                ):
                     _fill_a_dilate()
                 else:
                     _fill_a()
+
             if dynamic_mode:
                 _fill_a_tensormap_dynamic()
             else:
@@ -443,6 +465,130 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
 
             return tensor_map
 
+        def _bias_tensor_setscope():
+            # when add bias in ub
+            bias_add_vector = tensor_map.get("bias_add_vector")
+            if bias_add_vector is not None:
+                sch[bias_add_vector].set_scope(cce_params.scope_ubuf)
+                bias_tensor = bias_add_vector.op.input_tensors[1]
+                bias_ub = sch.cache_read(
+                    bias_tensor, cce_params.scope_ubuf, [bias_add_vector]
+                )
+                tensor_map["bias_ub"] = bias_ub
+
+            # when add bias in l0c
+            if tensor_map.get("c_add_bias") is not None:
+                c_add_bias = tensor_map.get("c_add_bias")
+                bias_l0c = tensor_map.get("bias_l0c")
+                bias_ub_brc = tensor_map.get("bias_ub_brc")
+                sch[c_add_bias].set_scope(cce_params.scope_cc)
+                sch[bias_l0c].set_scope(cce_params.scope_cc)
+                sch[bias_ub_brc].set_scope(cce_params.scope_ubuf)
+
+        def _bias_tensor():
+            if c_ub.op.input_tensors[0].name == "c_add_bias":
+                c_add_bias = c_ub.op.input_tensors[0]
+                bias_l0c = c_add_bias.op.input_tensors[0]
+                c_col = c_add_bias.op.input_tensors[1]
+                bias_ub_brc = bias_l0c.op.input_tensors[0]
+                tensor_bias = bias_ub_brc.op.input_tensors[0]
+                bias_ub = sch.cache_read(
+                    tensor_bias, cce_params.scope_ubuf, [bias_ub_brc]
+                )
+                tensor_map["c_add_bias"] = c_add_bias
+                tensor_map["bias_l0c"] = bias_l0c
+                tensor_map["bias_ub_brc"] = bias_ub_brc
+                tensor_map["tensor_bias"] = tensor_bias
+                tensor_map["bias_ub"] = bias_ub
+            else:
+                c_col = c_ub.op.input_tensors[0]
+            return c_col
+
+        def _ubtensor_setscope(ub_tensor_list, input_tensor_list, fusion_num, deq_list):
+            for ub_tensor in ub_tensor_list:
+                sch[ub_tensor].set_scope(cce_params.scope_ubuf)
+                if "dequant2" in ub_tensor.op.name:
+                    deq_list.append(ub_tensor)
+                if "dequant" in ub_tensor.op.name and deconv_res.op.tag != "quant":
+                    fusion_num += 1
+            if input_tensor_list and deconv_res.op.tag != "quant":
+                fusion_num += 1
+            for input_tensor_mem in input_tensor_list:
+                sch[input_tensor_mem[1]].set_scope(cce_params.scope_ubuf)
+                input_ub = sch.cache_read(
+                    input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_mem[1]
+                )
+                input_tensor_mem[0] = input_ub
+            return fusion_num
+
+        def _tensor_setscope():
+            fusion_param = 0
+            if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+                fusion_param = 1 / 16
+                if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+                    fusion_param += 1
+                    sch[vadd_res].set_scope(cce_params.scope_ubuf)
+                    vadd_tensor_ub = sch.cache_read(
+                        vadd_tensor, cce_params.scope_ubuf, [vadd_res]
+                    )
+                    tensor_map["vadd_tensor_ub"] = vadd_tensor_ub
+                sch[c_ub_cut].set_scope(cce_params.scope_ubuf)
+                mask_ub = sch.cache_read(mask, cce_params.scope_ubuf, [deconv_res])
+                c_ub_drelu = sch.cache_write(deconv_res, cce_params.scope_ubuf)
+                tensor_map["mask_ub"] = mask_ub
+                tensor_map["c_ub_drelu"] = c_ub_drelu
+            elif "requant_remove_pad" in deconv_res.op.tag:
+                deq = tensor_map.get("deq")
+                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
+                deq_ub = sch.cache_read(deq, cce_params.scope_ubuf, tensor_map["c_ub"])
+                tensor_map["deq"] = deq_ub
+                sch[tensor_map["data_transfer"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_map["c_ub"]].compute_inline()
+                sch[tensor_map["c_ub"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
+                tensor_map["c_ub"] = tensor_map["data_transfer"]
+            elif tensor_attr.get("quant_fuse"):
+                deq_list = [
+                    tensor_map["c_ub"]
+                ]
+                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
+                ub_list = tensor_map["ub_list"]
+                input_tensor = tensor_map["input_tensor"]
+                if deconv_res.op.tag == "quant":
+                    fusion_param = 4
+                else:
+                    fusion_param = 0
+                fusion_param = _ubtensor_setscope(
+                    ub_list, input_tensor, fusion_param, deq_list
+                )
+                deq = tensor_map.get("deq")
+                deq_ub = sch.cache_read(deq, cce_params.scope_ubuf, deq_list)
+                tensor_map["deq"] = deq_ub
+                if input_tensor and deconv_res.op.tag != "quant":
+                    fusion_param += 1
+                for input_tensor_mem in input_tensor:
+                    sch[input_tensor_mem[1]].set_scope(cce_params.scope_ubuf)
+                    input_ub = sch.cache_read(
+                        input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_mem[1]
+                    )
+                    input_tensor_mem[0] = input_ub
+                fusion_param += 0.125
+            elif "elewise" in deconv_res.op.tag:
+                fusion_param = 0
+                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
+                for ub_tensor in tensor_map["ub_list"]:
+                    sch[ub_tensor].set_scope(cce_params.scope_ubuf)
+                for input_tensor in tensor_map["input_tensor_list"]:
+                    fusion_param = 1
+                    sch[input_tensor[1]].set_scope(cce_params.scope_ubuf)
+                    input_ub = sch.cache_read(
+                        input_tensor[0], cce_params.scope_ubuf, input_tensor[1]
+                    )
+                    input_tensor[0] = input_ub
+                if "bias_add_vector" in tensor_map:
+                    fusion_param += 0.125
+                sch[tensor_map["c_ub_cut"]].compute_inline()
+            return fusion_param
+
         tensor_map = {}
         tensor_attr = {}
         if c_ddr.op.tag == "write_select":
@@ -451,13 +597,11 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             tensor_attr["n0_32_flag"] = True
             tensor_attr["quant_fuse"] = True
             tensor_map["data_transfer"] = deconv_res.op.input_tensors[0]
-            tensor_map["c_ub"] = \
-                tensor_map["data_transfer"].op.input_tensors[0]
+            tensor_map["c_ub"] = tensor_map["data_transfer"].op.input_tensors[0]
             tensor_map["deq"] = tensor_map["c_ub"].op.input_tensors[1]
             c_ub_ddr = tensor_map["c_ub"].op.input_tensors[0]
             c_ub = c_ub_ddr.op.input_tensors[0]
-            output_shape = list(i.value for
-                                i in c_ub_ddr.op.attrs["output_shape"])
+            output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
             tensor_attr["output_shape"] = output_shape
             tensor_map["c_ub_cut"] = c_ub_ddr
             sch[c_ub_ddr].compute_inline()
@@ -466,11 +610,10 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         elif "quant" in deconv_res.op.tag or "elewise" in deconv_res.op.tag:
             _checkout_quant_fusion()
             if tensor_attr.get("quant_fuse"):
-                fetch_quant_info()
+                _fetch_quant_info()
                 c_ub_ddr = tensor_map["c_ub"].op.input_tensors[0]
                 c_ub = c_ub_ddr.op.input_tensors[0]
-                output_shape = list(i.value for
-                                    i in c_ub_ddr.op.attrs["output_shape"])
+                output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
                 tensor_attr["output_shape"] = output_shape
                 tensor_map["c_ub_cut"] = c_ub_ddr
                 sch[c_ub_ddr].compute_inline()
@@ -487,20 +630,18 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             else:
                 c_ub_cut = deconv_res.op.input_tensors[1]
             c_ub = c_ub_cut.op.input_tensors[0]
-            output_shape = list(i.value
-                                for i in c_ub_cut.op.attrs["output_shape"])
+            output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
 
             tensor_map["c_ub_cut"] = c_ub_cut
             tensor_map["c_ub"] = c_ub
             tensor_attr["output_shape"] = output_shape
         elif "elewise" in deconv_res.op.tag:
-            c_ub_cut = fetch_elewise_fusion()
+            c_ub_cut = _fetch_elewise_fusion()
             c_ub = c_ub_cut.op.input_tensors[0]
             if c_ub.op.name == "bias_add_vector":
                 tensor_map["bias_add_vector"] = c_ub
                 c_ub = c_ub.op.input_tensors[0]
-            output_shape = list(i.value
-                                for i in c_ub_cut.op.attrs["output_shape"])
+            output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
             tensor_map["c_ub_cut"] = c_ub_cut
             tensor_map["c_ub"] = c_ub
             tensor_attr["output_shape"] = output_shape
@@ -515,108 +656,14 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         else:
             _raise_dx_general_err(
                 DX_SUPPORT_TAG_LOG_PREFIX
-                + ' dx or dx+drelu or dx+elewise or dx+vadd+drelu')
-
-        if c_ub.op.input_tensors[0].name == "c_add_bias":
-            c_add_bias = c_ub.op.input_tensors[0]
-            bias_l0c = c_add_bias.op.input_tensors[0]
-            c_col = c_add_bias.op.input_tensors[1]
-            bias_ub_brc = bias_l0c.op.input_tensors[0]
-            tensor_bias = bias_ub_brc.op.input_tensors[0]
-            bias_ub = sch.cache_read(tensor_bias, cce_params.scope_ubuf, [bias_ub_brc])
-            tensor_map["c_add_bias"] = c_add_bias
-            tensor_map["bias_l0c"] = bias_l0c
-            tensor_map["bias_ub_brc"] = bias_ub_brc
-            tensor_map["tensor_bias"] = tensor_bias
-            tensor_map["bias_ub"] = bias_ub
-        else:
-            c_col = c_ub.op.input_tensors[0]
-        tensor_map = _fill_tensor_map(c_col, dynamic_mode, tensor_map)
-
-        # when add bias in ub
-        bias_add_vector = tensor_map.get("bias_add_vector")
-        if bias_add_vector is not None:
-            sch[bias_add_vector].set_scope(cce_params.scope_ubuf)
-            bias_tensor = bias_add_vector.op.input_tensors[1]
-            bias_ub = sch.cache_read(
-                bias_tensor, cce_params.scope_ubuf, [bias_add_vector]
+                + " dx or dx+drelu or dx+elewise or dx+vadd+drelu"
             )
-            tensor_map["bias_ub"] = bias_ub
 
-        # when add bias in l0c
-        if tensor_map.get("c_add_bias") is not None:
-            sch[c_add_bias].set_scope(cce_params.scope_cc)
-            sch[bias_l0c].set_scope(cce_params.scope_cc)
-            sch[bias_ub_brc].set_scope(cce_params.scope_ubuf)
+        c_col = _bias_tensor()
+        tensor_map = _fill_tensor_map(c_col, dynamic_mode, tensor_map)
+        _bias_tensor_setscope()
 
-        fusion_param = 0
-        if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
-            fusion_param = 1/16
-            if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
-                fusion_param += 1
-                sch[vadd_res].set_scope(cce_params.scope_ubuf)
-                vadd_tensor_ub = sch.cache_read(vadd_tensor,
-                                                cce_params.scope_ubuf, [vadd_res])
-                tensor_map["vadd_tensor_ub"] = vadd_tensor_ub
-            sch[c_ub_cut].set_scope(cce_params.scope_ubuf)
-            mask_ub = sch.cache_read(mask, cce_params.scope_ubuf, [deconv_res])
-            c_ub_drelu = sch.cache_write(deconv_res, cce_params.scope_ubuf)
-            tensor_map["mask_ub"] = mask_ub
-            tensor_map["c_ub_drelu"] = c_ub_drelu
-        elif "requant_remove_pad" in deconv_res.op.tag:
-            deq = tensor_map.get("deq")
-            sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
-            deq_ub = sch.cache_read(deq, cce_params.scope_ubuf, tensor_map["c_ub"])
-            tensor_map["deq"] = deq_ub
-            sch[tensor_map["data_transfer"]].set_scope(cce_params.scope_ubuf)
-            sch[tensor_map["c_ub"]].compute_inline()
-            sch[tensor_map["c_ub"]].buffer_align((1, 1),
-                                                 (1, 1),
-                                                 (1, 16),
-                                                 (1, 16))
-            tensor_map["c_ub"] = tensor_map["data_transfer"]
-        elif tensor_attr.get("quant_fuse"):
-            deq_list = [tensor_map["c_ub"], ]
-            sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
-            ub_list = tensor_map["ub_list"]
-            if deconv_res.op.tag == "quant":
-                fusion_param = 4
-            else:
-                fusion_param = 0
-            for ub_tensor in ub_list:
-                sch[ub_tensor].set_scope(cce_params.scope_ubuf)
-                if "dequant2" in ub_tensor.op.name:
-                    deq_list.append(ub_tensor)
-                if "dequant" in ub_tensor.op.name \
-                        and deconv_res.op.tag != "quant":
-                    fusion_param += 1
-            deq = tensor_map.get("deq")
-            deq_ub = sch.cache_read(deq, cce_params.scope_ubuf, deq_list)
-            tensor_map["deq"] = deq_ub
-            input_tensor = tensor_map["input_tensor"]
-            if input_tensor and deconv_res.op.tag != "quant":
-                fusion_param += 1
-            for input_tensor_mem in input_tensor:
-                sch[input_tensor_mem[1]].set_scope(cce_params.scope_ubuf)
-                input_ub = sch.cache_read(
-                    input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_mem[1])
-                input_tensor_mem[0] = input_ub
-            fusion_param += 0.125
-        elif "elewise" in deconv_res.op.tag:
-            fusion_param = 0
-            sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
-            for ub_tensor in tensor_map["ub_list"]:
-                sch[ub_tensor].set_scope(cce_params.scope_ubuf)
-            for input_tensor in tensor_map["input_tensor_list"]:
-                fusion_param = 1
-                sch[input_tensor[1]].set_scope(cce_params.scope_ubuf)
-                input_ub = sch.cache_read(
-                    input_tensor[0], cce_params.scope_ubuf, input_tensor[1])
-                input_tensor[0] = input_ub
-            if "bias_add_vector" in tensor_map:
-                fusion_param += 0.125
-            sch[tensor_map["c_ub_cut"]].compute_inline()
-        tensor_attr["fusion_param"] = fusion_param
+        tensor_attr["fusion_param"] = _tensor_setscope()
 
         return tensor_map, tensor_attr
 
@@ -659,9 +706,9 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         return deconv_res
 
     # check tiling and set default tiling
-    def check_and_set_default_tiling(tiling,  # pylint: disable=R0913
-                                     atype, btype, stride_h,
-                                     stride_w, filter_shape):
+    def check_and_set_default_tiling(  # pylint: disable=R0913
+        tiling, atype, btype, stride_h, stride_w, filter_shape
+    ):
         """
         check and set default tiling
         :param tiling:
@@ -685,7 +732,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 "float32": 16,
                 "int32": 16,
                 "float16": 16,
-                "int8": 32,
+                "int8": 32
             }
             if atype in bit_dir.keys():
                 k_al1 = k_w * k_h * 16
@@ -726,15 +773,15 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             tiling["BUB_channel_wise_flag"] = None
             tiling["CUB_channel_wise_flag"] = None
             tiling["manual_pingpong_buffer"] = {
-                'AUB_pbuffer': 1,
-                'BUB_pbuffer': 1,
-                'AL1_pbuffer': 1,
-                'BL1_pbuffer': 1,
-                'AL0_pbuffer': 1,
-                'BL0_pbuffer': 1,
-                'CL0_pbuffer': 1,
-                'CUB_pbuffer': 1,
-                'UBG_pbuffer': 1,
+                "AUB_pbuffer": 1,
+                "BUB_pbuffer": 1,
+                "AL1_pbuffer": 1,
+                "BL1_pbuffer": 1,
+                "AL0_pbuffer": 1,
+                "BL0_pbuffer": 1,
+                "CL0_pbuffer": 1,
+                "CUB_pbuffer": 1,
+                "UBG_pbuffer": 1
             }
         return tiling
 
@@ -782,8 +829,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     padu, padd, padl, padr = padding
     # n, howo, c1, k_h, k_w, c0
     if not dynamic_mode:
-        _, howo_mad, _, kernel_h, kernel_w, _ \
-            = shape_to_list(a_col_before.shape)
+        _, howo_mad, _, kernel_h, kernel_w, _ = shape_to_list(a_col_before.shape)
     else:
         kernel_h = tensor_attr.get("kernel_h")
         kernel_w = tensor_attr.get("kernel_w")
@@ -800,9 +846,13 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
 
     # conv1d_situation
     def _check_conv1d_situation():
-        if not dynamic_mode \
-                and dx_h == 1 and dy_h == 1 \
-                and dilation_h == 1 and stride_h == 1:
+        if (
+            not dynamic_mode
+            and dx_h == 1
+            and dy_h == 1
+            and dilation_h == 1
+            and stride_h == 1
+        ):
             return True
         return False
 
@@ -817,23 +867,31 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     def _set_filter_shape():
         if w_trans_flag:
             # Cout1HkWk, Cin1, Cin0, Cout0
-            b_ddr_k1, b_ddr_n1, b_ddr_n0, b_ddr_k0 \
-                = list(i.value for i in b_ddr.shape)
+            b_ddr_k1, b_ddr_n1, b_ddr_n0, b_ddr_k0 = list(i.value for i in b_ddr.shape)
             # Cout, Cin1, Hk, Wk, Cin0
-            filter_shape = [b_ddr_k1 // (kernel_h * kernel_w) * b_ddr_k0,
-                            b_ddr_n1, kernel_h, kernel_w, b_ddr_n0]
+            filter_shape = [
+                b_ddr_k1 // (kernel_h * kernel_w) * b_ddr_k0,
+                b_ddr_n1,
+                kernel_h,
+                kernel_w,
+                b_ddr_n0
+            ]
         else:
             # HkWkCin1, Cout1, Cout0, Cin0
-            b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 \
-                = shape_to_list(b_ddr.shape)
+            b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = shape_to_list(b_ddr.shape)
             # Cout, Cin1, Hk, Wk, Cin0
-            filter_shape = (b_ddr_k1 * b_ddr_k0,
-                            b_ddr_n1 // (kernel_h * kernel_w),
-                            kernel_h, kernel_w, b_ddr_n0)
+            filter_shape = (
+                b_ddr_k1 * b_ddr_k0,
+                b_ddr_n1 // (kernel_h * kernel_w),
+                kernel_h,
+                kernel_w,
+                b_ddr_n0
+            )
         if deconv_res.dtype == "int8":
             filter_shape[1] = (filter_shape[1] + 1) // 2 * 2
 
         return filter_shape
+
     filter_shape = _set_filter_shape()
 
     def _set_bias_flag(c_add_bias, bias_add_vector):
@@ -842,11 +900,15 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         else:
             bias_flag = 0
         return bias_flag
+
     bias_flag = _set_bias_flag(c_add_bias, bias_add_vector)
 
     def _get_kernel_name():
-        if fusion_param > 0 or tensor_attr.get("quant_fuse") \
-                or tensor_attr.get("elewise_fuse"):
+        if (
+            fusion_param > 0
+            or tensor_attr.get("quant_fuse")
+            or tensor_attr.get("elewise_fuse")
+        ):
             _kernel_name = c_ub_cut.op.attrs["kernel_name"]
         else:
             _kernel_name = deconv_res.op.attrs["kernel_name"]
@@ -888,61 +950,85 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     else:
         tiling = tiling_case
 
-    tiling = check_and_set_default_tiling(tiling, a_ddr.dtype,
-                                          b_ddr.dtype, stride_h,
-                                          stride_w, filter_shape)
+    tiling = check_and_set_default_tiling(
+        tiling, a_ddr.dtype, b_ddr.dtype, stride_h, stride_w, filter_shape
+    )
     if DEBUG_MODE:
-        print('general input shape:', 'filter:', filter_shape, 'dy:',
-              output_shape, 'dx:', img_shape)
+        print(
+            "general input shape:",
+            "filter:",
+            filter_shape,
+            "dy:",
+            output_shape,
+            "dx:",
+            img_shape
+        )
         print("general input tiling", tiling)
         print("general dx fusion tag:", deconv_res.op.tag)
 
     def _tiling_check_none():
-        if (tiling.get("AL1_shape") is None) or \
-           (tiling.get("BL1_shape") is None) or \
-           (tiling.get("CUB_matrix") is None):
-            _raise_dx_general_err("AL1_shape/BL1_shape/CUB_matrix "
-                                  "can't be None.")
-        if (tiling.get("AL0_matrix") is None) or \
-           (tiling.get("BL0_matrix") is None) or \
-           (tiling.get("CL0_matrix") is None):
-            _raise_dx_general_err("AL0_matrix/BL0_matrix/CL0_matrix "
-                                  "can't be None.")
+        if (
+            (tiling.get("AL1_shape") is None)
+            or (tiling.get("BL1_shape") is None)
+            or (tiling.get("CUB_matrix") is None)
+        ):
+            _raise_dx_general_err("AL1_shape/BL1_shape/CUB_matrix " "can't be None.")
+        if (
+            (tiling.get("AL0_matrix") is None)
+            or (tiling.get("BL0_matrix") is None)
+            or (tiling.get("CL0_matrix") is None)
+        ):
+            _raise_dx_general_err("AL0_matrix/BL0_matrix/CL0_matrix " "can't be None.")
 
     def _tiling_l0_process():
-        if al0_tiling_ma == a_col_ma \
-                and al0_tiling_ka == a_col_ka \
-                and a_col_batch == 1:
+        if al0_tiling_ma == a_col_ma and al0_tiling_ka == a_col_ka and a_col_batch == 1:
             tiling["AL0_matrix"] = []
 
         if tiling.get("BL0_matrix") != []:
-            bl0_tiling_kb, bl0_tiling_nb,\
-                bl0_tiling_n0, bl0_tiling_k0, _, _ = tiling.get("BL0_matrix")
+            (
+                bl0_tiling_kb,
+                bl0_tiling_nb,
+                bl0_tiling_n0,
+                bl0_tiling_k0,
+                _,
+                _
+            ) = tiling.get("BL0_matrix")
         else:
-            bl0_tiling_kb, bl0_tiling_nb,\
-                bl0_tiling_n0, bl0_tiling_k0, = list(i.value for i in b_col.shape)
+            (
+                bl0_tiling_kb,
+                bl0_tiling_nb,
+                bl0_tiling_n0,
+                bl0_tiling_k0
+            ) = list(i.value for i in b_col.shape)
         return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
 
     def _tiling_l1_process():
         if tiling.get("AL1_shape") != []:
             al1_tilling_k, al1_tilling_m, _, _ = tiling.get("AL1_shape")
-            if al1_tilling_k == kernel_h*kernel_w*al1_co1*al1_co0 and \
-               al1_tilling_m == _ceil(c_l0c_hw, cce_params.CUBE_MKN[c_col.dtype]["mac"][0]*cl0_tiling_mc):
+            if (
+                al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0
+                and al1_tilling_m
+                == _ceil(
+                    c_l0c_hw, cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc
+                )
+            ):
                 tiling["AL1_shape"] = []
         else:
             # batch = 1 other axes full load
-            al1_tilling_k = kernel_h*kernel_w*al1_co1*al1_co0
-            al1_tilling_m = _ceil(c_l0c_hw, (cce_params.CUBE_MKN[c_col.dtype]["mac"][0]*cl0_tiling_mc))
+            al1_tilling_k = kernel_h * kernel_w * al1_co1 * al1_co0
+            al1_tilling_m = _ceil(
+                c_l0c_hw, (cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
+            )
 
         if tiling.get("BL1_shape") != []:
             bl1_tilling_k, bl1_tilling_n, _, _ = tiling.get("BL1_shape")
         else:
             if w_trans_flag:
-                bl1_tilling_k = bl1_co0*bl1_co1
+                bl1_tilling_k = bl1_co0 * bl1_co1
                 bl1_tilling_n = bl1_k1 // cl0_tiling_nc
             else:
-                bl1_tilling_k = kernel_h*kernel_w*bl1_co0*bl1_co1
-                bl1_tilling_n = bl1_k1//(kernel_h*kernel_w*cl0_tiling_nc)
+                bl1_tilling_k = kernel_h * kernel_w * bl1_co0 * bl1_co1
+                bl1_tilling_n = bl1_k1 // (kernel_h * kernel_w * cl0_tiling_nc)
         return al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n
 
     # check tiling
@@ -957,7 +1043,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             _raise_dx_general_err("ma != mc.")
 
     def _tiling_check_factor():
-        if (kernel_w*kernel_h*dy_cout1) % al0_tiling_ka != 0:
+        if (kernel_w * kernel_h * dy_cout1) % al0_tiling_ka != 0:
             _raise_dx_general_err("Co1*Hk*Wk % ka != 0")
 
         if al1_tilling_k % al0_tiling_ka != 0:
@@ -971,11 +1057,9 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             _raise_dx_general_err("nc % nc_factor != 0.")
 
         if tiling.get("BL1_shape") != []:
-            if al1_tilling_k > bl1_tilling_k \
-                    and al1_tilling_k % bl1_tilling_k != 0:
+            if al1_tilling_k > bl1_tilling_k and al1_tilling_k % bl1_tilling_k != 0:
                 _raise_dx_general_err("k_AL1 > k_BL1 but k_AL1 % k_BL1 != 0.")
-            if bl1_tilling_k > al1_tilling_k \
-                    and bl1_tilling_k % al1_tilling_k != 0:
+            if bl1_tilling_k > al1_tilling_k and bl1_tilling_k % al1_tilling_k != 0:
                 _raise_dx_general_err("k_BL1 > k_AL1 but k_BL1 % k_AL1 != 0.")
 
     def _tiling_check_load():
@@ -1021,20 +1105,22 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         """
         # Check whether al1_tilling_m is fully loaded
         al1_m_full_load = False
-        if al1_tilling_m == c_l0c_hw // (cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc):
+        if al1_tilling_m == c_l0c_hw // (
+            cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc
+        ):
             al1_m_full_load = True
 
         # Check whether bl1_tilling_k is fully loaded
         bl1_k_full_load = False
-        if w_trans_flag and (bl1_tilling_k == bl1_co0*bl1_co1):
+        if w_trans_flag and (bl1_tilling_k == bl1_co0 * bl1_co1):
             bl1_k_full_load = True
-        elif bl1_tilling_k == kernel_h*kernel_w*bl1_co0*bl1_co1:
+        elif bl1_tilling_k == kernel_h * kernel_w * bl1_co0 * bl1_co1:
             bl1_k_full_load = True
 
         bl1_n_full_load = False
         if w_trans_flag and (bl1_tilling_n == bl1_k1 // cl0_tiling_nc):
             bl1_n_full_load = True
-        elif bl1_tilling_n == bl1_k1//(kernel_h*kernel_w*cl0_tiling_nc):
+        elif bl1_tilling_n == bl1_k1 // (kernel_h * kernel_w * cl0_tiling_nc):
             bl1_n_full_load = True
 
         return al1_m_full_load, bl1_k_full_load, bl1_n_full_load
@@ -1058,12 +1144,12 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         if block_dim_n > 1:
             return True
 
-        if (stride_h < kernel_h or stride_w < kernel_w) \
-                and (not al1_m_full_load):
+        if (stride_h < kernel_h or stride_w < kernel_w) and (not al1_m_full_load):
             return True
 
-        if ((not bl1_k_full_load) and (al1_tilling_k < bl1_tilling_k)) \
-                or (not bl1_n_full_load):
+        if ((not bl1_k_full_load) and (al1_tilling_k < bl1_tilling_k)) or (
+            not bl1_n_full_load
+        ):
             return True
 
         return False
@@ -1073,20 +1159,23 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         set flag on the first axis
         """
         cache_read_mode = 0 if overload_flag else 1
-        param.pragma(overload_axis,
-                     "json_info_cache_read_mode",
-                     cache_read_mode)
+        param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
     _tiling_check_none()
-    cub_tiling_nc_factor, cub_tiling_mc_factor, \
-        cub_tiling_m0, cub_tiling_n0, _, _ \
-        = tiling.get("CUB_matrix")
-    cl0_tiling_nc, cl0_tiling_mc, \
-        cl0_tiling_m0, cl0_tiling_n0, _, _ \
-        = tiling.get("CL0_matrix")
-    al0_tiling_ma, al0_tiling_ka, \
-        al0_tiling_m0, al0_tiling_k0, _, _ \
-        = tiling.get("AL0_matrix")
+    (
+        cub_tiling_nc_factor,
+        cub_tiling_mc_factor,
+        cub_tiling_m0,
+        cub_tiling_n0,
+        _,
+        _
+    ) = tiling.get("CUB_matrix")
+    cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0, _, _ = tiling.get(
+        "CL0_matrix"
+    )
+    al0_tiling_ma, al0_tiling_ka, al0_tiling_m0, al0_tiling_k0, _, _ = tiling.get(
+        "AL0_matrix"
+    )
 
     batch_dim, n_dim, m_dim, _ = tiling.get("block_dim")
     aub_pbuffer = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
@@ -1105,26 +1194,37 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     else:
         # Cin1*Hk*Wk, Cout1, Cout0, Cin0
         bl1_k1, bl1_co1, bl1_co0, _ = shape_to_list(b_l1.shape)
-    c_col_k1, c_col_k0 = list(ax.dom.extent.value for ax in
-                              c_col.op.reduce_axis)
+    c_col_k1, c_col_k0 = list(ax.dom.extent.value for ax in c_col.op.reduce_axis)
     a_col_shape = shape_to_list(a_col.shape)
     a_col_batch, a_col_ma, a_col_ka, _, _ = a_col_shape
 
-    bl0_tiling_kb, bl0_tiling_nb, \
-        bl0_tiling_n0, bl0_tiling_k0 = _tiling_l0_process()
-    al1_tilling_k, al1_tilling_m, \
-        bl1_tilling_k, bl1_tilling_n = _tiling_l1_process()
+    bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0 = _tiling_l0_process()
+    al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n = _tiling_l1_process()
     _tiling_check_equal()
     _tiling_check_factor()
     _tiling_check_load()
     _tiling_check_pbuffer()
 
     def _cub_process():  # pylint: disable=R0912,R0915
+        def _attach_cub():
+            # c_ub will attach on deconv_res in dynamic shape by default
+            if not dynamic_mode:
+                status = Compare.compare(affine_cub, op_shape)
+            elif dynamic_mode == "dynamic_batch":
+                status = Compare.compare(affine_cub[1:], op_shape[1:])
+            elif dynamic_mode == "dynamic_hw":
+                status = Compare.LESS_EQ
+
+            if status == Compare.EQUAL:
+                pass
+            elif status == Compare.LESS_EQ:
+                sch_agent.attach_at(c_ub, c_ddr, affine_shape=affine_cub)
+            else:
+                _raise_dx_general_err("c_ub attach error.")
 
         def fusion_cub_process():
             if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
-                if "elewise_binary_add" \
-                        in deconv_res.op.input_tensors[1].op.tag:
+                if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
                     sch_agent.same_attach(vadd_res, c_ub)
                     sch_agent.same_attach(vadd_tensor_ub, c_ub)
@@ -1147,18 +1247,18 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 scope, unit = sch_agent[c_ddr].get_active_scope_and_unit()
                 _, _, ax_hw, _ = scope
                 _, _, len_axis, _ = unit
-                len_align = tvm.min(len_axis, c_ub.shape[2] - ax_hw*len_axis) * 16
+                len_align = tvm.min(len_axis, c_ub.shape[2] - ax_hw * len_axis) * 16
                 for ub_tensor in tensor_map["ub_list"]:
                     sch_agent.same_attach(ub_tensor, c_ub)
                     sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
-                    sch[ub_tensor].reused_by(c_ub)
+                    sch[c_ub].reused_by(ub_tensor)
                 for input_tensor_mem in tensor_map["input_tensor_list"]:
                     sch_agent.same_attach(input_tensor_mem[0], c_ub)
                     sch_agent.same_attach(input_tensor_mem[1], c_ub)
                     sch[input_tensor_mem[0]].bind_buffer(
                         input_tensor_mem[0], len_align, 0
                     )
-                    sch[tensor_map["ub_list"][0]].reused_by(input_tensor_mem[0])
+                    sch[c_ub].reused_by(input_tensor_mem[0])
             elif deconv_res.op.tag == "elewise_binary_add":
                 sch_agent[c_ub].reused_by(c_ub_cut, c_ub_vadd)
                 sch_agent.same_attach(vadd_tensor_ub, c_ub)
@@ -1177,23 +1277,31 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         # dx_batch, dx_cin1, dx_m, dx_cin0
         op_shape = shape_to_list(c_ub.shape)
         if n0_32_flag is not None:
-            affine_cub = 1, \
-                int(c_ub_nc_factor / 2), \
-                cub_tiling_mc_factor * cub_tiling_m0, \
+            affine_cub = (
+                1,
+                int(c_ub_nc_factor / 2),
+                cub_tiling_mc_factor * cub_tiling_m0,
                 cub_tiling_n0 * 2
+            )
             if deconv_res.op.tag == "quant":
                 op_shape[1] = (op_shape[1] + 1) // 2
                 op_shape[3] = op_shape[3] * 2
         else:
-            affine_cub = 1, \
-                c_ub_nc_factor, \
-                cub_tiling_mc_factor * cub_tiling_m0, \
+            affine_cub = (
+                1,
+                c_ub_nc_factor,
+                cub_tiling_mc_factor * cub_tiling_m0,
                 cub_tiling_n0
+            )
 
+        _attach_cub()
         # c_ub will attach on deconv_res in dynamic shape by default
-        status = {None: Compare.compare(affine_cub, op_shape),
-                  "dynamic_batch": Compare.compare(affine_cub[1:], op_shape[1:]),
-                  "dynamic_hw": Compare.LESS_EQ}[dynamic_mode]
+        if not dynamic_mode:
+            status = Compare.compare(affine_cub, op_shape)
+        elif dynamic_mode == "dynamic_batch":
+            status = Compare.compare(affine_cub[1:], op_shape[1:])
+        elif dynamic_mode == "dynamic_hw":
+            status = Compare.LESS_EQ
 
         if status == Compare.EQUAL:
             pass
@@ -1206,16 +1314,16 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             (1, 1),
             (1, 1),
             (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][0]),
-            (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2]))
+            (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2])
+        )
         if bias_add_vector is not None:
-            if "ub_list" in tensor_map and tensor_map["ub_list"]:
-                sch[tensor_map["ub_list"][0]].reused_by(bias_add_vector)
-            else:
-                sch_agent[c_ub].reused_by(bias_add_vector)
+            sch_agent[c_ub].reused_by(bias_add_vector)
             sch[bias_add_vector].buffer_align(
-                (1, 1), (1, 1),
+                (1, 1),
+                (1, 1),
                 (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][0]),
-                (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2]))
+                (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2])
+            )
 
         fusion_cub_process()
 
@@ -1223,11 +1331,14 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
 
     def _cl0_process(affine_cub):
         if n0_32_flag is not None:
-            affine_l0c = 1, int(cl0_tiling_nc / 2), \
-                cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0 * 2
+            affine_l0c = (
+                1,
+                int(cl0_tiling_nc / 2),
+                cl0_tiling_mc * cl0_tiling_m0,
+                cl0_tiling_n0 * 2
+            )
         else:
-            affine_l0c = 1, cl0_tiling_nc, \
-                cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+            affine_l0c = 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
         c_col_shape = shape_to_list(c_col.shape)
 
         # c_col will attach on c_ub or c_ddr in dynamic shape by default
@@ -1256,20 +1367,19 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][0]),
             (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][2]),
             (1, 1),
-            (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][1]))
+            (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][1])
+        )
 
     def _l0a_process():
-        l0a2l0c_affine_shape = 1, \
-            None, \
-            al0_tiling_ma * al0_tiling_m0, \
-            cl0_tiling_n0, \
-            al0_tiling_ka, \
+        l0a2l0c_affine_shape = (
+            1,
+            None,
+            al0_tiling_ma * al0_tiling_m0,
+            cl0_tiling_n0,
+            al0_tiling_ka,
             al0_tiling_k0
-        tiling_ori_l0a = 1, \
-            al0_tiling_ma, \
-            al0_tiling_ka, \
-            al0_tiling_m0, \
-            al0_tiling_k0
+        )
+        tiling_ori_l0a = 1, al0_tiling_ma, al0_tiling_ka, al0_tiling_m0, al0_tiling_k0
         # a_col will attach on c_col, c_ub or c_ddr in dynamic shape
         if not dynamic_mode:
             status_ori = Compare.compare(tiling_ori_l0a, a_col_shape)
@@ -1277,70 +1387,56 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             status_ori = Compare.compare(tiling_ori_l0a[1:], a_col_shape[1:])
         elif dynamic_mode == "dynamic_hw":
             status_ori = Compare.LESS_EQ
-        status = Compare.compare([al0_tiling_ma,
-                                  al0_tiling_m0,
-                                  al0_tiling_ka,
-                                  al0_tiling_k0],
-                                 [cl0_tiling_mc,
-                                  cl0_tiling_m0,
-                                  c_col_k1,
-                                  c_col_k0])
+        status = Compare.compare(
+            [al0_tiling_ma, al0_tiling_m0, al0_tiling_ka, al0_tiling_k0],
+            [cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
+        )
 
         if status_ori == Compare.EQUAL and not dynamic_mode:
             pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(a_col, c_col)
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(
-                a_col, c_col, affine_shape=l0a2l0c_affine_shape)
+            sch_agent.attach_at(a_col, c_col, affine_shape=l0a2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
-            l0a2out_affine_shape = [1,
-                                    None,
-                                    al0_tiling_ma * al0_tiling_m0,
-                                    cl0_tiling_n0]
-            sch_agent.attach_at(
-                a_col, c_ddr, affine_shape=l0a2out_affine_shape)
+            l0a2out_affine_shape = [
+                1,
+                None,
+                al0_tiling_ma * al0_tiling_m0,
+                cl0_tiling_n0
+            ]
+            sch_agent.attach_at(a_col, c_ddr, affine_shape=l0a2out_affine_shape)
         else:
             _raise_dx_general_err("l0a attach error.")
 
     def _l0b_process():
         neg_src_stride = True
         if tiling.get("BL0_matrix") != []:
-            l0b2l0c_affine_shape = None, \
-                bl0_tiling_nb, \
-                cl0_tiling_mc * cl0_tiling_m0, \
-                bl0_tiling_n0, \
-                bl0_tiling_kb, \
+            l0b2l0c_affine_shape = (
+                None,
+                bl0_tiling_nb,
+                cl0_tiling_mc * cl0_tiling_m0,
+                bl0_tiling_n0,
+                bl0_tiling_kb,
                 bl0_tiling_k0
-            tiling_ori_l0b = bl0_tiling_kb, \
-                bl0_tiling_nb, \
-                bl0_tiling_n0, \
-                bl0_tiling_k0
+            )
+            tiling_ori_l0b = bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
             b_col_shape = shape_to_list(b_col.shape)
             status_ori = Compare.compare(tiling_ori_l0b, b_col_shape)
-            status = Compare.compare([bl0_tiling_nb,
-                                      bl0_tiling_n0,
-                                      bl0_tiling_kb,
-                                      bl0_tiling_k0],
-                                     [cl0_tiling_nc,
-                                      cl0_tiling_n0,
-                                      c_col_k1,
-                                      c_col_k0])
+            status = Compare.compare(
+                [bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_kb, bl0_tiling_k0],
+                [cl0_tiling_nc, cl0_tiling_n0, c_col_k1, c_col_k0]
+            )
             neg_src_stride = False
             if status_ori == Compare.EQUAL:
                 neg_src_stride = True
             elif status == Compare.EQUAL:
                 sch_agent.same_attach(b_col, c_col)
             elif status == Compare.LESS_EQ:
-                sch_agent.attach_at(
-                    b_col, c_col, affine_shape=l0b2l0c_affine_shape)
+                sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape)
             elif status == Compare.GREATE_EQ:
-                l0b2out_affine_shape = [1,
-                                        bl0_tiling_nb,
-                                        cl0_tiling_m0,
-                                        bl0_tiling_n0]
-                sch_agent.attach_at(
-                    b_col, c_ddr, affine_shape=l0b2out_affine_shape)
+                l0b2out_affine_shape = [1, bl0_tiling_nb, cl0_tiling_m0, bl0_tiling_n0]
+                sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
                 _raise_dx_general_err("l0b attach error.")
         return neg_src_stride
@@ -1348,39 +1444,32 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     def _al1_process():
         l1_ma = al1_tilling_m * al0_tiling_ma
         l1_ka = al1_tilling_k // al0_tiling_k0
-        l1a2l0c_affine_shape = 1, \
-            None, \
-            l1_ma * al0_tiling_m0, \
-            bl0_tiling_n0, \
-            l1_ka, \
+        l1a2l0c_affine_shape = (
+            1,
+            None,
+            l1_ma * al0_tiling_m0,
+            bl0_tiling_n0,
+            l1_ka,
             al0_tiling_k0
+        )
 
         if dynamic_mode and tiling.get("AL1_shape") == []:
             status = Compare.GREATE_EQ
         else:
-            status = Compare.compare([l1_ma,
-                                      al0_tiling_m0,
-                                      l1_ka,
-                                      al0_tiling_k0],
-                                     [cl0_tiling_mc,
-                                      cl0_tiling_m0,
-                                      c_col_k1,
-                                      c_col_k0])
+            status = Compare.compare(
+                [l1_ma, al0_tiling_m0, l1_ka, al0_tiling_k0],
+                [cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
+            )
 
         if tiling.get("AL1_shape") == [] and tiling.get("AL0_matrix") == []:
             pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(a_l1, c_col)
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(a_l1, c_col,
-                                affine_shape=l1a2l0c_affine_shape)
+            sch_agent.attach_at(a_l1, c_col, affine_shape=l1a2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
-            l1a2out_affine_shape = [1,
-                                    None,
-                                    l1_ma * al0_tiling_m0,
-                                    cl0_tiling_n0]
-            sch_agent.attach_at(a_l1, c_ddr,
-                                affine_shape=l1a2out_affine_shape)
+            l1a2out_affine_shape = [1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
+            sch_agent.attach_at(a_l1, c_ddr, affine_shape=l1a2out_affine_shape)
         else:
             _raise_dx_general_err("a_l1 atach error.")
 
@@ -1397,7 +1486,8 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 (1, 1),
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[a_col_before.dtype]["mac"][1]))
+                (1, cce_params.CUBE_MKN[a_col_before.dtype]["mac"][1])
+            )
 
     def _bl1_process():
         if tiling.get("BL1_shape") != []:
@@ -1416,50 +1506,46 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 bl0_tiling_n0_temp *= 2
                 cl0_tiling_nc_temp //= 2
             l1_kb = bl1_tilling_k // _k0
-            l1b2l0c_affine_shape = None, \
-                l1_nb, \
-                cl0_tiling_m0, \
-                bl0_tiling_n0_temp, \
-                l1_kb, \
+            l1b2l0c_affine_shape = (
+                None,
+                l1_nb,
+                cl0_tiling_m0,
+                bl0_tiling_n0_temp,
+                l1_kb,
                 bl0_tiling_k0
+            )
             if w_trans_flag:
-                tiling_ori_bl1 = bl1_tilling_k // _k0, \
-                    l1_nb, \
-                    _n0, _k0
+                tiling_ori_bl1 = bl1_tilling_k // _k0, l1_nb, _n0, _k0
             else:
-                tiling_ori_bl1 = l1_nb * kernel_h * kernel_w, \
-                    bl1_tilling_k // (kernel_h * kernel_w * 16), 16, 16
+                tiling_ori_bl1 = (
+                    l1_nb * kernel_h * kernel_w,
+                    bl1_tilling_k // (kernel_h * kernel_w * 16),
+                    16,
+                    16
+                )
 
             status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
-            status = Compare.compare([l1_nb,
-                                      bl0_tiling_n0_temp,
-                                      l1_kb,
-                                      bl0_tiling_k0],
-                                     [cl0_tiling_nc_temp,
-                                      cl0_tiling_n0_temp,
-                                      c_col_k1,
-                                      c_col_k0])
+            status = Compare.compare(
+                [l1_nb, bl0_tiling_n0_temp, l1_kb, bl0_tiling_k0],
+                [cl0_tiling_nc_temp, cl0_tiling_n0_temp, c_col_k1, c_col_k0]
+            )
             if status_ori == Compare.EQUAL:
                 # bl1 full load but tiling.get("BL1_shape") is not []
                 pass
             elif status == Compare.EQUAL:
                 sch_agent.same_attach(b_l1, c_col)
             elif status == Compare.LESS_EQ:
-                sch_agent.attach_at(
-                    b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
+                sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
             elif status == Compare.GREATE_EQ:
-                l1b2out_affine_shape = [None, l1_nb,
-                                        cl0_tiling_m0, bl0_tiling_n0]
-                sch_agent.attach_at(
-                    b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
+                l1b2out_affine_shape = [None, l1_nb, cl0_tiling_m0, bl0_tiling_n0]
+                sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
             else:
                 _raise_dx_general_err("b_l1 attach error.")
 
     def _aub_process():
         if stride_h > 1 or stride_w > 1:
             aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
-            _, _, _, filling_w, _ = \
-                shape_to_list(a_filling.shape)
+            _, _, _, filling_w, _ = shape_to_list(a_filling.shape)
             if aub_tiling_m == 0:
                 sch_agent.same_attach(a_filling, a_l1)
             else:
@@ -1469,11 +1555,13 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 else:
                     aub_h = aub_tiling_m
                     aub_w = filling_w
-                ub_shape = [1,
-                            aub_tiling_k // (kernel_h * kernel_w * 16),
-                            aub_h,
-                            aub_w,
-                            al1_co0]
+                ub_shape = [
+                    1,
+                    aub_tiling_k // (kernel_h * kernel_w * 16),
+                    aub_h,
+                    aub_w,
+                    al1_co0
+                ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
             if not dynamic_mode:
                 sch_agent.same_attach(a_zero, a_filling)
@@ -1507,8 +1595,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
                 sch[c_ub_cut].double_buffer()
                 sch[c_ub_drelu].double_buffer()
-                if "elewise_binary_add" \
-                        in deconv_res.op.input_tensors[1].op.tag:
+                if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     sch[vadd_res].double_buffer()
             elif "elewise" in deconv_res.op.tag:
                 for ub_tensor in tensor_map["ub_list"]:
@@ -1553,65 +1640,77 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             _fusion_double_buffer()
 
     def _emit_fusion_insn():
-        deq_axis_mode = {False: (0, "scalar"),
-                         True: (2, "vector")}
+        deq_axis_mode = {False: (0, "scalar"), True: (2, "vector")}
 
         def _emit_requant_fusion_insn():
             sch_agent[tensor_map["deq"]].emit_insn(
-                tensor_map["deq"].op.axis[0], 'dma_copy')
+                tensor_map["deq"].op.axis[0], "dma_copy"
+            )
             c_ub_reform = tensor_map["c_ub"]
             reform_outer, reform_inner = sch[c_ub_reform].split(
                 c_ub_reform.op.axis[3], nparts=2
             )
-            sch[c_ub_reform].reorder(reform_outer,
-                                     c_ub_reform.op.axis[0],
-                                     c_ub_reform.op.axis[1],
-                                     c_ub_reform.op.axis[2],
-                                     reform_inner)
-            sch[c_ub_reform].emit_insn(
-                c_ub_reform.op.axis[2], "dma_copy")
+            sch[c_ub_reform].reorder(
+                reform_outer,
+                c_ub_reform.op.axis[0],
+                c_ub_reform.op.axis[1],
+                c_ub_reform.op.axis[2],
+                reform_inner
+            )
+            sch[c_ub_reform].emit_insn(c_ub_reform.op.axis[2], "dma_copy")
 
         def _emit_quant_fusion_insn():
             sch_agent[tensor_map["deq"]].emit_insn(
-                tensor_map["deq"].op.axis[0], 'dma_copy')
+                tensor_map["deq"].op.axis[0], "dma_copy"
+            )
             deq_axis = deq_axis_mode[tensor_attr.get("deq_vector")][0]
             if cce_conf.is_v200_version_new():
                 sch[tensor_map["c_ub"]].emit_insn(
-                    tensor_map["c_ub"].op.axis[deq_axis], 'dma_copy')
+                    tensor_map["c_ub"].op.axis[deq_axis], "dma_copy"
+                )
             else:
                 deq_mode = deq_axis_mode[tensor_attr.get("deq_vector")][1]
                 sch_agent[c_ub].pragma(
-                    sch_agent[c_ub].op.axis[deq_axis],
-                    "deq_scale", deq_mode)
+                    sch_agent[c_ub].op.axis[deq_axis], "deq_scale", deq_mode
+                )
             for ub_tensor in tensor_map["ub_list"]:
                 if ub_tensor.op.name == "input_ub":
                     sch_agent[ub_tensor].emit_insn(
-                        sch_agent[ub_tensor].op.axis[0], "dma_padding")
+                        sch_agent[ub_tensor].op.axis[0], "dma_padding"
+                    )
                 elif "reform" in ub_tensor.op.name:
                     ndim = len(sch[ub_tensor].op.axis)
                     coo, _ = sch[ub_tensor].split(
                         sch[ub_tensor].op.axis[ndim - 1],
-                        cce_params.CUBE_MKN["float16"]["mac"][1])
-                    axis_list = sch[ub_tensor].op.axis[0:ndim - 1]
+                        cce_params.CUBE_MKN["float16"]["mac"][1]
+                    )
+                    axis_list = sch[ub_tensor].op.axis[0 : ndim - 1]
                     sch[ub_tensor].reorder(coo, *axis_list)
-                    sch[ub_tensor].emit_insn(
-                        sch[ub_tensor].op.axis[2], "vector_auto")
+                    sch[ub_tensor].emit_insn(sch[ub_tensor].op.axis[2], "vector_auto")
                 elif ub_tensor.op.name == "cast_i8_ub":
-                    if cce_conf.is_v200_version_new() or cce_conf.CceProductParams().is_lhisi_version():
+                    if (
+                        cce_conf.is_v200_version_new()
+                        or cce_conf.CceProductParams().is_lhisi_version()
+                    ):
                         conv_mode = "vector_conv_{}".format(
-                            tensor_attr.get("q_mode").lower())
+                            tensor_attr.get("q_mode").lower()
+                        )
                     else:
                         conv_mode = "vector_conv"
                     sch_agent[ub_tensor].emit_insn(
-                        sch_agent[ub_tensor].op.axis[0], conv_mode)
+                        sch_agent[ub_tensor].op.axis[0], conv_mode
+                    )
                 else:
                     sch_agent[ub_tensor].emit_insn(
-                        sch_agent[ub_tensor].op.axis[0], "vector_auto")
+                        sch_agent[ub_tensor].op.axis[0], "vector_auto"
+                    )
             for input_tensor_mem in tensor_map["input_tensor"]:
                 sch_agent[input_tensor_mem[0]].emit_insn(
-                    sch_agent[input_tensor_mem[0]].op.axis[0], "dma_copy")
+                    sch_agent[input_tensor_mem[0]].op.axis[0], "dma_copy"
+                )
                 sch_agent[input_tensor_mem[1]].emit_insn(
-                    sch_agent[input_tensor_mem[1]].op.axis[0], "vector_auto")
+                    sch_agent[input_tensor_mem[1]].op.axis[0], "vector_auto"
+                )
 
         if deconv_res.op.tag == "requant_remove_pad":
             _emit_requant_fusion_insn()
@@ -1621,54 +1720,51 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
         if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
-            sch[mask_ub].emit_insn(mask_ub.op.axis[0], 'dma_copy')
+            sch[mask_ub].emit_insn(mask_ub.op.axis[0], "dma_copy")
 
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
-                sch[vadd_tensor_ub].emit_insn(vadd_tensor_ub.op.axis[0],
-                                              'dma_copy')
+                sch[vadd_tensor_ub].emit_insn(vadd_tensor_ub.op.axis[0], "dma_copy")
                 sch[vadd_res].emit_insn(vadd_res.op.axis[0], "vector_add")
-            sch[c_ub_drelu].emit_insn(c_ub_drelu.op.axis[0],
-                                      "vector_selects_bool")
+            sch[c_ub_drelu].emit_insn(c_ub_drelu.op.axis[0], "vector_selects_bool")
 
-            sch[c_ub_cut].emit_insn(c_ub_cut.op.axis[0], 'phony_insn')
+            sch[c_ub_cut].emit_insn(c_ub_cut.op.axis[0], "phony_insn")
         elif "elewise" in deconv_res.op.tag:
             for ub_tensor in tensor_map["ub_list"]:
                 sch_agent[ub_tensor].emit_insn(
-                    sch_agent[ub_tensor].op.axis[0], "vector_auto")
+                    sch_agent[ub_tensor].op.axis[0], "vector_auto"
+                )
             for input_tensor_mem in tensor_map["input_tensor_list"]:
                 sch_agent[input_tensor_mem[0]].emit_insn(
-                    sch_agent[input_tensor_mem[0]].op.axis[0], "dma_copy")
+                    sch_agent[input_tensor_mem[0]].op.axis[0], "dma_copy"
+                )
                 sch_agent[input_tensor_mem[1]].emit_insn(
-                    sch_agent[input_tensor_mem[1]].op.axis[0], "vector_auto")
+                    sch_agent[input_tensor_mem[1]].op.axis[0], "vector_auto"
+                )
 
     def _emit_l1fusion_insn(setfmatrix_dict):
         if a_l1_full is not None:
             sch[a_l1_full].emit_insn(sch[a_l1_full].op.axis[0], "dma_copy")
         if stride_h == 1 and stride_w == 1:
             if l1_fusion_type != -1 and input_mem[0] == 1:
-                sch_agent[a_l1].emit_insn(
-                    sch_agent[a_l1].op.axis[0], "phony_insn")
+                sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
-                sch_agent[a_l1].emit_insn(
-                    sch_agent[a_l1].op.axis[0], "dma_copy")
+                sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy")
                 if l1_fusion_type != -1:
-                    sch_agent[a_l1].pragma(a_l1.op.axis[0], 'jump_data', 1)
+                    sch_agent[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
         else:
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
-            afill_n, afill_c, afill_h, afill_w, _ = \
-                sch_agent[a_filling].get_active_scopes()
+            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[
+                a_filling
+            ].get_active_scopes()
             afill_w_out, afill_w_inner = sch_agent[a_filling].split(
-                afill_w, factor=stride_w)
+                afill_w, factor=stride_w
+            )
             sch_agent[a_filling].reorder(
-                afill_w_inner,
-                afill_n,
-                afill_c,
-                afill_h,
-                afill_w_out)
+                afill_w_inner, afill_n, afill_c, afill_h, afill_w_out
+            )
             sch_agent[a_filling].unroll(afill_w_inner)
             sch_agent[a_filling].reused_by(a_zero)
-            sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0],
-                                        "vector_dup")
+            sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
             if w_trans_flag:
                 sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
             else:
@@ -1676,46 +1772,51 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             al1_insn, _ = sch_agent[a_l1].nlast_scopes(2)
             sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
         setfmatrix_dict["conv_fm_c"] = a_l1.shape[1] * a_l1.shape[4]
-        setfmatrix_dict["conv_fm_h"] \
-            = valid_shape[2] if valid_shape else a_l1.shape[2]
+        setfmatrix_dict["conv_fm_h"] = valid_shape[2] if valid_shape else a_l1.shape[2]
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]
-        offset_flag = (input_mem[0] == 1) \
-            and (l1_fusion_type != -1) \
-            and (stride_h == 1) \
-            and (stride_w == 1) \
+        offset_flag = (
+            (input_mem[0] == 1)
+            and (l1_fusion_type != -1)
+            and (stride_h == 1)
+            and (stride_w == 1)
             and valid_shape
+        )
         if offset_flag:
             setfmatrix_dict["conv_fm_offset_h"] = slice_offset[2]
-        sch_agent[a_col_before].emit_insn(a_col_before.op.axis[0],
-                                          'set_fmatrix',
-                                          setfmatrix_dict)
-        sch_agent[a_col].emit_insn(a_col.op.axis[0], 'im2col')
+        sch_agent[a_col_before].emit_insn(
+            a_col_before.op.axis[0], "set_fmatrix", setfmatrix_dict
+        )
+        sch_agent[a_col].emit_insn(a_col.op.axis[0], "im2col")
 
     def _dynamic_emit_insn():
-        setfmatrix_dict = {"set_fmatrix": 1,
-                           "conv_kernel_h": kernel_h,
-                           "conv_kernel_w": kernel_w,
-                           "conv_padding_top": padu,
-                           "conv_padding_bottom": padd,
-                           "conv_padding_left": padl,
-                           "conv_padding_right": padr,
-                           "conv_stride_h": 1,
-                           "conv_stride_w": 1,
-                           "conv_fm_c": a_l1.shape[1] * a_l1.shape[4],
-                           "conv_fm_c1": a_l1.shape[1],
-                           "conv_fm_h": a_l1.shape[2],
-                           "conv_fm_w": a_l1.shape[3],
-                           "conv_fm_c0": a_l1.shape[4],
-                           }
+        setfmatrix_dict = {
+            "set_fmatrix": 1,
+            "conv_kernel_h": kernel_h,
+            "conv_kernel_w": kernel_w,
+            "conv_padding_top": padu,
+            "conv_padding_bottom": padd,
+            "conv_padding_left": padl,
+            "conv_padding_right": padr,
+            "conv_stride_h": 1,
+            "conv_stride_w": 1,
+            "conv_fm_c": a_l1.shape[1] * a_l1.shape[4],
+            "conv_fm_c1": a_l1.shape[1],
+            "conv_fm_h": a_l1.shape[2],
+            "conv_fm_w": a_l1.shape[3],
+            "conv_fm_c0": a_l1.shape[4]
+        }
         if stride_h == 1 and stride_w == 1:
-            sch[a_l1].emit_insn(a_l1.op.axis[0], 'dma_copy', setfmatrix_dict)
+            sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)
         else:
-            afill_n, afill_c, afill_h, afill_w, _ = \
-                sch_agent[a_filling].get_active_scopes()
+            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[
+                a_filling
+            ].get_active_scopes()
             afill_w_outer, afill_w_inner = sch_agent[a_filling].split(
-                afill_w, factor=stride_w)
+                afill_w, factor=stride_w
+            )
             afill_h_outer, afill_h_inner = sch_agent[a_filling].split(
-                afill_h, factor=stride_h)
+                afill_h, factor=stride_h
+            )
 
             sch_agent[a_filling].reorder(
                 afill_w_inner,
@@ -1723,23 +1824,22 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
                 afill_n,
                 afill_c,
                 afill_h_outer,
-                afill_w_outer)
+                afill_w_outer
+            )
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
 
             sch_agent[a_zero].reused_by(a_one)
             sch_agent[a_one].reused_by(vn_tensor)
 
-            sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0],
-                                        "vector_dup")
-            sch_agent[a_one].emit_insn(sch_agent[a_one].op.axis[0],
-                                       "vector_dup")
+            sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
+            sch_agent[a_one].emit_insn(sch_agent[a_one].op.axis[0], "vector_dup")
             sch[vn_tensor].emit_insn(vn_tensor.op.axis[0], "phony_insn")
             sch_agent[a_filling].emit_insn(afill_n, "vector_mul")
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
-        sch[a_col].emit_insn(a_col.op.axis[0], 'im2col_v2', setfmatrix_dict)
+        sch[a_col].emit_insn(a_col.op.axis[0], "im2col_v2", setfmatrix_dict)
 
     def _emit_insn():  # pylint: disable=R0914,R0915
         sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
@@ -1747,31 +1847,34 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         if bias_add_vector is not None:
             sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
             sch[bias_add_vector].emit_insn(
-                sch[bias_add_vector].op.axis[0], 'vector_auto',
+                sch[bias_add_vector].op.axis[0],
+                "vector_auto"
             )
 
-        if neg_src_stride \
-            and (cce_conf.CceProductParams().is_cloud_version()
-                 or cce_conf.is_v200_version_new()
-                 or cce_conf.CceProductParams().is_lhisi_version()):
-            _, b_col_inner \
-                = sch_agent[b_col].split(sch_agent[b_col].op.axis[0],
-                                         factor=kernel_h * kernel_w)
+        if neg_src_stride and (
+            cce_conf.CceProductParams().is_cloud_version()
+            or cce_conf.is_v200_version_new()
+            or cce_conf.CceProductParams().is_lhisi_version()
+        ):
+            _, b_col_inner = sch_agent[b_col].split(
+                sch_agent[b_col].op.axis[0], factor=kernel_h * kernel_w
+            )
             sch_agent[b_col].emit_insn(b_col_inner, "dma_copy")
         else:
             sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[1], "dma_copy")
 
-        setfmatrix_dict = {"conv_kernel_h": kernel_h,
-                           "conv_kernel_w": kernel_w,
-                           "conv_padding_top": padu,
-                           "conv_padding_bottom": padd,
-                           "conv_padding_left": padl,
-                           "conv_padding_right": padr,
-                           "conv_stride_h": 1,
-                           "conv_stride_w": 1,
-                           "conv_dilation_h": dilation_h,
-                           "conv_dilation_w": dilation_w,
-                           }
+        setfmatrix_dict = {
+            "conv_kernel_h": kernel_h,
+            "conv_kernel_w": kernel_w,
+            "conv_padding_top": padu,
+            "conv_padding_bottom": padd,
+            "conv_padding_left": padl,
+            "conv_padding_right": padr,
+            "conv_stride_h": 1,
+            "conv_stride_w": 1,
+            "conv_dilation_h": dilation_h,
+            "conv_dilation_w": dilation_w
+        }
 
         if dynamic_mode:
             _dynamic_emit_insn()
@@ -1781,25 +1884,27 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         scopes_intrins = sch_agent[c_col].intrin_scopes(6)
         scope_insn = scopes_intrins[0]
         inner_k_axis = sch_agent[c_col].get_relate_scope(
-            c_col.op.reduce_axis[0], scope_insn)
+            c_col.op.reduce_axis[0], scope_insn
+        )
         if inner_k_axis:
-            mad_dict = {"mad_pattern": 2,
-                        "k_outer": sch_agent[c_col].get_relate_scope(
-                            c_col.op.reduce_axis[0], scope_insn)}
+            mad_dict = {
+                "mad_pattern": 2,
+                "k_outer": sch_agent[c_col].get_relate_scope(
+                    c_col.op.reduce_axis[0], scope_insn
+                )
+            }
         else:
-            inner_n, inner_co, inner_m, \
-                inner_co0, inner_k1, inner_k0 = scopes_intrins
+            inner_n, inner_co, inner_m, inner_co0, inner_k1, inner_k0 = scopes_intrins
             inner_ko, inner_ki = sch_agent[c_col].split(inner_k1, nparts=1)
-            sch_agent[c_col].reorder(inner_ko, inner_n, inner_co,
-                                     inner_m, inner_co0,
-                                     inner_ki, inner_k0)
+            sch_agent[c_col].reorder(
+                inner_ko, inner_n, inner_co, inner_m, inner_co0, inner_ki, inner_k0
+            )
             mad_dict = {"mad_pattern": 2, "k_outer": [inner_ko]}
         if bias_ub_brc is not None:
             sch[bias_l0c].reused_by(c_add_bias, c_col)
             sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], 'phony_insn')
-            cc_outer, _ = sch[bias_l0c].split(
-                bias_l0c.op.axis[2], BRC_STANDARD_BLOCK_SIZE)
-            sch[bias_l0c].emit_insn(cc_outer, 'dma_copy')
+            sch[bias_l0c].split(bias_l0c.op.axis[2], BRC_STANDARD_BLOCK_SIZE)
+            sch[bias_l0c].emit_insn(bias_l0c.op.axis[1], 'dma_copy')
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
@@ -1810,24 +1915,31 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             sch[c_ddr].bind_buffer(c_ddr.op.axis[1], align_length, 0)
         sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         overload_flag = _check_overload_dy()
-        _set_overload_flag(sch[c_ddr],
-                           overload_flag,
-                           sch_agent[c_ddr].nlast_scopes(3)[0])
+        _set_overload_flag(
+            sch[c_ddr], overload_flag, sch_agent[c_ddr].nlast_scopes(3)[0]
+        )
         _emit_fusion_insn()
 
     def _handle_dynamic_workspace(stride_w):
         def get_al1_bound():
-            if len(tiling['AL1_shape']) != 0:
-                k_al1, multi_m_al1 = tiling['AL1_shape'][:2]
+            if len(tiling["AL1_shape"]) != 0:
+                k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
                 al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 al1_c = k_al1 // kernel_h // kernel_w
             else:
-                al1_m = _ceil(c_l0c_hw,
-                              (cce_params.CUBE_MKN[c_col.dtype]["mac"][0]
-                               * cl0_tiling_mc)) \
-                        * al0_tiling_ma * al0_tiling_m0
+                al1_m = (
+                    _ceil(
+                        c_l0c_hw,
+                        (cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
+                    )
+                    * al0_tiling_ma
+                    * al0_tiling_m0
+                )
                 al1_c = al1_co1 * al1_co0
-            al1_h = kernel_h + (al1_m // output_shape[3]) + 1
+            al1_h = tvm.select(
+                        (tvm.floormod(al1_m, output_shape[3]) == 0).asnode(),\
+                        kernel_h + (al1_m // output_shape[3]) - 1,\
+                        kernel_h + (al1_m // output_shape[3]) + 1)
             al1_w = a_ddr.shape[3] * stride_w
             al1_bound = al1_c * al1_h * al1_w
 
@@ -1856,6 +1968,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         sch[c_ub].mem_unique()
         if stride_h > 1 or stride_w > 1:
             sch[a_filling].mem_unique()
+            sch[a_ub].mem_unique()
 
     def _handle_workspace():
         l1_tensor_map = {}
@@ -1866,8 +1979,12 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
             if a_l1_full is not None:
                 sch[a_l1_full].set_storage_bound(fmap_l1_valid_size)
                 l1_tensor_map[fmap] = a_l1_full
-            elif l1_fusion_type != -1 \
-                    and input_mem[0] == 0 and stride_w == 1 and stride_h == 1:
+            elif (
+                l1_fusion_type != -1
+                and input_mem[0] == 0
+                and stride_w == 1
+                and stride_h == 1
+            ):
                 sch[a_l1].set_storage_bound(fmap_l1_valid_size)
                 l1_tensor_map[fmap] = a_l1
             else:
@@ -1885,13 +2002,14 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
         ax_ni, ax_ci, ax_hw, _ = axs
-        ax_core = sch_agent[c_ddr].bind_core([ax_ni, ax_ci, ax_hw],
-                                             [batch_dim, n_dim, m_dim])
+        ax_core = sch_agent[c_ddr].bind_core(
+            [ax_ni, ax_ci, ax_hw], [batch_dim, n_dim, m_dim]
+        )
         ax_core_in = sch_agent[c_ddr].get_superkernel_axis_pragma()
         sch_agent.root_stage_at(c_ddr, ax_core)
         blocks = batch_dim * n_dim * m_dim
         if blocks == batch_dim:
-            sch[c_ddr].pragma(ax_core_in, 'json_info_batchBindOnly')
+            sch[c_ddr].pragma(ax_core_in, "json_info_batchBindOnly")
         return ax_core
 
     def _conv1d_split_tile():
@@ -1905,8 +2023,7 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
 
         # compute the axis's block offset and part offset after split
         howo_mad_align = _align(howo_mad, al0_tiling_m0)
-        howo_offset_on_block = _align(_ceil(howo_mad_align, m_dim),
-                                      m_axis_length_l1)
+        howo_offset_on_block = _align(_ceil(howo_mad_align, m_dim), m_axis_length_l1)
         block_offset = ax_core % m_dim * howo_offset_on_block
         # M axis full load in Al1 or Not
         if c_l0c_hw == m_axis_length_l1:
@@ -1921,11 +2038,9 @@ def general_schedule(tensor, sch_list,  # pylint:disable=R0914,R0915
         # expand in UB , so load3d stride is 1
         load3d_stride = 1
         w_extend = (m_axis_length_l1 - 1) * load3d_stride + kernel_w_dilation
-        sch[a_l1].buffer_tile((None, None),
-                              (None, None),
-                              (None, None),
-                              (w_offset, w_extend),
-                              (None, None))
+        sch[a_l1].buffer_tile(
+            (None, None), (None, None), (None, None), (w_offset, w_extend), (None, None)
+        )
 
     ax_core = _bind_core()
     if is_conv1d_situation:

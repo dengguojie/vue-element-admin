@@ -523,7 +523,7 @@ class CceOp:
         # for pylint
         log.debug("start core_schedule_reduce")
 
-        tensor_map = tensor_map
+        _ = tensor_map
         self._res_tensor_list = res
         if hasattr(res, 'index'):
             if len(res) > 1:
@@ -803,13 +803,13 @@ class CceOp:
             live_width -= _op_width(tensor_op)
         return max_width
 
-    def get_max_ub_count(self, isElewise=False):
+    def get_max_ub_count(self, is_elewise=False):
         """
         caculate the max element num loaded in UB buffer
         :return: max element num loaded in UB buffer
         """
         total_width = self.get_total_width()
-        if isElewise:
+        if is_elewise:
             total_width = total_width + 2
 
         if not total_width:
@@ -3732,8 +3732,8 @@ class CceOp:
                 if i['dst_buffer'] in self._read_cache_muti_out.keys():
                     self._schedule[
                         self._read_cache_muti_out[i['dst_buffer']]].compute_at(
-                        self._schedule[self._compute_at_after_reduce_buffer],
-                        self._compute_at_after_reduce_axis)
+                            self._schedule[self._compute_at_after_reduce_buffer],
+                            self._compute_at_after_reduce_axis)
 
         if self._need_compute_at_before and \
                 self._compute_at_before_reduce_axis is not None:
@@ -3754,8 +3754,8 @@ class CceOp:
                 if i['dst_buffer'] in self._read_cache_muti_out.keys():
                     self._schedule[
                         self._read_cache_muti_out[i['dst_buffer']]].compute_at(
-                        self._schedule[self._compute_at_before_reduce_buffer],
-                        self._compute_at_before_reduce_axis)
+                            self._schedule[self._compute_at_before_reduce_buffer],
+                            self._compute_at_before_reduce_axis)
 
             for i in read_buffer:
                 self._schedule[i].compute_at(
@@ -3944,7 +3944,7 @@ class CceOp:
     def _get_backend_reduce_last_insn(self):
         # v100 not support fp32 vcmax/vcmin,
         #     front-end reduce_max/min using vmax/vmin.
-        # 1951 v200 support fp32 vcmax/vcmin, using backend emit_insn.
+        # ng1 v200 support fp32 vcmax/vcmin, using backend emit_insn.
         vc_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
                                                        "float32")
         backend_reduce_insn = ["reduce_sum"]

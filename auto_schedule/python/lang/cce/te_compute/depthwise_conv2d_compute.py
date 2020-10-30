@@ -814,26 +814,6 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape, weight, dout,
 
     dilated_strides = (1, 1)
 
-    if dilated_pad_top >= weight_height or \
-            dilated_pad_bottom >= weight_height:
-        dict_args = dict()
-        dict_args["errCode"] = "E60016"
-        dict_args["op_name"] = "depthwise_conv2d_backprop_input"
-        dict_args["h_of_filter"] = weight_height
-        dict_args["h_of_pad"] = dilated_pad_top
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
-
-    if dilated_pad_left >= weight_width or \
-            dilated_pad_right >= weight_width:
-        dict_args = dict()
-        dict_args["errCode"] = "E60017"
-        dict_args["op_name"] = "depthwise_conv2d_backprop_input"
-        dict_args["w_of_filter"] = weight_width
-        dict_args["w_of_pad"] = dilated_pad_left
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
-
     # compute of out_backprop dilation
     dout_dilated = tvm.compute(
         dilated_shape,

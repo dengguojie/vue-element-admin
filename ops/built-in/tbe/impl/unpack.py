@@ -24,6 +24,7 @@ from impl.util import util_select_op_base
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-arguments
@@ -93,37 +94,41 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     format_list = ("ND", "NHWC", "NCHW", "HWCN", "NC1HWC0")
     if dformat == "NC1HWC0":
         if len(shape) != 5:
-            raise RuntimeError("NC1HWC0 shape length should be equal to 5")
+            error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'x', 5, 5, len(shape))
+
         # index list of H W axis.
         suporrted_list = (-5, -3, -2, 0, 2, 3)
         if axis not in suporrted_list:
-            raise RuntimeError("NC1HWC0 supports unpack of N H W axis")
+            error_manager_vector.raise_err_check_params_rules(
+                kernel_name, "axis must be one of {-5, -3, -2, 0, 2, 3} when the format of 'x' is NC1HWC0", 'axis',
+                axis)
     else:
         if dformat not in format_list:
-            raise RuntimeError("Format supports ND,NCHW,NHWC,HWCN and NC1HWC0")
+            error_manager_vector.raise_err_input_format_invalid(kernel_name, 'x', format_list, dformat)
 
     # check axis value
     if axis < -len(shape) or axis >= len(shape):
-        raise RuntimeError("axis= %d not in the union of [%d, %d) " % (axis, -len(shape), len(shape)))
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'axis', 1 - len(shape), len(shape), axis)
 
     # check num value
     if num is None:
         num = shape[axis]
     if num is None:
-        raise RuntimeError("Cannot infer num value from shape.")
+        error_manager_vector.raise_err_check_params_rules("unpack", 'shape[axis] not be None', 'shape[axis]',
+                                                          shape[axis])
     if num != shape[axis]:
-        raise RuntimeError("Num should be equal to length of dim axis %d" % shape[axis])
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', shape[axis], num)
 
     # 1536B means stack holding the param provided to the platform,
     # 1 param takes 8 bytes, needs Multiple output param and 1 input param
     # mini has more parameters (offset, index) than cloud
     compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
     if compile_plat in ("Ascend310", ):
-        if num > (1536 // 3) // 8 - 1:
-            raise RuntimeError("Exceeds stack holding the parameters for mini")
+        max_num = (1536 // 3) // 8 - 1
     else:
-        if num > 1536 // 8 - 1:
-            raise RuntimeError("Exceeds stack holding the parameters for cloud")
+        max_num = 1536 // 8 - 1
+    if num > max_num:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'num', 1, max_num, num)
 
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")

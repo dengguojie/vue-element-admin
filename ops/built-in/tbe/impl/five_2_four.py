@@ -8352,12 +8352,13 @@ def _move_nhwc_fp16_split_hw(args):
         move_len = dim_ele_out - cp_align_len
         dst_offset = n_index * hw_i * c_i + hw_before * c_i
         burst_len_dst = _ceil_div(move_len, cp_align_len)
-        tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
-                                    dst.access_ptr('w',
-                                                   offset=dst_offset),
-                                    data_res.access_ptr(
-                                        "r", offset=0),
-                                    0, 1, burst_len_dst, 0, 0))
+        with tvm_ib.if_scope(burst_len_dst > 0):
+            tvm_ib.emit(tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                        dst.access_ptr('w',
+                                                       offset=dst_offset),
+                                        data_res.access_ptr(
+                                            "r", offset=0),
+                                        0, 1, burst_len_dst, 0, 0))
         with tvm_ib.for_range(0, cp_align_len, name="num_a") as num_a:
             tvm_ib.emit(tvm.call_extern(
                 data_res.dtype, "reg_mov",
@@ -8495,7 +8496,8 @@ def _func_nhwc_fp16_split_hw_mod(args):
                n_index, hw_before, hw_len
         _move_nhwc_fp16_split_hw(args)
     with tvm_ib.else_scope():
-        hw_len = _ceil_fill(hw_mod, cp_align_len)
+        # to avoid write data to same address in parallel
+        hw_len = hw_mod
         hw_before = hw_i - hw_len
         args = tvm_ib, data, dst, data_ub, data_res, data_tail, reg, \
                addr_array, addr_array_buf, cp_align_len, float_size, ub_ele, \

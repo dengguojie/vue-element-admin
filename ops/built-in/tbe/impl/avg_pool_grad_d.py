@@ -19,6 +19,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -58,23 +60,28 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     DIM_N, DIM_C1, _, _, _ = 0, 1, 2, 3, 4
     DIM_W_C1, DIM_W_H, DIM_W_W, _, _, _ = 0, 1, 2, 3, 4, 5
 
-    if shape_in[DIM_N] != shape_out[DIM_N]:
-        raise RuntimeError("input N-dim must be equal to out N-dim.")
+    if shape_in[DIM_N] != shape_out[DIM_N] or shape_in[DIM_C1] != shape_out[DIM_C1]:
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'input must be equal with out on N-dim and C-dim', 'input',
+                                                          shape_in)
     if shape_in[DIM_C1] != shape_k[DIM_W_C1]:
-        raise RuntimeError("input C-dim must be equal to kernel C-dim..")
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d', 'input must be equal with kernel on C-dim',
+                                                          'input', shape_in)
     if shape_k[DIM_W_H] > 255 or shape_k[DIM_W_W] > 255:
-        raise RuntimeError("chip ISA limit kernel_h or kernel_w must less than 255")
-    if shape_in[DIM_C1] != shape_out[DIM_C1]:
-        raise RuntimeError("input C-dim must be equal to out C-dim.")
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'chip ISA limit kernel_h or kernel_w must less than 255',
+                                                          'kernel', shape_k)
 
     inp_dtype = dtype.lower()
     para_check.check_dtype(inp_dtype, ('float16', ))
 
     if strides[DIM_S_H] != strides[DIM_S_W]:
-        raise RuntimeError("only supports equal length strides in W and H dim.")
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'only supports equal length strides in W and H dim',
+                                                          'strides', strides)
 
     if padding.lower() not in ("same", "valid"):
-        raise RuntimeError("only supported padding mode of \"same\" and \"valid\".")
+        error_manager_vector.raise_err_pad_mode_invalid('avg_pool3d', 'VALID or SAME', padding)
 
     _, _, hi, wi, _ = shape_in
     _, hk, wk, _, _, _ = shape_k
@@ -88,7 +95,8 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE * data_size) // (data_size * dilated_w *
                                                                                       BLOCK_SIZE)
     if max_dh_in_l1 < BLOCK_SIZE:
-        raise RuntimeError("L1's memory space is not enough to support " "dilated_h tiling with 16!")
+        error_manager_vector.raise_err_specific_reson(
+            "avg_pool_grad_d", "L1's memory space must be enough to support dilated_h tiling with 16!")
     # limiting eque get_tiling, but tile_m get max(1024)
     # 3*max_h_in_ub*out_w+(max_h_in_ub*stride-(stride-1))*dila_w < (ub_size/2-tile_m*BLOCK_SIZE)/BLOCK_SIZE
     # max_h_in_ub*out_w+(max_h_in_ub*stride-(stride-1))*dila_w < X
@@ -97,14 +105,24 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     max_dh_in_ub = ((ub_size - l0a_size // 2) // (data_size * BLOCK_SIZE) +
                     (strides[DIM_S_H] - 1) * dilated_w) // (3 * wo + strides[DIM_S_H] * dilated_w)
     if strides[DIM_S_H] > 1 and max_dh_in_ub < 1:
-        raise RuntimeError("UB's memory space is not enough to support dilated_h tiling with 1!")
+        error_manager_vector.raise_err_specific_reson(
+            "avg_pool_grad_d", "UB's memory space must be enough to support dilated_h tiling with 1!")
 
     out_h, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(hi, hk, stride_h, padding)
     out_w, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(wi, wk, stride_w, padding)
     if out_h != ho:
-        raise RuntimeError("ho and hi relation is wrong by formula!")
+        dict_args = {
+            'errCode': 'E60024',
+            'op_name': 'avg_pool_grad_d',
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+
     if out_w != wo:
-        raise RuntimeError("wo and wi relation is wrong by formula!!")
+        dict_args = {
+            'errCode': 'E60025',
+            'op_name': 'avg_pool_grad_d',
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
     return
 
@@ -525,9 +543,13 @@ def avg_pool_grad_d(input_grad,
     para_check.check_shape(ksize, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
 
     if list(out_grad_shape) != list(orig_input_shape):
-        raise RuntimeError("out_grad_shape must equal input_grad_shape")
+        error_manager_vector.raise_err_inputs_shape_not_equal("avg_pool_grad_d", "out_grad", "orig_input_shape",
+                                                              list(out_grad_shape), list(orig_input_shape),
+                                                              list(out_grad_shape))
     if stride_h < 1 or stride_w < 1:
-        raise RuntimeError("stride should >= 1")
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'the H and W dimensions of strides should >= 1', 'strides',
+                                                          strides)
 
     data_dtype = dtype.lower()
     para_check.check_dtype(data_dtype, ('float16', ))
@@ -538,7 +560,7 @@ def avg_pool_grad_d(input_grad,
             and padding == 'VALID'):
         # for mobileV2 net, only support VALID padding.
         if padding != 'VALID':
-            raise RuntimeError("gobla model ,padding only support VALID ")
+            error_manager_vector.raise_err_pad_mode_invalid('avg_pool_grad_d gobal model', 'VALID', padding)
         else:
             pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
 
@@ -550,7 +572,8 @@ def avg_pool_grad_d(input_grad,
 
         # global_avgpool, input FMAP size equals kernel size, kernel number=1
         if not (filter_num_h == 1 and filter_num_w == 1):
-            raise RuntimeError("global average pooling, input_grad_h and input_grad_w must equel 1")
+            error_manager_vector.raise_err_specific_reson(
+                "avg_pool_grad_d", "Global average pooling, input_grad_h and input_grad_w must equel 1!")
 
         kernel_size_reciprocal = 1.0 / (kernel_h * kernel_w)
 

@@ -18,6 +18,7 @@ avg_pool3d
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def _check_window_rule(ksize, strides, pads):
@@ -34,13 +35,13 @@ def _check_window_rule(ksize, strides, pads):
     None
     """
     if len(ksize) != 5:
-        raise RuntimeError("Invalid ksize params, ksize dim must be 1 or 3 or 5.")
+        error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d', 'ksize', 5, 5, len(ksize))
 
     if len(strides) != 5:
-        raise RuntimeError("Invalid strides params, strides dim must be 1 or 3 or 5.")
+        error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d', 'strides', 5, 5, len(strides))
 
     if len(pads) != 6:
-        raise RuntimeError("Invalid pads params, pads dim must be 6.")
+        error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d', 'pads', 6, 6, len(pads))
 
 
 def _check_global_rule(input_shape, ksize, pads):
@@ -49,10 +50,11 @@ def _check_global_rule(input_shape, ksize, pads):
     fmap_h = input_shape[3]
     fmap_w = input_shape[4]
     if ksize_h != fmap_h or ksize_w != fmap_w:
-        raise RuntimeError("Only support slide on D dimension now.")
+        error_manager_vector.raise_err_check_params_rules('avg_pool3d', 'only support slide on D dimension now',
+                                                          'ksize', ksize)
 
     if pads[0] != 0 or pads[1] != 0 or pads[2] != 0 or pads[3] != 0 or pads[4] != 0 or pads[5] != 0:
-        raise RuntimeError("Only support valid padding mode now.")
+        error_manager_vector.raise_err_pad_mode_invalid('avg_pool3d', 'valid', 'other')
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name

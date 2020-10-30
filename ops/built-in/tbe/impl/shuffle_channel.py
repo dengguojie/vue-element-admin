@@ -21,12 +21,11 @@ from te import tik
 from impl import constant_util as constant
 from impl import common_util
 
-
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-statements
+# pylint: disable=invalid-name,too-many-locals,too-many-statements,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
@@ -152,6 +151,253 @@ class ShuffleChannel:
 
         return block_num, inner_loop, inner_loop_mod
 
+    def check_can_use_v200_instruction(self):
+        """
+        check can use v200 instruction or feature
+        """
+        dtype_flag = self.dtype in ["int16", "uint16", "float16", "int32", "uint32", "float32"]
+        v200_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615")
+        block_num, ub_size = self.get_ub_block_size(self.dsize * 2)
+        shape = self.input_dict.get("x").get("shape")
+        num = shape[1] * shape[2] * shape[3]
+
+        block_index = 0
+        val_cnt = 1
+        for index, val in enumerate(shape):
+            val_cnt = val_cnt * val
+            if val_cnt >= block_num:
+                block_index = index
+                break
+
+        size_flag = num <= ub_size and block_index < 1
+
+        if dtype_flag and v200_flag and size_flag:
+            return True
+
+        return False
+
+    def vadds_compute(self, n_i, dst_ub, src_ub):
+        """
+        describe the process of calculating the vadds instruction
+        """
+        shape_out = self.input_dict.get("y").get("shape")
+        each_block_num = constant.VECTOR_BYTE_SIZE // self.dsize
+        channel = shape_out[1]
+        group = self.input_dict.get("group")
+        hw_num = shape_out[2] * shape_out[3]
+        hw_align = (hw_num + each_block_num - 1) // each_block_num * each_block_num
+        repeat = hw_align // each_block_num
+        zero_val = 0
+        for c_i in range(channel):
+            j = c_i // group
+            i = c_i % group
+            base_index = (n_i * channel + i * (channel // group) + j) * hw_num
+            dst_index = (n_i * channel + c_i) * hw_num
+            self.instance.vec_adds(each_block_num, dst_ub[dst_index], src_ub[base_index], zero_val, repeat,
+                                   constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
+
+    def vadds_move(self, input_dict):
+        """
+        describe the process of moving in and out and calculating the vadds instruction
+        """
+        ub_size = input_dict.get("ub_size")
+        data_size = input_dict.get("data_size")
+        gm_offset = input_dict.get("gm_offset")
+        adds_loop = input_dict.get("adds_loop")
+        move_flag = input_dict.get("move_flag")
+
+        src_ub = self.instance.Tensor(self.dtype, (ub_size,), name="src_ub", scope=tbe_platform.scope_ubuf)
+        dst_ub = self.instance.Tensor(self.dtype, (ub_size,), name="dst_ub", scope=tbe_platform.scope_ubuf)
+        n_burst = common_util.get_datamove_nburst(self.instance, data_size * self.dsize)
+
+        self.instance.data_move(src_ub, self.x_gm[gm_offset], constant.SID, constant.DEFAULT_NBURST,
+                                n_burst, constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+        with self.instance.for_range(0, adds_loop) as n_i:
+            self.vadds_compute(n_i, dst_ub, src_ub)
+
+        with self.instance.if_scope(move_flag):
+            input_dict = {
+                "instance": self.instance,
+                "out_ub": dst_ub,
+                "out_gm": self.y_gm,
+                "gm_offset": gm_offset,
+                "element_num": data_size,
+                "dsize": self.dsize,
+            }
+            common_util.move_out_non32_alignment(input_dict)
+        with self.instance.else_scope():
+            self.instance.data_move(self.y_gm[gm_offset], dst_ub, constant.SID, constant.DEFAULT_NBURST,
+                                    n_burst, constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+    def get_ub_block_size(self, tensor_size):
+        """
+        get ub size and core number
+        """
+        block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        total_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        reserve_size = 4 * 1024
+        block_size = constant.BLOCK_SIZE // self.dsize
+        ub_size = (total_size - reserve_size) // 2 // tensor_size // block_size * block_size
+        return block_num, ub_size
+
+    def move_with_vadds(self):
+        """
+        move with vadds instruction
+        """
+        shape_out = self.input_dict.get("y").get("shape")
+        shape_size = _get_shape_total_number(shape_out)
+        element_num = shape_out[1] * shape_out[2] * shape_out[3]
+        num_32b = constant.BLOCK_SIZE // self.dsize
+        element_num_32b_align = (element_num + num_32b - 1) // num_32b * num_32b
+        block_num, ub_size = self.get_ub_block_size(self.dsize * 2)
+        ub_num = ub_size // element_num
+        loop = shape_size // element_num_32b_align
+
+        if loop < block_num:
+            block_num = loop if loop > 0 else 1
+        inner_loop = (shape_size // element_num) // block_num
+        tail = (shape_size // element_num) % block_num
+
+        thread_num = 1
+        if inner_loop // ub_num > 1:
+            thread_num = 2
+
+        with self.instance.for_range(0, block_num, block_num=block_num) as block_id:
+            each_loop = self.instance.Scalar("uint32")
+            offset = self.instance.Scalar("uint32")
+            each_loop.set_as(inner_loop)
+            if tail > 0:
+                with self.instance.if_scope(block_id < tail):
+                    each_loop.set_as(each_loop + 1)
+            offset.set_as(block_id * each_loop)
+            with self.instance.if_scope(tik.all(block_id >= tail, tail > 0)):
+                offset.set_as(block_id * (each_loop + 1) - (block_id - tail))
+
+            loop_mv = self.instance.Scalar("uint32")
+            tail_mv = self.instance.Scalar("uint32")
+            loop_32b = self.instance.Scalar("uint32")
+            block_size = constant.BLOCK_SIZE // self.dsize
+            align_32b = (block_size + element_num - 1) // element_num
+            with self.instance.if_scope(tik.any(each_loop % ub_num >= align_32b, each_loop <= align_32b)):
+                loop_mv.set_as(each_loop // ub_num)
+                tail_mv.set_as(each_loop % ub_num)
+                loop_32b.set_as(0)
+            with self.instance.else_scope():
+                loop_mv.set_as((each_loop - align_32b) // ub_num)
+                tail_mv.set_as((each_loop - align_32b) % ub_num)
+                loop_32b.set_as(align_32b)
+
+            with self.instance.if_scope(loop_mv > 0):
+                with self.instance.for_range(0, loop_mv, thread_num=thread_num) as l_i:
+                    input_dict = {
+                        "ub_size": ub_size,
+                        "data_size": ub_num * element_num,
+                        "gm_offset": offset * element_num + l_i * ub_num * element_num,
+                        "adds_loop": ub_num,
+                        "move_flag": tik.all(l_i == loop_mv - 1, tail_mv == 0, loop_32b == 0, block_num > 1)
+                    }
+                    self.vadds_move(input_dict)
+            with self.instance.if_scope(tail_mv > 0):
+                input_dict = {
+                    "ub_size": ub_size,
+                    "data_size": tail_mv * element_num,
+                    "gm_offset": offset * element_num + loop_mv * ub_num * element_num,
+                    "adds_loop": tail_mv,
+                    "move_flag": tik.all(loop_32b == 0, block_num > 1)
+                }
+                self.vadds_move(input_dict)
+            with self.instance.if_scope(loop_32b > 0):
+                input_dict = {
+                    "ub_size": ub_size,
+                    "data_size": loop_32b * element_num,
+                    "gm_offset": offset * element_num + (loop_mv * ub_num + tail_mv) * element_num,
+                    "adds_loop": loop_32b,
+                    "move_flag": tik.all(loop_32b > 0, block_num > 1)
+                }
+                self.vadds_move(input_dict)
+
+    def move_without_transform(self):
+        """
+        when group = 1 or group = channel, directly move data in and out
+        """
+        size = _get_shape_total_number(self.input_dict.get("x").get("shape"))
+        ai_core_num, ub_size = self.get_ub_block_size(self.dsize)
+        block_size = constant.BLOCK_SIZE // self.dsize
+        if size <= block_size:
+            block_num = 1
+        else:
+            all_block_num = size // block_size
+            block_num = ai_core_num
+            if all_block_num < ai_core_num:
+                block_num = all_block_num
+        each_len = size // block_num
+        each_mod = size % block_num
+
+        thread_num = 1
+        if each_len // ub_size > 1:
+            thread_num = 2
+
+        with self.instance.for_range(0, block_num, block_num=block_num) as block_id:
+            each_size = self.instance.Scalar("uint32")
+            offset = self.instance.Scalar("uint32")
+            each_size.set_as(each_len)
+            if each_mod > 0:
+                with self.instance.if_scope(block_id < each_mod):
+                    each_size.set_as(each_len + 1)
+            offset.set_as(block_id * each_size)
+            if each_mod > 0:
+                with self.instance.if_scope(block_id >= each_mod):
+                    offset.set_as(block_id * (each_size + 1) - (block_id - each_mod))
+
+            ub_loop = each_size // ub_size
+            ub_mod = each_size % ub_size
+            with self.instance.for_range(0, ub_loop, thread_num=thread_num) as loop_id:
+                src_ub = self.instance.Tensor(self.dtype, (ub_size,), name="src_ub", scope=tbe_platform.scope_ubuf)
+                burst_len = ub_size // block_size
+                self.instance.data_move(src_ub, self.x_gm[offset + loop_id * ub_size],
+                                        constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                        constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                self.instance.data_move(self.y_gm[offset + loop_id * ub_size], src_ub,
+                                        constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                        constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+            with self.instance.if_scope(ub_mod > 0):
+                src_ub = self.instance.Tensor(self.dtype, (ub_size,), name="src_ub", scope=tbe_platform.scope_ubuf)
+                with self.instance.if_scope(tik.all(block_num > 1, ub_mod % block_size != 0)):
+                    src_ub_1 = self.instance.Tensor(self.dtype, (16,), name="src_ub_1", scope=tbe_platform.scope_ubuf)
+                    index = offset + ub_loop * ub_size
+                    with self.instance.if_scope(ub_mod >= block_size):
+                        burst_len = ub_mod // block_size
+                        self.instance.data_move(src_ub, self.x_gm[index],
+                                                constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                        self.instance.data_move(self.y_gm[index], src_ub,
+                                                constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                        gm_offset = index + burst_len * block_size - block_size + ub_mod % block_size
+                        self.instance.data_move(src_ub_1, self.x_gm[gm_offset],
+                                                constant.SID, constant.DEFAULT_NBURST, constant.DEFAULT_BURST_LEN,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                        self.instance.data_move(self.y_gm[gm_offset], src_ub_1,
+                                                constant.SID, constant.DEFAULT_NBURST, constant.DEFAULT_BURST_LEN,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                    with self.instance.else_scope():
+                        gm_offset = index - block_size + ub_mod % block_size
+                        self.instance.data_move(src_ub_1, self.x_gm[gm_offset],
+                                                constant.SID, constant.DEFAULT_NBURST, constant.DEFAULT_BURST_LEN,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                        self.instance.data_move(self.y_gm[gm_offset], src_ub_1,
+                                                constant.SID, constant.DEFAULT_NBURST, constant.DEFAULT_BURST_LEN,
+                                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                with self.instance.else_scope():
+                    burst_len = (ub_mod + block_size - 1) // block_size
+                    self.instance.data_move(src_ub, self.x_gm[offset + ub_loop * ub_size],
+                                            constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                            constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+                    self.instance.data_move(self.y_gm[offset + ub_loop * ub_size], src_ub,
+                                            constant.SID, constant.DEFAULT_NBURST, burst_len,
+                                            constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
     def compute_shuffle_channel(self):
         """
         compute shuffle_channel
@@ -163,6 +409,16 @@ class ShuffleChannel:
         -------
         None
         """
+        group = self.input_dict.get("group")
+        channel = self.input_dict.get("x").get("shape")[1]
+        if group in (1, channel):
+            self.move_without_transform()
+            return
+
+        if self.check_can_use_v200_instruction():
+            self.move_with_vadds()
+            return
+
         block_num, inner_loop, tail = self.get_blockdim_and_loop_cycle()
         shape_out = self.input_dict.get("y").get("shape")
         hw = shape_out[2] * shape_out[3]

@@ -2155,7 +2155,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_tsss_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif isinstance(rhs, tvm.tensor.Tensor) \
+    if isinstance(rhs, tvm.tensor.Tensor) \
             and not isinstance(slhs, tvm.tensor.Tensor) \
             and not isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, rhs)
@@ -2219,7 +2219,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_ttss_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif not isinstance(rhs, tvm.tensor.Tensor) \
+    if not isinstance(rhs, tvm.tensor.Tensor) \
             and isinstance(slhs, tvm.tensor.Tensor) \
             and not isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, slhs)
@@ -2283,7 +2283,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_tsts_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif not isinstance(rhs, tvm.tensor.Tensor) \
+    if not isinstance(rhs, tvm.tensor.Tensor) \
             and not isinstance(slhs, tvm.tensor.Tensor) \
             and isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, srhs)
@@ -2347,7 +2347,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_tsst_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif isinstance(rhs, tvm.tensor.Tensor) \
+    if isinstance(rhs, tvm.tensor.Tensor) \
             and isinstance(slhs, tvm.tensor.Tensor) \
             and not isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, rhs, slhs)
@@ -2411,7 +2411,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_ttts_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif isinstance(rhs, tvm.tensor.Tensor) \
+    if isinstance(rhs, tvm.tensor.Tensor) \
             and not isinstance(slhs, tvm.tensor.Tensor) \
             and isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, rhs, srhs)
@@ -2475,7 +2475,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
         return _vcmpsel_ttst_compute(cmp_op, sel_op, cmpsel_op, shape,
                                      lhs, rhs, operation, slhs, srhs)
 
-    elif not isinstance(rhs, tvm.tensor.Tensor) \
+    if not isinstance(rhs, tvm.tensor.Tensor) \
             and isinstance(slhs, tvm.tensor.Tensor) \
             and isinstance(srhs, tvm.tensor.Tensor):
         vcmpsel_data_shape_check(lhs, slhs, srhs)

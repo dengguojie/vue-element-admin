@@ -50,6 +50,7 @@ from .te_compute.mmad_compute import matmul
 from .te_compute.mmad_compute import get_matmul_performance_format
 from .te_compute.gemm_compute import gemm
 from .te_compute.pooling2d_compute import pooling2d
+from .te_compute.pooling2d_compute import get_caffe_out_size_and_pad
 from .te_compute.pooling3d_compute import pooling3d
 from .te_compute.pooling3d_max_grad_grad_compute import pooling3d_max_grad_grad
 from .te_compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute

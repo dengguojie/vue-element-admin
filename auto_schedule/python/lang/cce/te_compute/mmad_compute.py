@@ -103,8 +103,7 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
     # ND and fractal support 'float16' and 'b8'
     else:
         if not (in_a_dtype == "float16" and in_b_dtype == "float16") and \
-                not (in_a_dtype in ("uint8", "int8") and (
-                    in_b_dtype == "int8")):
+                not (in_a_dtype in ("uint8", "int8") and (in_b_dtype == "int8")):
             raise RuntimeError(
                 "only support float16 & float16 and uint8/int8 & int8 intput "
                 "data type.")
@@ -122,7 +121,7 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
         return True
 
     if not __check_shape_len():
-        raise RuntimeError("A and B shape length should be equal.")
+        raise RuntimeError("A and B shape length should be equal:", shape_a, shape_b)
 
     def _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b):
         if is_fractal_a:
@@ -874,23 +873,26 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 vn_shape = 1
 
     def gevm_block_in_value(
-            is_fractal, m_shape, vm_shape, km_shape, n_shape_ori, block_in_ori):
+            is_fractal, m_shape, vm_shape, km_shape, n_shape_ori, block_in_val):
         """
         calculate k!= block_in*block_reduce gevm block_in
         """
-        block_in = block_in_ori
+        block_in = block_in_val
+        block_in_ori = block_in_val
         m_16_shapes = [(25088, 4096), (18432, 4096), (4096, 4096),
                        (9216, 4096), (4096, 1008)]
 
-        if m_shape == 1 and vm_shape == 1 and km_shape % block_in == 0:
-            block_in = cce.BLOCK_VECTOR
-            if not is_fractal and \
-                    (km_shape*block_reduce, n_shape_ori) in m_16_shapes:
-                block_in = block_in_ori
-        return block_in
+        if m_shape == 1 and vm_shape == 1:
+            block_in_ori = cce.BLOCK_VECTOR
+            if km_shape % block_in == 0:
+                block_in = cce.BLOCK_VECTOR
+                if not is_fractal and \
+                        (km_shape*block_reduce, n_shape_ori) in m_16_shapes:
+                    block_in = block_in_val
+        return block_in, block_in_ori
 
-    block_in = gevm_block_in_value(is_fractal_a, m_shape, vm_shape, km_shape,
-                                   n_shape*vn_shape, block_in)
+    block_in, block_in_ori = gevm_block_in_value(
+        is_fractal_a, m_shape, vm_shape, km_shape, n_shape*vn_shape, block_in)
 
     if n_shape == 1 and vn_shape == 1:
         block_out = cce.BLOCK_VECTOR
@@ -985,17 +987,14 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     # not gemv
     if block_out != cce.BLOCK_VECTOR:  # pylint: disable=too-many-nested-blocks
         if tensor_a_length in (2, 4):
-            out_shape = (
+            l0c_shape = (
                 int(n_shape), int(m_shape), int(block_in), int(block_out))
+            out_shape = (
+                int(n_shape), int(m_shape), int(block_in_ori), int(block_out))
             out_shape_ori = [int(m_shape_ori), int(n_shape*block_out)]
             fusion_out_shape = out_shape_ori
 
             if is_fractal_out:
-                if is_frac_nz_out:
-                    update_block_in = _update_gevm_out_block_value(block_in)
-                    out_shape = list(out_shape)
-                    out_shape[-2] = int(update_block_in)
-                    out_shape = tuple(out_shape)
                 fusion_out_shape = out_shape
                 format_out = "FRACTAL_NZ"
 
@@ -1032,18 +1031,28 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a.shape,
                         lambda *indices: tensor_a[indices], name='tensor_a_ub')
 
+                    a_fract_shape = (
+                        m_shape, km_shape, block_in_ori, block_reduce)
                     tensor_a_l1_shape = (
                         m_shape, km_shape, block_in, block_reduce)
                     if optmt_a == 1:
                         tensor_a_ub_fract = tvm.compute(
-                            tensor_a_l1_shape, lambda i, j, k, l:
+                            a_fract_shape, lambda i, j, k, l:
                             tensor_a_ub[i*block_in + k, j*block_reduce + l],
                             name='tensor_a_ub_fract')
-
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_l1_shape,
-                            lambda *indices: tensor_a_ub_fract[indices],
-                            name='tensor_a_l1')
+                        def get_a_l1_tensor(a_ub_fract, a_l1_shape):
+                            if a_ub_fract.shape[-2].value == 1:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape,lambda i, j, k, l:
+                                    a_ub_fract[0, j, 0, l],
+                                    name='tensor_a_l1')
+                            else:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape,lambda i, j, k, l:
+                                    a_ub_fract[i, j, k, l],
+                                    name='tensor_a_l1')
+                            return a_l1
+                        tensor_a_l1 = get_a_l1_tensor(tensor_a_ub_fract, tensor_a_l1_shape)
                     else:
                         tensor_a_l1 = tvm.compute(
                             tensor_a_l1_shape, lambda i, j, k, l:
@@ -1051,7 +1060,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             name='tensor_a_l1')
 
                     tensor_a_l0a = tvm.compute(
-                        tensor_a_l1.shape,
+                        tensor_a_l1_shape,
                         lambda *indices: tensor_a_l1[indices],
                         name='tensor_a_l0a')
             else:
@@ -1078,16 +1087,28 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a.shape,
                         lambda *indices: tensor_a[indices], name='tensor_a_ub')
                     if optmt_a == 1:
+                        a_fract_shape = (
+                            m_shape, km_shape, block_reduce, block_in_ori)
                         tensor_a_l1_shape = (
                             m_shape, km_shape, block_reduce, block_in)
                         tensor_a_ub_fract = tvm.compute(
-                            tensor_a_l1_shape, lambda i, j, k, l:
+                            a_fract_shape, lambda i, j, k, l:
                             tensor_a_ub[j*block_reduce + k, i*block_in + l],
                             name='tensor_a_ub_fract')
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_l1_shape,
-                            lambda *indices: tensor_a_ub_fract[indices],
-                            name='tensor_a_l1')
+                        def get_a_l1_tensor(a_ub_fract, a_l1_shape):
+                            if a_ub_fract.shape[-1].value == 1:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda i, j, k, l:
+                                    a_ub_fract[0, j, k, 0],
+                                    name='tensor_a_l1')
+                            else:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda i, j, k, l:
+                                    a_ub_fract[i, j, k, l],
+                                    name='tensor_a_l1')
+                            return a_l1
+                        tensor_a_l1 = get_a_l1_tensor(tensor_a_ub_fract, tensor_a_l1_shape)
+
                         tensor_a_l0a_shape = (
                             m_shape, km_shape, block_in, block_reduce)
                         tensor_a_l0a = tvm.compute(
@@ -1198,11 +1219,11 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             if block_in != cce.BLOCK_VECTOR:  # gemm
                 # define mad compute
                 tensor_c = tvm.compute(
-                    out_shape, lambda nb, mb, mp, np: tvm.sum(
+                    l0c_shape, lambda nb, mb, mp, np: tvm.sum(
                         ((tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] - offset_x) *
                          tensor_b_l0b[reduce_kb, nb, np, reduce_kp]).astype(
                              out_dtype), axis=[reduce_kb, reduce_kp]),
-                    name='tensor_c', attrs={'input_order': 'positive'})
+                    name='tensor_c')
                 if tensor_bias is None:
                     if scale_drq_tensor is not None:
                         tensor_c_ub = tvm.compute(
@@ -1230,16 +1251,16 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                     if tensor_bias.dtype == 'float16' and l0c_support_fp32 == 1:
                         # tensor_bias_ub must be [n,]
                         tensor_bias_l0c = tvm.compute(
-                            out_shape, lambda i, j, k, l: topi.cast(
+                            l0c_shape, lambda i, j, k, l: topi.cast(
                                 tensor_bias_ub[i*block_out + l],
                                 dtype='float32'), name='tensor_bias_l0c')
                     else:
                         # tensor_bias_ub must be [n,]
                         tensor_bias_l0c = tvm.compute(
-                            out_shape, lambda i, j, k, l: tensor_bias_ub[
+                            l0c_shape, lambda i, j, k, l: tensor_bias_ub[
                                 i*block_out + l], name='tensor_bias_l0c')
 
-                    tensor_c_add_bias = tvm.compute(out_shape, lambda *indices:
+                    tensor_c_add_bias = tvm.compute(l0c_shape, lambda *indices:
                                                     tensor_bias_l0c[indices] +
                                                     tensor_c[indices],
                                                     name='tensor_c_add_bias')
@@ -1298,9 +1319,6 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 orig_shape = list(out_shape)
                 orig_shape[-2] = block_in
                 if is_fractal_out:
-                    if is_frac_nz_out:
-                        update_block_in = _update_gevm_out_block_value(block_in)
-                        orig_shape[-2] = int(update_block_in)
                     fusion_out_shape = orig_shape
                     format_out = "FRACTAL_NZ"
 
@@ -1311,7 +1329,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         ((tensor_a_l0a[mb, reduce_kb, mp, reduce_kp] - offset_x) *
                          tensor_b_l0b[reduce_kb, nb, np, reduce_kp]).astype(
                              out_dtype), axis=[reduce_kb, reduce_kp]),
-                    name='tensor_c', attrs={'input_order': 'positive'})
+                    name='tensor_c')
                 if tensor_bias is not None:
                     # tensor_bias_ub only be [n,]
                     if tensor_bias.dtype == 'float16' and l0c_support_fp32 == 1:
@@ -1338,7 +1356,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                    'nz_b': nz_b})
                     elif dst_dtype == 'float16' and l0c_support_fp32 == 1:
                         tensor_c_ub = tvm.compute(
-                            out_shape, lambda *indices: topi.cast(
+                            orig_shape, lambda *indices: topi.cast(
                                 tensor_c_add_bias[indices], dtype='float16'),
                             name='tensor_c_ub', attrs={'scale_drq': scale_drq,
                                                        'sqrt_out': sqrt_out,
@@ -1361,7 +1379,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                    'nz_b': nz_b})
                     elif dst_dtype == 'float16' and l0c_support_fp32 == 1 and not is_fusion_mode:
                         tensor_c_ub = tvm.compute(
-                            out_shape,
+                            orig_shape,
                             lambda *indices: topi.cast(tensor_c[indices],
                                                        dtype='float16'),
                             name='tensor_c_ub', attrs={'scale_drq': scale_drq,
@@ -1377,7 +1395,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 if is_fractal_out:
                     tensor_c_gm = tvm.compute(
                         orig_shape, lambda *indices: tensor_c_ub[indices],
-                        name='tensor_c_gm', tag='matmul_gemv',
+                        name='tensor_c_gm', tag='matmul_gevm',
                         attrs={'shape': fusion_out_shape,
                                'format': format_out})
                 else:
@@ -1390,14 +1408,14 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_c_gm = tvm.compute(
                             out_shape_ori,
                             lambda *indices: tensor_c_ub_fract[indices],
-                            name='tensor_c_gm', tag='matmul_gemv',
+                            name='tensor_c_gm', tag='matmul_gevm',
                             attrs={'shape': fusion_out_shape,
                                    'format': format_out})
                     else:
                         tensor_c_gm = tvm.compute(
                             out_shape_ori, lambda i, j: tensor_c_ub[
                                 j // 16, i // 16, i % 16, j % 16],
-                            name='tensor_c_gm', tag='matmul_gemv',
+                            name='tensor_c_gm', tag='matmul_gevm',
                             attrs={'shape': fusion_out_shape,
                                    'format': format_out})
 
@@ -1405,16 +1423,12 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             # have batch size
             batch_shape = tensor_a.shape[0].value
 
-            out_shape = (batch_shape, n_shape, m_shape, block_in, block_out)
+            l0c_shape = (batch_shape, n_shape, m_shape, block_in, block_out)
+            out_shape = (batch_shape, n_shape, m_shape, block_in_ori, block_out)
             out_shape_ori = [int(batch_shape), int(m_shape_ori),
                              int(n_shape*block_out)]
             fusion_out_shape = out_shape_ori
             if is_fractal_out:
-                if is_frac_nz_out:
-                    update_block_in = _update_gevm_out_block_value(block_in)
-                    out_shape = list(out_shape)
-                    out_shape[-2] = int(update_block_in)
-                    out_shape = tuple(out_shape)
                 fusion_out_shape = out_shape
 
             if tensor_bias is not None:
@@ -1461,18 +1475,31 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a.shape, lambda *i: tensor_a[i],
                         name='tensor_a_ub')
 
+                    a_fract_shape = (
+                        batch_shape, m_shape, km_shape, block_in_ori, block_reduce)
                     tensor_a_l1_shape = (
                         batch_shape, m_shape, km_shape, block_in, block_reduce)
                     if optmt_a == 1:
                         tensor_a_ub_fract = tvm.compute(
-                            tensor_a_l1_shape, lambda batch, i, j, k, l:
+                            a_fract_shape, lambda batch, i, j, k, l:
                             tensor_a_ub[batch, i*block_in + k,
                                         j*block_reduce + l],
                             name='tensor_a_ub_fract')
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_l1_shape,
-                            lambda *indices: tensor_a_ub_fract[indices],
-                            name='tensor_a_l1')
+
+                        def get_a_l1_tensor(a_ub_fract, a_l1_shape):
+                            if a_ub_fract.shape[-2].value == 1:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda batch, i, j, k, l:
+                                    a_ub_fract[batch, 0, j, 0, l],
+                                    name='tensor_a_l1')
+                            else:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda batch, i, j, k, l:
+                                    a_ub_fract[batch, i, j, k, l],
+                                    name='tensor_a_l1')
+                            return a_l1
+                        tensor_a_l1 = get_a_l1_tensor(tensor_a_ub_fract, tensor_a_l1_shape)
+
                         tensor_a_l0a = tvm.compute(
                             tensor_a_l1_shape,
                             lambda *indices: tensor_a_l1[indices],
@@ -1484,7 +1511,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                         j*block_reduce + l], name='tensor_a_l1')
 
                     tensor_a_l0a = tvm.compute(
-                        tensor_a_l1.shape, lambda *indices:
+                        tensor_a_l1_shape, lambda *indices:
                         tensor_a_l1[indices], name='tensor_a_l0a')
             else:
                 if is_fractal_a:
@@ -1511,17 +1538,29 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         name='tensor_a_ub')
 
                     if optmt_a == 1:
+                        a_fract_shape = (
+                            batch_shape, m_shape, km_shape, block_reduce, block_in_ori)
                         tensor_a_l1_shape = (
                             batch_shape, m_shape, km_shape, block_reduce, block_in)
                         tensor_a_ub_fract = tvm.compute(
-                            tensor_a_l1_shape, lambda batch, i, j, k, l:
+                            a_fract_shape, lambda batch, i, j, k, l:
                             tensor_a_ub[batch, j*block_reduce + k,
                                         i*block_in + l],
                             name='tensor_a_ub_fract')
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_l1_shape,
-                            lambda *indices: tensor_a_ub_fract[indices],
-                            name='tensor_a_l1')
+                        def get_a_l1_tensor(a_ub_fract, a_l1_shape):
+                            if a_ub_fract.shape[-1].value == 1:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda batch, i, j, k, l:
+                                    a_ub_fract[batch, 0, j, k, 0],
+                                    name='tensor_a_l1')
+                            else:
+                                a_l1 = tvm.compute(
+                                    a_l1_shape, lambda batch, i, j, k, l:
+                                    a_ub_fract[batch, i, j, k, l],
+                                    name='tensor_a_l1')
+                            return a_l1
+                        tensor_a_l1 = get_a_l1_tensor(tensor_a_ub_fract, tensor_a_l1_shape)
+
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
                         if block_in != cce.BLOCK_VECTOR:
@@ -1729,22 +1768,22 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 def __get_tensor_c_for_not_block_in_vector():
                     if tensor_b_length in (2, 4):
                         tensor_c = tvm.compute(
-                            out_shape, lambda batch, nb, mb, mp, np: tvm.sum((
+                            l0c_shape, lambda batch, nb, mb, mp, np: tvm.sum((
                                 (tensor_a_l0a[
                                     batch, mb, reduce_kb, mp, reduce_kp] - offset_x) *
                                 tensor_b_l0b[
                                     reduce_kb, nb, np, reduce_kp]).astype(
                                         out_dtype), axis=[reduce_kb, reduce_kp]),
-                            name='tensor_c', attrs={'input_order': 'positive'})
+                            name='tensor_c')
                     else:
                         tensor_c = tvm.compute(
-                            out_shape, lambda batch, nb, mb, mp, np: tvm.sum((
+                            l0c_shape, lambda batch, nb, mb, mp, np: tvm.sum((
                                 (tensor_a_l0a[
                                     batch, mb, reduce_kb, mp, reduce_kp] - offset_x) *
                                 tensor_b_l0b[
                                     batch, reduce_kb, nb, np, reduce_kp]).astype(
                                         out_dtype), axis=[reduce_kb, reduce_kp]),
-                            name='tensor_c', attrs={'input_order': 'positive'})
+                            name='tensor_c')
                     return tensor_c
 
                 tensor_c = __get_tensor_c_for_not_block_in_vector()
@@ -1754,12 +1793,12 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         # tensor_bias_ub shape only be [n,]
                         if len(tensor_bias_ub.shape) == 1:
                             tensor_bias_l0c = tvm.compute(
-                                out_shape, lambda batch, i, j, k, l: topi.cast(
+                                l0c_shape, lambda batch, i, j, k, l: topi.cast(
                                     tensor_bias_ub[i*block_out + l],
                                     dtype='float32'), name='tensor_bias_l0c')
                         elif len(tensor_bias_ub.shape) == 3:
                             tensor_bias_l0c = tvm.compute(
-                                out_shape, lambda batch, i, j, k, l:
+                                l0c_shape, lambda batch, i, j, k, l:
                                 topi.cast(tensor_bias_ub[batch,
                                                          0, i*block_out + l],
                                           dtype='float32'),
@@ -1768,17 +1807,17 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         # tensor_bias_ub shape only be [n,]
                         if len(tensor_bias_ub.shape) == 1:
                             tensor_bias_l0c = tvm.compute(
-                                out_shape,
+                                l0c_shape,
                                 lambda batch, i, j, k, l: tensor_bias_ub[
                                     i*block_out + l], name='tensor_bias_l0c')
                         elif len(tensor_bias_ub.shape) == 3:
                             tensor_bias_l0c = tvm.compute(
-                                out_shape, lambda batch, i, j, k, l:
+                                l0c_shape, lambda batch, i, j, k, l:
                                 tensor_bias_ub[batch,
                                                0, i*block_out + l],
                                 name='tensor_bias_l0c')
                     tensor_c_add_bias = tvm.compute(
-                        out_shape,
+                        l0c_shape,
                         lambda *indices: tensor_bias_l0c[indices] + tensor_c(
                             *indices), name='tensor_c_add_bias')
 
@@ -1865,7 +1904,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                      tensor_b_l0b[reduce_kb, nb, np, reduce_kp])
                                     .astype(out_dtype),
                                     axis=[reduce_kb, reduce_kp]),
-                            name='tensor_c', attrs={'input_order': 'positive'})
+                            name='tensor_c')
                     else:
                         tensor_c = tvm.compute(
                             (batch_shape, n_shape, m_shape, block_out, block_out),
@@ -1875,7 +1914,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                      tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp])
                                     .astype(out_dtype),
                                     axis=[reduce_kb, reduce_kp]),
-                            name='tensor_c', attrs={'input_order': 'positive'})
+                            name='tensor_c')
                     return tensor_c
 
                 tensor_c = __get_tensor_c_for_block_in_vector()
@@ -1883,10 +1922,6 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 # define reduce
                 orig_shape = shape_to_list(tensor_c.shape)
                 orig_shape[-2] = block_in
-                if is_fractal_out:
-                    if is_frac_nz_out:
-                        update_block_in = _update_gevm_out_block_value(block_in)
-                        orig_shape[-2] = int(update_block_in)
 
                 if tensor_bias is not None:
                     # tensor_bias_ub just is [n,] and [batch, 1, n], no [1, n]
@@ -1894,13 +1929,13 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         # tensor_bias_ub shape only be [n,] and [batch, 1, n]
                         if len(tensor_bias_ub.shape) == 1:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape, lambda batch, i, j, k, l:
+                                tensor_c.shape, lambda batch, i, j, k, l:
                                 topi.cast(tensor_bias_ub[i*block_out + l],
                                           dtype='float32'),
                                 name='tensor_bias_l0c')
                         elif len(tensor_bias_ub.shape) == 3:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape, lambda batch, i, j, k, l:
+                                tensor_c.shape, lambda batch, i, j, k, l:
                                 topi.cast(tensor_bias_ub[batch, 0, i *
                                                          block_out + l],
                                           dtype='float32'),
@@ -1909,12 +1944,12 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         # tensor_bias_ub shape only be [n,] and [batch, 1, n]
                         if len(tensor_bias_ub.shape) == 1:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape, lambda batch, i, j, k, l:
+                                tensor_c.shape, lambda batch, i, j, k, l:
                                 tensor_bias_ub[i*block_out + l],
                                 name='tensor_bias_l0c')
                         elif len(tensor_bias_ub.shape) == 3:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape,
+                                tensor_c.shape,
                                 lambda batch, i, j, k, l: tensor_bias_ub[
                                     batch, 0, i*block_out + l],
                                 name='tensor_bias_l0c')
@@ -1970,7 +2005,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 if is_fractal_out:
                     tensor_c_gm = tvm.compute(
                         orig_shape, lambda *indices: tensor_c_ub[indices],
-                        name='tensor_c_gm', tag='matmul_gemv',
+                        name='tensor_c_gm', tag='matmul_gevm',
                         attrs={'shape': orig_shape,
                                'format': format_out})
                 else:
@@ -1983,14 +2018,14 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_c_gm = tvm.compute(
                             out_shape_ori,
                             lambda *indices: tensor_c_ub_fract[indices],
-                            name='tensor_c_gm', tag='matmul_gemv',
+                            name='tensor_c_gm', tag='matmul_gevm',
                             attrs={'shape': fusion_out_shape,
                                    'format': format_out})
                     else:
                         tensor_c_gm = tvm.compute(
                             out_shape_ori, lambda batch, i, j: tensor_c_ub[
                                 batch, j // 16, i // 16, i % 16, j % 16],
-                            name='tensor_c_gm', tag="matmul_gemv",
+                            name='tensor_c_gm', tag="matmul_gevm",
                             attrs={'shape': fusion_out_shape,
                                    'format': format_out})
     else:
@@ -2167,11 +2202,6 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             orig_shape[-2] = block_out
             out_shape_ori = [int(n_shape*block_out), int(m_shape*block_in)]
 
-            if is_fractal_out:
-                if is_frac_nz_out:
-                    update_block_out = _update_gevm_out_block_value(block_out)
-                    orig_shape[-2] = int(update_block_out)
-
             # define mad
             tensor_c = tvm.compute(
                 (m_shape, n_shape, block_in, block_in),
@@ -2179,7 +2209,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                     (tensor_b_l0b[mb, reduce_kb, mp, reduce_kp] *
                      (tensor_a_l0a[reduce_kb, nb, np, reduce_kp] - offset_x)
                     ).astype(out_dtype), axis=[reduce_kb, reduce_kp]),
-                name='tensor_c', attrs={'input_order': 'negative'})
+                name='tensor_c')
 
             if tensor_bias is not None:
                 tensor_bias_ub = tvm.compute(
@@ -2188,13 +2218,13 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 # bias shape only support [m,1]
                 if tensor_bias.dtype == 'float16' and l0c_support_fp32 == 1:
                     tensor_bias_l0c = tvm.compute(
-                        orig_shape, lambda i, j, k, l:
+                        tensor_c.shape, lambda i, j, k, l:#orig_shape
                         topi.cast(tensor_bias_ub[i*block_in + l, 0],
                                   dtype='float32'),
                         name='tensor_bias_l0c')
                 else:
                     tensor_bias_l0c = tvm.compute(
-                        orig_shape, lambda i, j, k, l:
+                        tensor_c.shape, lambda i, j, k, l:
                         tensor_bias_ub[i*block_in + l, 0],
                         name='tensor_bias_l0c')
 
@@ -2546,7 +2576,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                              (tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp] - \
                              offset_x)).astype(out_dtype),
                             axis=[reduce_kb, reduce_kp]),
-                        name='tensor_c', attrs={'input_order': 'negative'})
+                        name='tensor_c')
                 else:
                     tensor_c = tvm.compute(
                         (batch_shape, m_shape, n_shape, block_in, block_in),
@@ -2555,18 +2585,13 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                              (tensor_a_l0a[batch, reduce_kb, nb, np, reduce_kp] - \
                              offset_x)).astype(out_dtype),
                             axis=[reduce_kb, reduce_kp]),
-                        name='tensor_c', attrs={'input_order': 'negative'})
+                        name='tensor_c')
                 return tensor_c
 
             tensor_c = __get_tensor_c()
             # define reduce
             orig_shape = shape_to_list(tensor_c.shape)
             orig_shape[-2] = block_out
-
-            if is_fractal_out:
-                if is_frac_nz_out:
-                    update_block_out = _update_gevm_out_block_value(block_out)
-                    orig_shape[-2] = int(update_block_out)
 
             if tensor_bias is not None:
                 tensor_bias_ub = tvm.compute(
@@ -2579,13 +2604,13 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         if tensor_bias.dtype == 'float16' and \
                                 l0c_support_fp32 == 1:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape,
+                                tensor_c.shape,
                                 lambda batch, i, j, k, l: topi.cast(
                                     tensor_bias_ub[i*block_in + l, 0],
                                     dtype='float32'), name='tensor_bias_l0c')
                         else:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape,
+                                tensor_c.shape,
                                 lambda batch, i, j, k, l: tensor_bias_ub[
                                     i*block_in + l, 0],
                                 name='tensor_bias_l0c')
@@ -2593,25 +2618,25 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         if tensor_bias.dtype == 'float16' and \
                                 l0c_support_fp32 == 1:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape,
+                                tensor_c.shape,
                                 lambda batch, i, j, k, l: topi.cast(
                                     tensor_bias_ub[0, i*block_in + l, 0],
                                     dtype='float32'), name='tensor_bias_l0c')
                         else:
                             tensor_bias_l0c = tvm.compute(
-                                orig_shape,
+                                tensor_c.shape,
                                 lambda batch, i, j, k, l: tensor_bias_ub[
                                     0, i*block_in + l, 0],
                                 name='tensor_bias_l0c')
                 elif len(bias_shape) == 3:
                     if tensor_bias.dtype == 'float16' and l0c_support_fp32 == 1:
                         tensor_bias_l0c = tvm.compute(
-                            orig_shape, lambda batch, i, j, k, l: topi.cast(
+                            tensor_c.shape, lambda batch, i, j, k, l: topi.cast(
                                 tensor_bias_ub[batch, i*block_in + l, 0],
                                 dtype='float32'), name='tensor_bias_l0c')
                     else:
                         tensor_bias_l0c = tvm.compute(
-                            orig_shape,
+                            tensor_c.shape,
                             lambda batch, i, j, k, l: tensor_bias_ub[
                                 batch, i*block_in + l, 0],
                             name='tensor_bias_l0c')
@@ -2921,7 +2946,6 @@ def check_reduce_shape(km_shape, kn_shape):
     """
     if km_shape != kn_shape:
         raise RuntimeError("the k shape is wrong in mmad")
-    return
 
 
 def check_default_param(alpha_num, beta_num, quantize_params, format_out):
@@ -2949,7 +2973,6 @@ def check_default_param(alpha_num, beta_num, quantize_params, format_out):
         raise RuntimeError("quant parameter should be none")
     if format_out is not None:
         raise RuntimeError("format output should be none")
-    return
 
 
 def get_l0_byte(tensor_a_dtype, tensor_b_dtype, l0c_out_dtype):
@@ -3093,7 +3116,7 @@ def get_ub_byte_size(date_type, tensor_ub_fract):
         return ub_byte
     if date_type == "float16":
         ub_byte = 2
-    elif date_type == "int8" or date_type == "uint8":
+    elif date_type in ("int8", "uint8"):
         ub_byte = 1
     else:
         ub_byte = 4

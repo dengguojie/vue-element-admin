@@ -27,6 +27,7 @@ from te.utils.op_utils import OPTION_ATTR_BOOL
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import check_dtype
 
+
 @te.op.register_operator("Gather")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
 def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):
@@ -46,7 +47,6 @@ def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):
     -------
     compile info
     """
-    print("Gather dynamic op enter")
     axis_dict = {"dtype": "int32"}
     obj = gather_v2.GatherV2(x, indices, axis_dict, y, kernel_name)
     return obj.gather_compute()

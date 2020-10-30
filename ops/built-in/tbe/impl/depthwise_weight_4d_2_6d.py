@@ -27,7 +27,16 @@ def _ceil_div(val, block):
     :param block
     :return: (val + block - 1) // block
     """
-    return (val + block - 1) // block
+    if block:
+        return (val + block - 1) // block
+
+    dict_args = {
+        'errCode': 'E67006',
+        'op_name': 'depthwise_conv2d',
+        'param_name': 'block'
+    }
+    raise RuntimeError(dict_args,
+                       error_manager_util.get_error_message(dict_args))
 
 
 def _ceil_fill(val, block):
@@ -45,7 +54,16 @@ def _floor_cut(val, block):
     :param block
     :return: (val // block)*block
     """
-    return (val // block) * block
+    if block:
+        return (val // block) * block
+
+    dict_args = {
+        'errCode': 'E67006',
+        'op_name': 'depthwise_conv2d',
+        'param_name': 'block'
+    }
+    raise RuntimeError(dict_args,
+                       error_manager_util.get_error_message(dict_args))
 
 
 def _prod(values):
@@ -394,6 +412,7 @@ def _one_in_multi_out_fun(four2six, input_gm, output_gm, params):
     return True
 
 
+# pylint: disable=too-many-statements, too-many-locals
 def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
     """
     :param four2six : four2six parameters
@@ -601,7 +620,7 @@ class _Four2SixParam:
         return (self.hight, self.weight, self.channel)
 
 
-# pylint: disable=locally-disabled,invalid-name
+# pylint: disable=locally-disabled, invalid-name, unused-argument
 @check_para.check_op_params(check_para.REQUIRED_INPUT,
                             check_para.REQUIRED_OUTPUT,
                             check_para.REQUIRED_ATTR_STR,

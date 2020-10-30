@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # block length in number
 BLOCK_LENGTH = 32
@@ -104,22 +105,26 @@ def unsorted_segment_max_d(x, segment_ids, y, num_segments, kernel_name="unsorte
     segment_ids_dtype = segment_ids.get("dtype")
 
     segment_max_support = tbe_platform.api_check_support("te.lang.cce.unsorted_segment_max", "float32")
-    if dtype == "float32" and not segment_max_support:
-        raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+    if not segment_max_support:
+        para_check.check_dtype(dtype, ("float16", "int32", "int16"), param_name="x")
     if num_segments <= 0:
-        raise RuntimeError("unsorted_segment_max_d only support num_segments"
-                           " greater than 0, while num_segments is %d" % (num_segments))
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'num_segments must greater than 0',
+                                                          "num_segments", num_segments)
 
     first_shape = int(shape[0])
     ids_length = int(segment_ids_shape[0])
     if first_shape != ids_length:
-        raise RuntimeError("unsorted_segment_max_d only supports inputs[0] equal to segment_ids_shape[0],"
-                           " while inputs[0] is %d, segment_ids_shape[0] is %d" % (first_shape, ids_length))
+        error_manager_vector.raise_err_specific_input_shape(
+            kernel_name,
+            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"
+            % (first_shape, ids_length))
+
     total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
         (BLOCK_LENGTH // 2 - first_shape % (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
     if total_ub_size > UB_SIZE_MAX // 2:
-        raise RuntimeError("unsorted_segment_max_d num_segments=%d, shape[0]=%d, greater than UB_SIZE_MAX" %
-                           (num_segments, shape[0]))
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "the memory usage is greater than UB_SIZE_MAX when num_segments=%d and shape[0]=%d" %
+            (num_segments, shape[0]))
 
     dtype = dtype.lower()
     if len(shape) != 1:

@@ -109,8 +109,7 @@ def _depthwise_conv2d_fusion_para(inputs, outputs):
 
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
 # pylint: disable=unused-argument
-# pylint: disable=locally-disabled, bad-continuation, import-error
-# pylint: disable=too-many-statements, redefined-builtin, invalid-name
+# pylint: disable=redefined-builtin
 @tbe_platform.fusion_manager.fusion_manager.register("depthwise_conv2d")
 def depthwise_compute(fmap, filter, bias, offset_w, out,
                       strides, dilations, pads,
@@ -145,12 +144,12 @@ def depthwise_compute(fmap, filter, bias, offset_w, out,
     """
     out_dtype = out.get("dtype")
     l1_fusion_para = _depthwise_conv2d_fusion_para(fmap, out)
-    DIM_H, DIM_W = 2, 3
+    dim_h, dim_w = 2, 3
     if data_format == 'NHWC':
-        DIM_H, DIM_W = 1, 2
+        dim_h, dim_w = 1, 2
 
-    strides_2d = strides[DIM_H], strides[DIM_W]
-    dilations_2d = dilations[DIM_H], dilations[DIM_W]
+    strides_2d = strides[dim_h], strides[dim_w]
+    dilations_2d = dilations[dim_h], dilations[dim_w]
 
     out = depthwise_conv2d_compute(
         fmap, filter, out_dtype.lower(), strides_2d, pads, dilations_2d, {
@@ -161,6 +160,125 @@ def depthwise_compute(fmap, filter, bias, offset_w, out,
     return out
 
 
+def _check_shape(fmap_shape, filter_shape, fmap_data_format):
+    """check input shape"""
+    _, in_c1, _, _, _ = fmap_shape
+    filter_c1, _, _, filter_k, _, _ = filter_shape
+
+    # check feature map API feature map  shape is 5hd
+    # The shape of feature map and filter must be 5HD
+    if len(fmap_shape) != FEATURE_MAP_DIM:
+        dict_args = {
+            'errCode': 'E60008',
+            'op_name': 'depthwise_conv2d',
+            'param_name': 'featuremap',
+            'expected_format_list': '[{}]'.format('NC1HWC0'),
+            'format': fmap_data_format
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    # check feature map shape of c, equal filter of c
+    if in_c1 != filter_c1:
+        dict_args = {
+            'errCode': 'E60002',
+            'op_name': 'depthwise_conv2d',
+            'attr_name': 'channel',
+            'param1_name': 'fmap',
+            'param2_name': 'filter',
+            'param1_value': str(in_c1),
+            'param2_value': str(filter_c1)
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    # check multiplier equal 1
+    if filter_k != 1:
+        dict_args = {
+            'errCode': 'E60000',
+            'op_name': 'depthwise_conv2d',
+            'param_name': 'filter_k',
+            'expected_value': '1',
+            'input_value': str(filter_k)
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+
+def _check_data_format(data_format, expect_format_list):
+    """
+    check data format
+    """
+    if data_format not in expect_format_list:
+        dict_args = {
+            'errCode': 'E50002',
+            'op_name': 'depthwise_conv2d',
+            'param': 'featuremap',
+            'expected_format_list': str(expect_format_list),
+            'format': data_format
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
+
+
+def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
+    """
+    check stride type and dim
+    """
+    if not isinstance(strides, (list, tuple)) and len(strides) == 4:
+        dict_args = {
+            'errCode': 'E60107',
+            'op_name': 'depthwise_conv2d',
+            'param_name': 'strides'
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
+
+    if strides[dim_n] != 1 or strides[dim_c] != 1:
+        error_manager_conv2d.raise_err_specific_user(
+            "depthwise_conv2d", "stride only support 1 in N axis and C axis.")
+    if strides[dim_h] != strides[dim_w]:
+        dict_args = {
+            'errCode': 'E60002',
+            'op_name': 'depthwise_conv2d',
+            'attr_name': 'stride value',
+            'param1_name': 'strides[dim_h]',
+            'param2_name': 'strides[dim_w]',
+            'param1_value': str(strides[dim_h]),
+            'param2_value': str(strides[dim_w])
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
+
+
+def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
+    """
+    check dilations dimension
+    """
+    if dilations[dim_n] != 1 or dilations[dim_c] != 1:
+        dict_args = {
+            'errCode': 'E60023',
+            'op_name': 'depthwise_conv2d',
+            'dilation_n': str(dilations[dim_n]),
+            'dilation_c': str(dilations[dim_c])
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
+    if dilations[dim_h] != 1 or dilations[dim_w] != 1:
+        dict_args = {
+            'errCode': 'E60023',
+            'op_name': 'depthwise_conv2d',
+            'dilation_n': str(dilations[dim_h]),
+            'dilation_c': str(dilations[dim_w])
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(
+                dict_args))
+
+
+# pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
+# pylint: disable=unused-argument
+# pylint: disable=redefined-builtin, invalid-name
 @check_para.check_op_params(
     check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
     check_para.OPTION_INPUT, check_para.OPTION_INPUT,
@@ -247,74 +365,14 @@ def depthwise_conv2d(
     check_para.check_dtype(w_dtype, ('float16', 'int8'), param_name="filter")
     check_para.check_dtype(output_dtype, ('float16', 'int32'), param_name="y")
 
-    check_para.check_shape(shape_in,
-                           min_rank=FEATURE_MAP_DIM,
-                           max_rank=FEATURE_MAP_DIM,
-                           param_name="x")
-    check_para.check_shape(shape_w,
-                           min_rank=FILTER_DIM,
-                           max_rank=FILTER_DIM,
-                           param_name="filter")
-    check_para.check_shape(strides,
-                           min_rank=STRIDES_DIM,
-                           max_rank=STRIDES_DIM,
-                           param_name="filter")
+    check_para.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
+                           max_rank=FEATURE_MAP_DIM, param_name="x")
+    check_para.check_shape(shape_w, min_rank=FILTER_DIM,
+                           max_rank=FILTER_DIM, param_name="filter")
+    check_para.check_shape(strides, min_rank=STRIDES_DIM,
+                           max_rank=STRIDES_DIM, param_name="filter")
 
-    if fmap_data_format != "NC1HWC0":
-        dict_args = {
-            'errCode': 'E60008',
-            'op_name': 'depthwise_conv2d',
-            'param_name': 'featuremap',
-            'expected_format_list': '[{}]'.format('NC1HWC0'),
-            'format': fmap_data_format
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(
-                dict_args))
-
-    def _check_shape(fmap_shape, filter_shape):
-        """check input shape"""
-        _, in_c1, _, _, _ = fmap_shape
-        filter_c1, _, _, filter_k, _, _ = filter_shape
-
-        # check feature map API feature map  shape is 5hd
-        # The shape of feature map and filter must be 5HD
-        if len(fmap_shape) != FEATURE_MAP_DIM:
-            dict_args = {
-                'errCode': 'E60008',
-                'op_name': 'depthwise_conv2d',
-                'param_name': 'featuremap',
-                'expected_format_list': '[{}]'.format('NC1HWC0'),
-                'format': fmap_data_format
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        # check feature map shape of c, equal filter of c
-        if in_c1 != filter_c1:
-            dict_args = {
-                'errCode': 'E60002',
-                'op_name': 'depthwise_conv2d',
-                'attr_name': 'channel',
-                'param1_name': 'fmap',
-                'param2_name': 'filter',
-                'param1_value': str(in_c1),
-                'param2_value': str(filter_c1)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        # check multiplier equal 1
-        if filter_k != 1:
-            dict_args = {
-                'errCode': 'E60000',
-                'op_name': 'depthwise_conv2d',
-                'param_name': 'filter_k',
-                'expected_value': '1',
-                'input_value': str(filter_k)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+    _check_data_format(fmap_data_format, ["NC1HWC0"])
 
     # fmap shape reshape, c ceil 16, 6d shape;
     # c must be 16x, if data not 16x, framework reshape c 16x
@@ -323,71 +381,19 @@ def depthwise_conv2d(
     shape_w_5d = shape_w[0], shape_w[1], shape_w[2], shape_w[4], shape_w[5]
 
     # filter shape: C1HWNCoC0
-    filter_c1, filter_h, filter_w, _, _, _ = shape_w
+    filter_c1, _, _, _, _, _ = shape_w
+    _check_data_format(data_format, ['NCHW', 'NHWC'])
 
-    if data_format != 'NCHW' and data_format != 'NHWC':
-        dict_args = {
-            'errCode': 'E50002',
-            'op_name': 'depthwise_conv2d',
-            'param': 'featuremap',
-            'expected_format_list': '[{}, {}]'.format('NCHW', 'NHWC'),
-            'format': data_format
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+    _check_shape(shape_in, shape_w, fmap_data_format)
 
-    _check_shape(shape_in, shape_w)
-
-    DIM_N, DIM_C, DIM_H, DIM_W = 0, 1, 2, 3  # NCHW
+    dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3  # NCHW
     if data_format == 'NHWC':
-        DIM_N, DIM_H, DIM_W, DIM_C = 0, 1, 2, 3
+        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
 
     # check strides is list, strides[0] ==shape_in[1]
     # strides list, and h w value equal
-    if not isinstance(strides, (list, tuple)) and len(strides) == 4:
-        dict_args = {
-            'errCode': 'E60107',
-            'op_name': 'depthwise_conv2d',
-            'param_name': 'strides'
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
-
-    if strides[DIM_N] != 1 or strides[DIM_C] != 1:
-        error_manager_conv2d.raise_err_specific_user(
-            "depthwise_conv2d", "stride only support 1 in N axis and C axis.")
-    if strides[DIM_H] != strides[DIM_W]:
-        dict_args = {
-            'errCode': 'E60002',
-            'op_name': 'depthwise_conv2d',
-            'attr_name': 'stride value',
-            'param1_name': 'strides[DIM_H]',
-            'param2_name': 'strides[DIM_W]',
-            'param1_value': str(strides[DIM_H]),
-            'param2_value': str(strides[DIM_W])
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(
-                dict_args))
-    if dilations[DIM_N] != 1 or dilations[DIM_C] != 1:
-        dict_args = {
-            'errCode': 'E60023',
-            'op_name': 'depthwise_conv2d',
-            'dilation_n': str(dilations[DIM_N]),
-            'dilation_c': str(dilations[DIM_C])
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
-    if dilations[DIM_H] != 1 or dilations[DIM_W] != 1:
-        dict_args = {
-            'errCode': 'E60023',
-            'op_name': 'depthwise_conv2d',
-            'dilation_n': str(dilations[DIM_H]),
-            'dilation_c': str(dilations[DIM_W])
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(
-                dict_args))
+    _check_stride(strides, dim_n, dim_c, dim_h, dim_w)
+    _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w)
 
     # check pad parameter
     if len(pads) != 4:
@@ -402,8 +408,8 @@ def depthwise_conv2d(
             dict_args, error_manager_util.get_error_message(
                 dict_args))
 
-    strides_2d = strides[DIM_H], strides[DIM_W]
-    dilations_2d = dilations[DIM_H], dilations[DIM_W]
+    strides_2d = strides[dim_h], strides[dim_w]
+    dilations_2d = dilations[dim_h], dilations[dim_w]
     bias_tensor = None
     if bias:
         bias_tensor = tvm.placeholder((filter_c1 * 16,),

@@ -26,6 +26,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_ALIGN = 16
@@ -747,22 +748,24 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         fmap_w, kernel_w, dilate_w, stride_w, padding)
 
     if (out_h <= 0) or (out_w <= 0):
-        raise RuntimeError("out_h and out_w can not <= 0, out_h:%d, out_w:%d" % (out_h, out_w))
+        error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
     dilated_kernel_w = (kernel_w - 1) * dilate_w + 1
     if (fmap_w + padding_w_before + padding_w_after) <= dilated_kernel_w + stride_w:
-        raise RuntimeError("the size of fmap_w(after pad) <= kernel_w(after dilation) + " "stride_w is forbidden")
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "The size of fmap_w(after pad) <= kernel_w(after dilation) + stride_w is forbidden!")
 
     if (kernel_h % 2 == 0 and dilate_h > fmap_h):
-        raise RuntimeError("get all data from padding is forbidden")
+        error_manager_vector.raise_err_specific_reson(kernel_name, "Get all data from padding is forbidden!")
     cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
 
     if cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER > SIZE_L1:
-        raise RuntimeError("Input size is too large load to L1, while cut h, need size: %d" %
-                           (cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER))
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "Input size is too large load to L1, while cut h, need size: %d" %
+            (cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER))
 
     data_input = tvm.placeholder(shape_input, name="data", dtype=dtype_input)
     output_res, workspace_res, _ = extract_image_patches_compute(data_input, fmap_c, ksizes, strides, dilates, padding,

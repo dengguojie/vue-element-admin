@@ -430,6 +430,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
+    def _check_pad_relation():
         if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
             args_dict = {
                 "errCode": "E60016",
@@ -619,22 +620,40 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         return fusion_para, input_h, \
                input_hw_mini, output_hw_mini
 
+    def _check_shape_rule():
+        if dynamic_mode is None:
+            check_para.check_shape_rule(shape_out_backprop,
+                                        CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
+                                        DEFAULT_MAX_SHAPE_NUM)
+            check_para.check_shape_rule(input_sizes,
+                                        CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
+                                        DEFAULT_MAX_SHAPE_NUM)
+        check_para.check_shape_rule(dilations, CONV_BACKPROP_SHAPE_DIM,
+                                    CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
+        check_para.check_shape_rule(strides, STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
+                                    DEFAULT_MAX_SHAPE_NUM)
+
+    def _change_hw_limitation(dedy_hw_min, fmap_hw_min,
+                              dedy_hw_max, fmap_hw_max):
+        if _is_load3d_special():
+            dedy_hw_min = 1
+            fmap_hw_min = 1
+
+        # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
+        if _is_conv1d_situation():
+            dedy_hw_min = 1
+            fmap_hw_min = 1
+            dedy_hw_max = CONV1D_W_MAX
+            fmap_hw_max = CONV1D_W_MAX
+        return dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max
+
     # First : Base check, Mainly required by interface appearance
     # util check
     check_para.check_kernel_name(kernel_name)
     check_para.check_shape_rule(shape_filter, CONV_BACKPROP_SHAPE_DIM,
                                 CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    if dynamic_mode is None:
-        check_para.check_shape_rule(shape_out_backprop,
-                            CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                            DEFAULT_MAX_SHAPE_NUM)
-        check_para.check_shape_rule(input_sizes,
-                            CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                            DEFAULT_MAX_SHAPE_NUM)
-    check_para.check_shape_rule(dilations, CONV_BACKPROP_SHAPE_DIM,
-                                CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    check_para.check_shape_rule(strides, STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
+
+    _check_shape_rule()
     _check_pads()
 
     # dilations check
@@ -700,19 +719,12 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         filter_h_dilation, filter_w_dilation = filter_w_dilation,\
                                                filter_h_dilation
 
-    if _is_load3d_special():
-        dedy_hw_min = 1
-        fmap_hw_min = 1
-
-    # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
-    if _is_conv1d_situation():
-        dedy_hw_min = 1
-        fmap_hw_min = 1
-        dedy_hw_max = CONV1D_W_MAX
-        fmap_hw_max = CONV1D_W_MAX
+    dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max = \
+        _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max)
 
     if dynamic_mode is None:
         _check_shape_relation()
+        _check_pad_relation()
 
         # Dedy value limit
         _check_attr_range("Dedy's H after expands", dedy_h * stride_h,

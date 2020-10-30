@@ -1067,9 +1067,6 @@ def check_tensor_shape_size(shape):
     warnings.warn("check_tensor_shape_size is deprecated", DeprecationWarning)
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension
-    if product >= SHAPE_SIZE_LIMIT + 1:
-        raise RuntimeError(
-            "The shape size for operator has exceeded the maximum")
 
     return product
 

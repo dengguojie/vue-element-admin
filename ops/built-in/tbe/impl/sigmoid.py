@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -47,16 +48,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name'] = 'x'
-        error_info['op_name'] = 'sigmoid'
-        error_info['expect_value'] = "float16"
-        error_info['real_value'] = dtype
-        raise RuntimeError(
-            error_info, "In op[%s], the parameter[%s]'s dtype "
-            "should be [%s], but actually is [%s]." %
-            (error_info['op_name'], error_info['param_name'], error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16",), dtype)
 
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)

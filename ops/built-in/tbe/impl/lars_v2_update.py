@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument
@@ -150,14 +151,17 @@ def lars_v2_update(weight,
     weight_dtype = weight.get("dtype")
     grad_dtype = grad.get("dtype")
     if list(weight_shape) != list(grad_shape):
-        raise RuntimeError("weight and grad must be the same shape")
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'weight', 'grad', weight_shape, grad_shape,
+                                                              weight_shape)
 
     if grad_dtype != weight_dtype:
-        raise RuntimeError("wight and grad must be the same dtype")
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'weight', 'grad', weight_dtype, grad_dtype)
 
     vdiv_support = tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")
-    if weight_dtype == "float32" and not vdiv_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+    if not vdiv_support:
+        new_check_list = list(check_list)
+        new_check_list.remove("float32")
+        para_check.check_dtype(weight_dtype, new_check_list, param_name="weight")
 
     input_place_holders = []
     for i, input_val in enumerate(inputs):

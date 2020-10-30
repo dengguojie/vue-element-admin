@@ -20,6 +20,7 @@ from te.utils import para_check
 from te import tik
 from impl import pad_d
 from impl import strided_slice_d
+from te.utils.error_manager import error_manager_vector as error_manager
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -469,7 +470,7 @@ def _check_mask(input_mask, is_shrink=False):
         if input_mask != 0 and input_mask != 2:
             raise RuntimeError("shrink_axis_mask only support 0/2 currently")
     elif input_mask != 0:
-        raise RuntimeError("ellipsis_mask,new_axis_mask"
+        raise RuntimeError("new_axis_mask"
                            " only support 0 currently")
 
 
@@ -477,7 +478,6 @@ def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
     """
     Check whether the shape of begin and shape is not equal,
        and masks are not 0
-    
     Parameters
     ----------
     shape : list or tuple.
@@ -565,6 +565,9 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     _check_mask(new_axis_mask)
     _check_mask(shrink_axis_mask, True)
 
+    if len(shape) == 0:
+        error_manager.raise_err_check_params_rules("strided_slice_grad_d", "should not be empty", "shape", shape)
+
     is_not_aligned, ori_begin = _check_is_not_aligned_shape(shape, begin,
                                                             ellipsis_mask,
                                                             shrink_axis_mask)
@@ -573,10 +576,10 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     begin = list(begin)
     end = list(end)
     strides = list(strides)
-    begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
-                                                           strides, begin_mask, end_mask,
-                                                           ellipsis_mask, new_axis_mask,
-                                                           shrink_axis_mask)
+    _, begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
+                                                                              strides, begin_mask, end_mask,
+                                                                              ellipsis_mask, new_axis_mask,
+                                                                              shrink_axis_mask)
 
     _check_shape_parameter(shape, shape_dy, begin_shape, end_shape, stride_shape)
 

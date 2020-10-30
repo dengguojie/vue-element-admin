@@ -18,6 +18,7 @@ sparse_apply_rms_prop_d
 import te.platform as tbe_platform
 from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 class SparseApplyRMSProp(SparseApply):
@@ -100,7 +101,8 @@ class SparseApplyRMSProp(SparseApply):
         self.vdiv_support = tbe_platform.api_check_support("tik.vdiv", "float32")
 
         if self.var_dtype == "float32" and not add_support:
-            raise RuntimeError("Input dtype is float32, but do not support on the platform")
+            error_manager_vector.raise_err_input_dtype_not_supported("sparse_apply_rms_prop_d", "var", [],
+                                                                     self.var_dtype)
 
         para_check.check_shape(self.var_shape, param_name="var")
         para_check.check_shape(self.ms_shape, param_name="ms")
@@ -112,10 +114,12 @@ class SparseApplyRMSProp(SparseApply):
         para_check.check_dtype(self.lr_dtype, ("float32", ), param_name="lr")
 
         if self.ms_shape != self.var_shape:
-            raise RuntimeError("ms's shape must be the same as var's shape")
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_rms_prop_d", "ms", "var", self.ms_shape,
+                                                                  self.var_shape, self.var_shape)
 
         if self.mom_shape != self.var_shape:
-            raise RuntimeError("mom's shape must be the same as var's shape")
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_rms_prop_d", "mom", "var",
+                                                                  self.mom_shape, self.var_shape, self.var_shape)
 
     def _calculate(self, repeat_times, mask, offset):
         tmp_ub = self._get_ub("tmp_ub")[offset]

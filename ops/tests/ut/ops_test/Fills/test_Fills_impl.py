@@ -13,6 +13,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 fills ut case
 """
+import numpy as np
+from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 ut_case = OpUT("Fills")
 
@@ -54,6 +56,51 @@ ut_case.add_case(["Ascend910"], case3)
 ut_case.add_case(["Ascend910"], case4)
 
 
+def calc_expect_func(input_x, output, hg):
+    shape_x=input_x.get("shape")
+    input_y=np.ones((1,)).astype(input_x["dtype"])
+    input_y=input_y*hg
+    output_arr=input_x.get("value")+input_y
+    output=np.ones(input_x["shape"])*hg
+    return output
+
+ut_case.add_precision_case("all", {
+    "params": [{"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND", "param_type": "input"},
+               {"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND", "param_type": "output"},
+               3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 30, 100), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100),"ori_format": "ND", "param_type": "output"},
+                    3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 30, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16),"ori_format": "ND", "param_type": "output"},
+                    3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "output"},
+                    3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"shape": (3, 30, 10, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "input"},
+               {"shape": (3, 30, 10, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "output"},
+               3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
 if __name__ == '__main__':
-    ut_case.run()
-    exit(0)
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

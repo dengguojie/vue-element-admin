@@ -62,9 +62,9 @@ def conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     _, _, config_n0 = tbe_platform.CUBE_MKN[res_dtype]['mac']
     shape_dx = (dx_batch, dx_d, te_util.int_ceil_div(dx_c, config_n0), dx_h, dx_w, config_n0)
     pattc = conv3d_dx.DeConvPattern(filter_sizes, strides=strides,
-                          pad=padding, output_shape=shape_dx,
-                          dilations=dilations,
-                          kernel_name=kernel_name)
+                                    pad=padding, output_shape=shape_dx,
+                                    dilations=dilations,
+                                    kernel_name=kernel_name)
     dy_col = pattc.generate_a(out_backprop)
     w_col = pattc.generate_b(filters)
     dx_ddr = pattc.generate_c(dy_col, w_col)

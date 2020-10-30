@@ -133,8 +133,6 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     -------
     None
     """
-    if data_format != NHWC_STR:
-        raise RuntimeError("data_format only supported NHWC")
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 

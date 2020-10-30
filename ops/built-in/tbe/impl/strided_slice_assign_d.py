@@ -22,6 +22,7 @@ import math
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def _check_num_is_power_of_two(num):
@@ -37,19 +38,24 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_m
     check the input parameters
     """
     if not _check_num_is_power_of_two(ellipsis_mask):
-        raise RuntimeError("Multiple ellipses in slice spec not allowed!")
+        error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
+                                                      "Multiple ellipses in slice spec not allowed!")
     if len(end) != len(begin) or len(begin) != len(strides):
-        raise RuntimeError("end shape, begin shape and strides shape length must be equal!")
+        error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
+                                                      "end shape, begin shape and strides shape length must be equal!")
 
     if ellipsis_mask > 0 and new_axis_mask > 0:
-        raise RuntimeError(" ellipsis_mask and new_axis_mask can not both be greater than 0!")
+        error_manager_vector.raise_err_specific_reson(
+            "strided_slice_assign_d", "ellipsis_mask and new_axis_mask can not both be greater than 0!")
 
     if ellipsis_mask > 0 and shrink_axis_mask > 0:
-        raise RuntimeError("ellipsis_mask and shrink_axis_mask can not both be greater than 0!")
+        error_manager_vector.raise_err_specific_reson(
+            "strided_slice_assign_d", "ellipsis_mask and shrink_axis_mask can not both be greater than 0!")
 
     for i, _ in enumerate(begin):
         if strides[i] <= 0:
-            raise RuntimeError("strides must be greater than 0 ")
+            error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
+                                                          "strides[%s] must be greater than 0 " % strides)
         if begin[i] < 0:
             begin[i] = begin[i] + input_shape[i]
             if begin[i] < 0:
@@ -57,11 +63,14 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_m
         if end[i] < 0:
             end[i] = end[i] + input_shape[i]
             if end[i] < 0:
-                raise RuntimeError("end shape is invaild value in dim", i)
+                error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
+                                                              "end shape is invaild value in dim")
         if begin[i] >= input_shape[i]:
-            raise RuntimeError("begin shouldn't greater than or equal to input shape in dim", i)
+            error_manager_vector.raise_err_specific_reson(
+                "strided_slice_assign_d",
+                "begin[%s] shouldn't greater than or equal to input[%s] shape in dim" % (begin, input_shape))
         if begin[i] >= end[i]:
-            raise RuntimeError("begin must be less than end")
+            error_manager_vector.raise_err_specific_reson("strided_slice_assign_d", "begin must be less than end")
         if end[i] > input_shape[i]:
             end[i] = input_shape[i]
 
@@ -139,7 +148,8 @@ def _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink
             end_value = temp_input_value
             end[i] = temp_input_value
         if begin_value >= temp_input_value and (new_axis_mask & 2**i) != 2**i:
-            raise RuntimeError("begin shouldn't greater than or equal to input shape in dim")
+            error_manager_vector.raise_err_specific_reson(
+                "strided_slice_assign_d", "begin shouldn't greater than or equal to input shape in dim")
         slice_shape.append(int(math.ceil((end_value - begin_value) / (stride_value * 1.0))))
 
     _update_params_by_new_axis_mask(slice_shape, new_axis_mask)
@@ -155,7 +165,8 @@ def _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink
             end[i] = begin[i] + 1
 
     if strides[-1] != 1:
-        raise RuntimeError("Only support strides with 1 at last value.")
+        error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
+                                                      "Only support strides with 1 at last value.")
 
     return slice_shape
 

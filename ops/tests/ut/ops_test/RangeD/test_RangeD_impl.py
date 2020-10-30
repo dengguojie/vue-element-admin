@@ -14,6 +14,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 RangeD ut case
 """
 from op_test_frame.ut import OpUT
+import numpy as np
+from op_test_frame.common import precision_info
+
 ut_case = OpUT("RangeD", None, None)
 
 case1 = {"params": [{"shape": (5,), "dtype": "int32", "format": "ND", "ori_shape": (5,),"ori_format": "ND"}, #x
@@ -63,5 +66,42 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
+def calc_expect_func(x, y, start, limit, delta):
+    x_shape = x.get("shape")
+    x_value = x.get("value")
+
+    y = x_value*delta+start
+    res = y.astype(np.float32)
+    return res
+
+ut_case.add_precision_case("all", {"params": [{"shape": (6,), "dtype": "float32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (6,), "dtype": "float32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "output"},
+                                              5.0, -1.0, -1.0
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "output"},
+                                              2.0, -1.0, -1.0,
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "param_type": "output"},
+                                              1.1, 6.4, 2.2,
+                                              ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+
+# ============ auto gen ["Ascend910"] test cases end =================
+
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
+

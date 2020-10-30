@@ -1343,7 +1343,7 @@ def pooling2d_schedule(res, sch_list):
     template = _get_from_attr(pooling2d_res.op.attrs, "template")
     if template == "max_pool2d_generic":
         return schedule_max_pool(res, sch_list)
-    elif template == "avg_pool2d_generic":
+    if template == "avg_pool2d_generic":
         return schedule_avg_pool(res, sch_list)
 
     anti_tensor = _build_anti_tensor(anti_res)
@@ -1503,9 +1503,8 @@ def pooling2d_schedule(res, sch_list):
             l1_valid_size = fusion_params.get("L1_valid_size", DEFAULT_VALUE)
             l1_addr_offset = fusion_params.get("L1_addr_offset", DEFAULT_VALUE)
             in_l1 = fusion_params.get("in_l1_flag", DEFAULT_VALUE)
-            has_necessary_para = (input_l1_flag != DEFAULT_VALUE) and \
-                                 (l1_valid_size != DEFAULT_VALUE) and \
-                                 (l1_addr_offset != DEFAULT_VALUE)
+
+            has_necessary_para = DEFAULT_VALUE not in (input_l1_flag, l1_valid_size, l1_addr_offset)
             invalid_ddr_in_l1_fusion = (l1_fusion_type == L1_DEPTH_FUSION) and \
                                        (not in_l1) and (not has_necessary_para)
             if invalid_ddr_in_l1_fusion:

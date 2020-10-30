@@ -180,7 +180,7 @@ def tvm_callback_cce_compile(target, kernel_name, dirpath, json_info=None):
         bin_file_suffix = ".so"
 
     json_info = json_info or {}
-    for key, val in json_info.items():
+    for key, _ in json_info.items():
         if key.name == "batchBindOnly":
             CceFlag.BatchBindOnly = True
 

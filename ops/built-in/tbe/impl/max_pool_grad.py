@@ -17,26 +17,14 @@ max_pool_grad
 """
 import math
 
-from te.platform.cce_conf import CORE_NUM
-from te.platform.cce_conf import L1_SIZE
-from te.platform.cce_conf import UB_SIZE
-from te.platform.cce_conf import CceProductParams
-from te.platform.cce_conf import get_soc_spec
-from te.platform.cce_intrin import get_bit_len
-
-from te.tik import Dprofile
-from te.tik import Tik
-from te.tik import all as _all
-from te.tik import any as _any
-from te.tik import scope_cbuf
-from te.tik import scope_gm
-from te.tik import scope_ubuf
-
-from te.utils import check_para
+import te.platform as tbe_platform
+from te import tik
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
-def ceil_div(num, divisor):
-    """calcu use ceil_div
+def _ceil_div(num, divisor):
+    """calcu use _ceil_div
 
     Parameters
     ----------
@@ -55,7 +43,7 @@ def ceil_div(num, divisor):
     return num // divisor
 
 
-def cal_shape_ele(shape):
+def _cal_shape_ele(shape):
     """calcu element nums
 
     Parameters
@@ -74,7 +62,7 @@ def cal_shape_ele(shape):
     return reduce_
 
 
-def cal_byte_size(shape, dtype):
+def _cal_byte_size(shape, dtype):
     """calcu tensor size
 
     Parameters
@@ -89,11 +77,12 @@ def cal_byte_size(shape, dtype):
         the total num of shape
     """
     if dtype == "float16":
-        return cal_shape_ele(shape) * 2
+        return _cal_shape_ele(shape) * 2
     elif dtype == "float32":
-        return cal_shape_ele(shape) * 4
+        return _cal_shape_ele(shape) * 4
     else:
-        raise RuntimeError("Not support shape now")
+        error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input", ('float16', 'float32'),
+                                                                 dtype)
 
 
 # MIN VALUE OF FP16
@@ -129,16 +118,16 @@ VECTOR_FP32_SIZE = 64
 # BLOCK SIZE(32B)
 BLOCK_SIZE = 32
 # UB SIZE
-SIZE_UB = get_soc_spec(UB_SIZE)
+SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 # L1 SIZE
-SIZE_L1 = get_soc_spec(L1_SIZE)
+SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 C0 = 16
 # BLOCK NUMS
-CORE_NUM = get_soc_spec(CORE_NUM)
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-# pylint: disable = too-many-arguments
-def check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name):
+# pylint: disable=too-many-arguments
+def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name):
     """
     check parameters, if one is invalid, then raise error
 
@@ -166,51 +155,63 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_nam
     ori_input_dtype = ori_input.get("dtype").lower()
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
-    check_para.check_shape(ori_input_shape, param_name="ori_input")
-    check_para.check_dtype(ori_input_dtype, ("float16", ), param_name="ori_input")
+    para_check.check_shape(ori_input_shape, param_name="ori_input")
+    para_check.check_dtype(ori_input_dtype, ("float16", ), param_name="ori_input")
 
     # the format of input_x must be NC1HWC0
-    if len(ori_input_shape) != 5:
-        raise RuntimeError("invalid shape params, input feature map must be 5D format in kernel.")
-    if len(ori_output_shape) != 5:
-        raise RuntimeError("invalid shape params, forward output must be 5D format in kernel.")
-    if len(grad_shape) != 5:
-        raise RuntimeError("invalid shape params, update grad must be 5D format in kernel.")
+    def _check_5hd(param, shape_length):
+        if shape_length != 5:
+            error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad', param, 5, 5, shape_length)
+
+    _check_5hd('ori_input', len(ori_input_shape))
+    _check_5hd('ori_output', len(ori_output_shape))
+    _check_5hd('grad', len(grad_shape))
 
     if grad_shape != ori_output_shape:
-        raise RuntimeError("invalid shape params, update grad must be same shape as forward output")
+        error_manager_vector.raise_err_inputs_shape_not_equal('max_pool_grad', 'grad', 'ori_output', grad_shape,
+                                                              ori_output_shape, ori_output_shape)
 
-    if grad_shape[-1] != 16 or ori_input_shape[-1] != 16:
-        raise RuntimeError("invalid shape params, C0 must be equal to 16.")
+    def _check_last_dim(param, shape):
+        if shape[-1] != 16:
+            error_manager_vector.raise_err_check_params_rules('max_pool_grad', 'the last dimension must be equal to 16',
+                                                              param, shape)
+
+    _check_last_dim("grad", grad_shape)
+    _check_last_dim("ori_input", ori_input_shape)
 
     if ori_output_shape[:2] != ori_input_shape[:2]:
-        raise RuntimeError("invalid shape params, N axis and C1 axis should be same.")
+        error_manager_vector.raise_err_check_params_rules(
+            'max_pool_grad', 'N axis and C1 axis of shape should be same, where ori_input is %s' % ori_input_shape,
+            "ori_output", ori_output_shape)
 
-    if len(ksize) != 4 or len(strides) != 4:
-        raise RuntimeError("Invalid ksize or strides params, ksize dim must be 4.")
+    if len(ksize) != 4:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad', 'ksize', 4, 4, len(ksize))
+    if len(strides) != 4:
+        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad', 'strides', 4, 4, len(strides))
 
     if ksize[0] != 1 or ksize[3] != 1:
-        raise RuntimeError("MaxPoolGRAD only supports pooling "
-                           "across width/height, and other ksize "
-                           "dimension should be one")
+        error_manager_vector.raise_err_check_params_rules(
+            'max_pool_grad', "only supports pooling across width/height, and other ksize dimension should be one",
+            "ksize", ksize)
+    if ksize[1] > 255 or ksize[3] > 255 or ksize[1] < 1 or ksize[3] < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "ksize", 1, 255, ksize)
 
     if strides[0] != 1 or strides[3] != 1:
-        raise RuntimeError(
-            "MaxPoolGRAD only supports pooling across width/height, and other strides dimension should be one")
+        error_manager_vector.raise_err_check_params_rules(
+            'max_pool_grad', "only supports pooling across width/height, and other strides dimension should be one",
+            "strides", strides)
+    if strides[1] > 63 or strides[3] > 63 or strides[1] < 1 or strides[3] < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "strides", 1, 63, strides)
 
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("MaxPoolGrad can only support SAME or VALID padding mode.")
-    if strides[1] > 63 or strides[3] > 63 or strides[1] < 1 or strides[3] < 1:
-        raise RuntimeError("Invalid stride parameters, stride size should be in [1, 63]")
-    if ksize[1] > 255 or ksize[3] > 255 or strides[1] < 1 or strides[3] < 1:
-        raise RuntimeError("Invalid kernel parameters, kernel size should be in [1, 255]")
+        error_manager_vector.raise_err_input_value_invalid('max_pool_grad', 'padding', ("SAME", "VALID"), padding)
 
 
-# pylint: disable = too-many-arguments,,unused-argument,invalid-name
-@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-                            check_para.REQUIRED_OUTPUT, check_para.REQUIRED_ATTR_LIST_INT,
-                            check_para.REQUIRED_ATTR_LIST_INT, check_para.REQUIRED_ATTR_STR, check_para.OPTION_ATTR_STR,
-                            check_para.KERNEL_NAME)
+# pylint: disable=too-many-arguments,unused-argument,invalid-name
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def max_pool_grad(ori_input,
                   ori_output,
                   grad,
@@ -251,7 +252,7 @@ def max_pool_grad(ori_input,
     if ori_format == "NCHW":
         ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
         strides = (strides[0], strides[2], strides[3], strides[1])
-    check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name)
+    _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name)
     ori_input_shape = ori_input.get("shape")
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
@@ -260,7 +261,6 @@ def max_pool_grad(ori_input,
     return maxpoolgrad.tik_instance_function(kernel_name)
 
 
-# pylint: disable = too-many-instance-attributes
 class MaxpoolGrad(object):
     """
     MaxpoolGrad  Object include all fuction and paras
@@ -277,7 +277,6 @@ class MaxpoolGrad(object):
         self.c1 = ori_input[1]
         self.hi = ori_input[2]
         self.wi = ori_input[3]
-
         self.ho = grad[2]
         self.wo = grad[3]
         self.stride_h = strides[1]
@@ -294,16 +293,19 @@ class MaxpoolGrad(object):
         self.hi_block = None
         self.tile_h_to_block = False
 
-        self.tik_instance = Tik()
-        self.ori_input_gm = self.tik_instance.Tensor(dtype, self.ori_input_shape, name='ori_input_gm', scope=scope_gm)
+        self.tik_instance = tik.Tik()
+        self.ori_input_gm = self.tik_instance.Tensor(dtype,
+                                                     self.ori_input_shape,
+                                                     name='ori_input_gm',
+                                                     scope=tik.scope_gm)
         self.ori_output_gm = self.tik_instance.Tensor(dtype,
                                                       self.ori_output_shape,
                                                       name='ori_output_gm',
-                                                      scope=scope_gm)
-        self.grad_gm = self.tik_instance.Tensor(dtype, self.grad_shape, name='grad_gm', scope=scope_gm)
+                                                      scope=tik.scope_gm)
+        self.grad_gm = self.tik_instance.Tensor(dtype, self.grad_shape, name='grad_gm', scope=tik.scope_gm)
         self.res_gm = self.tik_instance.Tensor(dtype, (self.n, self.c1, self.hi, self.wi, C0),
                                                name='res_gm',
-                                               scope=scope_gm)
+                                               scope=tik.scope_gm)
 
         self.scalar_esp = self.tik_instance.Scalar(dtype='float32', name='scalar_esp')
         self.scalar_one = self.tik_instance.Scalar(dtype='float32', name='scalar_one')
@@ -319,7 +321,7 @@ class MaxpoolGrad(object):
         self.scalar_esp.set_as(1.18e-38)
         self.scalar_one.set_as(1)
 
-    # pylint: disable = too-many-locals
+    # pylint: disable=too-many-locals
     def _padding_mode(self, ori_input, ksize, strides, padding):
         _, _, fmap_h, fmap_w, _ = ori_input
         _, kernel_h, kernel_w, _ = ksize
@@ -341,7 +343,7 @@ class MaxpoolGrad(object):
         return wo, ho, pad_left, pad_right, pad_top, pad_bottom
 
     def _vector_dup(self, src, src_start, shape, dup_reg, dtype):
-        ele_num = cal_shape_ele(shape)
+        ele_num = _cal_shape_ele(shape)
         if dtype == "float16":
             total_repeate_time = ele_num // VECTOR_FP16_SIZE
             remain_ele = ele_num % VECTOR_FP16_SIZE
@@ -351,7 +353,8 @@ class MaxpoolGrad(object):
             remain_ele = ele_num % VECTOR_FP32_SIZE
             mask_value = VECTOR_FP32_SIZE
         else:
-            raise RuntimeError("Not support dtype")
+            error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input",
+                                                                     ('float16', 'float32'), dtype)
         repeate_max_time = total_repeate_time // MAX_VECTOR_REPEATE_TIME
         remain_repeate_time = total_repeate_time % MAX_VECTOR_REPEATE_TIME
 
@@ -442,13 +445,15 @@ class MaxpoolGrad(object):
             if repeat_max_loop > 0:
                 self.tik_instance.vmuls(mask, dst[dst_offset], src1[src1_offset], src2, 255, stride_cofig[0],
                                         stride_cofig[1], stride_cofig[2], stride_cofig[3])
-                dst_offset += BLOCK_SIZE // (get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[2] * 255
-                src1_offset += BLOCK_SIZE // (get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[3] * 255
+                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[2] * 255
+                src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[3] * 255
             if remain_max_loop > 0:
                 self.tik_instance.vmuls(mask, dst[dst_offset], src1[src1_offset], src2, remain_max_loop,
                                         stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3])
-                dst_offset += BLOCK_SIZE // (get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[2] * remain_max_loop
-                src1_offset += BLOCK_SIZE // (get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[3] * remain_max_loop
+                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                             8) * stride_cofig[2] * remain_max_loop
+                src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                              8) * stride_cofig[3] * remain_max_loop
             if remain_ele > 0:
                 self.tik_instance.vmuls(remain_ele, dst[dst_offset], src1[src1_offset], src2, 1, stride_cofig[0],
                                         stride_cofig[1], stride_cofig[2], stride_cofig[3])
@@ -463,60 +468,63 @@ class MaxpoolGrad(object):
                 self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 255,
                                        stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
                                        stride_cofig[4], stride_cofig[5])
-                dst_offset += BLOCK_SIZE // (get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3] * 255
-                src1_offset += BLOCK_SIZE // (get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4] * 255
-                src2_offset += BLOCK_SIZE // (get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5] * 255
+                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3] * 255
+                src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4] * 255
+                src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5] * 255
             if remain_max_loop > 0:
                 self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
                                        stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
                                        stride_cofig[4], stride_cofig[5])
-                dst_offset += BLOCK_SIZE // (get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3] * remain_max_loop
-                src1_offset += BLOCK_SIZE // (get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4] * remain_max_loop
-                src2_offset += BLOCK_SIZE // (get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5] * remain_max_loop
+                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                             8) * stride_cofig[3] * remain_max_loop
+                src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                              8) * stride_cofig[4] * remain_max_loop
+                src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                              8) * stride_cofig[5] * remain_max_loop
             if remain_ele > 0:
                 self.tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
                                        stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
                                        stride_cofig[4], stride_cofig[5])
 
     def _calc_mask(self, index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or, mask_not):
-        mask_ori = self.tik_instance.Tensor('uint16', mask_shape, name='mask_ori', scope=scope_ubuf)
-        mask_ub = self.tik_instance.Tensor('uint16', mask_shape, name='mask_ori', scope=scope_ubuf)
+        mask_ori = self.tik_instance.Tensor('uint16', mask_shape, name='mask_ori', scope=tik.scope_ubuf)
+        mask_ub = self.tik_instance.Tensor('uint16', mask_shape, name='mask_ori', scope=tik.scope_ubuf)
 
-        with self.tik_instance.if_scope(_all(index_h == 0, index_w == 0)):
+        with self.tik_instance.if_scope(tik.all(index_h == 0, index_w == 0)):
             self.tik_instance.vcmpv_eq(mask_ub, ori_output_ub, ori_input_col_ub,
-                                       cal_shape_ele(ori_output_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
+                                       _cal_shape_ele(ori_output_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
 
-            self.tik_instance.data_move(mask_or[0], mask_ub[0], 0, 1, cal_shape_ele(mask_ub.shape) // 16, 0, 0)
+            self.tik_instance.data_move(mask_or[0], mask_ub[0], 0, 1, _cal_shape_ele(mask_ub.shape) // 16, 0, 0)
 
             self.tik_instance.vnot(MASK128_VALUE, mask_not, mask_ub,
-                                   cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
+                                   _cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
 
         with self.tik_instance.else_scope():
             self.tik_instance.vcmpv_eq(mask_ori, ori_output_ub, ori_input_col_ub,
-                                       cal_shape_ele(ori_output_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
+                                       _cal_shape_ele(ori_output_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
 
             mask_ori = mask_ori.reinterpret_cast_to("uint16")
             self.tik_instance.vand(MASK128_VALUE, mask_ub, mask_not, mask_ori,
-                                   cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 1, 8, 8, 8)
+                                   _cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 1, 8, 8, 8)
 
             mask_or = mask_or.reinterpret_cast_to("uint16")
             self.tik_instance.vor(MASK128_VALUE, mask_or, mask_or, mask_ub,
-                                  cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 1, 8, 8, 8)
+                                  _cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vnot(MASK128_VALUE, mask_not, mask_or,
-                                   cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
+                                   _cal_shape_ele(mask_ub.shape) // VECTOR_FP16_SIZE, 1, 1, 8, 8)
 
         return mask_ub
 
     def _vsel_grad_col(self, mask_ub, grad_ub):
-        grad_sel_ub = self.tik_instance.Tensor("float16", grad_ub.shape, name="col2img_fp16_ub", scope=scope_ubuf)
-        temp_zero = self.tik_instance.Tensor("float16", (MASK128_VALUE, ), name="temp_zero", scope=scope_ubuf)
+        grad_sel_ub = self.tik_instance.Tensor("float16", grad_ub.shape, name="col2img_fp16_ub", scope=tik.scope_ubuf)
+        temp_zero = self.tik_instance.Tensor("float16", (MASK128_VALUE, ), name="temp_zero", scope=tik.scope_ubuf)
         self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
 
         # vsel
         with self.tik_instance.for_range(0, grad_ub.shape[0]) as mask_index:
             fractal_repeat = C0 * C0 // VECTOR_FP16_SIZE
             with self.tik_instance.for_range(0, fractal_repeat) as fractal_index:
-                mask_type_bit_size = get_bit_len("uint16")
+                mask_type_bit_size = tbe_platform.get_bit_len("uint16")
                 mask_offset = (mask_index * fractal_repeat + fractal_index) * MASK128_VALUE // mask_type_bit_size
 
                 cmpmask = self.tik_instance.mov_tensor_to_cmpmask(mask_ub[mask_offset])
@@ -562,7 +570,7 @@ class MaxpoolGrad(object):
             load3d's result
         -------
         """
-        pad_left, pad_right, pad_top, pad_bottom = pad
+        pad_left, pad_right, pad_top, _ = pad
         # load3d
         with self.tik_instance.if_scope(start_h <= pad_top):
             self.actual_pad_top.set_as(pad_top - start_h)
@@ -599,7 +607,10 @@ class MaxpoolGrad(object):
     def _data_move_ub(self, ori_input_shape, ori_output_shape, input_data_num, output_data_nums, src_input_offset,
                       src_output_offset):
         if ori_input_shape:
-            ori_input_l1 = self.tik_instance.Tensor(self.dtype, ori_input_shape, name='ori_input_l1', scope=scope_cbuf)
+            ori_input_l1 = self.tik_instance.Tensor(self.dtype,
+                                                    ori_input_shape,
+                                                    name='ori_input_l1',
+                                                    scope=tik.scope_cbuf)
             self.tik_instance.data_move(ori_input_l1[0], self.ori_input_gm[src_input_offset], 0, 1,
                                         input_data_num // 16, 0, 0)
         else:
@@ -607,13 +618,16 @@ class MaxpoolGrad(object):
 
         # mov actual ori output to ub
 
-        ori_output_ub = self.tik_instance.Tensor(self.dtype, ori_output_shape, name='ori_output_ub', scope=scope_ubuf)
+        ori_output_ub = self.tik_instance.Tensor(self.dtype,
+                                                 ori_output_shape,
+                                                 name='ori_output_ub',
+                                                 scope=tik.scope_ubuf)
         self._vector_dup(ori_output_ub, 0, ori_output_shape, self.scalar_zero_fp16, "float16")
         self.tik_instance.data_move(ori_output_ub[0], self.ori_output_gm[src_output_offset], 0, 1,
                                     output_data_nums // 16, 0, 0)
 
         # mov ori grad to ub
-        grad_ub = self.tik_instance.Tensor(self.dtype, ori_output_shape, name='grad_ub', scope=scope_ubuf)
+        grad_ub = self.tik_instance.Tensor(self.dtype, ori_output_shape, name='grad_ub', scope=tik.scope_ubuf)
         self._vector_dup(grad_ub, 0, ori_output_shape, self.scalar_zero_fp16, "float16")
         self.tik_instance.data_move(grad_ub[0], self.grad_gm[src_output_offset], 0, 1, output_data_nums // 16, 0, 0)
 
@@ -621,7 +635,7 @@ class MaxpoolGrad(object):
 
     def _mov_func(self, cut_ho_nums_index, cut_ho_nums, remain_ho_nums, each_process_ho, each_process_hi, each_valid_ho,
                   col2img_fp32_ub, temp_tensor_ub, pad):
-        pad_left, pad_right, pad_top, pad_bottom = pad
+        pad_left, pad_right, pad_top, _ = pad
         wi = self.wi + pad_left + pad_right
         pad_top_rows = self.tik_instance.Scalar(dtype="int64", name='pad_top_rows')
         pad_top_rows.set_as(pad_top - cut_ho_nums_index * each_process_ho * self.stride_h)
@@ -631,10 +645,10 @@ class MaxpoolGrad(object):
         col2img_fp16_ub = self.tik_instance.Tensor("float16",
                                                    col2img_fp32_ub.shape,
                                                    name="col2img_fp16_ub",
-                                                   scope=scope_ubuf)
-        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                                                   scope=tik.scope_ubuf)
+        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
 
-        with self.tik_instance.if_scope(_all(cut_ho_nums_index < cut_ho_nums - 1, each_valid_hi > 0)):
+        with self.tik_instance.if_scope(tik.all(cut_ho_nums_index < cut_ho_nums - 1, each_valid_hi > 0)):
             self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                         col2img_fp16_ub[pad_top_rows * wi * C0 + pad_left * C0], 0, each_valid_hi,
                                         self.wi * C0 // 16, pad_left + pad_right, 0)
@@ -658,7 +672,7 @@ class MaxpoolGrad(object):
                     remain_hi = last_valid_hi - each_process_hi
                     temp_zero = self.tik_instance.Tensor("float16", (remain_hi, self.wi * C0),
                                                          name='temp_zero',
-                                                         scope=scope_ubuf)
+                                                         scope=tik.scope_ubuf)
                     self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
                     self.tik_instance.data_move(self.res_gm[self.offset_gm + each_process_hi * self.wi * C0], temp_zero,
                                                 0, 1, remain_hi * self.wi * C0 // 16, 0, 0)
@@ -685,7 +699,7 @@ class MaxpoolGrad(object):
                     remain_hi = last_valid_hi - each_process_hi
                     temp_zero = self.tik_instance.Tensor("float16", (remain_hi, self.wi * C0),
                                                          name='temp_zero',
-                                                         scope=scope_ubuf)
+                                                         scope=tik.scope_ubuf)
                     self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
                     self.tik_instance.data_move(self.res_gm[self.offset_gm + each_process_hi * self.wi * C0], temp_zero,
                                                 0, 1, remain_hi * self.wi * C0 // 16, 0, 0)
@@ -693,11 +707,11 @@ class MaxpoolGrad(object):
 
         if self.kh > self.stride_h:
             self._vector_op("vmuls", col2img_fp32_ub, 1.0, temp_tensor_ub, "float32",
-                            cal_shape_ele(temp_tensor_ub.shape), None, [0, each_process_ho * self.stride_h * wi * C0])
+                            _cal_shape_ele(temp_tensor_ub.shape), None, [0, each_process_ho * self.stride_h * wi * C0])
 
     def _move_func_block(self, cut_ho_nums_index, cut_ho_nums, start_h, end_h, each_process_ho, valid_hi_block,
                          col2img_fp32_ub, temp_tensor_ub, remained_hi, remain, pad):
-        pad_left, pad_right, pad_top, pad_bottom = pad
+        pad_left, pad_right, pad_top, _ = pad
         wi = self.wi + pad_left + pad_right
         mov_len_h = self.tik_instance.Scalar(dtype='int64', name='mov_len_h')
         hi_max = self.tik_instance.Scalar(dtype='int64', name='hi_max')
@@ -710,8 +724,8 @@ class MaxpoolGrad(object):
         col2img_fp16_ub = self.tik_instance.Tensor("float16",
                                                    col2img_fp32_ub.shape,
                                                    name="col2img_fp16_ub",
-                                                   scope=scope_ubuf)
-        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                                                   scope=tik.scope_ubuf)
+        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
         with self.tik_instance.if_scope(end_h > pad_top):
             with self.tik_instance.if_scope(start_h < pad_top + valid_hi_block):
                 with self.tik_instance.if_scope(mov_len_h > 0):
@@ -726,10 +740,10 @@ class MaxpoolGrad(object):
                         with self.tik_instance.if_scope(remained_hi > 0):
                             temp_zero = self.tik_instance.Tensor("float16", (1, self.wi, C0),
                                                                  name="temp_zero",
-                                                                 scope=scope_ubuf)
+                                                                 scope=tik.scope_ubuf)
                             self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, temp_zero.dtype)
 
-                            with self.tik_instance.for_range(0, remained_hi) as index_0:
+                            with self.tik_instance.for_range(0, remained_hi):
                                 self.tik_instance.data_move(self.res_gm[self.offset_gm], temp_zero, 0, 1,
                                                             self.wi * C0 // 16, 0, 0)
                                 self.offset_gm.set_as(self.offset_gm + self.wi * C0)
@@ -737,31 +751,31 @@ class MaxpoolGrad(object):
                     with self.tik_instance.if_scope(remained_hi > 0):
                         temp_zero = self.tik_instance.Tensor("float16", (1, self.wi, C0),
                                                              name="temp_zero",
-                                                             scope=scope_ubuf)
+                                                             scope=tik.scope_ubuf)
                         self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, temp_zero.dtype)
-                        with self.tik_instance.for_range(0, remained_hi) as index_0:
+                        with self.tik_instance.for_range(0, remained_hi):
                             self.tik_instance.data_move(self.res_gm[self.offset_gm], temp_zero, 0, 1,
                                                         self.wi * C0 // 16, 0, 0)
                             self.offset_gm.set_as(self.offset_gm + self.wi * C0)
 
         if self.kh > self.stride_h:
             self._vector_op("vmuls", col2img_fp32_ub, 1.0, temp_tensor_ub, "float32",
-                            cal_shape_ele(temp_tensor_ub.shape), None, [0, each_process_ho * self.stride_h * wi * C0])
+                            _cal_shape_ele(temp_tensor_ub.shape), None, [0, each_process_ho * self.stride_h * wi * C0])
         return remained_hi
 
     def _tilling_factor(self, ori_input_shape, pad):
         pad_left, pad_right, _, _ = pad
-        C0 = ori_input_shape[-1]
-        input_l1_size = cal_byte_size(ori_input_shape, self.dtype)
+        c0_local = ori_input_shape[-1]
+        input_l1_size = _cal_byte_size(ori_input_shape, self.dtype)
         # each type of buffer's bit size
-        fp16_data_size = get_bit_len("float16") // 8
-        fp32_data_size = get_bit_len("float32") // 8
-        uint16_data_size = get_bit_len("uint16") // 8
+        fp16_data_size = tbe_platform.get_bit_len("float16") // 8
+        fp32_data_size = tbe_platform.get_bit_len("float32") // 8
+        uint16_data_size = tbe_platform.get_bit_len("uint16") // 8
 
         if input_l1_size >= SIZE_L1:
-            need_cut_L1 = True
+            need_cut_l1 = True
         else:
-            need_cut_L1 = False
+            need_cut_l1 = False
 
         if self.kh > self.stride_h:
             each_process_hi = self.kh
@@ -770,31 +784,31 @@ class MaxpoolGrad(object):
 
         # define eaxtra_size for some case
         # if each_process_wo is not 32B alined and 256B alined
-        extra_size = (VECTOR_FP16_SIZE * C0 + C0) * fp16_data_size
+        extra_size = (VECTOR_FP16_SIZE * c0_local + c0_local) * fp16_data_size
         if self.kw > self.stride_w:
-            extra_size += each_process_hi * (self.kw - self.stride_w) * C0 * (fp16_data_size + fp32_data_size)
+            extra_size += each_process_hi * (self.kw - self.stride_w) * c0_local * (fp16_data_size + fp32_data_size)
 
         # calculate col ub size
-        # There are two col ub, one is fp32, other is fp16, shape is (each_hi, each_wi, C0)
+        # There are two col ub, one is fp32, other is fp16, shape is (each_hi, each_wi, c0_local)
         # Here we need calculate each_wi to judge if need cut wo or cut ho.
         # self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw
         # self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w
 
-        col_ub_size_times = each_process_hi * self.stride_w * C0 * (fp16_data_size + fp32_data_size)
+        col_ub_size_times = each_process_hi * self.stride_w * c0_local * (fp16_data_size + fp32_data_size)
 
         # calculate mask ub size
-        # There are for mask buffer on ub, each is (math.ceil(each_wo_16 * C0 // 128) * 128, )
+        # There are for mask buffer on ub, each is (math.ceil(each_wo_16 * c0_local // 128) * 128, )
         # Here each_wo_16 is ceil to 16 times.
         mask_ub_size_times = uint16_data_size * 4
 
         # calculate tensor ub siez
-        # There are five tensor buffer on UB, each is (each_wo_16, 16, C0), one is fp32, others
+        # There are five tensor buffer on UB, each is (each_wo_16, 16, c0_local), one is fp32, others
         # are fp16. Here each_wo_16 is ceil to 16 times.
-        tensor_ub_size_time = C0 * (4 * fp16_data_size + fp32_data_size)
+        tensor_ub_size_time = c0_local * (4 * fp16_data_size + fp32_data_size)
 
         # some temp size
         # at most have 4 temp buffer on ub, each is (128, ), dtype is float16
-        temp_ub_size = fp16_data_size * self.wi * C0
+        temp_ub_size = fp16_data_size * self.wi * c0_local
 
         each_process_wo = (SIZE_UB - temp_ub_size) * 1.0 / (col_ub_size_times + mask_ub_size_times +
                                                             tensor_ub_size_time) - pad_left - pad_right
@@ -804,21 +818,20 @@ class MaxpoolGrad(object):
             wi = self.wi + pad_left + pad_right
             extra_size = 0
             if self.kh > self.stride_h:
-                extra_size += (self.kh - self.stride_h) * wi * C0 * (fp16_data_size + 2 * fp32_data_size)
+                extra_size += (self.kh - self.stride_h) * wi * c0_local * (fp16_data_size + 2 * fp32_data_size)
             # calculate col ub size
-            # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, C0)
+            # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, c0_local)
             # self.kh > self.stride_h, each_hi = (each_process_ho - 1) * self.stride_h + self.kh
             # self.kh <= self.stride_h, each_hi = each_process_ho * self.stride_h
-            col_ub_size_times = self.stride_h * wi * C0 * (fp16_data_size + fp32_data_size)
+            col_ub_size_times = self.stride_h * wi * c0_local * (fp16_data_size + fp32_data_size)
 
             mask_ub_size_times = self.wo * uint16_data_size * 4
 
-            tensor_ub_size_time = self.wo * C0 * (4 * fp16_data_size + fp32_data_size)
+            tensor_ub_size_time = self.wo * c0_local * (4 * fp16_data_size + fp32_data_size)
 
-            temp_ub_size = fp16_data_size * self.wo * C0
+            temp_ub_size = fp16_data_size * self.wo * c0_local
             each_process_ho = (SIZE_UB - temp_ub_size - extra_size) // (col_ub_size_times + mask_ub_size_times +
                                                                         tensor_ub_size_time)
-            each_process_ho = each_process_ho
             if each_process_ho <= 0:
                 each_process_ho = 1
                 each_process_wo = self.wo
@@ -826,25 +839,25 @@ class MaxpoolGrad(object):
             each_process_ho = 0
 
         if each_process_ho >= self.ho:
-            need_cut_Ho = False
-            need_cut_Wo = False
-            return need_cut_L1, need_cut_Ho, need_cut_Wo, self.ho, 0
+            need_cut_ho = False
+            need_cut_wo = False
+            return need_cut_l1, need_cut_ho, need_cut_wo, self.ho, 0
         elif each_process_ho > 1:
-            need_cut_Ho = True
-            need_cut_Wo = False
-            return need_cut_L1, need_cut_Ho, need_cut_Wo, each_process_ho, 0
+            need_cut_ho = True
+            need_cut_wo = False
+            return need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, 0
         else:
-            need_cut_Ho = True
-            need_cut_Wo = True
-            return True, need_cut_Ho, need_cut_Wo, 1, each_process_wo
+            need_cut_ho = True
+            need_cut_wo = True
+            return True, need_cut_ho, need_cut_wo, 1, each_process_wo
 
     def _not_tilling(self, n_index, c1_index, each_process_ho_block, each_process_hi_block, mov_len_ho, mov_len_hi,
                      start_ho_index, start_hi_index, start_threshold, offset_gm_block, shape, pad):
 
         pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
+        shape_ho, shape_wo, shape_hi, _ = shape
 
-        howo_ceil16 = ceil_div(shape_ho * shape_wo, 16)
+        howo_ceil16 = _ceil_div(shape_ho * shape_wo, 16)
 
         wi = self.wi + self.pad_left + self.pad_right
         hi = shape_hi + self.pad_top + self.pad_bottom
@@ -854,7 +867,7 @@ class MaxpoolGrad(object):
         col2img_fp32_ub = self.tik_instance.Tensor("float32",
                                                    col2img_ub_shape,
                                                    name="col2img_fp32_ub",
-                                                   scope=scope_ubuf)
+                                                   scope=tik.scope_ubuf)
 
         ori_input_shape = (hi, self.wi, C0)
         ori_output_shape = (howo_ceil16, 16, C0)
@@ -870,14 +883,13 @@ class MaxpoolGrad(object):
         ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                     ori_output_shape,
                                                     name='ori_input_col_ub',
-                                                    scope=scope_ubuf)
-        mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-        mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=scope_ubuf)
-        mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=scope_ubuf)
+                                                    scope=tik.scope_ubuf)
+        mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+        mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+        mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
 
-        # init col2img_fp32_ub, if not the first one and have overlap, dump
-        # the overlap part to col2img_fp32_ub, here we process whole ho, so
-        # no need to move overlap part
+        # init col2img_fp32_ub, if not the first one and have overlap, dump the overlap part to col2img_fp32_ub, here
+        # we process whole ho, so no need to move overlap part
         self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
 
         with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
@@ -888,15 +900,15 @@ class MaxpoolGrad(object):
                                            1, 1, 1, 1, repeate_time, 0, self.pad_value)
 
                 # calculate mask here
-                mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+                mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
                 mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or,
                                           mask_not)
                 grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
                 grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                             grad_sel_ub.shape,
                                                             name='grad_sel_ub_fp32',
-                                                            scope=scope_ubuf)
-                self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, cal_shape_ele(grad_sel_ub.shape), "float16")
+                                                            scope=tik.scope_ubuf)
+                self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
                 with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
                     col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx
                     mask_index = self.wo * C0 * ho_idx
@@ -920,8 +932,8 @@ class MaxpoolGrad(object):
         col2img_fp16_ub = self.tik_instance.Tensor("float16",
                                                    col2img_ub_shape,
                                                    name="col2img_fp16_ub",
-                                                   scope=scope_ubuf)
-        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                                                   scope=tik.scope_ubuf)
+        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
 
         if offset_gm_block is None:
             pad_top_offset = pad_top * wi * C0
@@ -943,7 +955,7 @@ class MaxpoolGrad(object):
                          shape, pad):
 
         pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
+        _, _, shape_hi, _ = shape
         cut_ho_nums = mov_len_ho // each_process_ho
         remain_ho_nums = mov_len_ho % each_process_ho
         wi = self.wi + pad_left + pad_right
@@ -955,18 +967,18 @@ class MaxpoolGrad(object):
         else:
             each_process_hi = each_process_ho * self.stride_h
             temp_size = (1, 16, C0)
-        temp_tensor_ub = self.tik_instance.Tensor("float32", temp_size, name="temp_tensor_ub", scope=scope_ubuf)
+        temp_tensor_ub = self.tik_instance.Tensor("float32", temp_size, name="temp_tensor_ub", scope=tik.scope_ubuf)
 
-        each_process_ho_wo_div16 = ceil_div(each_process_ho * self.wo, 16)
+        each_process_ho_wo_div16 = _ceil_div(each_process_ho * self.wo, 16)
         ori_input_shape = (shape_hi, self.wi, C0)
         ori_output_shape = (each_process_ho_wo_div16, 16, C0)
-        ori_input_l1 = self.tik_instance.Tensor(self.dtype, ori_input_shape, name='ori_input_l1', scope=scope_cbuf)
+        ori_input_l1 = self.tik_instance.Tensor(self.dtype, ori_input_shape, name='ori_input_l1', scope=tik.scope_cbuf)
 
         col2img_ub_shape = (each_process_hi, wi, C0)
         col2img_fp32_ub = self.tik_instance.Tensor("float32",
                                                    col2img_ub_shape,
                                                    name="col2img_fp32_ub",
-                                                   scope=scope_ubuf)
+                                                   scope=tik.scope_ubuf)
 
         input_data_nums = mov_len_hi * self.wi * C0
         self.tik_instance.data_move(
@@ -984,7 +996,7 @@ class MaxpoolGrad(object):
             if self.kh > self.stride_h:
                 with self.tik_instance.if_scope(cut_ho_nums_index > 0):
                     self._vector_op("vmuls", temp_tensor_ub, 1.0, col2img_fp32_ub, temp_tensor_ub.dtype,
-                                    cal_shape_ele(temp_tensor_ub.shape))
+                                    _cal_shape_ele(temp_tensor_ub.shape))
 
             start_h = self.tik_instance.Scalar(dtype='int64', name='start_h')
             end_h = self.tik_instance.Scalar(dtype='int64', name='end_h')
@@ -999,24 +1011,24 @@ class MaxpoolGrad(object):
             ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                         ori_output_shape,
                                                         name='ori_input_col_ub',
-                                                        scope=scope_ubuf)
-            mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-            mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=scope_ubuf)
-            mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=scope_ubuf)
+                                                        scope=tik.scope_ubuf)
+            mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+            mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+            mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
             with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
                 with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
                     self._load3d(index_h, index_w, start_h, end_h, ori_input_col_ub, ori_input_l1, start_h - pad_top,
                                  each_process_hi, self.wi, each_process_ho_wo_div16, pad, self.pad_value, -pad_left,
                                  mov_len_hi)
-                    mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+                    mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
                     mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or,
                                               mask_not)
                     grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
                     grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                 grad_sel_ub.shape,
                                                                 name='grad_sel_ub_fp32',
-                                                                scope=scope_ubuf)
-                    self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, cal_shape_ele(grad_sel_ub.shape), "float16")
+                                                                scope=tik.scope_ubuf)
+                    self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
 
                     with self.tik_instance.for_range(0, each_valid_ho) as h_idx:
                         col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * h_idx
@@ -1079,7 +1091,6 @@ class MaxpoolGrad(object):
                             mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                             shape, pad):
         pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
         wi = self.wi + pad_left + pad_right
         # if cut self.ho, every time process each_process_ho * self.wo
         cut_ho_nums = mov_len_ho // each_process_ho
@@ -1100,19 +1111,19 @@ class MaxpoolGrad(object):
         else:
             each_process_hi = each_process_ho * self.stride_h
             temp_size = (1, 16, C0)
-        temp_tensor_ub = self.tik_instance.Tensor("float32", temp_size, name="temp_tensor_ub", scope=scope_ubuf)
+        temp_tensor_ub = self.tik_instance.Tensor("float32", temp_size, name="temp_tensor_ub", scope=tik.scope_ubuf)
 
-        each_process_ho_wo_div16 = ceil_div(each_process_ho * self.wo, 16)
+        each_process_ho_wo_div16 = _ceil_div(each_process_ho * self.wo, 16)
         # define col res, init to zero
         col2img_ub_shape = (each_process_hi, wi, C0)
         col2img_fp32_ub = self.tik_instance.Tensor("float32",
                                                    col2img_ub_shape,
                                                    name="col2img_fp32_ub",
-                                                   scope=scope_ubuf)
+                                                   scope=tik.scope_ubuf)
         self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
 
         # one times the number of (each_process_hi, self.wi, C0) can be storaged on L1
-        n_each_process_hi_block = (SIZE_L1 // 2 - cal_shape_ele(
+        n_each_process_hi_block = (SIZE_L1 // 2 - _cal_shape_ele(
             (each_process_hi, self.wi, C0))) // (each_process_ho * self.stride_h * self.wi * C0) + 1
         # times of process all (each_process_hi, self.wi, C0) blocks
         n_hi_block = cut_ho_nums // n_each_process_hi_block
@@ -1123,25 +1134,25 @@ class MaxpoolGrad(object):
             remained_hi = self.tik_instance.Scalar(dtype='int64', name='remained_hi')
             remained_hi.set_as(each_process_hi_block)
 
-        def process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h, start_pos_h,
-                                 src_output_offset, output_data_nums, each_valid_ho, remained_hi, remain):
+        def _process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h, start_pos_h,
+                                  src_output_offset, output_data_nums, each_valid_ho, remained_hi, remain):
             # init col2img buffer each loop
             self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
             if self.kh > self.stride_h:
-                with self.tik_instance.if_scope(_any(n_hi_block_index > 0, n_each_process_hi_block_index > 0)):
+                with self.tik_instance.if_scope(tik.any(n_hi_block_index > 0, n_each_process_hi_block_index > 0)):
                     self._vector_op("vmuls", temp_tensor_ub, 1.0, col2img_fp32_ub, temp_tensor_ub.dtype,
-                                    cal_shape_ele(temp_tensor_ub.shape))
-            ori_output_shape = (ceil_div(each_process_ho * self.wo, 16), 16, C0)
+                                    _cal_shape_ele(temp_tensor_ub.shape))
+            ori_output_shape = (_ceil_div(each_process_ho * self.wo, 16), 16, C0)
             _, ori_output_ub, grad_ub = self._data_move_ub(None, ori_output_shape, None, output_data_nums, None,
                                                            src_output_offset)
 
             ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                         ori_output_shape,
                                                         name='ori_input_col_ub',
-                                                        scope=scope_ubuf)
-            mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-            mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=scope_ubuf)
-            mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=scope_ubuf)
+                                                        scope=tik.scope_ubuf)
+            mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+            mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+            mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
 
             with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
                 with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
@@ -1155,8 +1166,8 @@ class MaxpoolGrad(object):
                     grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                 grad_sel_ub.shape,
                                                                 name='grad_sel_ub_fp32',
-                                                                scope=scope_ubuf)
-                    self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, cal_shape_ele(grad_sel_ub.shape), "float16")
+                                                                scope=tik.scope_ubuf)
+                    self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
                     with self.tik_instance.for_range(0, each_valid_ho) as h_idx:
                         col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * h_idx
                         mask_idx = self.wo * C0 * h_idx
@@ -1193,7 +1204,10 @@ class MaxpoolGrad(object):
                          each_process_hi + (n_each_process_hi_block - 1) * each_process_ho * self.stride_h)
             ori_input_shape = (each_process_hi + (n_each_process_hi_block - 1) * each_process_ho * self.stride_h,
                                self.wi, C0)
-            ori_input_l1 = self.tik_instance.Tensor(self.dtype, ori_input_shape, name='ori_input_l1', scope=scope_cbuf)
+            ori_input_l1 = self.tik_instance.Tensor(self.dtype,
+                                                    ori_input_shape,
+                                                    name='ori_input_l1',
+                                                    scope=tik.scope_cbuf)
             self.tik_instance.scalar_max(hi_min, pad_top, start_h)
             hi_max.set_as(self.hi + pad_top)
             self.tik_instance.scalar_min(hi_max, hi_max, end_h)
@@ -1227,12 +1241,12 @@ class MaxpoolGrad(object):
                     remain0.set_as(remain_hi_block)
                     remain1.set_as(remain_ho_nums)
                     self.tik_instance.scalar_max(remain0, remain0, remain1)
-                    remained_hi = process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h,
-                                                       start_pos_h, src_output_offset, output_data_nums,
-                                                       each_process_ho, remained_hi, remain0)
+                    remained_hi = _process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h,
+                                                        start_pos_h, src_output_offset, output_data_nums,
+                                                        each_process_ho, remained_hi, remain0)
                 else:
-                    process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h, start_pos_h,
-                                         src_output_offset, output_data_nums, each_process_ho, None, None)
+                    _process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h, start_pos_h,
+                                          src_output_offset, output_data_nums, each_process_ho, None, None)
 
         if offset_gm_block is None:
             if remain_hi_block != 0:
@@ -1245,7 +1259,7 @@ class MaxpoolGrad(object):
                 ori_input_l1 = self.tik_instance.Tensor(self.dtype,
                                                         ori_input_shape,
                                                         name='ori_input_l1',
-                                                        scope=scope_cbuf)
+                                                        scope=tik.scope_cbuf)
 
                 self.tik_instance.scalar_max(hi_min, pad_top, start_h)
                 hi_max.set_as(self.hi + pad_top)
@@ -1269,15 +1283,15 @@ class MaxpoolGrad(object):
                     else:
                         start_pos_h.set_as(remain_hi_n_index * each_process_ho * self.stride_h)
 
-                    process_tiling_l1_ho(n_hi_block, remain_hi_n_index, start_h, end_h, start_pos_h, src_output_offset,
-                                         output_data_nums, each_process_ho, None, None)
+                    _process_tiling_l1_ho(n_hi_block, remain_hi_n_index, start_h, end_h, start_pos_h, src_output_offset,
+                                          output_data_nums, each_process_ho, None, None)
             if remain_ho_nums != 0:
                 input_data_num = (self.hi + pad_top - cut_ho_nums * each_process_ho * self.stride_h) * self.wi * C0
                 ori_input_shape = (self.hi + pad_top - cut_ho_nums * each_process_ho * self.stride_h, self.wi, C0)
                 ori_input_l1 = self.tik_instance.Tensor(self.dtype,
                                                         ori_input_shape,
                                                         name='ori_input_l1',
-                                                        scope=scope_cbuf)
+                                                        scope=tik.scope_cbuf)
                 start_h.set_as((n_index * self.c1 + c1_index) * self.hi * self.wi * C0 +
                                (cut_ho_nums * each_process_ho * self.stride_h - pad_top) * self.wi * C0)
 
@@ -1303,8 +1317,8 @@ class MaxpoolGrad(object):
                 src_output_offset = (
                     (n_index * self.c1 + c1_index) * self.ho + each_process_ho * cut_ho_nums) * self.wo * C0
 
-                process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
-                                     output_data_nums, remain_ho_nums, None, None)
+                _process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
+                                      output_data_nums, remain_ho_nums, None, None)
         else:
             with self.tik_instance.if_scope(remain_hi_block != 0):
                 start_h.set_as(n_hi_block * n_each_process_hi_block * each_process_ho * self.stride_h)
@@ -1316,7 +1330,7 @@ class MaxpoolGrad(object):
                 ori_input_l1 = self.tik_instance.Tensor(self.dtype,
                                                         ori_input_shape,
                                                         name='ori_input_l1',
-                                                        scope=scope_cbuf)
+                                                        scope=tik.scope_cbuf)
 
                 self.tik_instance.scalar_max(hi_min, pad_top, start_h)
                 hi_max.set_as(self.hi + pad_top)
@@ -1340,9 +1354,9 @@ class MaxpoolGrad(object):
                     with self.tik_instance.else_scope():
                         start_pos_h.set_as(remain_hi_n_index * each_process_ho * self.stride_h)
 
-                    remained_hi = process_tiling_l1_ho(n_hi_block, remain_hi_n_index, start_h, end_h, start_pos_h,
-                                                       src_output_offset, output_data_nums, each_process_ho,
-                                                       remained_hi, remain_ho_nums)
+                    remained_hi = _process_tiling_l1_ho(n_hi_block, remain_hi_n_index, start_h, end_h, start_pos_h,
+                                                        src_output_offset, output_data_nums, each_process_ho,
+                                                        remained_hi, remain_ho_nums)
 
             with self.tik_instance.if_scope(remain_ho_nums != 0):
                 input_data_num = (mov_len_hi + pad_top - cut_ho_nums * each_process_ho * self.stride_h) * self.wi * C0
@@ -1350,7 +1364,7 @@ class MaxpoolGrad(object):
                 ori_input_l1 = self.tik_instance.Tensor(self.dtype,
                                                         ori_input_shape,
                                                         name='ori_input_l1',
-                                                        scope=scope_cbuf)
+                                                        scope=tik.scope_cbuf)
                 start_h.set_as((n_index * self.c1 + c1_index) * self.hi * self.wi * C0 +
                                (cut_ho_nums * each_process_ho * self.stride_h - pad_top) * self.wi * C0)
 
@@ -1376,13 +1390,13 @@ class MaxpoolGrad(object):
                 src_output_offset = ((n_index * self.c1 + c1_index) * self.ho + start_ho_index +
                                      each_process_ho * cut_ho_nums) * self.wo * C0
 
-                process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
-                                     output_data_nums, remain_ho_nums, remained_hi, 0)
+                _process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
+                                      output_data_nums, remain_ho_nums, remained_hi, 0)
 
     def _tilling_l1_ho_wo(self, each_process_wo, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                           mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                           shape, pad):
-        pad_left, pad_right, pad_top, pad_bottom = pad
+        pad_left, pad_right, pad_top, _ = pad
         start_h = self.tik_instance.Scalar(dtype='int64', name='start_h')
         end_h = self.tik_instance.Scalar(dtype='int64', name='end_h')
         hi_max = self.tik_instance.Scalar(dtype='int64', name='hi_max')
@@ -1410,29 +1424,32 @@ class MaxpoolGrad(object):
             each_process_hi = self.stride_h
         else:
             each_process_hi = self.kh
-        each_process_wo_div16 = ceil_div(each_process_wo, 16)
+        each_process_wo_div16 = _ceil_div(each_process_wo, 16)
 
         # define col res, init to zero
         col2img_ub_shape = (each_process_hi, each_process_wi, C0)
         col2img_fp32_ub = self.tik_instance.Tensor("float32",
                                                    col2img_ub_shape,
                                                    name="col2img_fp32_ub",
-                                                   scope=scope_ubuf)
+                                                   scope=tik.scope_ubuf)
         if offset_gm_block is not None:
             self.offset_gm.set_as(offset_gm_block)
 
         if self.stride_h < self.kh:
             overlap_l1_shape = (self.kh - self.stride_h, (self.wi + pad_left + pad_right) * C0)
 
-            overlap_l1 = self.tik_instance.Tensor('float32', overlap_l1_shape, name='overlap_l1', scope=scope_cbuf)
-            overlap_l1_h, overlap_l1_w = overlap_l1_shape
+            overlap_l1 = self.tik_instance.Tensor('float32', overlap_l1_shape, name='overlap_l1', scope=tik.scope_cbuf)
+            _, overlap_l1_w = overlap_l1_shape
 
         with self.tik_instance.for_range(0, mov_len_ho, thread_num=1) as ho_index:
             start_h.set_as(ho_index * self.stride_h)
             end_h.set_as(ho_index * self.stride_h + each_process_hi)
             # mov actual non pad ori input to L1
             ori_input_shape = (each_process_hi, self.wi + pad_left + pad_right, C0)
-            ori_input_l1 = self.tik_instance.Tensor(self.dtype, ori_input_shape, name='ori_input_l1', scope=scope_cbuf)
+            ori_input_l1 = self.tik_instance.Tensor(self.dtype,
+                                                    ori_input_shape,
+                                                    name='ori_input_l1',
+                                                    scope=tik.scope_cbuf)
 
             self.tik_instance.scalar_max(hi_min, pad_top, start_h)
             hi_max.set_as(mov_len_hi + pad_top)
@@ -1478,7 +1495,7 @@ class MaxpoolGrad(object):
                 ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                             ori_output_shape,
                                                             name='ori_input_col_ub',
-                                                            scope=scope_ubuf)
+                                                            scope=tik.scope_ubuf)
                 start_w.set_as(cut_wo_nums_index * each_process_wo * self.stride_w)
                 end_w.set_as(cut_wo_nums_index * each_process_wo * self.stride_w + each_process_wi)
 
@@ -1486,9 +1503,9 @@ class MaxpoolGrad(object):
                 wo_offset = self.tik_instance.Scalar(dtype='int64', name='wo_offset')
                 wo_offset.set_as(each_process_wo * cut_wo_nums_index * self.stride_w - pad_left)
 
-                mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-                mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=scope_ubuf)
-                mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=scope_ubuf)
+                mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+                mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+                mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
 
                 with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
                     with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
@@ -1502,8 +1519,8 @@ class MaxpoolGrad(object):
                         grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                     grad_sel_ub.shape,
                                                                     name='grad_sel_ub_fp32',
-                                                                    scope=scope_ubuf)
-                        self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, cal_shape_ele(grad_sel_ub.shape), "float16")
+                                                                    scope=tik.scope_ubuf)
+                        self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
 
                         with self.tik_instance.for_range(0, 1) as h_idx:
                             col_index = index_h * each_process_wi * C0 + index_w * C0 + each_process_wi * C0 *\
@@ -1530,8 +1547,8 @@ class MaxpoolGrad(object):
                 col2img_fp16_ub = self.tik_instance.Tensor("float16",
                                                            col2img_ub_shape,
                                                            name="col2img_fp16_ub",
-                                                           scope=scope_ubuf)
-                self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                                                           scope=tik.scope_ubuf)
+                self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
                 # set h direction's paras
                 start_h.set_as(ho_index * self.stride_h)
                 end_h.set_as(start_h + self.stride_h)
@@ -1559,7 +1576,7 @@ class MaxpoolGrad(object):
                 mov_len_w.set_as(wi_max - wi_min)
                 start_pos_w.set_as(wi_min - cut_wo_nums_index * each_process_wo * self.stride_w)
 
-                with self.tik_instance.if_scope(_all(cut_wo_nums_index < cut_wo_nums - 1, mov_len_h > 0)):
+                with self.tik_instance.if_scope(tik.all(cut_wo_nums_index < cut_wo_nums - 1, mov_len_h > 0)):
                     self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                 col2img_fp16_ub[start_pos_h * each_process_wi * C0 + start_pos_w * C0],
                                                 0, mov_len_h, mov_len_w * C0 // 16, each_process_wi - mov_len_w,
@@ -1567,7 +1584,7 @@ class MaxpoolGrad(object):
                     offset_gm_inside.set_as(offset_gm_inside + mov_len_w * C0)
                     self.offset_gm.set_as(self.offset_gm + mov_len_h * mov_len_w * C0)
 
-                with self.tik_instance.if_scope(_all(mov_len_h > 0, mov_len_w > 0)):
+                with self.tik_instance.if_scope(tik.all(mov_len_h > 0, mov_len_w > 0)):
                     if remain_wo_nums == 0:
                         with self.tik_instance.if_scope(cut_wo_nums_index == cut_wo_nums - 1):
                             last_valid_wi = self.wi - ((cut_wo_nums - 1) * each_process_wo * self.stride_w - pad_left)
@@ -1591,12 +1608,12 @@ class MaxpoolGrad(object):
                                 remain_wi = last_valid_wi - each_process_wi
                                 temp_zero = self.tik_instance.Tensor("float16", (remain_wi * C0, ),
                                                                      name='temp_zero',
-                                                                     scope=scope_ubuf)
+                                                                     scope=tik.scope_ubuf)
                                 self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, temp_zero.dtype)
                                 with self.tik_instance.for_range(0, mov_len_h) as index_0:
                                     self.tik_instance.data_move(self.res_gm[offset_gm_inside + index_0 * self.wi * C0],
                                                                 temp_zero, 0, 1,
-                                                                cal_shape_ele(temp_zero.shape) // 16, 0, 0)
+                                                                _cal_shape_ele(temp_zero.shape) // 16, 0, 0)
                                 offset_gm_inside.set_as(offset_gm_inside + remain_wi * C0)
                                 self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
                     else:
@@ -1676,7 +1693,7 @@ class MaxpoolGrad(object):
                                     0)
 
             if remain_wo_nums:
-                each_process_remain_div16 = ceil_div(remain_wo_nums, 16)
+                each_process_remain_div16 = _ceil_div(remain_wo_nums, 16)
                 if self.kw > self.stride_w:
                     each_process_remain_wi = (remain_wo_nums - 1) * self.stride_w + self.kw
                 else:
@@ -1685,8 +1702,7 @@ class MaxpoolGrad(object):
                 start_h.set_as(ho_index * self.stride_h)
                 end_h.set_as(ho_index * self.stride_h + each_process_hi)
 
-                # move l1 to UB to init the col2img_fp16 tensor. if stride < kernel, there has
-                # overlap between each ho.
+                # move l1 to UB to init the col2img_fp16 tensor. if stride < kernel, there has overlap between each ho.
                 if self.kh > self.stride_h:
                     with self.tik_instance.if_scope(ho_index != 0):
                         start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
@@ -1702,14 +1718,17 @@ class MaxpoolGrad(object):
                 ori_output_ub = self.tik_instance.Tensor(self.dtype,
                                                          ori_output_ub_shape,
                                                          name='ori_output_ub',
-                                                         scope=scope_ubuf)
+                                                         scope=tik.scope_ubuf)
                 self.tik_instance.data_move(
                     ori_output_ub, self.ori_output_gm[(
                         (n_index * self.c1 + c1_index) * self.ho + start_ho_index + ho_index) * self.wo * C0 +
                                                       cut_wo_nums * each_process_wo * C0], 0, 1,
                     remain_wo_nums * C0 // 16, 0, 0)
 
-                grad_ub = self.tik_instance.Tensor(self.dtype, ori_output_ub_shape, name='grad_ub', scope=scope_ubuf)
+                grad_ub = self.tik_instance.Tensor(self.dtype,
+                                                   ori_output_ub_shape,
+                                                   name='grad_ub',
+                                                   scope=tik.scope_ubuf)
 
                 self.tik_instance.data_move(
                     grad_ub,
@@ -1720,14 +1739,14 @@ class MaxpoolGrad(object):
                 ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                             ori_input_col_ub_shape,
                                                             name='ori_input_col_ub',
-                                                            scope=scope_ubuf)
+                                                            scope=tik.scope_ubuf)
 
                 wo_offset = self.tik_instance.Scalar(dtype='int64', name='wo_offset')
                 wo_offset.set_as(each_process_wo * cut_wo_nums * self.stride_w - pad_left)
-                mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+                mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
 
-                mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=scope_ubuf)
-                mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=scope_ubuf)
+                mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+                mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
 
                 # do load3d, calculate mask and grad_x, here we loop kh and kw, so each loop
                 # it process one row of output, image output as a window slide on kernel window
@@ -1742,8 +1761,8 @@ class MaxpoolGrad(object):
                         grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                     grad_sel_ub.shape,
                                                                     name='grad_sel_ub_fp32',
-                                                                    scope=scope_ubuf)
-                        self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, cal_shape_ele(grad_sel_ub.shape), "float16")
+                                                                    scope=tik.scope_ubuf)
+                        self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
 
                         # each procee ho is 1, so here loop value is 1
                         with self.tik_instance.for_range(0, 1) as h_idx:
@@ -1770,8 +1789,8 @@ class MaxpoolGrad(object):
                 col2img_fp16_ub = self.tik_instance.Tensor("float16",
                                                            col2img_ub_shape,
                                                            name="col2img_fp16_ub",
-                                                           scope=scope_ubuf)
-                self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                                                           scope=tik.scope_ubuf)
+                self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
 
                 # set h direction's paras
                 start_h.set_as(ho_index * self.stride_h)
@@ -1818,12 +1837,12 @@ class MaxpoolGrad(object):
                         remain_wi = last_valid_wi - each_process_wi
                         temp_zero = self.tik_instance.Tensor("float16", (remain_wi * C0, ),
                                                              name='temp_zero',
-                                                             scope=scope_ubuf)
+                                                             scope=tik.scope_ubuf)
                         self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, temp_zero.dtype)
                         with self.tik_instance.for_range(0, mov_len_h) as index_0:
                             self.tik_instance.data_move(self.res_gm[offset_gm_inside + index_0 * self.wi * C0],
                                                         temp_zero, 0, 1,
-                                                        cal_shape_ele(temp_zero.shape) // 16, 0, 0)
+                                                        _cal_shape_ele(temp_zero.shape) // 16, 0, 0)
                         offset_gm_inside.set_as(offset_gm_inside + remain_wi * C0)
                         self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
 
@@ -1839,13 +1858,13 @@ class MaxpoolGrad(object):
             with self.tik_instance.if_scope(mov_len_h > 0):
                 remained_hi.set_as(remained_hi - mov_len_h)
 
-            with self.tik_instance.if_scope(_all(ho_index == mov_len_ho - 1, remained_hi > 0)):
-                temp_zero = self.tik_instance.Tensor("float16", (self.wi, C0), name="temp_zero", scope=scope_ubuf)
+            with self.tik_instance.if_scope(tik.all(ho_index == mov_len_ho - 1, remained_hi > 0)):
+                temp_zero = self.tik_instance.Tensor("float16", (self.wi, C0), name="temp_zero", scope=tik.scope_ubuf)
                 self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, temp_zero.dtype)
-                with self.tik_instance.for_range(0, remained_hi) as repeate_index:
+                with self.tik_instance.for_range(0, remained_hi):
                     self.tik_instance.data_move(self.res_gm[self.offset_gm], temp_zero, 0, 1,
-                                                cal_shape_ele(temp_zero.shape) // 16, 0, 0)
-                    self.offset_gm.set_as(self.offset_gm + cal_shape_ele(temp_zero.shape))
+                                                _cal_shape_ele(temp_zero.shape) // 16, 0, 0)
+                    self.offset_gm.set_as(self.offset_gm + _cal_shape_ele(temp_zero.shape))
 
     def _get_core_divlist(self):
         div_list = []
@@ -1866,8 +1885,7 @@ class MaxpoolGrad(object):
                 shape_hi = (ho_inner + overlap_num - 1) * self.stride_h + self.kh
             else:
                 shape_hi = ho_inner * self.stride_h
-            need_cut_L1, need_cut_Ho, need_cut_Wo, each_process_ho, each_process_wo = self._tilling_factor(
-                (shape_hi, self.wi, C0), self.pad)
+            _, _, _, each_process_ho, _ = self._tilling_factor((shape_hi, self.wi, C0), self.pad)
 
             times = math.ceil(ho_inner * 1.0 / each_process_ho)
             overlaps = overlap_num * times
@@ -1893,17 +1911,25 @@ class MaxpoolGrad(object):
         if self.dtype == "float16":
             self.pad_value = MIN_VALUE_FP16
         else:
-            raise RuntimeError("Only Support float16 Now!")
+            error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input", ('float16', ),
+                                                                     self.dtype)
         pad_calc_wo, pad_calc_ho, pad_left, pad_right, pad_top, pad_bottom = self._padding_mode(
             self.ori_input_shape, self.ksize, self.strides, self.padding)
         self.pad = (int(pad_left), int(pad_right), int(pad_top), int(pad_bottom))
         self.pad_left, self.pad_right, self.pad_top, self.pad_bottom = self.pad
-        if pad_calc_ho != self.ho or pad_calc_wo != self.wo:
-            raise RuntimeError("Wrong ori_output shape")
+        if pad_calc_ho != self.ho:
+            error_manager_vector.raise_err_check_params_rules('max_pool_grad',
+                                                              'height in ori_output must be %d' % pad_calc_ho, 'ho',
+                                                              self.ho)
+        if pad_calc_wo != self.wo:
+            error_manager_vector.raise_err_check_params_rules('max_pool_grad',
+                                                              'width in ori_output must be %d' % pad_calc_wo, 'ho',
+                                                              self.wo)
 
         # nc do block is not enough, but ncho is enough
+        # real_block == 32 or block_num * self.ho < 32
         if real_block == CORE_NUM:
-            need_cut_L1, need_cut_Ho, need_cut_Wo, each_process_ho, each_process_wo = self._tilling_factor(
+            need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, each_process_wo = self._tilling_factor(
                 (self.hi, self.wi, C0), self.pad)
             with self.tik_instance.for_range(0, real_block, block_num=real_block) as block_index:
                 with self.tik_instance.for_range(0, block_cycle) as cycle_index:
@@ -1916,14 +1942,14 @@ class MaxpoolGrad(object):
                         c1_index.set_as(index_sum % self.c1)
                         shape = (self.ho, self.wo, self.hi, self.wi)
                         self.offset_gm.set_as((n_index * self.c1 + c1_index) * self.hi * self.wi * C0)
-                        if need_cut_L1 and need_cut_Ho and need_cut_Wo:
+                        if need_cut_l1 and need_cut_ho and need_cut_wo:
                             self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, self.ho, self.hi, self.ho,
                                                    self.hi, 0, 0, 0, None, shape, self.pad)
-                        elif need_cut_L1 and need_cut_Ho:
+                        elif need_cut_l1 and need_cut_ho:
                             self._tilling_l1_ho_only(each_process_ho, n_index, c1_index, self.ho, self.hi, self.ho,
                                                      self.hi, 0, 0, 0, None, shape, self.pad)
 
-                        elif need_cut_Ho:
+                        elif need_cut_ho:
                             self._tilling_ho_only(each_process_ho, n_index, c1_index, self.ho, self.hi, self.ho,
                                                   self.hi, 0, 0, 0, None, shape, self.pad)
                         else:
@@ -2071,21 +2097,21 @@ class MaxpoolGrad(object):
                                 shape_hi += (self.hi - ho_inner * self.stride_h * ho_outer)
                             shape = (shape_ho, self.wo, shape_hi, self.wi)
 
-                            need_cut_L1, need_cut_Ho, need_cut_Wo, each_process_ho, each_process_wo =\
+                            need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, each_process_wo =\
                                  self._tilling_factor((shape_hi, self.wi, C0), self.pad)
 
-                            if need_cut_L1 and need_cut_Ho and need_cut_Wo:
+                            if need_cut_l1 and need_cut_ho and need_cut_wo:
                                 self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, each_process_ho_block,
                                                        each_process_hi_block, mov_len_ho, mov_len_hi,
                                                        actual_start_ho_index, actual_start_hi_index, start_threshold,
                                                        offset_gm_block, shape, pad)
-                            elif need_cut_L1 and need_cut_Ho:
+                            elif need_cut_l1 and need_cut_ho:
                                 self._tilling_l1_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
                                                          each_process_hi_block, mov_len_ho, mov_len_hi,
                                                          actual_start_ho_index, actual_start_hi_index, start_threshold,
                                                          offset_gm_block, shape, pad)
 
-                            elif need_cut_Ho:
+                            elif need_cut_ho:
                                 self._tilling_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
                                                       each_process_hi_block, mov_len_ho, mov_len_hi,
                                                       actual_start_ho_index, actual_start_hi_index, start_threshold,
@@ -2102,7 +2128,7 @@ class MaxpoolGrad(object):
                     block = block - 1
                 nc1 = nc1 // block
 
-                need_cut_L1, need_cut_Ho, need_cut_Wo, each_process_ho, each_process_wo = self._tilling_factor(
+                need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, each_process_wo = self._tilling_factor(
                     (self.hi, self.wi, C0), self.pad)
                 with self.tik_instance.for_range(0, block, block_num=block) as block_index:
                     with self.tik_instance.for_range(0, nc1, thread_num=1) as nc1_index:
@@ -2111,14 +2137,14 @@ class MaxpoolGrad(object):
                         c1_index = (block_index * nc1 + nc1_index) % self.c1
 
                         shape = (self.ho, self.wo, self.hi, self.wi)
-                        if need_cut_L1 and need_cut_Ho and need_cut_Wo:
+                        if need_cut_l1 and need_cut_ho and need_cut_wo:
                             self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, self.ho, self.hi, self.ho,
                                                    self.hi, 0, 0, 0, None, shape, self.pad)
-                        elif need_cut_L1 and need_cut_Ho:
+                        elif need_cut_l1 and need_cut_ho:
                             self._tilling_l1_ho_only(each_process_ho, n_index, c1_index, self.ho, self.hi, self.ho,
                                                      self.hi, 0, 0, 0, None, shape, self.pad)
 
-                        elif need_cut_Ho:
+                        elif need_cut_ho:
                             self._tilling_ho_only(each_process_ho, n_index, c1_index, self.ho, self.hi, self.ho,
                                                   self.hi, 0, 0, 0, None, shape, self.pad)
                         else:

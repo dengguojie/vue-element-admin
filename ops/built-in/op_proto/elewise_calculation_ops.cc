@@ -966,7 +966,6 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(MulInferShape)
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
@@ -991,10 +990,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SqrtGradInferShape)
   Shape shape_x = op.GetInputDesc("y").GetShape();
   DataType input_dtype = op.GetInputDesc("y").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
-
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
   op.GetInputDesc("y").GetShapeRange(shape_range_x);
-
   tensordesc_output.SetShape(shape_x);
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetShapeRange(shape_range_x);
@@ -1042,95 +1039,151 @@ VERIFY_FUNC_REG(Assign, AssignVerify);
 // ----------------Assign END-------------------
 
 // ----------------AddN-------------------
-int64_t GetAddNConstValue(const ge::Operator& op, const std::string& key_name) {
+int64_t GetAddNConstValue(const ge::Operator& op) {
   int64_t tensor_num;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, tensor_num)) {
-    OpsGetAttrErrReport(op.GetName(), key_name);
+  if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
+    OpsGetAttrErrReport(op.GetName(), "N");
     OP_LOGE(op.GetName().c_str(), "The add_n op GetOpAttr failed!");
   }
   if (tensor_num < 2) {
-    OP_LOGE(op.GetName().c_str(), "The add_n GetOpAttr tensor_num Value is wrong!");
+    OP_LOGE(op.GetName().c_str(), "The input tensor num of add_n is wrong !");
   }
   return tensor_num;
 }
 
+int64_t AddNInferClassify(ge::Operator& op, int64_t &tensor_num) {
+  const int64_t infer_condition_one_one = 11;
+  const int64_t infer_condition_one_two = 12;
+  const int64_t infer_condition_two = 2;
+  const int64_t infer_condition_three = 3;
+
+  int64_t empty_num = 0;
+  int64_t static_num = 0;
+  int64_t dynamic_shape_num = 0;
+  int64_t dynamic_dim_num = 0;
+
+  for (int64_t i = 0; i < tensor_num; i++) {
+    vector<int64_t> tempVector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+    if (tempVector.empty()) {
+      empty_num++;
+    } else if (std::find(tempVector.begin(), tempVector.end(), -1) != tempVector.end()) {
+      dynamic_shape_num++;
+    } else if (std::find(tempVector.begin(), tempVector.end(), -2) != tempVector.end()) {
+      dynamic_dim_num++;
+    } else {
+      static_num++;
+    }
+  }
+  if (tensor_num == empty_num + dynamic_dim_num) {
+    if (tensor_num == empty_num) {
+      return infer_condition_one_one;
+    } else {
+      return infer_condition_one_two;
+    }
+  } else if (tensor_num == static_num || tensor_num == empty_num + static_num || tensor_num == static_num +
+             dynamic_dim_num || tensor_num == empty_num + static_num + dynamic_dim_num) {
+    return infer_condition_two;
+  } else {
+    return infer_condition_three;
+  }
+}
+
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(AddNInferShape)
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  std::vector<int64_t> outShapeVector;
-  int64_t tensor_num = GetAddNConstValue(op, "N");
-  DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
-  // 1.All shape is -2, output shape is -2, and no range
-  // 2.All shape is scalar, output shape is scalar, and no range
-  // 3.shape only has -2 and scalar, output shape is scalar, and no range
-  // 4.other case, output has shape and range
-  int64_t unknown_shape_num = 0;
-  int64_t scalar_num = 0;
-  for (int64_t i = 0; i < tensor_num; i++) {
-    if (!op.GetDynamicInputDesc("x", i).GetShape().GetDims().empty() &&
-        op.GetDynamicInputDesc("x", i).GetShape().GetDims()[0]== -2) {
-      unknown_shape_num++;
-    } else if (op.GetDynamicInputDesc("x", i).GetShape().GetDims().empty()) {
-      scalar_num++;
-    }
-  }
-  if (unknown_shape_num == tensor_num) {
-    outShapeVector.push_back(-2);
-    Shape out_shape = Shape(outShapeVector);
-    y_desc.SetShape(out_shape);
+  /*
+  add_n has four type inputs:
+  1.empty 2.static shape 3.-1 4.-2
+  The combinations bring 15 scenes, and the 15 scenes can be classify into 4 categories:
+  1.input with no range and output no need range, and it can be divided half:
+    1.1 all input is empty
+    1.2 input only contains empty and -2 shape
+  2.input contains static shape and with no -1 shape
+  3.input contains -1 shape
+  */
+  int64_t tensor_num = GetAddNConstValue(op);
+  int64_t infer_classify = AddNInferClassify(op, tensor_num);
+  // condition 1: all input shape is empty
+  if (infer_classify == 11) {
+    std::vector<int64_t> shape_vector = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    y_desc.SetShape(Shape(shape_vector));
     y_desc.SetDataType(x_dtype);
     (void)op.UpdateOutputDesc("y", y_desc);
-    return GRAPH_SUCCESS;
-  } else if ((unknown_shape_num + scalar_num) == tensor_num) {
-    outShapeVector = {};
-    Shape out_shape = Shape(outShapeVector);
-    y_desc.SetShape(out_shape);
+  // condition 2: all input is -2 or only empty and -2
+  } else if (infer_classify == 12) {
+    std::vector<int64_t> shape_vector = {-2};
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    y_desc.SetShape(Shape(shape_vector));
     y_desc.SetDataType(x_dtype);
     (void)op.UpdateOutputDesc("y", y_desc);
-    return GRAPH_SUCCESS;
-  }
-  // if shape not all -2 or scalar, range need to choose the intersection
-  Shape x_shape = op.GetDynamicInputDesc("x", 0).GetShape();
-  std::vector<std::pair<int64_t, int64_t>> outShapeRange;
-  // Init the output shape and range
-  for (int64_t i = 0; i < tensor_num; i++) {
-    std::vector<int64_t> shapeVector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
-    if (!shapeVector.empty() && shapeVector[0] != -2) {
-      outShapeVector = shapeVector;
-      op.GetDynamicInputDesc("x", i).GetShapeRange(outShapeRange);
-      MakeUpShapeRange(outShapeVector, outShapeRange);
-      break;
+  // condition 3: contains static shape and no -1 shape
+  } else if (infer_classify == 2) {
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    std::vector<int64_t> shape_vector = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
+        shape_vector = temp_vector;
+        break;
+      }
     }
-  }
-  // compute the shape dims and range intersection
-  for (int64_t i = 0; i < tensor_num; i++) {
-    std::vector<int64_t> shapeVector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
-    if (shapeVector.empty() || shapeVector[0] == -2) {
-      continue;
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    y_desc.SetShape(ge::Shape(shape_vector));
+    y_desc.SetDataType(x_dtype);
+    std::vector<std::pair<int64_t,int64_t>> out_range;
+    MakeUpShapeRange(shape_vector, out_range);
+    y_desc.SetShapeRange(out_range);
+    (void)op.UpdateOutputDesc("y", y_desc);
+  // condition 4: contains -1 shape, range need to choose the intersection
+  } else {
+    Shape out_shape = op.GetDynamicInputDesc("x", 0).GetShape();
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    std::vector<int64_t> out_vector;
+    std::vector<std::pair<int64_t, int64_t>> out_range;
+    // Init the output shape and range
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (!temp_vector.empty() && !IsUnknownRankShape(temp_vector)) {
+        out_vector = temp_vector;
+        op.GetDynamicInputDesc("x", i).GetShapeRange(out_range);
+        MakeUpShapeRange(out_vector, out_range);
+        break;
+      }
     }
-    std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-    op.GetDynamicInputDesc("x", i).GetShapeRange(shape_range_x);
-    MakeUpShapeRange(shapeVector, shape_range_x);
-    for (size_t j = 0; j < shapeVector.size(); j++) {
-      // two condition: const == const; const > -1
-      if (shapeVector[j] >= outShapeVector[j]) {
-        outShapeVector[j] = shapeVector[j];
-        // update range: left choose the max value
-        if (shape_range_x[j].first >= outShapeRange[j].first) {
-          outShapeRange[j].first = shape_range_x[j].first;
-        }
-        // update range: right choose the miner value but when it was > 0
-        if ((shape_range_x[j].second <= outShapeRange[j].second && shape_range_x[j].second > 0) ||
-            (outShapeRange[j].second == -1 && shape_range_x[j].second != -1)) {
-          outShapeRange[j].second = shape_range_x[j].second;
+    // compute the shape dims and range intersection
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (temp_vector.empty() || IsUnknownRankShape(temp_vector)) {
+        continue;
+      }
+      std::vector<std::pair<int64_t, int64_t>> temp_range;
+      op.GetDynamicInputDesc("x", i).GetShapeRange(temp_range);
+      MakeUpShapeRange(temp_vector, temp_range);
+      for (size_t j = 0; j < temp_vector.size(); j++) {
+        // two condition: const == const; const > -1
+        if (temp_vector[j] >= out_vector[j]) {
+          out_vector[j] = temp_vector[j];
+          // update range: left choose the max value
+          if (temp_range[j].first >= out_range[j].first) {
+            out_range[j].first = temp_range[j].first;
+          }
+          // update range: right choose the miner value but when it was > 0
+          if ((temp_range[j].second <= out_range[j].second && temp_range[j].second > 0) ||
+              (out_range[j].second == -1 && temp_range[j].second != -1)) {
+            out_range[j].second = temp_range[j].second;
+          }
         }
       }
     }
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    out_shape = Shape(out_vector);
+    y_desc.SetShape(out_shape);
+    y_desc.SetDataType(x_dtype);
+    y_desc.SetShapeRange(out_range);
+    (void)op.UpdateOutputDesc("y", y_desc);
   }
-  x_shape = Shape(outShapeVector);
-  y_desc.SetShape(x_shape);
-  y_desc.SetDataType(x_dtype);
-  y_desc.SetShapeRange(outShapeRange);
-  (void)op.UpdateOutputDesc("y", y_desc);
+
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(AddN, AddNInferShape);
@@ -2761,15 +2814,15 @@ COMMON_INFER_FUNC_REG(SquareSumV1, SquareSumV1InferShape);
 
 // ----------------SquareSumAll Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumALlInferShape) {
-  std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
+  std::vector<int64_t> o_shape_vector;
+  Shape o_shape(o_shape_vector);
   DataType input_x1_dtype = op.GetInputDesc("x1").GetDataType();
   DataType input_x2_dtype = op.GetInputDesc("x2").GetDataType();
   TensorDesc tensor_desc_y1 = op.GetOutputDesc("y1");
   TensorDesc tensor_desc_y2 = op.GetOutputDesc("y2");
-  tensor_desc_y1.SetShape(oShape);
+  tensor_desc_y1.SetShape(o_shape);
   tensor_desc_y1.SetDataType(input_x1_dtype);
-  tensor_desc_y2.SetShape(ge::Shape(oShape));
+  tensor_desc_y2.SetShape(Shape(o_shape));
   tensor_desc_y2.SetDataType(input_x2_dtype);
   (void)op.UpdateOutputDesc("y1", tensor_desc_y1);
   (void)op.UpdateOutputDesc("y2", tensor_desc_y2);
@@ -2782,20 +2835,19 @@ COMMON_INFER_FUNC_REG(SquareSumAll, SquareSumALlInferShape);
 // ----------------FusedMulAddN-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(FusedMulAddN, FusedMulAddNVerify) {
-  std::map<std::string, std::vector<DataType>> input_tensor_map = {{"x1", {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16}},
-                                                                   {"x2", {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16}}};
-
-  std::vector<DataType> support_list = {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16};
-  if (CheckInputDataType(op, "x3", support_list) == false) {
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {
+      {"x1", {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16}}, {"x2", {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16}}};
+  const std::vector<DataType> kSupportList = {DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT16};
+  if (!CheckInputDataType(op, "x3", kSupportList)) {
     return GRAPH_FAILED;
   }
 
   // input tensor params, must have same shape and dtype
-  if (CheckInputDtypeAndShape(op, input_tensor_map) == false) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(op.GetName().c_str(), "The op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -2805,32 +2857,31 @@ VERIFY_FUNC_REG(FusedMulAddN, FusedMulAddNVerify);
 // ----------------FusedMulAddNL2loss-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(FusedMulAddNL2loss, FusedMulAddNL2lossVerify) {
-  std::map<std::string, std::vector<DataType>> input_tensor_map = {{"x1", {DT_FLOAT}}, {"x2", {DT_FLOAT}}};
-
-  std::vector<DataType> support_list = {DT_FLOAT};
-  if (CheckInputDataType(op, "x3", support_list) == false) {
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"x1", {DT_FLOAT}}, {"x2", {DT_FLOAT}}};
+  const std::vector<DataType> kSupportList = {DT_FLOAT};
+  if (!CheckInputDataType(op, "x3", kSupportList)) {
     return GRAPH_FAILED;
   }
 
   // input tensor params, must have same shape and dtype
-  if (CheckInputDtypeAndShape(op, input_tensor_map) == false) {
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(op.GetName().c_str(), "The op verify end");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(FusedMulAddNL2lossInferShape) {
-  std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
+  std::vector<int64_t> o_shape_vector;
+  Shape o_shape(o_shape_vector);
   auto shape_x = op.GetInputDesc("x1").GetShape();
   DataType input_dtype = op.GetInputDesc("x1").GetDataType();
   TensorDesc tensordesc_output1 = op.GetOutputDesc("y1");
   TensorDesc tensordesc_output2 = op.GetOutputDesc("y2");
   tensordesc_output1.SetShape(shape_x);
   tensordesc_output1.SetDataType(input_dtype);
-  tensordesc_output2.SetShape(ge::Shape(oShape));
+  tensordesc_output2.SetShape(ge::Shape(o_shape));
   tensordesc_output2.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y1", tensordesc_output1);
   (void)op.UpdateOutputDesc("y2", tensordesc_output2);
@@ -2839,7 +2890,7 @@ IMPLEMT_COMMON_INFERFUNC(FusedMulAddNL2lossInferShape) {
 
 COMMON_INFER_FUNC_REG(FusedMulAddNL2loss, FusedMulAddNL2lossInferShape);
 VERIFY_FUNC_REG(FusedMulAddNL2loss, FusedMulAddNL2lossVerify);
-
+// ----------------FusedMulAddNL2loss end-------------------
 // ---------------------------------Bias----------------------------------
 IMPLEMT_INFERFUNC(Bias, BiasInferShape) {
   OP_LOGI("Bias", "infer shape begin---");
@@ -3457,21 +3508,21 @@ IMPLEMT_VERIFIER(KLDiv, KLDivVerify) {
     return GRAPH_FAILED;
   }
 
-  std::vector<std::string> constAttr;
-  if (!GetConstAttr(op, {"reduction"}, constAttr)) {
+  std::vector<std::string> const_attr;
+  if (!GetConstAttr(op, {"reduction"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(KLDivInferShape) {
-  std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
+  std::vector<int64_t> o_shape_vector;
+  Shape o_shape(o_shape_vector);
 
   DataType dtype_x = op.GetInputDesc("x").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
 
-  tensordesc_output.SetShape(ge::Shape(oShape));
+  tensordesc_output.SetShape(ge::Shape(o_shape));
   tensordesc_output.SetDataType(dtype_x);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
 

@@ -439,7 +439,7 @@ class OpSubPatternRules:  # pylint: disable=R0903
         flags.copy()  # Use it once to avoid static checks
         result = False
         is_support_atomic = pver().is_cloud_version() or \
-            pver().is_1951_version()
+            pver().is_ng1_version()
         if is_support_atomic:
             # Use atomic only when there is more than one reduce output tensors
             for output_tensor in output_tensors:

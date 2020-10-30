@@ -273,7 +273,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         if dtype != "float32":
             return False
         is_support_atomic = pver().is_cloud_version() or \
-            pver().is_1951_version()
+            pver().is_ng1_version()
         if not is_support_atomic:
             return False
         tag = reduce_tensor.op.tag

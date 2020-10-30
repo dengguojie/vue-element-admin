@@ -50,7 +50,7 @@ def _check_mask(input_mask, is_shrink=False):
         if input_mask != 0 and input_mask != 2:
             raise RuntimeError("shrink_axis_mask only support 0/2 currently")
     elif input_mask != 0:
-        raise RuntimeError("ellipsis_mask,new_axis_mask"
+        raise RuntimeError("new_axis_mask"
                            " only support 0 currently")
 
 
@@ -151,7 +151,7 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     mask_list = (begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask)
     tik_obj = tik.Tik()
     pads = []
-    for i, _ in enumerate(range(len(dy.get("shape")))):
+    for i, _ in enumerate(range(shape.get("shape")[0])):
         pads.append([0, 0])
     grad = pad_common.PadInit(pads, dtype, kernel_name, tik_obj, False)
     return grad_compute(grad, mask_list)

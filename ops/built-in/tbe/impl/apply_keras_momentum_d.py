@@ -22,6 +22,7 @@ from impl.util.util_apply_op_schedule import common_apply_op_process
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
@@ -51,7 +52,7 @@ def apply_keras_momentum_d_compute(var,
     # check the instruction supports or not
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
     # update var and accum according to the momentum scheme
     # accum = accum * momentum - grad * lr

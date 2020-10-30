@@ -18,6 +18,7 @@ nms_with_mask
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # shape's dim of input must be 2
 INPUT_DIM = 2
@@ -39,6 +40,7 @@ def _ceil_div(value, factor):
     """
     result = (value + (factor - 1)) // factor
     return result
+
 
 # pylint: disable=invalid-name
 def _get_reduced_proposal(ib, out_proposal, in_proposal):
@@ -282,6 +284,7 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                           enable_l2=False)
     return tik_instance
 
+
 # pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -350,11 +353,14 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
         input_shape[0]) * RPN_PROPOSAL_NUM * fp16_size + _ceil(input_shape[0]) * RPN_PROPOSAL_NUM * fp16_size + _ceil(
             input_shape[0]) * uint16_size + BURST_PROPOSAL_NUM * uint16_size
     fresh_size = _ceil(BURST_PROPOSAL_NUM) * 8 * fp16_size
-    if burst_size + selected_size + temp_size + fresh_size > ub_size_bytes:
-        raise RuntimeError("the number of input boxes out of range.")
+    used_size = burst_size + selected_size + temp_size + fresh_size
+    if used_size > ub_size_bytes:
+        error_manager_vector.raise_err_check_params_rules(
+            kernel_name, "the number of input boxes out of range(%d B)" % ub_size_bytes, "used size", used_size)
 
     if input_shape[1] != 8:
-        raise RuntimeError("the 2nd-dim of input boxes must be equal to 8.")
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "the 2nd-dim of input boxes must be equal to 8",
+                                                          "box_scores.shape", input_shape)
 
     output_size, _ = input_shape
     iou_thr = iou_thr / (1 + iou_thr)

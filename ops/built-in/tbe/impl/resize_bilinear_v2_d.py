@@ -92,6 +92,16 @@ def apply_reg_buffer(ib, dtype, shape, name="reg_buf"):
     return ib.allocate(dtype, shape, name=name, scope=param.scope_reg)
 
 
+def _get_scalar_dtype():
+    """
+    get scalar dtype int32 or int64
+    """
+
+    dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+
+    return dtype
+
+
 # pylint: disable=unused-argument,unused-variable,too-many-arguments
 def check_supported(images,
                     y,
@@ -5754,7 +5764,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 32, 1, 1, 8, 8))
                         _input_fp32_512_num = _input_fp32_ub
                     else:
-                        int_reg = _ib.allocate("int32", (1,),
+                        scalar_dtype = _get_scalar_dtype()
+                        int_reg = _ib.allocate(scalar_dtype, (1,),
                                                name="int_data",
                                                scope=param.scope_reg)
                         int_reg[0] = _core_id

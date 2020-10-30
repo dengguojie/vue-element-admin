@@ -1141,7 +1141,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_tsss_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1200,7 +1200,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_ttss_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1261,7 +1261,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_tsts_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1321,7 +1321,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_tsst_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1378,7 +1378,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_ttts_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1443,7 +1443,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_ttst_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1508,7 +1508,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_tstt_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpvs_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1
@@ -1572,7 +1572,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
 
         def _vcmpsel_tttt_compute(cmp_op, sel_op, cmpsel_op, shape,
                                   lhs, rhs, operation, slhs, srhs):
-            if lhs.dtype == "float16" and not product_params().is_1951_version():
+            if lhs.dtype == "float16" and not product_params().is_ng1_version():
                 lambda_func_cmp = _get_cmpv_lambda_func(operation, lhs, rhs)
                 name = "vcmpv_" + str(NAME_INDEX[0])
                 NAME_INDEX[0] += 1

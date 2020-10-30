@@ -349,6 +349,28 @@ def get_old_rl_path():
     return base_dir
 
 
+def custom_bank_name_match(json_name, bank_name):
+    """
+
+    :param json_name:
+    :param bank_name:
+    :return:
+    """
+    if not json_name.endswith('.json'):
+        return False
+
+    if json_name.startswith(bank_name):
+        return True
+    # 兼容之前的CustomBank
+    if bank_name.startswith("Ascend910A_")and \
+        json_name.startswith(bank_name.replace('Ascend910A_', "Ascend910_")):
+        return True
+    if bank_name.startswith("Ascend910B_")and \
+        json_name.startswith(bank_name.replace('Ascend910B_', "Ascend910_")):
+        return True
+    return False
+
+
 def read_custom_bank(custom_bank_dir, bank_name):
     """
     read custom bank, maybe there are more than 1 files.
@@ -359,7 +381,7 @@ def read_custom_bank(custom_bank_dir, bank_name):
     custom_bank = {}
     bank_files = []
     for bank_json in os.listdir(custom_bank_dir):
-        if bank_json.startswith(bank_name) and bank_json.endswith('.json'):
+        if custom_bank_name_match(bank_json, bank_name):
             bank_file = os.path.join(custom_bank_dir, bank_json)
             bank_files.append(bank_file)
             with open(bank_file) as fh_bank:
@@ -408,16 +430,16 @@ def merge_custom_bank(custom_bank_dir, bank_files, bank_name, custom_bank):
         os.chmod(custom_bank_path, 0o640)
 
 
-def get_bank_name(soc_version=None):
+def get_bank_name():
     """
     get bank name
     :return:
     """
-    if not soc_version:
-        soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
+    full_soc_version = cceconf.get_soc_spec("FULL_SOC_VERSION")
     aicore_type = cceconf.get_soc_spec(cceconf.AICORE_TYPE)
     core_num = cceconf.get_soc_spec(cceconf.CORE_NUM)
-    bank_name = '{}_{}_{}_{}'.format(soc_version, aicore_type, core_num, RL_BANK_VERSION)
+    bank_name = '{}_{}_{}_{}'.format(full_soc_version, aicore_type,
+                                       core_num, RL_BANK_VERSION)
     return bank_name
 
 
@@ -517,7 +539,7 @@ def get_cheque(out_tensors, op_info=None, fill_tmpl=False):
         return []
 
     soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
-    bank_name = get_bank_name(soc_version)
+    bank_name = get_bank_name()
     ret = get_bank_dict(bank_name, soc_version)
     if not ret:
         return []
@@ -585,7 +607,7 @@ def update_bank():
     :return:
     """
     soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
-    bank_name = get_bank_name(soc_version)
+    bank_name = get_bank_name()
     ret = get_bank_dict(bank_name, soc_version, force_update=True)
     return ret
 

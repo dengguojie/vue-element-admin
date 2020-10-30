@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
@@ -45,8 +46,8 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
 
     dtype = x.dtype.lower()
     mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
-    if dtype == "float32" and not mul_support:
-        raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+    if not mul_support:
+        para_check.check_dtype(dtype, ("float16", ), param_name="x")
     const_val_2 = tvm.const(2.0, dtype)
     mul_val = tbe.vmuls(x, const_val_2)
     res = tbe.vdiv(dx, mul_val)
@@ -80,9 +81,9 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     dtype_x = x.get("dtype").lower()
     dtype_dx = dx.get("dtype").lower()
     if not operator.eq(list(shape_x), list(shape_dx)):
-        raise RuntimeError("Input shapes must be equal")
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'x', 'dx', shape_x, shape_dx, shape_x)
     if not dtype_x == dtype_dx:
-        raise RuntimeError("Input dtype must be same")
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'x', 'dx', dtype_x, dtype_dx)
 
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_dtype(dtype_x, ("float16", "float32"), param_name="x")

@@ -21,6 +21,7 @@
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 // Caffe ParseParams
@@ -36,6 +37,7 @@ Status ParseParams_WarpPerspective(const Message* op_origin, ge::Operator& op_de
   if (param.has_out_height()) {
     op_dest.SetAttr("out_height", static_cast<int>(param.out_height()));
   } else {
+    ge::OpsGetCompileParamsErrReport("WarpPerspective", "out_height");
     OP_LOGE("WarpPerspective Get out_height failed.");
     return FAILED;
   }
@@ -43,6 +45,7 @@ Status ParseParams_WarpPerspective(const Message* op_origin, ge::Operator& op_de
   if (param.has_out_width()) {
     op_dest.SetAttr("out_width", static_cast<int>(param.out_width()));
   } else {
+    ge::OpsGetCompileParamsErrReport("WarpPerspective", "out_width");
     OP_LOGE("WarpPerspective Get out_width failed.");
     return FAILED;
   }

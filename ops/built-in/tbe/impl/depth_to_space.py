@@ -1141,8 +1141,6 @@ def depth_to_space(x, y, block_size, data_format='NHWC',
     if not (isinstance(block_size, int)) or block_size < 2:
         raise RuntimeError("block_size should be integer and greater than"
                            "or equal to 2 but got: %d" % block_size)
-    if data_format != "NHWC":
-        raise RuntimeError("depth_to_space only support NHWC")
 
     depth_size = input_shape[3]
     if depth_size % (block_size  *  block_size) != 0:

@@ -6,9 +6,9 @@ ut_case = ReduceOpUT("ReduceMeanD", None, None)
 
 
 # ============ auto gen ["Ascend910"] test cases start ===============
-ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (1,), (0,), True)
-ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (1,), 0, False)
-ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (1, 1), (1,), True)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32"], (1,), (0,), True)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32"], (1,), 0, False)
+ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32"], (1, 1), (1,), True)
 # ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (1, 1), (1,), False)
 # ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (101, 10241), (-1, ), True)
 # ut_case.add_reduce_case_simple(["Ascend910"], ["float16", "float32", "int8", "uint8"], (101, 10241), (-1, ), False)

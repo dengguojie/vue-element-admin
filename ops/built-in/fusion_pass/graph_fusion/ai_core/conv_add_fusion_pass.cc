@@ -344,13 +344,6 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       return NOT_CHANGED);
     /* The weights will be the weight of BiasAdd node */
   }
-  if (has_bias == false) {
-    Status result = PatternFusionUtil::CopyMultiReferenceConstNode(graph, conv_node);
-    FUSION_PASS_CHECK(result != SUCCESS,
-                      OP_LOGI(fused_op_type_.c_str(), "conv_node[%s]: can not copy multiReference const node.",
-                              conv_node->GetName().c_str()),
-                      return result);
-  }
 
   ge::OpDescPtr add_node_desc = add_node->GetOpDesc();
   FUSION_PASS_CHECK(

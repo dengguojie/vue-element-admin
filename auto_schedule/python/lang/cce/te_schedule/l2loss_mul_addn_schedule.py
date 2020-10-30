@@ -226,7 +226,6 @@ def _do_compute_at(sch_list, cache_read_buffer_list,
                    mid_out_tensor_list, mid_out_tensor_read_buffer_map,
                    cache_write_buffer_map, compute_at_tensor,
                    compute_at_axis):
-    # pylint: too-many-arguments
     sch = sch_list[0]
     for i in cache_read_buffer_list:
         sch[i].compute_at(sch[compute_at_tensor], compute_at_axis)
@@ -251,7 +250,6 @@ def l2loss_mul_addn_schedule(res, input_tensors):
     :param input_tensors: input tensors
     :return: sch
     '''
-    # pylint: too-many-locals, too-many-branches, too-many-statements
     _check_params(res, input_tensors)
 
     res_add = res[0]

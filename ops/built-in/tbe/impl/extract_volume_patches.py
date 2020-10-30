@@ -28,6 +28,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_FP16 = 16
@@ -52,16 +53,23 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
     if len(ksizes) == 5 and len(strides) == 5:
         _, kernel_d, kernel_h, kernel_w, _ = ksizes
         _, stride_d, stride_h, stride_w, _ = strides
+    elif len(ksizes) != 5:
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'ksizes', 5, 5, len(ksizes))
     else:
-        raise RuntimeError("the length of ksizes, strides must be must be 5")
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'strides', 5, 5, len(strides))
 
-    if kernel_h > 255 or kernel_h < 1 or kernel_w > 255 or kernel_w < 1:
-        raise RuntimeError("Invalid kernel params, kernel size must be [1, 255].")
-    if stride_h > 63 or stride_h < 1 or stride_w > 63 or stride_w < 1:
-        raise RuntimeError("Invalid strides params, stride size must be [1, 63].")
+    if kernel_h > 255 or kernel_h < 1:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'kernel', 1, 255, kernel_h)
+    if kernel_w > 255 or kernel_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'kernel', 1, 255, kernel_w)
+
+    if stride_h > 63 or stride_h < 1:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'strides', 1, 63, stride_h)
+    if stride_w > 63 or stride_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'strides', 1, 63, stride_w)
 
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("Padding must be SAME or VALID.")
+        error_manager_vector.raise_err_pad_mode_invalid(kernel_name, 'VALID or SAME', padding)
 
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="output_y")
@@ -72,7 +80,7 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
     para_check.check_dtype(dtype_x, ("float16", "uint8", "int8"), param_name="input_x")
     para_check.check_dtype(dtype_y, ("float16", "uint8", "int8"), param_name="output_y")
     if dtype_x != dtype_y:
-        raise RuntimeError("dtype_x and dtype_y must be same.")
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_x", "output_y", dtype_x, dtype_y)
 
     fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = shape_x
 
@@ -90,31 +98,37 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
             output_size = (input_size + stride - 1) // stride
             padding_needed = (output_size - 1) * stride + effective_kernel_size - input_size
             if padding_needed < 0:
-                raise RuntimeError("Not supported shape.")
+                error_manager_vector.raise_err_specific_reson(
+                    kernel_name, "The padding in the same mode must be greater than or equal to 0!")
 
     BLOCK_SIZE_ALIGN = BLOCK_SIZE_FP16 if dtype_x == "float16" else BLOCK_SIZE_INT8
     dtype_size = 2 if dtype_x == "float16" else 1
 
     if (kernel_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_UB_SIZE:
-        raise RuntimeError("Not Supported tiling shape.")
+        error_manager_vector.raise_err_specific_reson(kernel_name,
+                                                "UB's memory space is not enough to support the tiling shape!")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
     if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (out_h != 1 or out_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
-            raise RuntimeError(
-                "Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w")
+            error_manager_vector.raise_err_specific_reson(
+                kernel_name,
+                "Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w!")
 
     expect_shape_y = (fmap_n, out_d, out_h, out_w, kernel_d * kernel_h * kernel_w * fmap_c)
 
     if list(expect_shape_y) != list(shape_y):
-        raise RuntimeError("shape_y not support.")
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, "expect_shape_y", "output_y",
+                                                              list(expect_shape_y), list(shape_y), list(expect_shape_y))
 
-    if kernel_d <= 0 or kernel_h <= 0 or kernel_w <= 0 or stride_d <= 0 or stride_h <= 0 or stride_w <= 0:
-        raise RuntimeError(
-            "kernel_d <= 0 or kernel_h <= 0 or kernel_w <= 0 or stride_d <= 0 or stride_h <= 0 or stride_w <= 0")
+    if kernel_d <= 0 or stride_d <= 0:
+        error_manager_vector.raise_err_specific_reson(kernel_name,
+                                                "Kernel and strides must be greater than 0 in the D dimension!")
 
-    if len(shape_x) != 5 or len(shape_y) != 5:
-        raise RuntimeError("the length of shape must be 5!")
+    if len(shape_x) != 5:
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'input_x', 5, 5, len(shape_x))
+    if len(shape_y) != 5:
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'output_y', 5, 5, len(shape_y))
 
     fmap_c1 = (fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN
     fmap_c0 = BLOCK_SIZE_ALIGN
@@ -123,8 +137,9 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
     if cut_h > fmap_h:
         cut_h = fmap_h
     if cut_h * fmap_w * fmap_c1 * fmap_c0 * type_size * DOUBLE_BUFFER > MAX_L1_SIZE:
-        raise RuntimeError("Input size is too large load to L1, while cut h, need size: %d" %
-                           (cut_h * fmap_w * fmap_c1 * fmap_c0 * type_size * DOUBLE_BUFFER))
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "Input size is too large load to L1, while cut h, need size: %d" %
+            (cut_h * fmap_w * fmap_c1 * fmap_c0 * type_size * DOUBLE_BUFFER))
 
 
 def _ceil_to(value, ceil_value):
@@ -549,7 +564,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
             tile_l1_hi = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
-        raise RuntimeError("L1 Size is not enough")
+        error_manager_vector.raise_err_specific_reson("extract_volume_patches",
+                                                      "L1's memory space is not enough to support the tiling shape!")
 
     return True, (l1_n, l1_di, l1_c1, l1_hi, l1_wi,
                   l1_c0), l1_double_buffer, (l0ub_n, l0ub_do, l0ub_howo, l0ub_c1, l0ub_kd, l0ub_khkw,
@@ -877,10 +893,10 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
             is_l0_ub_double_buffer) == (False, None, None, None, None):
-        raise RuntimeError("Not supported fmap shape = (%u, %u, %u, %u, %u, %u), kernel = (1, %u, %u, %u, 1),"
-                           " stride = (1, %u, %u, %u, 1)" %
-                           (fmap_shape[0], fmap_shape[1], fmap_shape[2], fmap_shape[3], fmap_shape[4], fmap_shape[5],
-                            filter_d, filter_h, filter_w, stride_d, stride_h, stride_w))
+        error_manager_vector.raise_err_specific_reson(
+            "extract_volume_patches",
+            "Not supported fmap shape = (%s), kernel = (1, %u, %u, %u, 1), stride = (1, %u, %u, %u, 1)" %
+            (fmap_shape, filter_d, filter_h, filter_w, stride_d, stride_h, stride_w))
 
     (_, ub_do, ub_howo, _, ub_kd, ub_khkw, _) = shape_after_load3d
 

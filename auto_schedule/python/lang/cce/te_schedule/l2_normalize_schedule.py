@@ -401,7 +401,6 @@ class L2NormalizeSchedule(VectorSchedule):
                 self._cache_write_tensors.append(i)
         self._cache_write_tensors.append(self._last_output_tensor)
 
-    # pylint: consider-using-enumerate
     def _calculate_tiling(self):
         shape_before_reduce = self._shape_before_reduce
         dtype = self._last_output_tensor.dtype.lower()
@@ -434,9 +433,9 @@ class L2NormalizeSchedule(VectorSchedule):
 
         if self._need_multi_core and \
                 self._is_need_modify_block_and_ub_tiling(
-                    shape_before_reduce, dtype, block_split_axis,
-                    block_split_inner_size, ub_split_axis,
-                    ub_split_inner, max_ub_count):
+                        shape_before_reduce, dtype, block_split_axis,
+                        block_split_inner_size, ub_split_axis,
+                        ub_split_inner, max_ub_count):
             block_split_axis = 0
             block_split_inner_size = shape_before_reduce[block_split_axis]
             ub_split_axis, ub_split_inner = \
@@ -1037,7 +1036,6 @@ class L2NormalizeSchedule(VectorSchedule):
                         return True
         return False
 
-    # pylint: missing-final-newline
     def _find_max_broadcast_last_axis_offset(self):
         """
         Find the largest broadcast offset of the last axis broadcast

@@ -367,7 +367,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
     dtype_bias = bias.dtype
 
     is_cast = False
-    if tbe_platform.cce_conf.api_check_support("tbe.vadd", "float32"):
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
         if dtype_x == "float16":
             is_cast = True
             x = tbe.cast_to(x, 'float32')

@@ -15,15 +15,12 @@
 """
 layer_norm
 """
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 from te import platform as tbe_platform
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
+from te.utils import shape_util
+from te.utils import para_check
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -56,149 +53,149 @@ def op_select_format(input_x, input_gamma, input_beta,
     select format dynamically
     """
     shape_x = input_x.get("ori_shape")
-    shape_x = util.scalar2tensor_one(shape_x)
+    shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_gamma = input_gamma.get("ori_shape")
-    shape_gamma = util.scalar2tensor_one(shape_gamma)
+    shape_gamma = shape_util.scalar2tensor_one(shape_gamma)
 
     # can not support Nz + ND
     # while len(shape_gamma) >= 2 and  _division_sixteen(shape_x) = False
     if begin_params_axis == 0:
         if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
-            input0 = gen_param(classify="input0", name="x",
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                datatype="float16,float16,float16,float16,"
                                         "float,float,float,float",
                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
-            input1 = gen_param(classify="input1", name="gamma",
+            input1 = util_select_op_base.gen_param(classify="input1", name="gamma",
                                datatype="float16,float16,float16,float16,float,"
                                         "float,float,float",
                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
-            input2 = gen_param(classify="input2", name="beta",
+            input2 = util_select_op_base.gen_param(classify="input2", name="beta",
                                datatype="float16,float16,float16,float16,float,"
                                         "float,float,float",
                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
-            output0 = gen_param(classify="output0", name="y",
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                 datatype="float16,float16,float16,float16,float,"
                                          "float,float,float",
                                 format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
-            output1 = gen_param(classify="output1", name="mean",
+            output1 = util_select_op_base.gen_param(classify="output1", name="mean",
                                 datatype="float16,float16,float16,float16,float,"
                                          "float,float,float",
                                 format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
-            output2 = gen_param(classify="output2", name="variance",
+            output2 = util_select_op_base.gen_param(classify="output2", name="variance",
                                 datatype="float16,float16,float16,float16,float,"
                                          "float,float,float",
                                 format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
         else:
-            input0 = gen_param(classify="input0", name="x",
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                datatype="float16,float,float16,float16,float16,"
                                         "float16,float,float,float,float",
                                format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
                                       "ND,NCHW,NC1HWC0,NHWC,ND")
 
-            input1 = gen_param(classify="input1", name="gamma",
+            input1 = util_select_op_base.gen_param(classify="input1", name="gamma",
                                datatype="float16,float,float16,float16,float16,"
                                         "float16,float,float,float,float",
                                format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                       "NHWC,ND")
 
-            input2 = gen_param(classify="input2", name="beta",
+            input2 = util_select_op_base.gen_param(classify="input2", name="beta",
                                datatype="float16,float,float16,float16,float16,"
                                         "float16,float,float,float,float",
                                format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                       "NHWC,ND")
 
-            output0 = gen_param(classify="output0", name="y",
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                 datatype="float16,float,float16,float16,float16,"
                                          "float16,float,float,float,float",
                                 format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
                                        "NCHW,NC1HWC0,NHWC,ND")
 
-            output1 = gen_param(classify="output1", name="mean",
+            output1 = util_select_op_base.gen_param(classify="output1", name="mean",
                                 datatype="float16,float,float16,float16,float16,"
                                          "float16,float,float,float,float",
                                 format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                        "NHWC,ND")
 
-            output2 = gen_param(classify="output2", name="variance",
+            output2 = util_select_op_base.gen_param(classify="output2", name="variance",
                                 datatype="float16,float,float16,float16,float16,"
                                          "float16,float,float,float,float",
                                 format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                        "NHWC,ND")
     else:
         if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
-            input0 = gen_param(classify="input0", name="x",
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                datatype="float16,float16,float16,"
                                         "float,float,float",
                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
-            input1 = gen_param(classify="input1", name="gamma",
+            input1 = util_select_op_base.gen_param(classify="input1", name="gamma",
                                datatype="float16,float16,float16,"
                                         "float,float,float",
                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
-            input2 = gen_param(classify="input2", name="beta",
+            input2 = util_select_op_base.gen_param(classify="input2", name="beta",
                                datatype="float16,float16,float16,"
                                         "float,float,float",
                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
-            output0 = gen_param(classify="output0", name="y",
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                 datatype="float16,float16,float16,"
                                          "float,float,float",
                                 format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
-            output1 = gen_param(classify="output1", name="mean",
+            output1 = util_select_op_base.gen_param(classify="output1", name="mean",
                                 datatype="float16,float16,float16,"
                                          "float,float,float",
                                 format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
-            output2 = gen_param(classify="output2", name="variance",
+            output2 = util_select_op_base.gen_param(classify="output2", name="variance",
                                 datatype="float16,float16,float16,"
                                          "float,float,float",
                                 format="NCHW,NHWC,ND,NCHW,NHWC,ND")
         else:
-            input0 = gen_param(classify="input0", name="x",
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                datatype="float16,float,float16,float16,"
                                         "float16,float,float,float",
                                format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
                                       "ND,NCHW,NHWC,ND")
 
-            input1 = gen_param(classify="input1", name="gamma",
+            input1 = util_select_op_base.gen_param(classify="input1", name="gamma",
                                datatype="float16,float,float16,float16,"
                                         "float16,float,float,float",
                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                       "NHWC,ND")
 
-            input2 = gen_param(classify="input2", name="beta",
+            input2 = util_select_op_base.gen_param(classify="input2", name="beta",
                                datatype="float16,float,float16,float16,"
                                         "float16,float,float,float",
                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                       "NHWC,ND")
 
-            output0 = gen_param(classify="output0", name="y",
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                 datatype="float16,float,float16,float16,"
                                          "float16,float,float,float",
                                 format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,ND,"
                                        "NCHW,NHWC,ND")
 
-            output1 = gen_param(classify="output1", name="mean",
+            output1 = util_select_op_base.gen_param(classify="output1", name="mean",
                                 datatype="float16,float,float16,float16,"
                                          "float16,float,float,float",
                                 format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                        "NHWC,ND")
 
-            output2 = gen_param(classify="output2", name="variance",
+            output2 = util_select_op_base.gen_param(classify="output2", name="variance",
                                 datatype="float16,float,float16,float16,"
                                          "float16,float,float,float",
                                 format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                        "NHWC,ND")
 
     param_list = [input0, input1, input2, output0, output1, output2]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
 
@@ -243,7 +240,7 @@ def to_frac_z_axis(ori_shape, ori_axis):
 
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
-    src_shape = te.lang.cce.util.shape_to_list(tensor.shape)
+    src_shape = shape_util.shape_to_list(tensor.shape)
     for i, _ in enumerate(shape):
         if shape[i] != src_shape[i]:
             broadcast_axes.append(i)
@@ -251,8 +248,8 @@ def _broadcast_nz(tensor, shape):
             broadcast_axes[1] - broadcast_axes[0] != 1 and \
             broadcast_axes[1] + 1 == len(shape):
         temp_shape = src_shape[:-1] + [shape[-1]]
-        tensor = te.lang.cce.broadcast(tensor, temp_shape)
-    tensor = te.lang.cce.broadcast(tensor, shape)
+        tensor = tbe.broadcast(tensor, temp_shape)
+    tensor = tbe.broadcast(tensor, shape)
     return tensor
 
 
@@ -292,7 +289,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     res_tuple: tuple
         (mean, variance, result)
     """
-    shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
     cast_dtype_precision = dtype
@@ -303,9 +300,9 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
              impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
-        input_x = te.lang.cce.cast_to(input_x, "float32")
-        input_gamma = te.lang.cce.cast_to(input_gamma, "float32")
-        input_beta = te.lang.cce.cast_to(input_beta, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
+        input_gamma = tbe.cast_to(input_gamma, "float32")
+        input_beta = tbe.cast_to(input_beta, "float32")
 
     # Calculate the scaling ratio of the average
     reduce_elts = 1.0
@@ -316,64 +313,64 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     reduce_axis = to_frac_z_axis(ori_shape, reduce_axis)
     mean_cof = reduce_elts ** (-1)
     # DSL description of the mean calculation process
-    mean_muls = te.lang.cce.vmuls(input_x, mean_cof)
-    mean = te.lang.cce.sum(mean_muls, axis=reduce_axis, keepdims=True)
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.sum(mean_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the variance calculation process
     mean_variance_broadcast = _broadcast_nz(mean, shape_x)
-    variance_sub = te.lang.cce.vsub(input_x, mean_variance_broadcast)
-    variance_mul = te.lang.cce.vmul(variance_sub, variance_sub)
-    variance_muls = te.lang.cce.vmuls(variance_mul, mean_cof)
-    variance = te.lang.cce.sum(variance_muls, axis=reduce_axis, keepdims=True)
+    variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
+    variance_mul = tbe.vmul(variance_sub, variance_sub)
+    variance_muls = tbe.vmuls(variance_mul, mean_cof)
+    variance = tbe.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
     if impl_mode == "high_performance":
         mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
-        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
         variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
-        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-        normalize_log = te.lang.cce.vlog(normalize_add)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_log = tbe.vlog(normalize_add)
         normalize_log_mul = \
-            te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
-        normalize_exp = te.lang.cce.vexp(normalize_log_mul)
-        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+            tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+        normalize_exp = tbe.vexp(normalize_log_mul)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
     else:
-        tesor_one = te.lang.cce.broadcast(tvm.const
+        tesor_one = tbe.broadcast(tvm.const
                                           (1, cast_dtype_precision),
                                           shape_x)
         mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
-        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
         variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
-        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-        normalize_sqrt = te.lang.cce.vsqrt(normalize_add, 0)
-        normalize_rsqrt = te.lang.cce.vdiv(tesor_one, normalize_sqrt)
-        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_rsqrt)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_sqrt = tbe.vsqrt(normalize_add, 0)
+        normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
-        scale_mul = te.lang.cce.vmul(input_gamma, normalize_mul)
-        res = te.lang.cce.vadd(scale_mul, input_beta)
+        scale_mul = tbe.vmul(input_gamma, normalize_mul)
+        res = tbe.vadd(scale_mul, input_beta)
     else:
         gamma_broadcast = _broadcast_nz(input_gamma, shape_x)
         beta_broadcast = _broadcast_nz(input_beta, shape_x)
-        scale_mul = te.lang.cce.vmul(gamma_broadcast, normalize_mul)
-        res = te.lang.cce.vadd(scale_mul, beta_broadcast)
+        scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
+        res = tbe.vadd(scale_mul, beta_broadcast)
 
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
                   ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
-        mean = te.lang.cce.cast_to(mean, "float16")
-        variance = te.lang.cce.cast_to(variance, "float16")
-        res = te.lang.cce.cast_to(res, "float16")
+        mean = tbe.cast_to(mean, "float16")
+        variance = tbe.cast_to(variance, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return mean, variance, res
 
 
-@fusion_manager.register("layer_norm")
+@tbe_platform.fusion_manager.fusion_manager.register("layer_norm")
 def layer_norm_compute(input_x, input_gamma, input_beta,
                        output_y, output_mean, output_variance,
                        begin_norm_axis, begin_params_axis,
@@ -410,20 +407,20 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     res_tuple: tuple
         (mean, variance, result)
     """
-    shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
     cast_dtype_precision = dtype
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+                  ("tbe.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
-        input_x = te.lang.cce.cast_to(input_x, "float32")
-        input_gamma = te.lang.cce.cast_to(input_gamma, "float32")
-        input_beta = te.lang.cce.cast_to(input_beta, "float32")
+        input_x = tbe.cast_to(input_x, "float32")
+        input_gamma = tbe.cast_to(input_gamma, "float32")
+        input_beta = tbe.cast_to(input_beta, "float32")
 
     # Calculate the scaling ratio of the average
     index_list = tuple(index for index, _ in enumerate(shape_x))
@@ -435,66 +432,69 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     mean_cof = reduce_elts ** (-1)
 
     # DSL description of the mean calculation process
-    mean_muls = te.lang.cce.vmuls(input_x, mean_cof)
-    mean = te.lang.cce.sum(mean_muls, axis=reduce_axis, keepdims=True)
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.sum(mean_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the variance calculation process
-    mean_variance_broadcast = te.lang.cce.broadcast(mean, shape_x)
-    variance_sub = te.lang.cce.vsub(input_x, mean_variance_broadcast)
-    variance_mul = te.lang.cce.vmul(variance_sub, variance_sub)
-    variance_muls = te.lang.cce.vmuls(variance_mul, mean_cof)
-    variance = te.lang.cce.sum(variance_muls, axis=reduce_axis, keepdims=True)
+    mean_variance_broadcast = tbe.broadcast(mean, shape_x)
+    variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
+    variance_mul = tbe.vmul(variance_sub, variance_sub)
+    variance_muls = tbe.vmuls(variance_mul, mean_cof)
+    variance = tbe.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
     if impl_mode == "high_performance":
-        mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
-        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
+        mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
-        variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
-        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-        normalize_log = te.lang.cce.vlog(normalize_add)
+        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_log = tbe.vlog(normalize_add)
         normalize_log_mul = \
-            te.lang.cce.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
-        normalize_exp = te.lang.cce.vexp(normalize_log_mul)
-        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_exp)
+            tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+        normalize_exp = tbe.vexp(normalize_log_mul)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
     else:
-        tesor_one = te.lang.cce.broadcast(tvm.const
+        tesor_one = tbe.broadcast(tvm.const
                                           (1, cast_dtype_precision),
                                           shape_x)
-        mean_normalize_broadcast = te.lang.cce.broadcast(mean, shape_x)
-        normalize_sub = te.lang.cce.vsub(input_x, mean_normalize_broadcast)
-        variance_normalize_broadcast = te.lang.cce.broadcast(variance, shape_x)
+        mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
+        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
-        normalize_add = te.lang.cce.vadds(variance_normalize_broadcast, epsilon)
-        normalize_sqrt = te.lang.cce.vsqrt(normalize_add, 0)
-        normalize_rsqrt = te.lang.cce.vdiv(tesor_one, normalize_sqrt)
-        normalize_mul = te.lang.cce.vmul(normalize_sub, normalize_rsqrt)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_sqrt = tbe.vsqrt(normalize_add, 0)
+        normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
-        scale_mul = te.lang.cce.vmul(input_gamma, normalize_mul)
-        res = te.lang.cce.vadd(scale_mul, input_beta)
+        scale_mul = tbe.vmul(input_gamma, normalize_mul)
+        res = tbe.vadd(scale_mul, input_beta)
     else:
-        gamma_broadcast = te.lang.cce.broadcast(input_gamma, shape_x)
-        beta_broadcast = te.lang.cce.broadcast(input_beta, shape_x)
-        scale_mul = te.lang.cce.vmul(gamma_broadcast, normalize_mul)
-        res = te.lang.cce.vadd(scale_mul, beta_broadcast)
+        gamma_broadcast = tbe.broadcast(input_gamma, shape_x)
+        beta_broadcast = tbe.broadcast(input_beta, shape_x)
+        scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
+        res = tbe.vadd(scale_mul, beta_broadcast)
 
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
                   ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
-        mean = te.lang.cce.cast_to(mean, "float16")
-        variance = te.lang.cce.cast_to(variance, "float16")
-        res = te.lang.cce.cast_to(res, "float16")
+        mean = tbe.cast_to(mean, "float16")
+        variance = tbe.cast_to(variance, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return mean, variance, res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT,
-                 OPTION_ATTR_FLOAT, KERNEL_NAME, OPTION_ATTR_STR)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME,
+                            para_check.OPTION_ATTR_STR)
 def layer_norm(input_x, input_gamma, input_beta,
                output_y, output_mean, output_variance,
                begin_norm_axis, begin_params_axis,
@@ -544,24 +544,24 @@ def layer_norm(input_x, input_gamma, input_beta,
     input_gamma_format = input_gamma.get("format").upper()
     input_beta_format = input_beta.get("format").upper()
 
-    check_shape(input_gamma_shape, param_name="input_gamma")
-    check_shape(input_beta_shape, param_name="input_beta")
-    check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(input_gamma_shape, param_name="input_gamma")
+    para_check.check_shape(input_beta_shape, param_name="input_beta")
+    para_check.check_shape(shape_x, param_name="input_x")
 
     check_list = ("float16", "float32")
     dtype = input_x.get("dtype").lower()
     dtype_gamma = input_gamma.get("dtype").lower()
     dtype_beta = input_gamma.get("dtype").lower()
-    check_dtype(dtype, check_list, param_name="input_x")
-    check_dtype(dtype_gamma, check_list, param_name="input_gamma")
-    check_dtype(dtype_beta, check_list, param_name="input_gamma")
+    para_check.check_dtype(dtype, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_gamma, check_list, param_name="input_gamma")
+    para_check.check_dtype(dtype_beta, check_list, param_name="input_gamma")
 
     shape_gamma = list(input_gamma.get("shape"))
     shape_beta = list(input_beta.get("shape"))
 
     if input_format == "FRACTAL_NZ":
-        begin_norm_axis = util.axis_check(len(ori_shape_x), begin_norm_axis)
-        begin_params_axis = util.axis_check(len(ori_shape_x), begin_params_axis)
+        begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
+        begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
         if input_gamma_format == "FRACTAL_NZ" or \
                 input_beta_format == "FRACTAL_NZ":
@@ -586,8 +586,8 @@ def layer_norm(input_x, input_gamma, input_beta,
             shape_gamma[-3:] = [shape_gamma[-3]*shape_gamma[-2], shape_gamma[-1]]
         shape_beta = shape_gamma
     else:
-        begin_norm_axis = util.axis_check(len(shape_x), begin_norm_axis)
-        begin_params_axis = util.axis_check(len(shape_x), begin_params_axis)
+        begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
+        begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
 
         if shape_gamma != shape_beta:
             raise RuntimeError("gamma and beta's must be same.")
@@ -632,11 +632,11 @@ def layer_norm(input_x, input_gamma, input_beta,
                                epsilon, kernel_name, impl_mode)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule([res, mean, variance])
+        sch = tbe.auto_schedule([res, mean, variance])
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data_x, data_gamma,
                               data_beta, res, mean, variance]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

@@ -112,6 +112,7 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
         kernel name, default value is "reverse_ext2"
 
     Returns:
+    ----------
     None
     """
     input_format = input_x.get("format")
@@ -132,12 +133,14 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     if len(axis) == 0:
         move = MoveFromGm2Gm(shape_x, dtype_x, kernel_name)
         move.move()
+        return move.tik_instance
     else:
         reverse = ReverseExt2(shape_x, dtype_x, axis, kernel_name)
         if reverse.reverse_bytesize < 32 or axis[-1] == len(shape_x) - 1:
             reverse.reverse_ext2_scalar_compute()
         else:
             reverse.reverse_ext2_data_move_compute()
+        return reverse.tik_instance
 
 
 def _param_check(shape_x, dtype_x, axis, kernel_name):
@@ -156,6 +159,7 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
         kernel name, default value is "reverse_ext2"
 
     Returns:
+    ----------
     axis: list
     """
     para_check.check_shape(shape_x, param_name="input_x")
@@ -317,7 +321,6 @@ class ReverseExt2:
         -------
         None
         """
-
         self.old_shape_x = shape_x
         shape_x, axis = get_new_shape_axis(shape_x, axis)
 
@@ -333,18 +336,42 @@ class ReverseExt2:
         ub_size_bytes = (
             tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
             block_bite_size)
-        dtype_bytes_size = tbe_platform.get_bit_len(dtype_x) // 8
-        self.data_each_block = block_bite_size // dtype_bytes_size
+        self.dsize = tbe_platform.get_bit_len(dtype_x) // 8
+        self.data_each_block = block_bite_size // self.dsize
         self.ub_element_number = (
-            ub_size_bytes // dtype_bytes_size // self.data_each_block *
-            self.data_each_block)
-        self.input_total_num = functools.reduce(lambda x, y: x * y,
-                                                self.shape_x)
+                ub_size_bytes // self.dsize // self.data_each_block *
+                self.data_each_block)
 
+        self.input_total_num = functools.reduce(lambda x, y: x * y, self.shape_x)
+
+        if axis[-1] == len(shape_x) - 1:
+            self.reverse_bytesize = 1
+        else:
+            self.reverse_bytesize = functools.reduce(lambda x, y: x * y,
+                                                     shape_x[axis[-1] + 1:])
+
+        self.replace_set_as_last_axis = axis[-1] == len(shape_x) - 1 and shape_x[-1] > 8
+        self.replace_set_as_b32 = axis[-1] != len(shape_x) - 1 and \
+                                  8 < self.reverse_bytesize < 32
+
+        self.use_vgather = False
+        self.available_ub = self.ub_element_number // 2
+        if tbe_platform.api_check_support("tik.vgather") and \
+                (self.replace_set_as_last_axis or self.replace_set_as_b32):
+            self.use_vgather = True
+
+        self.offset_size = 0
+        self.offset_last_size = 0
+        self.split_w = False
+
+        self.thread_num = 1
         # To initialize the split_axis and the split_factor.
         self.split_axis = 0
         self.split_factor = 0
-        self.init_split_axis()
+        if self.use_vgather is not True:
+            self.init_split_axis()
+        else:
+            self.init_split_axis_v200()
 
         if self.split_factor > 0:
             self.get_outer_inner_shape()
@@ -356,13 +383,9 @@ class ReverseExt2:
             self.get_outer_inner_shape_for_small_shape()
         else:
             self.input_ub_num = (
-                self.ub_element_number // 2 // self.data_each_block *
+                self.available_ub // self.data_each_block *
                 self.data_each_block)
-        if axis[-1] == len(shape_x) - 1:
-            self.reverse_bytesize = 1
-        else:
-            self.reverse_bytesize = functools.reduce(lambda x, y: x * y,
-                                                     shape_x[axis[-1] + 1:])
+
         self.data_x_gm = self.tik_instance.Tensor(
             self.dtype_x, self.old_shape_x, name="data_x_gm", scope=tik.scope_gm)
         self.data_y_gm = self.tik_instance.Tensor(
@@ -376,6 +399,10 @@ class ReverseExt2:
 
         self.move_in_offset = 0
         self.move_out_offset = 0
+
+        self.offset_ub = None
+        self.offset_last_ub = None
+        self.base_addr = None
 
     def reverse_ext2_scalar_compute(self):
         """
@@ -399,6 +426,14 @@ class ReverseExt2:
                 name="sorted_ub",
                 scope=tik.scope_ubuf)
 
+            if self.use_vgather:
+                self.base_addr = self.tik_instance.Scalar("uint32", name="base_addr")
+            self.offset_ub = self.tik_instance.Tensor(
+                "int32", (self.offset_size, ),
+                name="offset_ub", scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, self.offset_size) as elem_i:
+                self.offset_ub[elem_i].set_as(elem_i * self.dsize)
+
             burst_len = math.ceil(self.input_total_num / self.data_each_block)
 
             self.tik_instance.data_move(self.data_x_ub, self.data_x_gm, 0, 1,
@@ -407,6 +442,14 @@ class ReverseExt2:
             self.tik_instance.data_move(self.data_y_gm, self.sorted_ub, 0, 1,
                                         burst_len, 0, 0)
         else:
+            inner_data_num = functools.reduce(lambda x, y: x * y, self.inner_shape)
+            is_multicore = inner_data_num > 32 and self.shape_x[0] < MAX_BLOCK_NUM
+            if self.use_vgather is True and is_multicore is not True:
+                self.base_addr = self.tik_instance.Scalar("uint32", name="base_addr")
+                self.offset_ub = self.tik_instance.Tensor(
+                    "int32", (self.offset_size, ),
+                    name="offset_ub", scope=tik.scope_ubuf)
+
             self.reverse_big_shape(self.outer_shape, 0, 0, 0)
 
         self.tik_instance.BuildCCE(
@@ -617,19 +660,47 @@ class ReverseExt2:
         -------
         None
         """
-        with self.tik_instance.for_range(0, loop_shape[0]) as index:
+        ori_src_idx = data_x_ub_index
+        ori_dst_idx = sorted_ub_index
+        loop_time = loop_shape[0]
+        reverse_num = functools.reduce(lambda x, y: x * y, loop_shape)
+        is_set_loop = (self.replace_set_as_last_axis and len(loop_shape) == 1) or \
+                      (self.replace_set_as_b32 and self.reverse_bytesize == reverse_num)
+        if self.use_vgather and is_set_loop:
+            loop_time = 1
+
+        with self.tik_instance.for_range(0, loop_time) as index:
             if loop_axis in self.axis:
-                sorted_ub_index = sorted_ub_index * loop_shape[0] + loop_shape[
-                    0] - 1 - index
+                sorted_ub_index = sorted_ub_index * loop_shape[0] + \
+                                  loop_shape[0] - 1 - index
             else:
                 sorted_ub_index = sorted_ub_index * loop_shape[0] + index
             data_x_ub_index = data_x_ub_index * loop_shape[0] + index
-            if len(loop_shape) > 1:
-                self.reverse_small_shape(loop_shape[1:], sorted_ub_index,
-                                         data_x_ub_index, loop_axis + 1)
+            if self.use_vgather is not True:
+                if len(loop_shape) > 1:
+                    self.reverse_small_shape(loop_shape[1:], sorted_ub_index,
+                                             data_x_ub_index, loop_axis + 1)
+                else:
+                    self.sorted_ub[data_x_ub_index].set_as(
+                        self.data_x_ub[sorted_ub_index])
             else:
-                self.sorted_ub[data_x_ub_index].set_as(
-                    self.data_x_ub[sorted_ub_index])
+                if self.replace_set_as_last_axis and len(loop_shape) > 1:
+                    self.reverse_small_shape(loop_shape[1:], sorted_ub_index,
+                                             data_x_ub_index, loop_axis + 1)
+                elif self.replace_set_as_b32 and reverse_num > self.reverse_bytesize:
+                    self.reverse_small_shape(loop_shape[1:], sorted_ub_index,
+                                             data_x_ub_index, loop_axis + 1)
+                else:
+                    src_idx = ori_src_idx * loop_shape[0]
+                    dst_idx = ori_dst_idx * loop_shape[0]
+                    if self.replace_set_as_b32:
+                        src_idx = ori_src_idx * self.reverse_bytesize
+                        dst_idx = ori_dst_idx * self.reverse_bytesize
+                    self.base_addr.set_as(src_idx * self.dsize)
+                    self.tik_instance.vgather(
+                        self.offset_size, self.sorted_ub[dst_idx],
+                        self.data_x_ub, self.offset_ub, 1, 8,
+                        self.base_addr, 0, "counter")
 
     # pylint: disable=too-many-arguments
     def get_move_index(self, loop_axis, move_in_index, move_out_index,
@@ -702,8 +773,7 @@ class ReverseExt2:
                     self.data_y_gm[move_out_index * inner_data_num],
                     self.sorted_ub, 0, 1, burst_len, 0, 0)
 
-                with self.tik_instance.for_range(0,
-                                                 self.data_each_block) as index:
+                with self.tik_instance.for_range(0, self.data_each_block) as index:
                     self.sorted_align[index].set_as(
                         self.sorted_ub[index + inner_data_num -
                                        self.data_each_block])
@@ -755,7 +825,7 @@ class ReverseExt2:
         indices_loop_index = self.tik_instance.Scalar("int32")
         indices_loop_index.set_as(move_in_index)
 
-        if inner_data_num > self.ub_element_number // 2:
+        if inner_data_num > self.available_ub:
             self.reverse_last_axis_big(indices_loop_index, move_out_index)
         else:
             self.reverse_last_axis_small(inner_data_num, indices_loop_index,
@@ -786,6 +856,29 @@ class ReverseExt2:
             with self.tik_instance.for_range(
                     0, outer_loop_shape[0],
                     block_num=self.outer_shape[0]) as index:
+                if self.use_vgather and self.replace_set_as_last_axis:
+                    self.base_addr = self.tik_instance.Scalar("uint32", name="base_addr")
+                    self.offset_ub = self.tik_instance.Tensor(
+                        "int32", (self.offset_size, ),
+                        name="offset_ub", scope=tik.scope_ubuf)
+                    with self.tik_instance.for_range(0, self.offset_size) as elem_i:
+                        self.offset_ub[elem_i].set_as((self.offset_size - 1 -
+                                                       elem_i) * self.dsize)
+                    if self.split_w is True:
+                        self.offset_last_ub = self.tik_instance.Tensor(
+                            "int32", (self.offset_last_size, ),
+                            name="offset_last_ub", scope=tik.scope_ubuf)
+                        with self.tik_instance.for_range(0, self.offset_last_size) as elem_i:
+                            self.offset_last_ub[elem_i].set_as((self.offset_last_size -
+                                                                1 - elem_i) * self.dsize)
+                elif self.use_vgather and self.replace_set_as_b32:
+                    self.base_addr = self.tik_instance.Scalar("uint32", name="base_addr")
+                    self.offset_ub = self.tik_instance.Tensor(
+                        "int32", (self.offset_size, ),
+                        name="offset_ub", scope=tik.scope_ubuf)
+                    with self.tik_instance.for_range(0, self.offset_size) as elem_i:
+                        self.offset_ub[elem_i].set_as(elem_i * self.dsize)
+
                 move_in_index, move_out_index = self.get_move_index(
                     loop_axis, move_in_index, move_out_index, outer_loop_shape,
                     index)
@@ -796,7 +889,8 @@ class ReverseExt2:
                 else:
                     self.reverse_last_axis(move_in_index, move_out_index)
         else:
-            with self.tik_instance.for_range(0, outer_loop_shape[0]) as index:
+            with self.tik_instance.for_range(0, outer_loop_shape[0],
+                                             thread_num=self.thread_num) as index:
                 move_in_index, move_out_index = self.get_move_index(
                     loop_axis, move_in_index, move_out_index, outer_loop_shape,
                     index)
@@ -831,25 +925,35 @@ class ReverseExt2:
         self.tik_instance.data_move(self.data_x_ub,
                                     self.data_x_gm[gm_read_index], 0, 1,
                                     burst_len, 0, 0)
-        with self.tik_instance.for_range(0, last_num) as index:
-            self.sorted_ub[index].set_as(self.data_x_ub[last_num - 1 - index])
+        if self.use_vgather is not True:
+            with self.tik_instance.for_range(0, last_num) as index:
+                self.sorted_ub[index].set_as(self.data_x_ub[last_num - 1 - index])
+        else:
+            self.tik_instance.vgather(self.offset_last_size, self.sorted_ub,
+                                      self.data_x_ub, self.offset_last_ub,
+                                      1, 8, 0, 0, "counter")
         gm_write_index = move_out_index * self.shape_x[-1]
         self.tik_instance.data_move(self.data_y_gm[gm_write_index],
                                     self.sorted_ub, 0, 1, burst_len, 0, 0)
         with self.tik_instance.for_range(0, inner_loop) as inner_index:
             gm_read_index = (
-                indices_loop_index * self.shape_x[-1] +
-                (inner_loop - 1 - inner_index) * self.split_factor)
+                    indices_loop_index * self.shape_x[-1] +
+                    (inner_loop - 1 - inner_index) * self.split_factor)
             gm_write_index = (
-                move_out_index * self.shape_x[-1] + last_num +
-                inner_index * self.split_factor)
+                    move_out_index * self.shape_x[-1] + last_num +
+                    inner_index * self.split_factor)
             burst_len = math.ceil(self.split_factor / self.data_each_block)
             self.tik_instance.data_move(self.data_x_ub,
                                         self.data_x_gm[gm_read_index], 0, 1,
                                         burst_len, 0, 0)
-            with self.tik_instance.for_range(0, self.split_factor) as index:
-                self.sorted_ub[index].set_as(self.data_x_ub[self.split_factor -
-                                                            1 - index])
+            if self.use_vgather is not True:
+                with self.tik_instance.for_range(0, self.split_factor) as index:
+                    self.sorted_ub[index].set_as(self.data_x_ub[self.split_factor
+                                                                - 1 - index])
+            else:
+                self.tik_instance.vgather(self.offset_size, self.sorted_ub,
+                                          self.data_x_ub, self.offset_ub,
+                                          1, 8, 0, 0, "counter")
 
             self.tik_instance.data_move(self.data_y_gm[gm_write_index],
                                         self.sorted_ub, 0, 1, burst_len, 0, 0)
@@ -893,6 +997,7 @@ class ReverseExt2:
         None
         """
         half_ub_size = self.ub_element_number // 2
+
         for index, _ in enumerate(self.shape_x):
             ele_cnt = functools.reduce(lambda x, y: x * y, self.shape_x[index:])
             if ele_cnt <= half_ub_size:
@@ -910,6 +1015,52 @@ class ReverseExt2:
         if self.split_axis < 0:
             self.split_axis = 0
             self.split_factor = 0
+
+    def init_split_axis_v200(self):
+        """
+        Get the split axis and split factor of v200
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self.thread_num = 2
+        if self.ub_element_number > (2 + 4 // self.dsize) * self.shape_x[-1] * 2:
+            self.available_ub = (self.ub_element_number - 4 // self.dsize * 32) // 2 // 2 \
+                if self.replace_set_as_b32 else \
+                (self.ub_element_number - 4 // self.dsize * self.shape_x[-1]) // 2 // 2
+
+            for index, _ in enumerate(self.shape_x):
+                ele_cnt = functools.reduce(lambda x, y: x * y, self.shape_x[index:])
+                if ele_cnt <= self.available_ub:
+                    self.split_axis = index - 1
+                    self.split_factor = self.available_ub // ele_cnt
+                    while self.shape_x[self.split_axis] % self.split_factor != 0:
+                        self.split_factor -= 1
+                    break
+
+            if self.split_axis < 0:
+                self.split_axis = 0
+                self.split_factor = 0
+
+            if self.axis[-1] == len(self.shape_x) - 1:
+                self.offset_size = self.shape_x[-1]
+                self.offset_last_size = 0
+            else:
+                self.offset_size = self.reverse_bytesize
+                self.offset_last_size = 0
+        else:
+            self.split_w = True
+            self.split_axis = len(self.shape_x) - 1
+            avail_size = self.ub_element_number // 2 // (2 + 2 * 4 // self.dsize)
+            self.available_ub = avail_size
+            self.split_factor = avail_size // self.data_each_block * self.data_each_block
+            self.offset_size = self.split_factor
+            self.offset_last_size = self.shape_x[-1] % self.offset_size
 
     def get_outer_inner_shape_for_small_shape(self):
         """

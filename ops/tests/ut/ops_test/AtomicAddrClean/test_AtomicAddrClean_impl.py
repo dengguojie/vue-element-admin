@@ -53,12 +53,12 @@ case6 = {"params": [ [49152 * 32 - 1024, 512, 512]
 "support_expect": True}
 
 # TODO fix me, this comment, run failed
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 
 
 if __name__ == '__main__':

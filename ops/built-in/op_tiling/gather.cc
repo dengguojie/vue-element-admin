@@ -335,27 +335,52 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   // set tiling data
   ByteBufferPut(runInfo.tiling_data, tilingMode);
+  GELOGD("op [GatherTiling] : tilingMode=%d", tilingMode);
 
   ByteBufferPut(runInfo.tiling_data, paramsPre);
   ByteBufferPut(runInfo.tiling_data, paramsAxis);
   ByteBufferPut(runInfo.tiling_data, paramsRow);
   ByteBufferPut(runInfo.tiling_data, indicesNum);
+  GELOGD("op gy [GatherTiling] : paramsPre=%d, paramsAxis=%d, paramsRow=%d, indicesNum=%d, paramsDSize=%d",
+    paramsPre,
+    paramsAxis,
+    paramsRow,
+    indicesNum,
+    paramsDSize);
 
   ByteBufferPut(runInfo.tiling_data, cacheParams);
   ByteBufferPut(runInfo.tiling_data, need_core_num);
   ByteBufferPut(runInfo.tiling_data, tail_process_core);
   ByteBufferPut(runInfo.tiling_data, indices_num_each_core);
   ByteBufferPut(runInfo.tiling_data, indices_num_remaining);
+  GELOGD("op gy [GatherTiling] : cacheParams=%d, need_core_num=%d, tail_process_core=%d, indices_num_each_core=%d, indices_num_remaining=%d",
+    cacheParams,
+    need_core_num,
+    tail_process_core,
+    indices_num_each_core,
+    indices_num_remaining);
+
   ByteBufferPut(runInfo.tiling_data, indices_loop_num);
   ByteBufferPut(runInfo.tiling_data, indices_row_num_once);
   ByteBufferPut(runInfo.tiling_data, indices_row_num_last);
   ByteBufferPut(runInfo.tiling_data, row_num_once_ub);
   ByteBufferPut(runInfo.tiling_data, row_num_once_tail_ub);
+  GELOGD("op gy [GatherTiling] : indices_loop_num=%d, indices_row_num_once=%d, indices_row_num_last=%d, row_num_once_ub=%d, row_num_once_tail_ub=%d",
+    indices_loop_num,
+    indices_row_num_once,
+    indices_row_num_last,
+    row_num_once_ub,
+    row_num_once_tail_ub);
+
   ByteBufferPut(runInfo.tiling_data, inner_loop_num);
   ByteBufferPut(runInfo.tiling_data, row_num_last_ub);
   ByteBufferPut(runInfo.tiling_data, row_num_last_tail_ub);
   ByteBufferPut(runInfo.tiling_data, inner_loop_num_last);
-  GELOGD("op [GatherTiling] : tilingMode=%d, paramsRow=%d", tilingMode, paramsRow);
+  GELOGD("op gy [GatherTiling] : inner_loop_num=%d, row_num_last_ub=%d, row_num_last_tail_ub=%d, inner_loop_num_last=%d",
+    inner_loop_num,
+    row_num_last_ub,
+    row_num_last_tail_ub,
+    inner_loop_num_last);
 
   // block_dim, core num used in tik op
   runInfo.block_dim = need_core_num;

@@ -123,7 +123,9 @@ def build_config_update_list(current_config, config_list):
         "tbe_debug_level": current_config.tbe_debug_level,
         "out_of_order": current_config.out_of_order,
         "size_of_issueQ": current_config.size_of_issueQ,
-        "split_intersection": current_config.split_intersection}
+        "split_intersection": current_config.split_intersection,
+        "precise_bound": current_config.precise_bound
+    }
 
     for attr in config_list:
         value = config_list[attr]
@@ -194,6 +196,7 @@ build_config = build_module.build_config(
     out_of_order=False,
     size_of_issueQ=32,
     split_intersection=False,
+    precise_bound=True,
 )
 
 # pylint: disable=invalid-name

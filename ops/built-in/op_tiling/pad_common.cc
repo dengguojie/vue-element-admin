@@ -28,7 +28,7 @@ namespace optiling {
 int padCommon::_numBit(const std::string& dtype) {
   // Only Support FP16 and FP32.
   int numBit = 2;
-  if (dtype == "float32" || dtype == "int32") {
+  if (dtype == "float" || dtype == "int32") {
     numBit = 4;
   }
   return numBit;
@@ -377,7 +377,6 @@ void padCommon::SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t b
 void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
   int64_t CirDupVol = 0;
   int64_t MovDupVol = 0;
-  int64_t CirPos = 0;
   int64_t MovPos = 0;
   int64_t SortVol = (idx == int64_t(params.recur_inShape.size())) ? 0 : params.prod_recurOut[idx];
 
@@ -385,7 +384,6 @@ void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
   for (int64_t i = 0; i <= params.depth - 1; i++) {
     CirDupVol = (params.top_vol[i] >= params.bottom_vol[i]) ? params.top_vol[i] : params.bottom_vol[i];
     if (CirDupVol > 0) {
-      CirPos = i;
       break;
     }
   }
@@ -406,13 +404,12 @@ void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
   // Regulation For VecDup
   if (CirDupVol >= MovDupVol) {
     // Circulation deciedes Recursion vec_dup or not.
-    if (CirDupVol >= SortVol) {
-      params.recur_dup_mk[CirPos] = 1;
-    } else {
+    // If CirDupVol >= SortVol, means that Recusion dosen't need to vec_dup.
+    if (CirDupVol < SortVol) {
       params.recur_dup_mk[idx] = 1;
     }
-    // Recursion(Mov) decides Recursion(Sort) vec_dup or not.
   } else {
+    // Recursion(Mov) decides Recursion(Sort) vec_dup or not.
     // MovDupVol > 0 in the branch, and Mov layer happened before Sort layer.
     params.recur_dup_mk[MovPos] = 1;
   }

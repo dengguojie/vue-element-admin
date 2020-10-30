@@ -41,15 +41,23 @@ def mish_compute(input_x, output_y, kernel_name="mish"):
         the result of mish
     """
     dtype = input_x.dtype
+    const_dtype = dtype
+    has_improve_precision = False
+    if dtype == "float16" and \
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
+        has_improve_precision = True
+        const_dtype = "float32"
     exp_val = tbe.vexp(input_x)
-    add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
+    add_exp_val = tbe.vadds(exp_val, tvm.const(1, const_dtype))
     pow_var = tbe.vmul(add_exp_val, add_exp_val)
-    add_val = tbe.vadds(pow_var, tvm.const(1, dtype))
+    add_val = tbe.vadds(pow_var, tvm.const(1, const_dtype))
     rec_val = tbe.vrec(add_val)
-    mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=dtype))
-    add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=dtype))
+    mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=const_dtype))
+    add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=const_dtype))
     res = tbe.vmul(input_x, add_val2)
-
+    if has_improve_precision:
+        res = tbe.cast_to(res, "float16")
     return res
 
 

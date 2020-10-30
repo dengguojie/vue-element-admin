@@ -22,6 +22,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 
@@ -35,6 +36,8 @@ Status ParseParamsSlice(const Message* op_src, ge::Operator& op) {
   const caffe::SliceParameter& slice_param = layer->slice_param();
 
   if (slice_param.has_axis() && slice_param.has_slice_dim()) {
+    ge::OpsInputShapeErrReport(op.GetName(), "set either axis or slice_dim should be specified",
+                           "axis and slice_dim", "set both");
     OP_LOGE(op.GetName().c_str(), "Either axis or slice_dim should be specified; not both.");
     return FAILED;
   }

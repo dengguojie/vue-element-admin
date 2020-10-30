@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
-#include "all_ops.h"
+#include "array_ops.h"
+#include "nn_calculation_ops.h"
 
 class Conv3DBackpropFilterProtoTest : public testing::Test {
  protected:
@@ -29,13 +30,12 @@ TEST_F(Conv3DBackpropFilterProtoTest, Base_Pass_Case){
     // Set Const node
     ge::Tensor constTensor;
     std::vector<int64_t> dims_input_size{64, 2, 2, 2, 32};
-    ge::TensorDesc tensor_Desc_filter_size(ge::Shape(),
+    ge::TensorDesc tensor_desc_filter_size(ge::Shape(),
       ge::FORMAT_NDHWC, ge::DT_INT32);
-    int element_size = dims_input_size[0] * dims_input_size[1]
-      * dims_input_size[2] * dims_input_size[3] * dims_input_size[4];
+    int element_size = 5;
 
-    tensor_Desc_filter_size.SetSize(element_size * sizeof(int32_t));
-    constTensor.SetTensorDesc(tensor_Desc_filter_size);
+    tensor_desc_filter_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_filter_size);
     int *conv_filter_size_tensor_value = new int[element_size];
     for (int i = 0; i < element_size; i++) {
         *(conv_filter_size_tensor_value + i) = 0;
@@ -44,6 +44,8 @@ TEST_F(Conv3DBackpropFilterProtoTest, Base_Pass_Case){
       element_size * sizeof(int32_t));
     auto const0 = ge::op::Constant("filter_size").set_attr_value(constTensor);
     op.set_input_filter_size(const0);
+
+    op.UpdateInputDesc("filter_size", tensor_desc_filter_size);
 
     delete[] conv_filter_size_tensor_value;
 

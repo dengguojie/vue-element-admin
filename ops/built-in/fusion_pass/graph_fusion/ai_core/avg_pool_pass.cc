@@ -159,6 +159,7 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
   input_desc.SetOriginShape(mulShape);
   input_desc.SetFormat(ge::FORMAT_NC1HWC0);
   input_desc.SetOriginFormat(inputOriginFormat);
+  input_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
 
@@ -169,6 +170,7 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
   output_desc.SetOriginShape(mulShape);
   output_desc.SetFormat(ge::FORMAT_NC1HWC0);
   output_desc.SetOriginFormat(inputOriginFormat);
+  output_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
 
@@ -540,10 +542,10 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                     return PARAM_INVALID);
 
   ge::GeTensorDesc avgPoolInputTensor = avgPoolNode->GetOpDesc()->GetInputDesc(0);
-
+  ge::GeTensorDesc avg_pool_output_tensor = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
   // get shape
   ge::GeShape avgPoolInputShape = avgPoolInputTensor.GetShape();
-  ge::GeShape avgPooloutputhape = avgPoolInputTensor.GetShape();
+  ge::GeShape avgPooloutputhape = avg_pool_output_tensor.GetShape();
   ge::Format inputOriginFormat = avgPoolInputTensor.GetOriginFormat();
   // GESHAPE->vector
   vector<int64_t> dimInfo = avgPoolInputShape.GetDims();
@@ -615,7 +617,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   stride = {stridesH, stridesW};
   // judge global pooling or out_put_w==1
   if (((inputH == ksizeH) && (inputW == ksizeW)) || output_w == 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "avgpool is global, graph not changed.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "avgpool is global or output_w=1, graph not changed.");
     return NOT_CHANGED;
   }
 

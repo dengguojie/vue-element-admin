@@ -43,8 +43,6 @@ CUSTOM_TILING_TYPE = 4
 COST_TILING_TYPE = 5
 TUNING_TILING_TYPE = 6
 
-DECONV_RELU_FUSION_TYPE = 3
-
 # define the support tiling type
 SUPPORT_TILING_TYPE = {
     "auto_tiling": AUTO_TILING_TYPE,
@@ -97,26 +95,6 @@ def bank_cache_get(info_dict):
         return False, {}
 
 
-def adjust_params(info_dict):
-    """use strideh to instead fusion_type for deconv & relu
-
-    Parameters
-    ----------
-    info_dict: the params of op
-
-    Returns
-    -------
-    info_dict
-    """
-    if info_dict.get("op_type") == "conv2d_backprop_input":
-        stride_h = info_dict.get("fusion_type", 0)
-        if stride_h == DECONV_RELU_FUSION_TYPE:
-            info_dict["strideH"] = stride_h
-        else:
-            info_dict["strideH"] = 1
-    return info_dict
-
-
 def get_tiling(info_dict):
     """Get the tiling from module
 
@@ -133,7 +111,6 @@ def get_tiling(info_dict):
     # check the params
     check_params(info_dict)
     op_type = copy.deepcopy(info_dict.get("op_type"))
-    info_dict = adjust_params(info_dict)
     tiling_type = info_dict.get("tiling_type")
     dynamicShapeFlag = info_dict.get("dynamic_shape_flag")
     if tiling_type not in [None, "cost_model_tiling"]:

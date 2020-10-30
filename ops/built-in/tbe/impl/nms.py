@@ -702,18 +702,31 @@ def nms_output_tiling_postproposal(tik_instance, inputs, input_index,
             tiling*16*8*size//32, 0, 0)
         post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub,
                                   tiling)
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+            src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
+            to_dst_scalar = tik_instance.Scalar(dtype="float32")
+            dst_scalar = tik_instance.Scalar(dtype="float16")
+            tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
+            tik_instance.scalar_conv('', dst_scalar, to_dst_scalar)
+            with tik_instance.for_range(0, tiling*16) as i:
+                new_ret_ub[i, 5].set_as(dst_scalar)
+            src_scalar.set_as(real_batch_index)
+            tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
+            tik_instance.scalar_conv('', dst_scalar, to_dst_scalar)
+            with tik_instance.for_range(0, tiling*16) as i:
+                new_ret_ub[i, 6].set_as(dst_scalar)
 
         # need to do float32
-        temp = class_index
-        temp_dup = tik_instance.Tensor("int32", (tiling*16,), name="temp_dup",
+        else:
+            temp = class_index
+            temp_dup = tik_instance.Tensor("int32", (tiling*16,), name="temp_dup",
                                        scope=tik.scope_ubuf)
+            vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
+            vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 5)
 
-        vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
-        vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 5)
-
-        temp = real_batch_index
-        vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
-        vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6)
+            temp = real_batch_index
+            vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
+            vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6) 
 
         tik_instance.data_move(new_ret_ub[0], ret_ub[0, 0], 0, tiling,
                                ratio, 0, 15*ratio)
@@ -789,14 +802,28 @@ def nms_output_tiling_tail_postproposal(tik_instance, inputs, input_index,
     post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub,
                               tiling)
 
-    temp = class_index
-    temp_dup = tik_instance.Tensor("int32", (tiling*16,),
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
+        to_dst_scalar = tik_instance.Scalar(dtype="float32")
+        dst_scalar = tik_instance.Scalar(dtype="float16")
+        tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
+        tik_instance.scalar_conv('', dst_scalar, to_dst_scalar)
+        with tik_instance.for_range(0, tiling*16) as i:
+            new_ret_ub[i, 5].set_as(dst_scalar)
+        src_scalar.set_as(real_batch_index)
+        tik_instance.scalar_conv('', to_dst_scalar, src_scalar)
+        tik_instance.scalar_conv('', dst_scalar, to_dst_scalar)
+        with tik_instance.for_range(0, tiling*16) as i:
+            new_ret_ub[i, 6].set_as(dst_scalar)
+    else:
+        temp = class_index
+        temp_dup = tik_instance.Tensor("int32", (tiling*16,),
                                    name="temp_dup", scope=tik.scope_ubuf)
-    vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
-    vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 5)
-    temp = real_batch_index
-    vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
-    vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6)
+        vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
+        vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 5)
+        temp = real_batch_index
+        vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
+        vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6)
 
     for i in range(7):
         tik_instance.data_move(new_ret_ub[i*16], ret_ub[i, 0], 0, tiling,

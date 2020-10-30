@@ -13,8 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """
-relu6
-f(x) = min(max(0,x), 6)
+relu6_d
+f(x) = min(max(0,x), 6*scale)
 """
 
 import functools
@@ -24,6 +24,7 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import operate_shape
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument
@@ -79,7 +80,8 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
 
     vmaxs_support = tbe_platform.api_check_support("te.lang.cce.vmaxs", "float32")
     if input_dtype == "float32" and not vmaxs_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ("int32", "float16"),
+                                                                 input_dtype)
 
     # check input tensor data_type
     check_list = ("int32", "float16", "float32")

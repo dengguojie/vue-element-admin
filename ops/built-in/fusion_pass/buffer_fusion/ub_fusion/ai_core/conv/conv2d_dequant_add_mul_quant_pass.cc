@@ -54,9 +54,9 @@ vector<BufferFusionPattern*> TbeConv2DAddMulQuantPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
   string pass_name1 = "TbeConv2DAddMutioutQuantFusion";
   BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
-  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "create new pattern failed."),
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(fused_op_type_.c_str(), "create new pattern failed."),
                     return patterns);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   pattern1->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternDeq, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternAdd, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -72,7 +72,7 @@ vector<BufferFusionPattern*> TbeConv2DAddMulQuantPass::DefinePatterns() {
       .SetOutputs(kPatternOtherInput1, {kPatternAdd})
       .SetOutputs(kPatternAdd, {kPatternQuant, kPatternOutput1, kPatternOutput2}, TBE_OUTPUT_BRANCH_MULTI);
   patterns.push_back(pattern1);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
 
   return patterns;
 }
@@ -84,7 +84,7 @@ vector<BufferFusionPattern*> TbeConv2DAddMulQuantPass::DefinePatterns() {
  * @return bool: fusion status ok or not.
  */
 Status TbeConv2DAddMulQuantPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do Conv2DAddMulQuant!");
+  OP_LOGD(fused_op_type_.c_str(), "Begin to do Conv2DAddMulQuant!");
   fusion_nodes = GetMatchedNodes(mapping);
   // the outputData can't be fusd
   for (auto& item : mapping) {
@@ -97,7 +97,7 @@ Status TbeConv2DAddMulQuantPass::GetFusionNodes(const BufferFusionMapping& mappi
       }
     }
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do Conv2DAddMulQuant!");
+  OP_LOGD(fused_op_type_.c_str(), "End to do Conv2DAddMulQuant!");
 
   return SUCCESS;
 }

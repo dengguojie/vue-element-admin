@@ -34,23 +34,23 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
     OP_LOGE("Gemm", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
-  bool transA = false;
+  bool trans_a = false;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "transA" && attr.i() != 0) {
-      transA = true;
+      trans_a = true;
       break;
     }
   }
-  bool transB = false;
+  bool trans_b = false;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "transB" && attr.i() != 0) {
-      transB = true;
+      trans_b = true;
       break;
     }
   }
 
-  op_dest.SetAttr("transpose_x1", transA);
-  op_dest.SetAttr("transpose_x2", transB);
+  op_dest.SetAttr("transpose_x1", trans_a);
+  op_dest.SetAttr("transpose_x2", trans_b);
 
   return SUCCESS;
 }

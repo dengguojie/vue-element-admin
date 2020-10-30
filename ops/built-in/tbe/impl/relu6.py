@@ -75,8 +75,8 @@ def relu6(input_x, output_y, kernel_name="relu6"):
     para_check.check_shape(input_shape, param_name="input_x")
 
     vmaxs_support = tbe_platform.api_check_support("te.lang.cce.vmaxs", "float32")
-    if input_dtype == "float32" and not vmaxs_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+    if not vmaxs_support:
+        para_check.check_dtype(input_dtype, ("int32", "float16"), param_name="input_x")
 
     # check input tensor data_type
     check_list = ("int32", "float16", "float32")

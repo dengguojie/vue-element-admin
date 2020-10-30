@@ -27,7 +27,15 @@ def _ceil_div(val, block):
     :param block
     :return: (val + block - 1) // block
     """
-    return (val + block - 1) // block
+    if block:
+        return (val + block - 1) // block
+    dict_args = {
+        'errCode': 'E67006',
+        'op_name': 'depthwise_conv2d',
+        'param_name': 'block'
+    }
+    raise RuntimeError(dict_args,
+                       error_manager_util.get_error_message(dict_args))
 
 
 def _ceil_fill(val, block):
@@ -236,8 +244,7 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
         :param channel0_num : channel0 num
         :param offset : offset of data
         """
-        with params.ib_.for_range(0,
-                                  channel0_num,
+        with params.ib_.for_range(0, channel0_num,
                                   for_type="serial",
                                   name="c0_index") as c0_index:
             input_offset = (
@@ -336,25 +343,10 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
     return True
 
 
-# pylint: disable=locally-disabled,too-many-statements
-def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
+def _check_params(len_params, channel0, params):
     """
-    :param six2four : six2four parameters
-    :param input_gm : input gm
-    :param output_gm : segment gm
-    :param params : parameters
+    check params valid
     """
-    channel1, hight, weight, channel0 = six2four.get_hwc()
-    channel = six2four.channel
-    len_params = {}
-    len_params["total_element"] = hight * weight * channel1
-
-    len_params["input_data_len"] = _prod(six2four.input_shape)
-    len_params["input_block_len"] = _ceil_fill(
-        params.unified_buffer_len // 3 * 2, params.vec_align_len)
-
-    len_params["one_output_num"] = (params.unified_buffer_len - _ceil_fill(
-        len_params["input_block_len"], params.vec_align_len)) // channel0
     if len_params["one_output_num"] <= 0:
         dict_args = {
             'errCode': 'E67008',
@@ -376,6 +368,29 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         raise RuntimeError(
             dict_args,
             error_manager_util.get_error_message(dict_args))
+    return len_params
+
+
+# pylint: disable=locally-disabled,too-many-statements
+def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
+    """
+    :param six2four : six2four parameters
+    :param input_gm : input gm
+    :param output_gm : segment gm
+    :param params : parameters
+    """
+    channel1, hight, weight, channel0 = six2four.get_hwc()
+    channel = six2four.channel
+    len_params = {}
+    len_params["total_element"] = hight * weight * channel1
+
+    len_params["input_data_len"] = _prod(six2four.input_shape)
+    len_params["input_block_len"] = _ceil_fill(
+        params.unified_buffer_len // 3 * 2, params.vec_align_len)
+
+    len_params["one_output_num"] = (params.unified_buffer_len - _ceil_fill(
+        len_params["input_block_len"], params.vec_align_len)) // channel0
+    len_params = _check_params(len_params, channel0, params)
 
     def _data_copy(c1_index, block_index, input_hw, channel0_num, offset):
         """
@@ -385,8 +400,7 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         :param channel0_num : channel0 num
         :param offset : offset of data
         """
-        with params.ib_.for_range(0,
-                                  channel0_num,
+        with params.ib_.for_range(0, channel0_num,
                                   for_type="serial",
                                   name="c0_index") as c0_index:
             input_offset = (
@@ -680,9 +694,8 @@ def _check_parameters(x, y, src_format, dst_format):
                 dict_args,
                 error_manager_util.get_error_message(dict_args))
 
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-
-
 @check_para.check_op_params(check_para.REQUIRED_INPUT,
                             check_para.REQUIRED_OUTPUT,
                             check_para.REQUIRED_ATTR_STR,

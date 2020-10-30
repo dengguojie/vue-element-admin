@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # 16, 32B = 16 * sizeof(float16)
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -183,10 +184,12 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
         _, kernel_h, kernel_w, _ = ksize
         _, stride_h, stride_w, _ = strides
     else:
-        raise RuntimeError("ori_format only supports 'NHWC' or 'NCHW'.")
+        error_manager_vector.raise_err_input_format_invalid("max_pool_grad_grad_with_argmax", "x", ('NHWC', 'NCHW'),
+                                                            ori_format_x)
 
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("Padding must be SAME or VALID.")
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_grad_with_argmax", "padding",
+                                                           ("SAME", "VALID"), padding)
 
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape_argmax, param_name="argmax")
@@ -220,14 +223,15 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
             output_size = (input_size + stride - 1) // stride
             padding_needed = (output_size - 1) * stride + effective_kernel_size - input_size
             if padding_needed < 0:
-                raise RuntimeError("Not supported shape.")
+                error_manager_vector.raise_err_specific_reson('max_pool_grad_grad_with_argmax', "Not supported shape.")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
     if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (shape_max_pool_h != 1
                                                                                or shape_max_pool_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
-            raise RuntimeError("Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w"
-                               " >= stride_w")
+            error_manager_vector.raise_err_specific_reson(
+                "max_pool_grad_grad_with_argmax",
+                "Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w")
 
     shape_max_pool = (fmap_n, fmap_c1, shape_max_pool_h, shape_max_pool_w, fmap_c0)
 
@@ -240,22 +244,43 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
                              (shape_max_pool[2] * shape_max_pool[3] + 31) // 16 * 16, 1)
 
     if list(shape_x) != list(shape_grad):
-        raise RuntimeError("shape_x and shape_grad must be equal.")
-
+        error_manager_vector.raise_err_inputs_shape_not_equal("max_pool_grad_grad_with_argmax", "x", "grad", shape_x,
+                                                              shape_grad, shape_x)
     if list(shape_y) != list(shape_max_pool):
-        raise RuntimeError("shape_y and shape_max_pool must be equal.")
-
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_grad_with_argmax", "y.shape", shape_max_pool,
+                                                           shape_y)
     if list(expect_shape_argmax_1) != list(shape_argmax) and list(expect_shape_argmax_2) != list(shape_argmax):
-        raise RuntimeError("shape_argmax not support.")
+        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad_with_argmax', "shape_argmax not support.")
 
-    if kernel_h <= 0 or kernel_w <= 0 or stride_h <= 0 or stride_w <= 0:
-        raise RuntimeError("kernel_h <= 0 or kernel_w <= 0 or stride_h <= 0 or stride_w <= 0")
+    if stride_h > 63 or stride_h < 1 or stride_w > 63 or stride_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad_with_argmax', "strides", 1, 63,
+                                                                strides)
+    if kernel_h > 255 or kernel_h < 1 or kernel_w > 255 or kernel_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad_with_argmax', "ksize", 1, 255,
+                                                                ksize)
 
-    if len(shape_x) != 5 or len(shape_grad) != 5 or len(shape_y) != 5 or len(shape_argmax) != 5:
-        raise RuntimeError("the length of shape must be 5!")
+    def _check_5hd(param, shape_length):
+        if shape_length != 5:
+            error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad_with_argmax', param, 5, 5,
+                                                                     shape_length)
 
-    if shape_x[4] != 16 or shape_y[4] != 16 or shape_grad[4] != 16 or (shape_argmax[4] != 16 and shape_argmax[4] != 1):
-        raise RuntimeError("c0 of x, grad, y must be 16, c0 of argmax must be 1 or 16")
+    _check_5hd('x', len(shape_x))
+    _check_5hd('grad', len(shape_grad))
+    _check_5hd('y', len(shape_y))
+    _check_5hd('argmax', len(shape_argmax))
+
+    def _check_last_dim(param, shape):
+        if shape[4] != 16:
+            error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad_with_argmax',
+                                                              'the last dimension must be equal to 16', param, shape)
+
+    _check_last_dim("x", shape_x)
+    _check_last_dim("y", shape_y)
+    _check_last_dim("grad", shape_grad)
+    if shape_argmax[4] != 16 and shape_argmax[4] != 1:
+        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad_with_argmax',
+                                                          'the last dimension must be equal to 16 or 1', "argmax",
+                                                          shape_argmax)
 
     return shape_max_pool, pad_list
 
@@ -514,10 +539,10 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
 
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
             is_l0_ub_double_buffer) == (False, None, None, None, None):
-        raise RuntimeError(
-            "Not supported fmap shape = (%u, %u, %u, %u, %u), kernel = (1, %u, %u, 1), stride = (1, %u, %u, 1)" %
-            (fmap_shape[0], fmap_shape[1], fmap_shape[2], fmap_shape[3], fmap_shape[4], kernel_h, kernel_w, stride_h,
-             stride_w))
+        error_manager_vector.raise_err_specific_reson(
+            'max_pool_grad_grad_with_argmax',
+            "Not supported fmap shape = %s, kernel = (1, %u, %u, 1), stride = (1, %u, %u, 1)" %
+            (fmap_shape, kernel_h, kernel_w, stride_h, stride_w))
 
     _, _, l1_hi, l1_wi, _ = shape_in_l1
 

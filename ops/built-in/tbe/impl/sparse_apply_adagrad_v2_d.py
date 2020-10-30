@@ -17,6 +17,7 @@ sparse_apply_adagrad_v2_d
 """
 from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 class SparseApplyAdagrad(SparseApply):
@@ -72,7 +73,8 @@ class SparseApplyAdagrad(SparseApply):
         para_check.check_dtype(self.accum_dtype, ("float32", ), param_name="accum")
 
         if self.accum_shape != self.var_shape:
-            raise RuntimeError("accum's shape must be the same as var's shape")
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_adagrad_v2_d", "accum", "var",
+                                                                  self.accum_shape, self.var_shape, self.var_shape)
 
     def _calculate(self, repeat_times, mask, offset):
         """

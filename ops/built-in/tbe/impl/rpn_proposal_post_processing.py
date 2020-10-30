@@ -42,10 +42,12 @@ CONFIG_SEVEN = 7
 CONFIG_EIGHT = 8
 CONFIG_NINE = 9
 CONFIG_TEN = 10
+CONFIG_ELEVEN = 11
 CONFIG_TWELEV = 12
 CONFIG_SIXTEEN = 16
 CONFIG_DATA_ALIGN = 32
 CONFIG_DATA_TRANS = 64
+CONFIG_NINETINESIX = 96
 CONFIG_MASK = 128
 CONFIG_UNIT = 1024
 MATRIX = 256
@@ -56,7 +58,7 @@ CONFIG_LEN = 1536
 # 1MB can save 1024*1024/16 = 65536 proposals
 L1_MAX_NUM = 46080
 CONFIG_FP16 = 65404
-IF_USE_V200 = ("Ascend610", "Ascend710")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
 
 
 def ceil_div(num_a, num_bulk):
@@ -1090,7 +1092,58 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                                ceil_div(num_post_nms, CONFIG_MASK)*CONFIG_DATA_TRANS,
                                0, 0)
 
+def local_v4dtrans(tik_inst, dst, src, num):
+    """
+    transpose 4*num to num*4
+    where num is times of 16
+    only support float16
+    dst:  num*4
+    src: 4*num
 
+    """
+
+    with tik_inst.new_stmt_scope():
+        temp_src = tik_inst.Tensor("float16",
+                                   (CONFIG_TWELEV, num),
+                                   name="temp_src",
+                                   scope=tik.scope_ubuf)
+        tik_inst.vector_dup(CONFIG_NINETINESIX, temp_src, 0,
+                            num // CONFIG_EIGHT, CONFIG_ONE, CONFIG_SIX)
+        temp_tensor = tik_inst.Tensor("float16",
+                                      (num, CONFIG_SIXTEEN),
+                                      name="temp_tensor",
+                                      scope=tik.scope_ubuf)
+
+        src_list = [src[0, 0], temp_src[0, 0], temp_src[CONFIG_ONE, 0],
+                    temp_src[CONFIG_TWO, 0], src[CONFIG_ONE, 0],
+                    temp_src[CONFIG_THREE, 0], temp_src[CONFIG_FOUR, 0],
+                    temp_src[CONFIG_FIVE, 0], src[CONFIG_TWO, 0],
+                    temp_src[CONFIG_SIX, 0], temp_src[CONFIG_SEVEN, 0],
+                    temp_src[CONFIG_EIGHT, 0], src[CONFIG_THREE, 0],
+                    temp_src[CONFIG_NINE, 0], temp_src[CONFIG_TEN, 0],
+                    temp_src[CONFIG_ELEVEN, 0]]
+        dst_list = [temp_tensor[CONFIG_SIXTEEN * i]
+                    for i in range(CONFIG_SIXTEEN)]
+
+        if num == CONFIG_SIXTEEN:
+            tik_inst.vnchwconv(True, True,
+                               dst_list,
+                               src_list,
+                               CONFIG_ONE, 0, 0)
+        else:
+            tik_inst.vnchwconv(True, True,
+                               dst_list,
+                               src_list,
+                               num // CONFIG_SIXTEEN,
+                               CONFIG_SIXTEEN,
+                               CONFIG_ONE)
+
+        tik_inst.vreduce(CONFIG_MASK,
+                         dst,
+                         temp_tensor,
+                         CONFIG_THREE,
+                         num // CONFIG_EIGHT,
+                         CONFIG_ONE, CONFIG_EIGHT, 0)
 # =========>  NMS  here
 def nms_local(tik_instance, data_tensor, input_param):
     """
@@ -1414,7 +1467,7 @@ def nms_local(tik_instance, data_tensor, input_param):
                     with tik_instance.if_scope((burst_index + CONFIG_ONE)*CONFIG_MASK >
                                                actual_input_nms_num):
                         flag_tensor = tik_instance.Tensor("uint16",
-                                                          (1, 8),
+                                                          (CONFIG_ONE, CONFIG_EIGHT),
                                                           name="flag_tensor",
                                                           scope=tik.scope_ubuf)
                         tik_instance.vcmpv_gt(flag_tensor,
@@ -1497,7 +1550,7 @@ def nms_local(tik_instance, data_tensor, input_param):
 
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:
         data_y_last = tik_instance.Tensor("float16",
-                                          [post_nms_num, CONFIG_FOUR],
+                                          [CONFIG_FOUR, post_nms_num],
                                           name="data_y_last",
                                           scope=tik.scope_ubuf)
         # extract front 4*post_nms_num from 4*224
@@ -1524,11 +1577,17 @@ def nms_local(tik_instance, data_tensor, input_param):
                                post_nms_num//CONFIG_SIXTEEN,
                                CONFIG_SIXTEEN - CONFIG_TWO)
         # transpose 4*post_nms_num to post_nms_num*4
-        tik_instance.v4dtrans(True,
-                              selected_reduced_coord_ub,
-                              data_y_last,
-                              post_nms_num,
-                              CONFIG_FOUR)
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend610":
+            tik_instance.v4dtrans(True,
+                                  selected_reduced_coord_ub,
+                                  data_y_last,
+                                  post_nms_num,
+                                  CONFIG_FOUR)
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend615":
+            local_v4dtrans(tik_instance,
+                           selected_reduced_coord_ub,
+                           data_y_last,
+                           post_nms_num)
     # copy data to gm
     tik_instance.data_move(data_y_gm,
                            selected_reduced_coord_ub,
@@ -1756,7 +1815,7 @@ def check_input_dict(dict_list, param_list):
         """
         n_x = CONFIG_ONE
         if len(input_shape) > CONFIG_ONE:
-            if input_shape[-1] != shape_para:
+            if input_shape[CONFIG_ONE_NEG] != shape_para:
                 raise RuntimeError("The last dimension of %s should be %d!" %
                                    (input_name, shape_para))
 

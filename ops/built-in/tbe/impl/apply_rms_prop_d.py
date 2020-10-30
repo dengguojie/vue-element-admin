@@ -23,6 +23,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
@@ -83,10 +84,18 @@ def _get_placeholder(dict_list, name_list):
         dtype = var.get('dtype').lower()
         if name == 'var':
             var_shape = list(shape)
-        if name != 'lr' and var_shape != list(shape):
-            raise RuntimeError("The shape of var, ms, mom, grad must be equal.")
+        if name == 'ms' and var_shape != list(shape):
+            error_detail = "the shape of var and ms must be equal"
+            error_manager_vector.raise_err_two_input_shape_invalid("apply_rms_prop_d", "var", "ms", error_detail)
+        if name == 'mom' and var_shape != list(shape):
+            error_detail = "the shape of var and mom must be equal"
+            error_manager_vector.raise_err_two_input_shape_invalid("apply_rms_prop_d", "var", "mom", error_detail)
+        if name == 'grad' and var_shape != list(shape):
+            error_detail = "the shape of var and grad must be equal"
+            error_manager_vector.raise_err_two_input_shape_invalid("apply_rms_prop_d", "var", "grad", error_detail)
         if name == 'lr' and shape[0] != 1:
-            raise RuntimeError("The shape of lr must be scalar.")
+            error_detail = "the shape of lr must be scalar"
+            error_manager_vector.raise_err_input_shape_invalid("apply_rms_prop_d", "lr", error_detail)
 
         para_check.check_dtype(dtype, ('float32', ), param_name="var")
         para_check.check_shape(shape)

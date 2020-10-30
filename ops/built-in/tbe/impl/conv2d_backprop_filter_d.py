@@ -81,9 +81,9 @@ CONV1D_MAX_W = 2147483647
     para_check.REQUIRED_ATTR_LIST_INT,
     para_check.REQUIRED_ATTR_LIST_INT,
     para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_INT,
-    para_check.REQUIRED_ATTR_STR,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
     para_check.KERNEL_NAME,
 )
 def conv2d_backprop_filter_d(
@@ -94,7 +94,7 @@ def conv2d_backprop_filter_d(
     strides,
     pads,
     dilations=(1, 1, 1, 1),
-    groups=None,
+    groups=1,
     data_format="NHWC",
     kernel_name="conv2d_backprop_filter",
 ):
@@ -104,35 +104,37 @@ def conv2d_backprop_filter_d(
     Parameters
     ----------
     x: dict with keys(shape and dtype)
-       input feature map tensor
+        input feature map tensor.
 
     out_backprop: dict with keys(shape and dtype)
-                  input weight tensor
+        input weight tensor.
 
     y: dict with keys(shape and dtype)
-       output tensor, dtype must be assigned
+        output tensor, dtype must be assigned.
 
-    filter_size: The shape of filter.
-                  4-D with shape [batch, channels, height, weight].
+    filter_size: tuple/list of 4 integers
+        The shape of filter. 4-D with shape [filter_height, filter_width, in_channels,
+        out_channels] or [out_channels, filter_height, filter_width, in_channels] or
+        [out_channels, in_channel, filter_height, filter_width].
 
     strides: tuple/list of 2 integers
-             filter move stride
+        filter move stride.
 
     pads: string of "SAME" or "VAILD"
-             [pad_top, pad_bottom, pad_left, pad_right]
+        [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_filter
+        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
 
     groups: int
-            param for group conv2d_backprop_filter
+        param for group conv2d_backprop_filter. Default to 1.
 
     data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
 
     kernel_name: str
-                 kernel name, default value is "conv2d_backprop_filter"
+        kernel name. Default to "conv2d_backprop_filter".
 
     Returns
     -------
@@ -326,30 +328,26 @@ def check_conv2dbp_filter_params(
 
     Parameters:
     ----------
-    shape_x : The shape of feature map,
-              which is 4-D [batch, channels, height, weight].
+    shape_x: The shape of feature map, which is 4-D [batch, channels, height, weight].
 
-    shape_out_backprop : The shape of gradients,
-                         which is 4-D [batch, channels, height, weight].
+    shape_out_backprop: The shape of gradients, which is 4-D [batch, channels, height,
+        weight].
 
-    filter_sizes : The shape of filter.
-                   which is 4-D [batch, channels, height, weight].
+    filter_sizes: The shape of filter, which is 4-D [batch, channels, height, weight].
 
-    strides : The stride of the sliding window. A list of ints.
+    strides: The stride of the sliding window. A tuple/list of ints.
 
-    pads : "SAME"or"VALID",
-           indicating the type of pads algorithm to use, or list.
+    pads: "SAME"or"VALID", indicating the type of pads algorithm to use, or tuple/list.
 
-    dilations : An optional list of ints. Default value is [1, 1, 1, 1].
+    dilations: An optional tuple/list of ints.
 
-    x_dtype : Fmeature map  data dtype. Default value is float16.
+    x_dtype: Fmeature map data dtype.
 
-    out_backprop_dtype : Gradients data dtype. Default value is float16.
+    out_backprop_dtype: Gradients data dtype.
 
-    res_dtype : Result(De/Dw) data dtype. Default value is float32.
+    res_dtype: Result(De/Dw) data dtype.
 
-    kernel_name : Kernel name of cce.
-                  Default value is "conv2d_backprop_filter_cce"
+    kernel_name: Kernel name of cce.
 
     Returns : All transformed params.
     ----------
@@ -719,33 +717,26 @@ def _conv2d_backprop_filter_cce(
 
     Parameters:
     ----------
-    shape_x : The shape of feature map.
-              4-D with shape [batch, channels, height, weight].
+    shape_x: The shape of feature map. 4-D with shape [batch, channels, height, weight].
 
-    shape_out_backprop : The shape of gradients.
-                         4-D with shape [batch, channels, height, weight].
+    shape_out_backprop: The shape of gradients. 4-D with shape [batch, channels, height,
+        weight].
 
-    filter_sizes : The shape of filter.
-                   4-D with shape [batch, channels, height, weight].
+    filter_sizes: The shape of filter. 4-D with shape [batch, channels, height, weight].
 
-    strides : A list of ints. The stride of the sliding window.
+    strides: A tuple/list of ints. The stride of the sliding window.
 
-    pads : "SAME"or"VALID",
-           indicating the type of pads algorithm to use, or list.
+    pads: "SAME"or"VALID", indicating the type of pads algorithm to use, or tuple/list.
 
-    dilations : An optional list of ints. Default value is [1, 1, 1, 1].
+    dilations: An optional tuple/list of ints. Default to (1, 1, 1, 1).
 
-    x_dtype : The dtype of feature map data. Default value is float16.
+    x_dtype: The dtype of feature map data. Default to float16.
 
-    out_backprop_dtype : The dtype of gradients data.
-                         Default value is float16.
+    out_backprop_dtype: The dtype of gradients data. Default to float16.
 
-    res_dtype : The dtype of result(De/Dw) data. Default value is float32.
+    res_dtype: The dtype of result(De/Dw) data. Default to float32.
 
-    kernel_name : Cce kernel name.
-                  Default value is "conv2d_backprop_filter_cce"
-
-    need_build : If need to build CCEC kernel. Default value is False.
+    kernel_name: Cce kernel name. Default to "conv2d_backprop_filter_cce".
 
     Returns : None
     ----------

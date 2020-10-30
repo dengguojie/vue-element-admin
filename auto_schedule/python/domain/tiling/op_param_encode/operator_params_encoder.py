@@ -63,12 +63,6 @@ class BaseClassParamsEncoder():
         # the level of fm valid size is designed as 1\2\3
         self.input_data_level = {1: 1, 0.75: 2, 0.5: 3}
 
-        # Define the c04 mode in ascend610, ascend710 and hi3796CV300cs
-        # 0 represent for default mode
-        # 1 represent for v100 c04 mode
-        # 2 represent for v200 c04 mode
-        self.c04_mode = [0, 1, 2]
-
     def check_param_type(self, param, type_list):
         """check whether the type of param is correct
 

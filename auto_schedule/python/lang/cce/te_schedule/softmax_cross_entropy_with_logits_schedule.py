@@ -436,6 +436,10 @@ def get_npart_factor(n_h_w, dtype_bytes, block_dim):
     else:
         npart_factor = n_h_w*dtype_bytes // 32
 
+    if block_dim == 30:
+        while n_h_w % npart_factor != 0:
+            npart_factor -= 1
+
     return npart_factor
 
 
@@ -457,9 +461,7 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
     :param res: res tensor, include two tensor
     :return: sch
     '''
-    # pylint: too-many-locals,
-    # pylint: too-many-branches
-    # pylint: too-many-statements
+    # pylint: too-many-locals,too-many-branches,too-many-statements
     output_loss = res[0]
     output_backprop = res[1]
     shape = [var.value for var in output_backprop.shape]

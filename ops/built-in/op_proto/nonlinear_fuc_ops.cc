@@ -322,8 +322,8 @@ IMPLEMT_VERIFIER(Relu6D, Relu6DVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter Relu6D verifyFunction!");
 
   // check input const attr for scale
-  std::vector<float> constAttr;
-  if (!GetConstAttr(op, {"scale"}, constAttr)) {
+  std::vector<float> const_attr;
+  if (!GetConstAttr(op, {"scale"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
   }
 
@@ -350,7 +350,6 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidGradInferShape)
   DataType input_dtype = op.GetInputDesc("y").GetDataType();
   std::vector<std::pair<int64_t, int64_t>> shape_range_y;
   op.GetInputDesc("y").GetShapeRange(shape_range_y);
-
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
   tensordesc_output.SetShape(shape_x);
   tensordesc_output.SetDataType(input_dtype);

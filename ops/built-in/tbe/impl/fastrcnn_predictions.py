@@ -35,7 +35,7 @@ MAXTRIX = 256
 
 DOWN_FACTOR = 0.05
 REC_FACTOR = 1/DOWN_FACTOR
-IF_USE_V200 = ("Ascend610", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS")
 
 
 def ceil_div(divisor_a, divisor_b):

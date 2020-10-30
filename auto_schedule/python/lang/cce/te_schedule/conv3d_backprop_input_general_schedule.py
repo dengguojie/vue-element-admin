@@ -131,8 +131,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             bl1_at_l0c_axis, al1_at_l0c_axis = c_col_k_outer_outer_inner, c_col_k_outer_outer_outer
             if kd_reduce_flag:
                 sch[c_col].reorder(
-                    c_col_k_outer_outer_outer,
                     reduce_axis_kd_outer_outer,
+                    c_col_k_outer_outer_outer,
                     c_col_k_outer_outer_inner,
                     c_col_k_outer_inner, c_col_m_outer)
             else:
@@ -536,7 +536,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if not tiling['AL1_shape']:
             sch[a_l1].compute_at(sch[c_ddr], c_ddr_deep_outer)
             sch[a_col_before].compute_at(sch[c_ddr], c_ddr_deep_outer)
-        elif al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0:
+        elif ((kd_reduce_flag is False) and
+            al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0):
             sch[a_l1].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
             sch[a_col_before].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
         else:

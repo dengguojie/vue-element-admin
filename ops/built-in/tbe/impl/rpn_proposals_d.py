@@ -52,7 +52,7 @@ CONFIG_UNIT = 1024
 MATRIX = 256
 MAX_REP_TIME = 255
 CONFIG_SCORE_THRESHOLD = 0
-IF_USE_V200 = ("Ascend610", "Ascend710")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
 
 
 def ceil_div(num_a, num_bulk):

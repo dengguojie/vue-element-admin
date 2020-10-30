@@ -42,8 +42,6 @@ set(_op_proto_srcs
   aipp.cc
   array_ops.cc
   audio_ops.cc
-  avg_pool_v2.cc
-  avg_pool_v2_grad.cc
   batch_ops.cc
   bitwise_ops.cc
   boosted_trees_ops.cc
@@ -67,8 +65,6 @@ set(_op_proto_srcs
   lookup_ops.cc
   math_ops.cc
   matrix_calculation_ops.cc
-  max_pool_v3.cc
-  max_pool_v3_grad.cc
   nn_batch_norm_ops.cc
   nn_calculation_ops.cc
   nn_detect_ops.cc
@@ -113,7 +109,7 @@ set(_op_proto_srcs
 add_library(opsproto SHARED
    ${_op_proto_srcs}
    ${_op_proto_utils}
-   ${_proto_cc}
+   ${_proto_h}
 )
 
 target_include_directories(opsproto PRIVATE
@@ -121,14 +117,13 @@ target_include_directories(opsproto PRIVATE
   inc
   ${CANN_ROOT}/ops
   ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/inc
-  ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/inc/external/graph
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef
   ${CANN_ROOT}/third_party/metadef/inc
   ${CANN_ROOT}/third_party/metadef/inc/external
   ${CANN_ROOT}/third_party/metadef/inc/external/graph
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
   ${_proto_include}
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}

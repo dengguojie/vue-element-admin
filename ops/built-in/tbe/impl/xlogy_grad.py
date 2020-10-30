@@ -20,6 +20,7 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import operate_shape
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=invalid-name
@@ -76,8 +77,7 @@ def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
 
     fp32_support = tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")
     if dtype == "float32" and not fp32_support:
-        raise RuntimeError("Don't support float32 in the platform.")
-
+        para_check.check_dtype(dtype, ("float16", ), param_name="x1")
     if dtype == "float16" and fp32_support:
         x1 = tbe.cast_to(x1_ori, "float32")
         x2 = tbe.cast_to(x2_ori, "float32")
@@ -143,8 +143,13 @@ def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
     dtype_x2 = x2.get("dtype")
     shape_grad = grad.get("shape")
     dtype_grad = grad.get("dtype").lower()
-    if dtype_x1 != dtype_x2 or dtype_x2 != dtype_grad or dtype_grad != dtype_x1:
-        raise RuntimeError("the type of x1, x2 and grad must be same")
+
+    if dtype_x1 != dtype_x2:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "x2", dtype_x1, dtype_x2)
+    if dtype_x1 != dtype_grad:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "grad", dtype_x1, dtype_grad)
+    if dtype_x2 != dtype_grad:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x2", "grad", dtype_x2, dtype_grad)
 
     para_check.check_shape(shape_x1, param_name="x1")
     para_check.check_shape(shape_x2, param_name="x2")
@@ -153,13 +158,15 @@ def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
     shape_x1, shape_x2, shape_max_x1x2 = operate_shape.produce_shapes(shape_x1, shape_x2)
     if len(shape_max_x1x2) < len(shape_grad):
-        raise RuntimeError("the length of shape_grad can not be longer than the maximum length of x1 and x2")
+        error_manager_vector.raise_err_input_shpae_invalid(
+            kernel_name, "grad", "the length of shape_grad can not be longer than the maximum length of x1 and x2.")
 
     shape_grad, _, shape_max = operate_shape.produce_shapes(shape_grad, shape_max_x1x2)
 
     for (x, y) in zip(shape_max_x1x2, shape_grad):
         if x < y:
-            raise RuntimeError("input shapes are not supported")
+            error_manager_vector.raise_err_input_shpae_invalid(
+                kernel_name, "grad", "the dim of grad's shape can not be bigger than the maximum dim of x1 and x2.")
 
     para_check.check_shape(shape_max)
     rx, ry = broadcast_gradient_args(shape_x1, shape_x2)

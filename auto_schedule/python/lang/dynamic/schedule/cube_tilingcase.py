@@ -33,6 +33,7 @@ class CubeTilingOp:
 
         self.key = None
         self.dynamic_mode = dynamic_mode
+        self.op_type = None
 
     def _convert_type(self, *info_items):
         """
@@ -84,7 +85,9 @@ class TilingSelection:
         if self.op.dynamic_mode == "dynamic_hw":
             tiling_cases = self._calc_hw(tgt_area)
         elif self.op.dynamic_mode == "dynamic_batch":
-            tiling_cases = self._calc_batch(tgt_area)
+            batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
+            batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
+            tiling_cases = batch_func(tgt_area)
         else:
             raise RuntimeError("Only dynamic_hw/dynamic_batch is supported")
 
@@ -195,6 +198,71 @@ class TilingSelection:
                         for k, v in repo_selections.items()]
         return tiling_cases
 
+    def _calc_batch_v2(self, tgt_area):
+        """
+        for some op_type, dynamic batch tiling have restricted coverage
+        """
+        batch_range = tuple(tgt_area[0])
+        tiling_seeds = self.op.get_repo_tiling()
+
+        # get tiling range
+        candidates = []
+        seed_points = set()
+        for seed in tiling_seeds:
+            seed_n = seed[self.op.key][0]
+            seed_range = self.op.get_batch_range(
+                seed['tiling'], seed[self.op.key])
+            if seed_n < batch_range[0] or seed_n > batch_range[1] or \
+                    seed_n in seed_points:
+                continue
+            seed_points.add(seed_n)
+            candidates.append((seed_range, seed['tiling'], seed_n))
+        candidates.sort(key=lambda x: x[2])
+
+        # add sentinel seed
+        sentinel_seed = (None, None, batch_range[1] + 1)
+        candidates.append(sentinel_seed)
+
+        tiling_selections = {}
+        cost_cases = deque()
+        lower_bound = batch_range[0]
+        for i, seed in enumerate(candidates[:-1]):
+            lower_covered, upper_covered = seed[0]
+            if lower_covered > lower_bound:
+                cost_cases.append((lower_bound, lower_covered - 1))
+                lower_bound = lower_covered
+            upper_covered = min(upper_covered, candidates[i + 1][2] - 1)
+            tiling_selections[next(self.seed_cnt)] = \
+                [seed[1], (lower_bound, upper_covered)]
+            lower_bound = upper_covered + 1
+            if lower_bound > batch_range[1]:
+                break
+        else:
+            cost_cases.append((lower_bound, batch_range[1]))
+
+        # covered by cost_model
+        while cost_cases:
+            case_len = len(cost_cases)
+            for i in range(case_len):
+                cut_range = cost_cases.popleft()
+                cost_seed = self.op.get_costmodel_tiling(sum(cut_range) // 2)
+                seed_range = self.op.get_batch_range(cost_seed['tiling'],
+                                                     cost_seed[self.op.key])
+                overlap_line = _cal_overlap_line(cut_range, seed_range)
+                if overlap_line:
+                    cost_cases.extend(_cut_line(cut_range, seed_range))
+                    tiling_selections[next(self.seed_cnt)] = \
+                        [cost_seed['tiling'], overlap_line]
+                else:
+                    raise RuntimeError("totally uncovered!!!")
+
+        tiling_range = {k: v[1] for k, v in tiling_selections.items()}
+        add_compile_info("tiling_range", tiling_range)
+
+        tiling_cases = [self.op.assembly_case(v[0], v[1], k)
+                        for k, v in tiling_selections.items()]
+        return tiling_cases
+
     def _select_tiling(self, tgt_area, repo_tilings):
         """
         select repo seeds tiling to cover target area
@@ -303,6 +371,12 @@ def _cal_overlap(rect1, rect2):
     return (overlap, intersection)
 
 
+def _cal_overlap_line(line1, line2):
+    if line1[0] > line2[1] or line1[1] < line2[0]:
+        return None
+    return (max(line1[0], line2[0]), min(line1[1], line2[1]))
+
+
 def _cut_rectangle(base, cut):
     """
     base, cut: rectangle in (top, bottom, left, right) format
@@ -320,6 +394,15 @@ def _cut_rectangle(base, cut):
     if cut[3] < base[3]:
         gen_rects.append((top, bottom, cut[3] + 1, base[3]))
     return gen_rects
+
+
+def _cut_line(base_line, cut_line):
+    segments = []
+    if base_line[0] < cut_line[0]:
+        segments.append([base_line[0], cut_line[0] - 1])
+    if base_line[1] > cut_line[1]:
+        segments.append([cut_line[1] + 1, base_line[1]])
+    return segments
 
 
 def _point_in_rect(point, rect):

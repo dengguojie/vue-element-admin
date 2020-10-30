@@ -103,9 +103,9 @@ class MaxpoolGradResnet50():
         function for max_pool_grad_with_pool calc for normal shape
         """
         batch_num = self.input_gard_shape[0]
-        block_num = self.input_gard_shape[0]
         c0_dim = 16
         c1_dim = self.input_gard_shape[1]
+        block_num = batch_num * c1_dim
         input_h = 56
         input_w = 56
         input_c = c0_dim * c1_dim
@@ -204,220 +204,221 @@ class MaxpoolGradResnet50():
                                     constant.STRIDE_ZERO,
                                     constant.STRIDE_ZERO)
 
-        with self.tik_instance.for_range(0, batch_num,
-                                         block_num=block_num) as batch:
+        with self.tik_instance.for_range(0, batch_num*c1_dim,
+                                         block_num=block_num) as batch_idx:
+            batch = batch_idx / c1_dim
+            loopc = batch_idx % c1_dim
             # avoid tik take data_vsel_ub_zero as a input
             self.tik_instance.vector_dup(constant.MASK128, ub_zero_buf, 0.0, 1,
                                          1, 8)
-            with self.tik_instance.for_range(0, loop_c) as loopc:
-                with self.tik_instance.for_range(0, loop_h // 2) as looph:
-                    # ping
-                    data_max_pool_input_ub = maxpool_ub_input_buf0
-                    data_mask_ub = ub_loc_mask_buf0
-                    data_grad_ub = ub_grad_buf0
+            with self.tik_instance.for_range(0, loop_h // 2) as looph:
+                # ping
+                data_max_pool_input_ub = maxpool_ub_input_buf0
+                data_mask_ub = ub_loc_mask_buf0
+                data_grad_ub = ub_grad_buf0
 
-                    self.tik_instance.data_move(data_max_pool_input_ub[0],
-                                                data_input[batch * input_size +
-                                                           loopc * loop_h *
-                                                           input_block_size +
-                                                           looph * 2 *
-                                                           input_block_size],
-                                                0, 1, input_block_size // 16, 0,
-                                                0)
+                self.tik_instance.data_move(data_max_pool_input_ub[0],
+                                            data_input[batch * input_size +
+                                                       loopc * loop_h *
+                                                       input_block_size +
+                                                       looph * 2 *
+                                                       input_block_size],
+                                            0, 1, input_block_size // 16, 0,
+                                            0)
 
-                    self.tik_instance.data_move(data_mask_ub[0],
-                                                data_mask[batch * loop_c *
-                                                          mask_one_window *
-                                                          filter_size +
-                                                          loopc *
-                                                          mask_one_window *
-                                                          filter_size +
-                                                          looph * 2 *
-                                                          mask_size],
-                                                0, filter_size,
-                                                input_block_size // (8 * 32),
-                                                (mask_one_window * c0_dim -
-                                                 input_block_size) //
-                                                (8 * 32),
-                                                0)
-                    self.tik_instance.vector_dup(constant.MASK64,
-                                                 ub_fm_fp32_buf, 0.0,
-                                                 ub_fm_fp32_buf.shape[0] //
-                                                 constant.MASK64, 1, 8)
+                self.tik_instance.data_move(data_mask_ub[0],
+                                            data_mask[batch * loop_c *
+                                                      mask_one_window *
+                                                      filter_size +
+                                                      loopc *
+                                                      mask_one_window *
+                                                      filter_size +
+                                                      looph * 2 *
+                                                      mask_size],
+                                            0, filter_size,
+                                            input_block_size // (8 * 32),
+                                            (mask_one_window * c0_dim -
+                                             input_block_size) //
+                                            (8 * 32),
+                                            0)
+                self.tik_instance.vector_dup(constant.MASK64,
+                                             ub_fm_fp32_buf, 0.0,
+                                             ub_fm_fp32_buf.shape[0] //
+                                             constant.MASK64, 1, 8)
 
-                    with self.tik_instance.if_scope(looph > 0):
-                        self.tik_instance.vmuls(constant.MASK64,
-                                                ub_fm_fp32_buf[0],
-                                                ub_fm_fp32_tail_buf[0], 1.0, 14,
-                                                2, 2, 16, 16)
-                        self.tik_instance.vmuls(constant.MASK64,
-                                                ub_fm_fp32_buf[8],
-                                                ub_fm_fp32_tail_buf[8], 1.0, 14,
-                                                2, 2, 16, 16)
-
-                    with self.tik_instance.for_range(0, filter_size) as flt_idx:
-                        with self.tik_instance.for_range(0,
-                                                         input_block_size // 128
-                                                         ) as r_idx:
-                            cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
-                                data_mask_ub[flt_idx * mask_size + r_idx * 8])
-                            self.tik_instance.vsel(constant.MASK128, 0,
-                                                   ub_select_fp16_buf[
-                                                       r_idx * 128],
-                                                   cmpmask,
-                                                   data_max_pool_input_ub[
-                                                       r_idx * 128],
-                                                   ub_zero_buf[0],
-                                                   1, 1, 1, 0, 8, 8, 0)
-                        self.tik_instance.vconv(constant.MASK64, "",
-                                                ub_select_fp32_buf,
-                                                ub_select_fp16_buf,
-                                                input_block_size // 64, 1, 1,
-                                                8, 4)
-                        with self.tik_instance.for_range(0, block_h) as h_idx:
-                            fm_ub_idx = flt_idx // 3 * output_w * c0_dim + \
-                                        flt_idx % 3 * c0_dim + \
-                                        output_w * c0_dim * 2 * h_idx
-                            select_ub_idx = input_w * c0_dim * h_idx
-                            self.tik_instance.vadd(constant.MASK64,
-                                                   ub_fm_fp32_buf[fm_ub_idx],
-                                                   ub_fm_fp32_buf[fm_ub_idx],
-                                                   ub_select_fp32_buf[
-                                                       select_ub_idx],
-                                                   7, 4, 4, 2, 32, 32, 16)
-                            self.tik_instance.vadd(constant.MASK64,
-                                                   ub_fm_fp32_buf[
-                                                       fm_ub_idx + 8],
-                                                   ub_fm_fp32_buf[
-                                                       fm_ub_idx + 8],
-                                                   ub_select_fp32_buf[
-                                                       select_ub_idx + 8],
-                                                   7, 4, 4, 2, 32, 32, 16)
-
-                    self.tik_instance.vconv(constant.MASK64, "", data_grad_ub,
-                                            ub_fm_fp32_buf,
-                                            output_block_size // 64,
-                                            1, 1, 4, 8)
-
-                    data_output_idx = batch * output_size + loopc * loop_h * \
-                                      output_block_size + \
-                                      output_block_size * looph * 2
-                    self.tik_instance.data_move(data_output[data_output_idx],
-                                                data_grad_ub, 0, 1,
-                                                output_block_size // 16, 0, 0)
-
+                with self.tik_instance.if_scope(looph > 0):
                     self.tik_instance.vmuls(constant.MASK64,
-                                            ub_fm_fp32_tail_buf,
-                                            ub_fm_fp32_buf[output_block_size],
-                                            1.0, 14, 2, 2, 16, 16)
-                    self.tik_instance.vmuls(constant.MASK64,
-                                            ub_fm_fp32_tail_buf[8],
-                                            ub_fm_fp32_buf[
-                                                output_block_size + 8],
-                                            1.0, 14, 2, 2, 16, 16)
-
-                    # pong
-                    data_max_pool_input_ub = maxpool_ub_input_buf1
-                    data_mask_ub = ub_loc_mask_buf1
-                    data_grad_ub = ub_grad_buf1
-
-                    self.tik_instance.data_move(data_max_pool_input_ub[0],
-                                                data_input[batch * input_size +
-                                                           loopc * loop_h *
-                                                           input_block_size +
-                                                           (looph * 2 + 1) *
-                                                           input_block_size],
-                                                0, 1, input_block_size // 16,
-                                                0, 0)
-                    self.tik_instance.data_move(data_mask_ub[0],
-                                                data_mask[batch *
-                                                          (loop_c *
-                                                           filter_size *
-                                                           mask_one_window) +
-                                                          loopc *
-                                                          mask_one_window *
-                                                          filter_size +
-                                                          (looph * 2 + 1) *
-                                                          mask_size],
-                                                0, filter_size,
-                                                input_block_size // (8 * 32),
-                                                (mask_one_window * c0_dim -
-                                                 input_block_size) // (8 * 32),
-                                                0)
-                    self.tik_instance.vector_dup(constant.MASK64,
-                                                 ub_fm_fp32_buf, 0.0,
-                                                 ub_fm_fp32_buf.shape[0] //
-                                                 constant.MASK64, 1, 8)
-
-                    self.tik_instance.vmuls(constant.MASK64, ub_fm_fp32_buf[0],
+                                            ub_fm_fp32_buf[0],
                                             ub_fm_fp32_tail_buf[0], 1.0, 14,
                                             2, 2, 16, 16)
-                    self.tik_instance.vmuls(constant.MASK64, ub_fm_fp32_buf[8],
+                    self.tik_instance.vmuls(constant.MASK64,
+                                            ub_fm_fp32_buf[8],
                                             ub_fm_fp32_tail_buf[8], 1.0, 14,
                                             2, 2, 16, 16)
 
-                    with self.tik_instance.for_range(0, filter_size) as flt_idx:
-                        with self.tik_instance.for_range(0,
-                                                         input_block_size //
-                                                         128) as r_idx:
-                            cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
-                                data_mask_ub[flt_idx * mask_size + r_idx * 8])
-                            self.tik_instance.vsel(constant.MASK128, 0,
-                                                   ub_select_fp16_buf[
-                                                       r_idx * 128],
-                                                   cmpmask,
-                                                   data_max_pool_input_ub[
-                                                       r_idx * 128],
-                                                   ub_zero_buf[0],
-                                                   1, 1, 1, 0, 8, 8, 0)
-                        self.tik_instance.vconv(constant.MASK64, "",
-                                                ub_select_fp32_buf,
-                                                ub_select_fp16_buf,
-                                                input_block_size // 64, 1,
-                                                1, 8, 4)
-                        with self.tik_instance.for_range(0, block_h) as h_idx:
-                            fm_ub_idx = flt_idx // 3 * output_w * c0_dim + \
-                                        flt_idx % 3 * c0_dim + \
-                                        output_w * c0_dim * 2 * h_idx
-                            select_ub_idx = input_w * c0_dim * h_idx
-                            self.tik_instance.vadd(constant.MASK64,
-                                                   ub_fm_fp32_buf[fm_ub_idx],
-                                                   ub_fm_fp32_buf[fm_ub_idx],
-                                                   ub_select_fp32_buf[
-                                                       select_ub_idx],
-                                                   7, 4, 4, 2, 32, 32, 16)
-                            self.tik_instance.vadd(constant.MASK64,
-                                                   ub_fm_fp32_buf[
-                                                       fm_ub_idx + 8],
-                                                   ub_fm_fp32_buf[
-                                                       fm_ub_idx + 8],
-                                                   ub_select_fp32_buf[
-                                                       select_ub_idx + 8],
-                                                   7, 4, 4, 2, 32, 32, 16)
+                with self.tik_instance.for_range(0, filter_size) as flt_idx:
+                    with self.tik_instance.for_range(0,
+                                                     input_block_size // 128
+                                                     ) as r_idx:
+                        cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
+                            data_mask_ub[flt_idx * mask_size + r_idx * 8])
+                        self.tik_instance.vsel(constant.MASK128, 0,
+                                               ub_select_fp16_buf[
+                                                   r_idx * 128],
+                                               cmpmask,
+                                               data_max_pool_input_ub[
+                                                   r_idx * 128],
+                                               ub_zero_buf[0],
+                                               1, 1, 1, 0, 8, 8, 0)
+                    self.tik_instance.vconv(constant.MASK64, "",
+                                            ub_select_fp32_buf,
+                                            ub_select_fp16_buf,
+                                            input_block_size // 64, 1, 1,
+                                            8, 4)
+                    with self.tik_instance.for_range(0, block_h) as h_idx:
+                        fm_ub_idx = flt_idx // 3 * output_w * c0_dim + \
+                                    flt_idx % 3 * c0_dim + \
+                                    output_w * c0_dim * 2 * h_idx
+                        select_ub_idx = input_w * c0_dim * h_idx
+                        self.tik_instance.vadd(constant.MASK64,
+                                               ub_fm_fp32_buf[fm_ub_idx],
+                                               ub_fm_fp32_buf[fm_ub_idx],
+                                               ub_select_fp32_buf[
+                                                   select_ub_idx],
+                                               7, 4, 4, 2, 32, 32, 16)
+                        self.tik_instance.vadd(constant.MASK64,
+                                               ub_fm_fp32_buf[
+                                                   fm_ub_idx + 8],
+                                               ub_fm_fp32_buf[
+                                                   fm_ub_idx + 8],
+                                               ub_select_fp32_buf[
+                                                   select_ub_idx + 8],
+                                               7, 4, 4, 2, 32, 32, 16)
 
-                    self.tik_instance.vconv(constant.MASK64, "", data_grad_ub,
-                                            ub_fm_fp32_buf,
-                                            output_block_size // 64,
-                                            1, 1, 4, 8)
+                self.tik_instance.vconv(constant.MASK64, "", data_grad_ub,
+                                        ub_fm_fp32_buf,
+                                        output_block_size // 64,
+                                        1, 1, 4, 8)
 
-                    data_output_idx = batch * output_size + \
-                                      loopc * loop_h * output_block_size + \
-                                      output_block_size * (looph * 2 + 1)
-                    self.tik_instance.data_move(data_output[data_output_idx],
-                                                data_grad_ub, 0, 1,
-                                                output_block_size // 16, 0, 0)
+                data_output_idx = batch * output_size + loopc * loop_h * \
+                                  output_block_size + \
+                                  output_block_size * looph * 2
+                self.tik_instance.data_move(data_output[data_output_idx],
+                                            data_grad_ub, 0, 1,
+                                            output_block_size // 16, 0, 0)
 
-                    with self.tik_instance.if_scope(looph < loop_h // 2 - 1):
-                        self.tik_instance.vmuls(constant.MASK64,
-                                                ub_fm_fp32_tail_buf,
-                                                ub_fm_fp32_buf[
-                                                    output_block_size], 1.0,
-                                                14, 2, 2, 16, 16)
-                        self.tik_instance.vmuls(constant.MASK64,
-                                                ub_fm_fp32_tail_buf[8],
-                                                ub_fm_fp32_buf[
-                                                    output_block_size + 8], 1.0,
-                                                14, 2, 2, 16, 16)
+                self.tik_instance.vmuls(constant.MASK64,
+                                        ub_fm_fp32_tail_buf,
+                                        ub_fm_fp32_buf[output_block_size],
+                                        1.0, 14, 2, 2, 16, 16)
+                self.tik_instance.vmuls(constant.MASK64,
+                                        ub_fm_fp32_tail_buf[8],
+                                        ub_fm_fp32_buf[
+                                            output_block_size + 8],
+                                        1.0, 14, 2, 2, 16, 16)
+
+                # pong
+                data_max_pool_input_ub = maxpool_ub_input_buf1
+                data_mask_ub = ub_loc_mask_buf1
+                data_grad_ub = ub_grad_buf1
+
+                self.tik_instance.data_move(data_max_pool_input_ub[0],
+                                            data_input[batch * input_size +
+                                                       loopc * loop_h *
+                                                       input_block_size +
+                                                       (looph * 2 + 1) *
+                                                       input_block_size],
+                                            0, 1, input_block_size // 16,
+                                            0, 0)
+                self.tik_instance.data_move(data_mask_ub[0],
+                                            data_mask[batch *
+                                                      (loop_c *
+                                                       filter_size *
+                                                       mask_one_window) +
+                                                      loopc *
+                                                      mask_one_window *
+                                                      filter_size +
+                                                      (looph * 2 + 1) *
+                                                      mask_size],
+                                            0, filter_size,
+                                            input_block_size // (8 * 32),
+                                            (mask_one_window * c0_dim -
+                                             input_block_size) // (8 * 32),
+                                            0)
+                self.tik_instance.vector_dup(constant.MASK64,
+                                             ub_fm_fp32_buf, 0.0,
+                                             ub_fm_fp32_buf.shape[0] //
+                                             constant.MASK64, 1, 8)
+
+                self.tik_instance.vmuls(constant.MASK64, ub_fm_fp32_buf[0],
+                                        ub_fm_fp32_tail_buf[0], 1.0, 14,
+                                        2, 2, 16, 16)
+                self.tik_instance.vmuls(constant.MASK64, ub_fm_fp32_buf[8],
+                                        ub_fm_fp32_tail_buf[8], 1.0, 14,
+                                        2, 2, 16, 16)
+
+                with self.tik_instance.for_range(0, filter_size) as flt_idx:
+                    with self.tik_instance.for_range(0,
+                                                     input_block_size //
+                                                     128) as r_idx:
+                        cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
+                            data_mask_ub[flt_idx * mask_size + r_idx * 8])
+                        self.tik_instance.vsel(constant.MASK128, 0,
+                                               ub_select_fp16_buf[
+                                                   r_idx * 128],
+                                               cmpmask,
+                                               data_max_pool_input_ub[
+                                                   r_idx * 128],
+                                               ub_zero_buf[0],
+                                               1, 1, 1, 0, 8, 8, 0)
+                    self.tik_instance.vconv(constant.MASK64, "",
+                                            ub_select_fp32_buf,
+                                            ub_select_fp16_buf,
+                                            input_block_size // 64, 1,
+                                            1, 8, 4)
+                    with self.tik_instance.for_range(0, block_h) as h_idx:
+                        fm_ub_idx = flt_idx // 3 * output_w * c0_dim + \
+                                    flt_idx % 3 * c0_dim + \
+                                    output_w * c0_dim * 2 * h_idx
+                        select_ub_idx = input_w * c0_dim * h_idx
+                        self.tik_instance.vadd(constant.MASK64,
+                                               ub_fm_fp32_buf[fm_ub_idx],
+                                               ub_fm_fp32_buf[fm_ub_idx],
+                                               ub_select_fp32_buf[
+                                                   select_ub_idx],
+                                               7, 4, 4, 2, 32, 32, 16)
+                        self.tik_instance.vadd(constant.MASK64,
+                                               ub_fm_fp32_buf[
+                                                   fm_ub_idx + 8],
+                                               ub_fm_fp32_buf[
+                                                   fm_ub_idx + 8],
+                                               ub_select_fp32_buf[
+                                                   select_ub_idx + 8],
+                                               7, 4, 4, 2, 32, 32, 16)
+
+                self.tik_instance.vconv(constant.MASK64, "", data_grad_ub,
+                                        ub_fm_fp32_buf,
+                                        output_block_size // 64,
+                                        1, 1, 4, 8)
+
+                data_output_idx = batch * output_size + \
+                                  loopc * loop_h * output_block_size + \
+                                  output_block_size * (looph * 2 + 1)
+                self.tik_instance.data_move(data_output[data_output_idx],
+                                            data_grad_ub, 0, 1,
+                                            output_block_size // 16, 0, 0)
+
+                with self.tik_instance.if_scope(looph < loop_h // 2 - 1):
+                    self.tik_instance.vmuls(constant.MASK64,
+                                            ub_fm_fp32_tail_buf,
+                                            ub_fm_fp32_buf[
+                                                output_block_size], 1.0,
+                                            14, 2, 2, 16, 16)
+                    self.tik_instance.vmuls(constant.MASK64,
+                                            ub_fm_fp32_tail_buf[8],
+                                            ub_fm_fp32_buf[
+                                                output_block_size + 8], 1.0,
+                                            14, 2, 2, 16, 16)
 
         self.tik_instance.BuildCCE(kernel_name=kernel_name,
                                    inputs=(data_input_origin, data_input,

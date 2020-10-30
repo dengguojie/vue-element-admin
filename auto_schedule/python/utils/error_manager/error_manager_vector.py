@@ -19,8 +19,7 @@ import json
 from te.utils.error_manager.error_manager_util import get_error_message
 
 
-def raise_err_input_value_invalid(op_name, param_name,
-                                  excepted_value, real_value):
+def raise_err_input_value_invalid(op_name, param_name, excepted_value, real_value):
     """
     "In op[%s], the parameter[%s] should be [%s], but actually is [%s]." %
     (op_name,param_name,excepted_value, real_value)
@@ -53,6 +52,50 @@ def raise_err_miss_mandatory_parameter(op_name, param_name):
         "errCode": "E80001",
         "op_name": op_name,
         "param_name": param_name,
+    }
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def raise_err_input_param_not_in_range(op_name, param_name, min_value, max_value, value):
+    """
+    "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]." %
+    (op_name,param_name,min_value,max_value,value)
+    :param op_name
+    :param param_name
+    :param min_value
+    :param max_value
+    :param value
+    :return
+    """
+    args_dict = {
+        "errCode": "E80001",
+        "op_name": op_name,
+        "param_name": param_name,
+        "min_value": min_value,
+        "max_value": max_value,
+        "value": value,
+    }
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def raise_err_input_dtype_not_supported(op_name, param_name, excepted_dtype_list, dtype):
+    """
+    "In op[%s], the parameter[%s]'s dtype should be one of [%s], but actually is [%s]." %
+    (param,op_name,expected_data_type_list,data_type)
+    :param op_name
+    :param param_name
+    :param excepted_dtype_list
+    :param data_type
+    :return
+    """
+    args_dict = {
+        "errCode": "E80008",
+        "op_name": op_name,
+        "param_name": param_name,
+        "expected_data_type_list": excepted_dtype_list,
+        "dtype": dtype
     }
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
@@ -102,8 +145,33 @@ def raise_err_input_format_invalid(op_name, param_name, excepted_format_list, ac
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_inputs_dtype_not_equal(op_name, param_name1, param_name2,
-                                     param1_dtype, param2_dtype):
+def raise_err_inputs_shape_not_equal(op_name, param_name1, param_name2, param1_shape, param2_shape, expect_shape):
+    """
+    "In op[%s], the parameter[%s][%s] is not match with the parameter[%s][%s],it should be [%s]." %
+    (op_name,param_name1,param_name2,param1_shape,param2_shape,expect_shape)
+    :param op_name:
+    :param param_name1:
+    :param param_name2:
+    :param param1_shape:
+    :param param2_shape:
+    :param expect_shape:
+    :return:
+    """
+    args_dict = {
+        'errCode': "E80017",
+        'op_name': op_name,
+        'param_name1': param_name1,
+        'param_name2': param_name2,
+        'param1_shape': param1_shape,
+        'param2_shape': param2_shape,
+        'expect_shape': expect_shape
+    }
+
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def raise_err_inputs_dtype_not_equal(op_name, param_name1, param_name2, param1_dtype, param2_dtype):
     """
     "In op[%s], the parameter[%s][%s] are not equal in dtype with dtype[%s][%s]." %
     (op_name,param_name1,param_name2,param1_dtype, param2_dtype)
@@ -126,8 +194,7 @@ def raise_err_inputs_dtype_not_equal(op_name, param_name1, param_name2,
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_input_shpae_invalid(op_name, param_name,
-                                  error_detail):
+def raise_err_input_shape_invalid(op_name, param_name, error_detail):
     """
     "In op[%s], the shape of input[%s] is invalid, [%s]." %
     (op_name,param_name,error_detail)
@@ -136,18 +203,12 @@ def raise_err_input_shpae_invalid(op_name, param_name,
     :param error_detail
     :return
     """
-    args_dict = {
-        "errCode": "E80028",
-        "op_name": op_name,
-        "param_name": param_name,
-        "error_detail": error_detail
-    }
+    args_dict = {"errCode": "E80028", "op_name": op_name, "param_name": param_name, "error_detail": error_detail}
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_two_input_shpae_invalid(op_name, param_name1,
-                                      param_name2, error_detail):
+def raise_err_two_input_shape_invalid(op_name, param_name1, param_name2, error_detail):
     """
     "In op[%s], the shape of inputs[%s][%s] are invalid, [%s]." %
     (op_name,param_name1,param_name2,error_detail)
@@ -168,8 +229,7 @@ def raise_err_two_input_shpae_invalid(op_name, param_name1,
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_two_input_dtype_invalid(op_name, param_name1,
-                                      param_name2, error_detail):
+def raise_err_two_input_dtype_invalid(op_name, param_name1, param_name2, error_detail):
     """
     "In op[%s], the dtype of inputs[%s][%s] are invalid, [%s]." %
     (op_name,param_name1,param_name2,error_detail)
@@ -190,8 +250,7 @@ def raise_err_two_input_dtype_invalid(op_name, param_name1,
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_two_input_format_invalid(op_name, param_name1,
-                                       param_name2, error_detail):
+def raise_err_two_input_format_invalid(op_name, param_name1, param_name2, error_detail):
     """
     "In op[%s], the format of inputs[%s][%s] are invalid, [%s]." %
     (op_name,param_name1,param_name2,error_detail)
@@ -219,17 +278,31 @@ def raise_err_specific_reson(op_name, reason):
     :param reason
     :return
     """
+    args_dict = {"errCode": "E61001", "op_name": op_name, "reason": reason}
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def raise_err_pad_mode_invalid(op_name, expected_pad_mode, actual_pad_mode):
+    """
+    "In op [%s], only support pads model [%s], actual is [%s]." %
+    (op_name, expected_pad_mode, actual_pad_mode)
+    :param op_name
+    :param expected_pad_mode
+    :param actual_pad_mode
+    :return
+    """
     args_dict = {
-        "errCode": "E61001",
+        "errCode": "E60021",
         "op_name": op_name,
-        "reason": reason
+        "expected_pad_mode": expected_pad_mode,
+        "actual_pad_mode": actual_pad_mode
     }
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
 
 
-def raise_err_input_param_range_invalid(op_name, param_name,
-                                        min_value, max_value, real_value):
+def raise_err_input_param_range_invalid(op_name, param_name, min_value, max_value, real_value):
     """
     "In op[%s], the num of dimensions of input[%s] should be in the range of [%s, %s], but actually is [%s]." %
     (op_name,param_name,max_value,min_value,real_value)
@@ -247,6 +320,26 @@ def raise_err_input_param_range_invalid(op_name, param_name,
         "min_value": min_value,
         "max_value": max_value,
         "real_value": real_value
+    }
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)
+
+
+def raise_err_dtype_invalid(op_name, param_name, expected_list, dtype):
+    """
+    "The dtype of [%s] of op[%s] must in [%s], actual dtype is [%s]"
+    :param op_name
+    :param param_name
+    :param expected_list
+    :param dtype
+    :return
+    """
+    args_dict = {
+        "errCode": "E60005",
+        "op_name": op_name,
+        "param_name": param_name,
+        "expected_dtype_list": expected_list,
+        "dtype": dtype,
     }
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)

@@ -303,4 +303,22 @@ REGISTER_CUSTOM_OP("RaggedTensorToTensor")
     .ParseParamsFn(RaggedTensorToTensorMapping)
     .ImplyType(ImplyType::AI_CPU);
 
+Status MappingFnCTCBeamSearchDecoder(const google::protobuf::Message* op_src, ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["out"] = pair<string, string>("decoded_indices", "top_paths");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("decoded_values", "top_paths");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("decoded_shape", "top_paths");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+// register CTCBeamSearchDecoder op to GE
+REGISTER_CUSTOM_OP("CTCBeamSearchDecoder")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("CTCBeamSearchDecoder")
+    .ParseParamsFn(MappingFnCTCBeamSearchDecoder)
+    .ImplyType(ImplyType::AI_CPU);
+
 }  // namespace domi

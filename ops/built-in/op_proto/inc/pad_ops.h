@@ -343,7 +343,7 @@ REG_OP(AscendPadding)
 */
 REG_OP(EmbeddingRankId)
     .INPUT(addr_table, TensorType({DT_UINT64}))
-    .INPUT(index, TensorType({DT_UINT32}))
+    .INPUT(index, TensorType({DT_INT64,DT_INT32,DT_UINT64}))
     .OUTPUT(rank_id, TensorType({DT_UINT64}))
     .ATTR(row_memory, Int, 320)
     .ATTR(mode, String, "mod")

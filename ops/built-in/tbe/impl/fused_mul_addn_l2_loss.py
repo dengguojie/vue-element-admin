@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_addn_l2loss")
@@ -105,21 +106,25 @@ def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_
     para_check.check_shape(shape_z, param_name="input_z")
     para_check.check_dtype(dtype_z, check_list, param_name="input_z")
 
-    if dtype_x != dtype_y or dtype_x != dtype_z or dtype_y != dtype_z:
-        raise RuntimeError(" Three input dtype must keep the same")
+    def _check_dtype_same_with_input_x(param, dtype):
+        if dtype_x != dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'input_x', param, dtype_x, dtype)
+
+    _check_dtype_same_with_input_x('input_y', dtype_y)
+    _check_dtype_same_with_input_x('input_z', dtype_z)
 
     if dtype_x == "float32":
         if not tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
-            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
-            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
-            raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
 
     weight = tvm.placeholder(shape_x, name="weight", dtype=dtype_x)
     weight_grad = tvm.placeholder(shape_y, name="weight_grad", dtype=dtype_y)

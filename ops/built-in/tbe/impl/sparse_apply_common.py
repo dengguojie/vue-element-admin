@@ -21,6 +21,7 @@ import math
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -148,13 +149,20 @@ class SparseApply():
         para_check.check_dtype(self.grad_dtype, ("float32"))
 
         if self.grad_shape[1:] != self.var_shape[1:]:
-            raise RuntimeError("grad's shape must be the same as var's shape except first dimension")
+            error_manager_vector.raise_err_check_params_rules(
+                self.kernel_name,
+                "grad's shape must be the same as var's shape except first dimension, var's shape is %s" %
+                self.var_shape, "grad", self.grad_shape)
 
         if len(self.indices_shape) != 1:
-            raise RuntimeError("indices must be one-dimensioal")
+            error_manager_vector.raise_err_input_param_range_invalid(self.kernel_name, 'indices', 1, 1,
+                                                                     len(self.indices_shape))
 
         if self.grad_shape[0] != self.indices_shape[0]:
-            raise RuntimeError("grad must be the same shape as indices in first dimension")
+            error_manager_vector.raise_err_check_params_rules(
+                self.kernel_name,
+                "grad must be the same shape as indices in first dimension, grad's shape is %s" % self.grad_shape,
+                'indices', self.indices_shape)
 
     def set_var_rows(self, num):
         """

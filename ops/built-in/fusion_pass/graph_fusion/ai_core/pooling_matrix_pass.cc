@@ -71,6 +71,25 @@ Status GenerateMatrixFP16(const vector<int64_t> shape, const float areaFactor, u
   return SUCCESS;
 }
 
+Status PoolingGenerateFilterFP16(const vector<int64_t> shape, const float areaFactor, uint16_t& output1) {
+  uint16_t* output = &output1;
+  fp16_t area_factor;
+  area_factor.val = 0;
+  area_factor = static_cast<float>(areaFactor);
+  for (int i = 0; i < shape[0]; i++) {
+    for (int j = 0; j < shape[1]; j++) {
+      for (int k = 0; k < shape[2]; k++) {
+        for (int l = 0; l < shape[3]; l++) {
+          if (i == j) {
+            output[i * (shape[1] * shape[2] * shape[3]) + j * (shape[2] * shape[3]) + k * shape[3] + l] = area_factor.val;
+          }
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
 Status GenerateMatrixInt8(const vector<int64_t> shape, const int8_t areaFactor, int8_t& output1) {
   int8_t* output = &output1;
   for (int i = 0; i < shape[0]; i++) {
@@ -97,6 +116,196 @@ Status IsPadZero(vector<int64_t> pad, bool& flag) {
       flag = false;
     }
   }
+  return SUCCESS;
+}
+
+Status PoolingGenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride,
+                         vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1) {
+  uint16_t* output = &output1;
+  int64_t h_start = 0;
+  int64_t w_start = 0;
+  int64_t h_end = 0;
+  int64_t w_end = 0;
+  float area = 0;
+  for (int m = 0; m < shape[0]; m++) {
+    for (int n = 0; n < shape[1]; n++) {
+      for (int64_t i = 0; i < shape[2]; i++) {
+        for (int64_t j = 0; j < shape[3]; j++) {
+          for (int k = 0; k < shape[4]; k++) {
+            h_start = i * stride[0] - pad[0];
+            w_start = j * stride[1] - pad[2];
+            h_end = min(h_start + window[0], dimH + pad[0]);
+            w_end = min(w_start + window[1], dimW + pad[2]);
+            area = max((h_end - h_start) * (w_end - w_start), static_cast<int64_t>(1));
+            area = 1.0 / area;
+            fp16_t out_val;
+            out_val.val = 0;
+            out_val = (float)area;
+            output[m * (shape[1] * shape[2] * shape[3] * shape[4]) + n * (shape[2] * shape[3] * shape[4]) +
+                   i * (shape[3] * shape[4]) + j * shape[4] + k] = out_val.val;
+          }
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
+NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode) {
+  ge::OutDataAnchorPtr PoolAnchorPtr1 = PoolNode->GetOutDataAnchor(0);
+  ge::NodePtr postNode = nullptr;
+  ge::NodePtr mulNode = nullptr;
+  int64_t mulN = 0;
+  int64_t mulH = 0;
+  int64_t mulW = 0;
+  int64_t mulC = 0;
+  int64_t mulC1 = 0;
+
+  // creat a antiquant node
+  std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
+  mulDesc = std::make_shared<ge::OpDesc>(PoolNode->GetName() + "_mul_layer", "Mul");
+  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
+
+  // add input
+  ge::GeTensorDesc input_desc = PoolNode->GetOpDesc()->GetOutputDesc(0);
+  ge::GeShape mulShape = input_desc.GetShape();
+  vector<int64_t> dimMul = mulShape.GetDims();
+
+  if (dimMul.size() != 0) {
+      mulN = dimMul[0];
+      mulC = dimMul[1];
+      mulH = dimMul[2];
+      mulW = dimMul[3];
+    } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimMul is null, please check!");
+    return nullptr;
+  }
+
+  mulC1 = (mulC + 16 - 1) / 16;
+  vector<int64_t> mulDimInfo = {mulN, mulC1, mulH, mulW, 16};
+
+  ge::GeShape mulInputShape(mulDimInfo);
+  input_desc.SetShape(mulInputShape);
+  input_desc.SetOriginShape(mulShape);
+  input_desc.SetFormat(ge::FORMAT_NC1HWC0);
+  input_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
+
+  // add output
+  ge::GeTensorDesc output_desc;
+  ge::GeShape mulOutputShape(mulDimInfo);
+  output_desc.SetShape(mulOutputShape);
+  output_desc.SetOriginShape(mulShape);
+  output_desc.SetFormat(ge::FORMAT_NC1HWC0);
+  output_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
+
+  // add node
+  mulNode = graph.AddNode(mulDesc);
+
+  for (auto postAnchorPtr0 : PoolAnchorPtr1->GetPeerInDataAnchors()) {
+    postNode = postAnchorPtr0->GetOwnerNode();
+
+    // remove edge between avgpool and next node
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, PoolAnchorPtr1) != SUCCESS,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge between pooling and next node failed!"),
+                      return nullptr);
+
+    // add edge between mul and next_node
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                              mulNode->GetName().c_str(), postNode->GetName().c_str()),
+                      return nullptr);
+  }
+  // add edge between avgpool and mul
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            PoolNode->GetName().c_str(), mulNode->GetName().c_str()),
+                    return nullptr);
+
+  return mulNode;
+}
+
+Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad,
+                                   vector<int64_t>& dimInfo, vector<int64_t> window, vector<int64_t> stride) {
+  int64_t outputH = 0;
+  int64_t outputW = 0;
+  int64_t outputC = 0;
+  int64_t outputC1 = 0;
+  int64_t outputC0 = 16;
+  int64_t dimH = 0;
+  int64_t dimW = 0;
+
+  ge::OpDescPtr mulOp = mulNode->GetOpDesc();
+  ge::GeTensorDesc inputDesc0 = mulOp->GetInputDesc(0);
+  ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
+  ge::GeShape outputShape = inputDesc0.GetOriginShape();
+  vector<int64_t> dimOut = outputShape.GetDims();
+  if (dimOut.size() != 0) {
+      outputH = dimOut[2];
+      outputW = dimOut[3];
+      outputC = dimOut[1];
+      dimH = dimInfo[2];
+      dimW = dimInfo[3];
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimOut is null, please check!");
+    return PARAM_INVALID;
+  }
+  outputC1 = (outputC + outputC0 - 1) / outputC0;
+  ge::GeTensorPtr coffePtr = nullptr;
+  int64_t coffeSize = 1 * outputC1 * outputH * outputW * outputC0;
+  FUSION_PASS_CHECK(coffeSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
+  unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[coffeSize]());
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+                    return PARAM_INVALID);
+
+  Status ret = NnSet(coffeSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+
+  vector<int64_t> coffeDimInfo = {1, outputC1, outputH, outputW, outputC0};
+  ret = PoolingGenerateCoffeFP16(coffeDimInfo, window, stride, pad, dimH, dimW, *inputAssit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
+
+  vector<int64_t> coffeDimInfoOrigin;
+  if (inputDesc0OriginFormat == FORMAT_NCHW) {
+    coffeDimInfoOrigin = {1, outputC, outputH, outputW};
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "format is wrong, please check!");
+    return PARAM_INVALID;
+  }
+
+  // set const node shape
+  ge::GeTensorDesc coffeDesc;
+  ge::GeShape coffeShape(coffeDimInfo);
+  ge::GeShape coffeShapeOrigin(coffeDimInfoOrigin);
+  coffeDesc.SetShape(coffeShape);
+  coffeDesc.SetDataType(ge::DT_FLOAT16);
+  coffeDesc.SetFormat(ge::FORMAT_NC1HWC0);
+  coffeDesc.SetOriginFormat(inputDesc0OriginFormat);
+  coffeDesc.SetOriginShape(coffeShapeOrigin);
+  coffeDesc.SetOriginDataType(ge::DT_FLOAT16);
+  FUSION_PASS_MAKE_SHARED((coffePtr = std::make_shared<ge::GeTensor>(
+                               coffeDesc, reinterpret_cast<uint8_t*>(inputAssit.get()), coffeSize * sizeof(uint16_t))),
+                          coffePtr = nullptr;
+                          return PARAM_INVALID);
+  ge::OpDescPtr mulDesc = mulNode->GetOpDesc();
+  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  vector<ge::GeTensorPtr> weights = {coffePtr};
+  ge::OpDescUtils::SetWeights(mulNode, weights);
+  auto constInputNodes = OpDescUtils::GetConstInputs(mulNode);
+  NodePtr constInput = nullptr;
+  if (constInputNodes.size() != 0) {
+    constInput = constInputNodes[0];
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+    return PARAM_INVALID;
+  }
+  constInput->GetOpDesc()->SetType(CONSTANTOPTAB);
+
   return SUCCESS;
 }
 
@@ -483,19 +692,74 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (poolingNode->GetOpDesc()->GetInputDesc(0).GetDataType() == ge::DT_INT8) {
     IsInt8 = true;
   }
-  // if pooling's pre op is AscendQuant or AscendAntiQuant, call pooling2d_compute not conv2d
-  if (!IsMeanValueAllEqual(dimInfo, window, stride, pad, ceil_mode)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "area mean value is not a const, not support to call conv2d!");
-    return NOT_CHANGED;
-  } else if (preNode->GetOpDesc()->GetType() == "AscendQuant" || IsInt8) {
-    if (inputC % 32 > 0 && inputC % 32 <= 16) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "inputC % 32 > 0 && inputC % 32 <= 16 , not support to call conv2d!");
-      return NOT_CHANGED;
-    }
-    if (inputH != windowH && inputW == windowW && isWPadZero) {
+
+  if (inputH != windowH && inputW == windowW && isWPadZero) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "inputH != windowH && inputW == windowW , not support to call conv2d!");
       return NOT_CHANGED;
-    }
+  }
+
+  // if pooling's window areas not same, call depthwise_conv2d not conv2d
+  if (!IsMeanValueAllEqual(dimInfo, window, stride, pad, ceil_mode)) {
+        if (preNode->GetOpDesc()->GetType() == "AscendQuant" ||
+            preNode->GetOpDesc()->GetType() == "AscendAntiQuant" || IsInt8) {
+          OP_LOGI(FUSED_OP_TYPE.c_str(), "area mean value is not a const, not support to call conv2d! and depthwise");
+          return NOT_CHANGED;
+        }
+        int64_t inputC1 = (inputC + COUT - 1) / COUT;
+        int64_t matrixSize = COUT * inputC1 * CIN * windowH * windowW;
+        FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+        unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
+        FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+                          return PARAM_INVALID);
+
+        Status ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
+        FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+
+        vector<int64_t> assitDimInfoOrigin = {COUT, CIN, inputC1 * windowH, windowW};
+        float areaFactor = 1.0;
+        // generate one matrix
+        ret = PoolingGenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
+        FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
+        //area is not same generate all one matrix, areaFactor is set to dequant's const
+        ge::NodePtr mulNode = AddMul(graph, poolingNode);
+        FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+                          return PARAM_INVALID);
+        FUSION_PASS_CHECK(AddCoffe(graph, mulNode, pad, dimInfo, window, stride) != SUCCESS,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
+
+        // set const node shape
+        ge::GeTensorDesc tensorDesc;
+        ge::GeShape assitShape(assitDimInfoOrigin);
+        ge::GeShape assitShapeOrigin(assitDimInfoOrigin);
+        tensorDesc.SetShape(assitShape);
+        tensorDesc.SetDataType(ge::DT_FLOAT16);
+        tensorDesc.SetFormat(ge::FORMAT_NCHW);
+        tensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+        tensorDesc.SetOriginShape(assitShapeOrigin);
+        tensorDesc.SetOriginDataType(ge::DT_FLOAT16);
+        FUSION_PASS_MAKE_SHARED(
+            (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                                      matrixSize * sizeof(uint16_t))),
+            assitPtr = nullptr;
+            return PARAM_INVALID);
+        FUSION_PASS_CHECK(!CheckOpSupported(poolingDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
+                          return NOT_CHANGED);
+        vector<ge::GeTensorPtr> weights = {assitPtr};
+        ge::OpDescUtils::SetWeights(poolingNode, weights);
+        auto constInputNodes = OpDescUtils::GetConstInputs(poolingNode);
+        NodePtr constInput = nullptr;
+        if (constInputNodes.size() != 0) {
+          constInput = constInputNodes[0];
+        } else {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+          return PARAM_INVALID;
+        }
+        constInput->GetOpDesc()->SetType(CONSTANTOPTAB);
+        return SUCCESS;
+      }
+
+
+  if (preNode->GetOpDesc()->GetType() == "AscendQuant" || IsInt8) {
     // if pooling's pre op is AscendQuant, pooling assitMatrix dtype is int8, and need add bias for pooling node
     // for int8 dtype, assit matrix shape is [32,32,windowH,windowW]
     matrixSize = COUT32 * CIN32 * windowH * windowW;
@@ -557,9 +821,6 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
 
   } else {  // fp16
-    if (inputH != windowH && inputW == windowW && isWPadZero) {
-      return NOT_CHANGED;
-    }
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);

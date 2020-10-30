@@ -97,7 +97,8 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_info size error.");
     return PARAM_INVALID;
   }
-  int64_t last_dim = dim_info[dim_info.size() - 1];
+  // 4096 indicates the length of index in assist matrix.
+  constexpr int64_t kAssistLen{4096};
 
   ge::OutDataAnchorPtr topk_anchor_out_ptr0 = topk_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(topk_anchor_out_ptr0 == nullptr,
@@ -177,22 +178,22 @@ Status TopKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "FusionNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::GeTensorPtr assit_ptr = nullptr;
-  unique_ptr<uint16_t> inputAssit(new (std::nothrow) uint16_t[last_dim * 2]());
+  unique_ptr<uint16_t> inputAssit(new (std::nothrow) uint16_t[kAssistLen * 2]());
   FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
-  ret = AssitHelp(last_dim, inputAssit.get());
+  ret = AssitHelp(kAssistLen, inputAssit.get());
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
 
   // define shape
   vector<int64_t> assit_dim_info;
-  assit_dim_info.push_back(last_dim * 2);
+  assit_dim_info.push_back(kAssistLen * 2);
   ge::GeShape assit_shape(assit_dim_info);
   ge::GeTensorDesc tensor_desc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
   tensor_desc.SetShape(assit_shape);
   tensor_desc.SetFormat(ge::FORMAT_NCHW);
   FUSION_PASS_MAKE_SHARED(
       (assit_ptr = std::make_shared<ge::GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
-                                                  last_dim * 2 * sizeof(uint16_t))),
+                                                  kAssistLen * 2 * sizeof(uint16_t))),
       assit_ptr = nullptr;
       return PARAM_INVALID);
 

@@ -18,9 +18,11 @@
  * \file caffe_prior_box_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 static const float DEFAULT_OFFSET = 0.5;
@@ -41,7 +43,8 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
 
   int n = layer->bottom_size();
   if (n != 2) {
-    OP_LOGE(op_dest.GetName().c_str(), "[PLUGIN_PriorBox]--------------bottom_size=%d-------------", n);
+    ge::OpsInputShapeErrReport(op_dest.GetName(), "PriorBox Layer need take two input parameters",
+                               "input", to_string(n));
     OP_LOGE(op_dest.GetName().c_str(), "(2 vs. %d) PriorBox Layer takes 2 input.", n);
     return FAILED;
   }
@@ -60,22 +63,30 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
 
   if (param.has_img_h() || param.has_img_w()) {
     if (param.has_img_size()) {
+      ge::OpsInputShapeErrReport(op_dest.GetName(), "set either img_size or img_h/img_w should be specified",
+                                 "img_size and img_h/img_w", "set both");
       OP_LOGE("PriorBox", "Either img_size or img_h/img_w should be specified; not both.");
       return FAILED;
     }
     if (param.img_h() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "img_h", "larger than 0",
+                                to_string(param.img_h()));
       OP_LOGE("PriorBox", "img_h should be larger than 0.");
       return FAILED;
     }
     op_dest.SetAttr("img_h", param.img_h());
 
     if (param.img_w() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "img_w", "larger than 0",
+                                to_string(param.img_h()));
       OP_LOGE("PriorBox", "img_w should be larger than 0.");
       return FAILED;
     }
     op_dest.SetAttr("img_w", param.img_w());
   } else if (param.has_img_size()) {
     if (param.img_size() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "img_size", "larger than 0",
+                                to_string(param.img_size()));
       OP_LOGE("PriorBox", "img_size should be larger than 0.");
       return FAILED;
     }
@@ -88,22 +99,30 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
 
   if (param.has_step_h() || param.has_step_w()) {
     if (param.has_step()) {
+      ge::OpsInputShapeErrReport(op_dest.GetName(), "set either step or step_h/step_w should be specified",
+                                 "step and step_h/step_w", "set both");
       OP_LOGE("PriorBox", "Either step or step_h/step_w should be specified; not both.");
       return FAILED;
     }
     if (param.step_h() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "step_h", "larger than 0",
+                                to_string(param.step_h()));
       OP_LOGE("PriorBox", "step_h should be larger than 0.");
       return FAILED;
     }
     op_dest.SetAttr("step_h", param.step_h());
 
     if (param.step_w() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "step_w", "larger than 0",
+                                to_string(param.step_w()));
       OP_LOGE("PriorBox", "step_w should be larger than 0.");
       return FAILED;
     }
     op_dest.SetAttr("step_w", param.step_w());
   } else if (param.has_step()) {
     if (param.step() < 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "step", "larger than 0",
+                                to_string(param.step()));
       OP_LOGE("PriorBox", "step should be larger than 0.");
       return FAILED;
     }
@@ -127,12 +146,15 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
     for (int32_t i = 0; i < param.min_size_size(); i++) {
       v_min_size.push_back(param.min_size(i));
       if (param.min_size(i) <= 0) {
+        ge::OpsAttrValueErrReport(op_dest.GetName(), "min_size", "positive",
+                                to_string(param.min_size(i)));
         OP_LOGE("PriorBox", "min_size must be positive.");
         return FAILED;
       }
     }
     op_dest.SetAttr("min_size", v_min_size);
   } else {
+    ge::OpsGetAttrErrReport(op_dest.GetName(), "min_size");
     OP_LOGE("PriorBox", "Must provide min_size.");
     return FAILED;
   }
@@ -145,6 +167,8 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
     for (int32_t i = 0; i < param.max_size_size(); i++) {
       v_max_size.push_back(param.max_size(i));
       if (param.max_size(i) <= param.min_size(i)) {
+        ge::OpsAttrValueErrReport(op_dest.GetName(), "max_size", "greater than min_size",
+                                to_string(param.max_size(i)));
         OP_LOGE("PriorBox", "max_size must be greater than min_size.");
         return FAILED;
       }

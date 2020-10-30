@@ -18,11 +18,14 @@
  * \file roi_align_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
+
 static const int DEFAULT_SAMPLE_NUM = 2;
 static const int DEFAULT_ROI_END_MODE = 0;
 Status ParseParamsROIAlign(const Message* op_origin, ge::Operator& op_dest) {
@@ -58,6 +61,7 @@ Status ParseParamsROIAlign(const Message* op_origin, ge::Operator& op_dest) {
   int roi_end_mode = DEFAULT_ROI_END_MODE;
   if (param.has_roi_end_mode()) {
     if (param.roi_end_mode() != 0 && param.roi_end_mode() != 1) {
+      ge::OpsAttrValueErrReport("ROIAlign", "roi_end_mode", "0 or 1", to_string(param.roi_end_mode()));
       OP_LOGE("roi_end_mode only support 0 and 1 now!! FAIL!\n");
     } else {
       roi_end_mode = param.roi_end_mode();

@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -121,9 +122,12 @@ def _get_placeholder(dict_list, name_list):
         if name == 'var':
             var_shape = list(shape)
         if name != 'lr' and name != 'momentum' and name != 'x2' and var_shape != list(shape):
-            raise RuntimeError("The shapes of var, accum and x1 must be equal.")
+            error_manager_vector.raise_err_inputs_shape_not_equal('fused_mul_apply_momentum', 'var', name, var_shape,
+                                                                  shape, var_shape)
         if (name == 'lr' or name == 'momentum' or name == 'x2') and shape[0] != 1:
-            raise RuntimeError("The shapes of lr, momentum and x2 must be scalar.")
+            error_manager_vector.raise_err_check_params_rules('fused_mul_apply_momentum',
+                                                              'the shapes of lr, momentum and x2 must be scalar', name,
+                                                              shape)
 
         para_check.check_dtype(dtype, ('float32', 'float16'), param_name="var")
         para_check.check_shape(shape, param_name="var")

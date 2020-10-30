@@ -18,10 +18,12 @@
  * \file eltwise_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 void PrintfInfo(const caffe::LayerParameter* layer) {
@@ -57,6 +59,7 @@ Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
         op_dest.SetAttr("mode", static_cast<int64_t>(2));
         break;
       default:
+        ge::OpsAttrValueErrReport(op_dest.GetName(), "operation", "0 or 1 or 2", "unsupported");
         OP_LOGE("Eltwise",
                 "Eltwise parse params fail,"
                 "unsupported opration %d.",

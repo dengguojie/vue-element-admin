@@ -14,7 +14,7 @@
 # ============================================================================
 
 # the list of source files
-set(_op_tiling_files
+set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   concat.cc
@@ -48,12 +48,11 @@ set(_op_tiling_files
   unsorted_segment_sum.cc
 )
 
-add_library(op_tiling SHARED ${_op_tiling_files})
+add_library(optiling SHARED ${_optiling_files})
 
-target_include_directories(op_tiling PRIVATE
+target_include_directories(optiling PRIVATE
   ${CANN_ROOT}/ops/common/inc
   ${CANN_ROOT}/ops/built-in
-  ${CANN_ROOT}/inc
   ${CANN_ROOT}/inc/external
   ${CANN_ROOT}/inc/external/graph
   ${CANN_ROOT}/third_party/fwkacllib/inc
@@ -61,11 +60,13 @@ target_include_directories(op_tiling PRIVATE
   ${CANN_ROOT}/third_party/metadef/inc
   ${CANN_ROOT}/third_party/metadef/inc/external
   ${CANN_ROOT}/third_party/metadef/inc/external/graph
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
-target_link_libraries(op_tiling PRIVATE
+target_link_libraries(optiling PRIVATE
   ${graph}
   ${register}
   ${slog}
@@ -74,16 +75,16 @@ target_link_libraries(op_tiling PRIVATE
   c_sec
 )
 
-add_dependencies(op_tiling json_headers)
+add_dependencies(optiling json_headers)
 
 # to solve the compile warnings in fp16_t.cc
-target_compile_options(op_tiling PRIVATE
+target_compile_options(optiling PRIVATE
   "-fno-strict-aliasing"
 )
 
 set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe/op_tiling")
 cann_install(
-  TARGET      op_tiling
-  FILES       $<TARGET_FILE:op_tiling>
+  TARGET      optiling
+  FILES       $<TARGET_FILE:optiling>
   DESTINATION "${OP_TILING_PATH}"
 )

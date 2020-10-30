@@ -483,17 +483,21 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
   std::vector<std::vector<int64_t>> padding(length, std::vector<int64_t>(2));
   // input_shape is not change, it will be used in calc padding.
   std::vector<int64_t> input_shape = slice_params_output.input;
+  vector<int64_t> ori_begin = slice_params_output.begin_list;
+  int choose_padding = 0;
+
+  // Get InferShape: produce begin_shape, end_shape for calc padding
+  StridedSliceInferShape(opType, input_shape, slice_params_output, slicemasks_output);
 
   if (cond0 && cond1 && cond2 && cond3) {
+    choose_padding = 1;
     for (uint64_t i = 0; i < length; i++) {
       padding[i][0] = 0;
       padding[i][1] = 0;
     }
-    padding[length - 1][0] = slice_params_output.begin_list[1];
-    padding[length - 1][1] = input_shape[length - 1] - slice_params_output.begin_list[1] - 1;
+    padding[length - 1][0] = ori_begin[1];
+    padding[length - 1][1] = input_shape[length - 1] - ori_begin[1] - 1;
   } else {
-    // Get InferShape: produce begin_shape, end_shape for calc padding
-    StridedSliceInferShape(opType, input_shape, slice_params_output, slicemasks_output);
     int64_t begin_i = 0;
     int64_t shape_i = 0;
     int64_t end_i = 0;
@@ -523,6 +527,10 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
   // Get inShape outShape dtype padding
   padCommon pad;
   std::vector<int64_t> inShape = opParas.inputs[4].tensor[0].shape;
+  if (choose_padding == 1){
+    GELOGD("op[%s] inShape need insert the last dim that is 1.", opType.c_str());
+    inShape.push_back(1);
+  }
   std::vector<int64_t> outShape = input_shape;
   const std::string dtype = opParas.inputs[4].tensor[0].dtype;
   int numBit = pad._numBit(dtype);

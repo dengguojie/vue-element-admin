@@ -440,7 +440,8 @@ class ResizeNearestNeighbor:
         b_loop = (self.batch + b_out - 1) // b_out
         w_loop = (self.output_w + w_out - 1) // w_out
 
-        src_reg = _apply_reg_buffer(ib, "int32", [4], name="src_reg")
+        scalar_dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+        src_reg = _apply_reg_buffer(ib, scalar_dtype, [4], name="src_reg")
         ub_int32_h = _apply_store_buffer(
             ib,
             "int32", [self.c0],

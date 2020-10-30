@@ -344,7 +344,8 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
     copy_burst_len = get_ceil_int(box_num_sigment, obj.boxes_block_num)
     tik_instance.data_move(box_index_ub, obj.input_gm_list[2][box_num_offset],
                            0, 1, copy_burst_len, 0, 0)
-    util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", box_index_ub, box_index_ub, batch_offset_ub, box_num_sigment, src1_rep=0)
+    util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", box_index_ub, box_index_ub, batch_offset_ub,
+                                        box_num_sigment, src1_rep=0)
 
     with tik_instance.for_range(0, box_num_sigment) as _box_idx:
         _out_batch_idx = _box_idx + box_num_offset
@@ -396,37 +397,38 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                            "tmp_float_ub_0", tik.scope_ubuf, obj.boxes_type)
             if not cast_flag:
                 util_tik_comm_func.tik_func_vconv(tik_instance, h_top_index, input_boxes_in_h, obj.crop_height,
-                               mode="floor", mini_mid_ub=tmp_float_ub_0)
+                                                  mode="floor", mini_mid_ub=tmp_float_ub_0)
             else:
                 util_tik_comm_func.tik_func_vconv(tik_instance, h_top_index, input_boxes_in_h, obj.crop_height,
-                               mode="floor")
+                                                  mode="floor")
                 # h_top_index vconv from int32 to float32
                 util_tik_comm_func.tik_func_vconv(tik_instance, tmp_float_ub_0, h_top_index, obj.crop_height)
-            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", h_top_index, h_top_index, height_offset_ub, 
+            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", h_top_index, h_top_index, height_offset_ub,
                                                 obj.crop_height, src1_rep=0)
 
             util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", input_boxes_in_h,
-                             input_boxes_in_h, tmp_float_ub_0, obj.crop_height)
+                                                input_boxes_in_h, tmp_float_ub_0, obj.crop_height)
             util_tik_comm_func.tik_func_vconv(tik_instance, h_index_post, input_boxes_in_h, obj.crop_height,
-                           mode="ceil")
+                                              mode="ceil")
             tmp_float_ub_1 = obj.apply_mem((get_ceil_int(obj.crop_width,
                                                          obj.boxes_block_num)
                                             * obj.boxes_block_num,),
                                            "tmp_float_ub_1", tik.scope_ubuf, obj.boxes_type)
             if not cast_flag:
                 util_tik_comm_func.tik_func_vconv(tik_instance, w_left_index, input_boxes_in_w, obj.crop_width,
-                               mode="floor", mini_mid_ub=tmp_float_ub_1)
+                                                  mode="floor", mini_mid_ub=tmp_float_ub_1)
             else:
                 util_tik_comm_func.tik_func_vconv(tik_instance, w_left_index, input_boxes_in_w, obj.crop_width,
-                               mode="floor")
+                                                  mode="floor")
                 # h_top_index vconv from int32 to float32
                 util_tik_comm_func.tik_func_vconv(tik_instance, tmp_float_ub_1, w_left_index, obj.crop_width)
-            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", w_left_index, w_left_index, width_offset_ub, obj.crop_width,
-                             src1_rep=0)
+            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", w_left_index, w_left_index,
+                                                width_offset_ub, obj.crop_width,
+                                                src1_rep=0)
             util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", input_boxes_in_w,
-                             input_boxes_in_w, tmp_float_ub_1, obj.crop_width)
+                                                input_boxes_in_w, tmp_float_ub_1, obj.crop_width)
             util_tik_comm_func.tik_func_vconv(tik_instance, w_index_post, input_boxes_in_w, obj.crop_width,
-                           mode="ceil")
+                                              mode="ceil")
 
         # read input batch index and calc input offset
         input_batch_offset = tik_instance.Scalar(dtype="int32")
@@ -455,16 +457,20 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                     input_w_offset.set_as(w_left_index[_crop_width_idx])
                     input_w_post.set_as(w_index_post[_crop_width_idx])
                     real_w_offset = input_w_offset + input_w_post
-                    with tik_instance.if_scope(tik.all(input_w_offset >= 0,
-                                                       real_w_offset <= (obj.image_width - 1) * obj.image_c0)):
-                        w_lerp.set_as(input_boxes_in_w[_crop_width_idx])
+                    with tik_instance.new_stmt_scope():
                         # copy all C data in ub
-                        with tik_instance.new_stmt_scope():
-                            h0_w_ub = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
-                                                    "h0_w_ub", tik.scope_ubuf, "float32")
-                            h1_w_ub = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
-                                                    "h1_w_ub", tik.scope_ubuf, "float32")
-
+                        h0_w_ub = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
+                                                "h0_w_ub", tik.scope_ubuf, "float32")
+                        h1_w_ub = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
+                                                "h1_w_ub", tik.scope_ubuf, "float32")
+                        if obj.image_block_num != obj.block_num:
+                            h0_w_ub_fp16 = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
+                                                         "h0_w_ub_fp16", tik.scope_ubuf)
+                            h1_w_ub_fp16 = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
+                                                         "h1_w_ub_fp16", tik.scope_ubuf)
+                        with tik_instance.if_scope(tik.all(input_w_offset >= 0,
+                                                           real_w_offset <= (obj.image_width - 1) * obj.image_c0)):
+                            w_lerp.set_as(input_boxes_in_w[_crop_width_idx])
                             if obj.image_block_num == obj.block_num:
                                 # when input is fp32, just copy
                                 if obj.image_width > 1:
@@ -480,7 +486,8 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             0, obj.image_c1, c0_block_num*2,
                                             obj.image_height*obj.image_width*c0_block_num - c0_block_num*2, 0)
                                     else:
-                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0,
+                                                                           obj.image_c1*obj.image_c0*2)
                                 else:
                                     tik_instance.data_move(
                                         h0_w_ub, image_gm[input_batch_offset + input_h_offset + input_w_offset],
@@ -505,14 +512,11 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             0, obj.image_c1, c0_block_num,
                                             obj.image_height*obj.image_width*c0_block_num - c0_block_num, c0_block_num)
                                     else:
-                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0,
+                                                                           obj.image_c1*obj.image_c0*2)
                             else:
                                 # when input is fp16, will copy and cast to fp32
                                 with tik_instance.new_stmt_scope():
-                                    h0_w_ub_fp16 = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
-                                                                 "h0_w_ub_fp16", tik.scope_ubuf)
-                                    h1_w_ub_fp16 = obj.apply_mem((obj.image_c1*obj.image_c0*2,),
-                                                                 "h1_w_ub_fp16", tik.scope_ubuf)
                                     c0_block_fp16 = 1
                                     if obj.image_width > 1:
                                         tik_instance.data_move(
@@ -521,7 +525,7 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             0, obj.image_c1, c0_block_fp16*2,
                                             obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16*2, 0)
                                         util_tik_comm_func.tik_func_vconv(tik_instance, h0_w_ub, h0_w_ub_fp16,
-                                                       obj.image_c1*obj.image_c0*2)
+                                                                          obj.image_c1*obj.image_c0*2)
                                         if obj.image_height > 1:
                                             tik_instance.data_move(
                                                 h1_w_ub_fp16,
@@ -530,9 +534,10 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                                 0, obj.image_c1, c0_block_fp16*2,
                                                 obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16*2, 0)
                                             util_tik_comm_func.tik_func_vconv(tik_instance, h1_w_ub, h1_w_ub_fp16,
-                                                           obj.image_c1*obj.image_c0*2)
+                                                                              obj.image_c1*obj.image_c0*2)
                                         else:
-                                            util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                            util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0,
+                                                                               obj.image_c1*obj.image_c0*2)
                                     else:
                                         tik_instance.data_move(
                                             h0_w_ub_fp16,
@@ -547,7 +552,7 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16,
                                             c0_block_fp16)
                                         util_tik_comm_func.tik_func_vconv(tik_instance, h0_w_ub, h0_w_ub_fp16,
-                                                       obj.image_c1*obj.image_c0*2)
+                                                                          obj.image_c1*obj.image_c0*2)
                                         if obj.image_height > 1:
                                             tik_instance.data_move(
                                                 h1_w_ub_fp16,
@@ -564,26 +569,27 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                                 obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16,
                                                 c0_block_fp16)
                                             util_tik_comm_func.tik_func_vconv(tik_instance, h1_w_ub, h1_w_ub_fp16,
-                                                           obj.image_c1*obj.image_c0*2)
+                                                                              obj.image_c1*obj.image_c0*2)
                                         else:
-                                            util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                            util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0,
+                                                                               obj.image_c1*obj.image_c0*2)
 
                             util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", h1_w_ub,
-                                             h1_w_ub, h0_w_ub,
-                                             obj.image_c1*obj.image_c0*2)
+                                                                h1_w_ub, h0_w_ub,
+                                                                obj.image_c1*obj.image_c0*2)
 
                             util_tik_comm_func.tik_func_vmuls(tik_instance, h1_w_ub,
-                                           h1_w_ub, h_lerp, obj.image_c1*obj.image_c0*2)
+                                                              h1_w_ub, h_lerp, obj.image_c1*obj.image_c0*2)
 
                             util_tik_comm_func.tik_func_vcomple(tik_instance, "vadd", h0_w_ub,
-                                             h1_w_ub, h0_w_ub,
-                                             obj.image_c1*obj.image_c0*2)
+                                                                h1_w_ub, h0_w_ub,
+                                                                obj.image_c1*obj.image_c0*2)
 
                             tik_fun = tik_instance.vsub
                             tik_fun(obj.image_c0, h1_w_ub, h0_w_ub[16],
                                     h0_w_ub, obj.image_c1, 1, 1, 1, 2, 4, 4)
                             util_tik_comm_func.tik_func_vmuls(tik_instance, h1_w_ub,
-                                           h1_w_ub, w_lerp, obj.image_c1*obj.image_c0)
+                                                              h1_w_ub, w_lerp, obj.image_c1*obj.image_c0)
 
                             tik_fun = tik_instance.vadd
                             tik_fun(obj.image_c0, h1_w_ub[obj.image_c1*obj.image_c0:],
@@ -595,13 +601,9 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                             tik_instance.data_move(output_gm[output_offset],
                                                    h1_w_ub[obj.image_c1*obj.image_c0:], 0, obj.image_c1, c0_block_num,
                                                    0, obj.crop_height*obj.crop_width*c0_block_num - c0_block_num)
-                    with tik_instance.else_scope():
-                        with tik_instance.new_stmt_scope():
-                            h1_w_ub = obj.apply_mem((get_ceil_int(obj.image_c1*obj.image_c0, obj.vector_num)
-                                                     * obj.vector_num,),
-                                                    "h1_w_ub", tik.scope_ubuf, "float32")
+                        with tik_instance.else_scope():
                             util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, obj.extrapolation_value,
-                                            obj.image_c1*obj.image_c0)
+                                                               obj.image_c1*obj.image_c0)
 
                             output_offset = \
                                 _out_batch_idx*obj.image_c1*obj.crop_width*obj.crop_height*obj.image_c0 \
@@ -616,7 +618,7 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                              * obj.vector_num,),
                                             "h0_w_ub", tik.scope_ubuf, "float32")
                     util_tik_comm_func.tik_func_vector(tik_instance, h0_w_ub, obj.extrapolation_value,
-                                    obj.image_c1*obj.image_c0*obj.crop_width)
+                                                       obj.image_c1*obj.image_c0*obj.crop_width)
                     output_offset = \
                         _out_batch_idx*obj.image_c1*obj.crop_width*obj.crop_height*obj.image_c0 \
                         + _crop_height_idx*obj.crop_width*obj.image_c0
@@ -626,8 +628,8 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                 para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_FLOAT,
-                 para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def crop_and_resize(x, boxes, box_index, y, crop_size, extrapolation_value,
                     method, kernel_name="crop_and_resize"):
     """
@@ -685,3 +687,4 @@ def crop_and_resize(x, boxes, box_index, y, crop_size, extrapolation_value,
     crop_and_resize_obj.build_tik_instance(kernel_name)
 
     return tik_instance
+

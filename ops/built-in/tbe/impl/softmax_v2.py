@@ -93,8 +93,9 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     length_x_ori = len(shape_x_ori)
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     dtype = input_x.get("dtype").lower()
+    ori_input_format = input_x.get("ori_format")
     if length_x_ori == 2:
-        if check_axis_is_last(shape_x_ori, axis):
+        if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
                 input0 = gen_param(classify="input0", name="x",
                                    datatype="float16,float16,float16",
@@ -163,12 +164,20 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                 format="NC1HWC0,ND,ND,NC1HWC0")
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
-                input0 = gen_param(classify="input0", name="x",
-                                   datatype="float16,float",
-                                   format="NC1HWC0,NC1HWC0")
-                output0 = gen_param(classify="output0", name="y",
-                                    datatype="float16,float",
-                                    format="NC1HWC0,NC1HWC0")
+                if ori_input_format == "NCHW" and shape_x_ori[1] <= 16:
+                    input0 = gen_param(classify="input0", name="x",
+                                       datatype="float16,float",
+                                       format="ND,ND")
+                    output0 = gen_param(classify="output0", name="y",
+                                        datatype="float16,float",
+                                        format="ND,ND")
+                else:
+                    input0 = gen_param(classify="input0", name="x",
+                                       datatype="float16,float",
+                                       format="NC1HWC0,NC1HWC0")
+                    output0 = gen_param(classify="output0", name="y",
+                                        datatype="float16,float",
+                                        format="NC1HWC0,NC1HWC0")
             else:
                 input0 = gen_param(classify="input0", name="x",
                                    datatype="float16,float16,float,float",
@@ -2509,16 +2518,20 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     if input_format == "NC1HWC0":
         if len(input_x.get("ori_shape")) == 2:
             ori_shape = input_x.get("ori_shape")
-            new_ori_shape = [ori_shape[0], ori_shape[1], 1, 1]
+            new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
             input_x["ori_shape"] = new_ori_shape
             if not isinstance(axis, int):
                 axis = list(axis)
             if not hasattr(axis, 'index'):
-                if axis < 0:
-                    axis = axis - 2
+                if axis >= 0:
+                    axis = axis + 1
+                else:
+                    axis = axis - 1
             else:
-                if axis[0] < 0:
-                    axis[0] = axis[0] - 2
+                if axis[0] >= 0:
+                    axis[0] = axis[0] + 1
+                else:
+                    axis[0] = axis[0] - 1
         if not hasattr(axis, 'index'):
             axic_is_c = softmax_axis_check(input_x.get("ori_format"), axis)
         else:

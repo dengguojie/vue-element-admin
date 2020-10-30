@@ -101,19 +101,18 @@ def _deq_cast_compute(x0, deq_scale, x1, align_shape, c1_index, tensor_flag, rel
 
     def lambda_func(*indice):
         deq_indice = [0] * 5
-        x1_indice = [0] * len(x1.shape)
-
-        if len(x1.shape) == 5:
-            x1_indice[4] = indice[c0_index]
-            x1_indice[1] = indice[c1_index]
-        else:
-            x1_indice[0] = indice[c1_index] * 16 + indice[c0_index]
-
         if tensor_flag:
             deq_indice[4] = indice[c0_index]
             deq_indice[1] = indice[c1_index]
 
         if x1 is not None:
+            x1_indice = [0] * len(x1.shape)
+            if len(x1.shape) == 5:
+                x1_indice[4] = indice[c0_index]
+                x1_indice[1] = indice[c1_index]
+            else:
+                x1_indice[0] = indice[c1_index] * 16 + indice[c0_index]
+
             if tensor_flag:
                 func = tvm.vdeq_cast(x0(*indice), deq_scale(*deq_indice), "int16", do_relu=relu_flag) + x1(*x1_indice)
             else:

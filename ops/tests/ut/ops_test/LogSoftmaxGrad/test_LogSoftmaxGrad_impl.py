@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as NP
 ut_case = OpUT("LogSoftmaxGrad", None, None)
 
 case1 = {"params": [{"shape": (1,2), "dtype": "float16", "format": "ND", "ori_shape": (1,2),"ori_format": "ND"},
@@ -44,6 +46,50 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
+def calc_expect_func(inputA, inputB, output):
+    axis = -1
+    input_A_Arr = inputA['value']
+    input_B_Arr = inputB['value']
+
+    exp = NP.exp(input_B_Arr)
+    exp_sum = NP.sum(input_A_Arr, axis, keepdims=True)
+    exp_sum_broadcast = NP.broadcast_to(exp_sum, inputB['shape'])
+    softmax = exp * exp_sum_broadcast
+    output_Arr = (input_A_Arr - softmax).astype(output['dtype'])
+    return output_Arr
+
+precision_case1 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND","param_type": "input"},
+                              {"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND","param_type": "input"},
+                              {"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND","param_type": "output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case2 = {"params": [{"shape": (16, 128), "dtype": "float32", "format": "ND", "ori_shape": (16, 128),"ori_format": "ND","param_type": "input"},
+                              {"shape": (16, 128), "dtype": "float32", "format": "ND", "ori_shape": (16, 128),"ori_format": "ND","param_type": "input"},
+                              {"shape": (16, 128), "dtype": "float32", "format": "ND", "ori_shape": (16, 128),"ori_format": "ND","param_type": "output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case3 = {"params": [{"shape": (3, 2, 2), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2),"ori_format": "ND","param_type": "input"},
+                              {"shape": (3, 2, 2), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2),"ori_format": "ND","param_type": "input"},
+                              {"shape": (3, 2, 2), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2),"ori_format": "ND","param_type": "output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case4 = {"params": [{"shape": (3, 2, 2, 3), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2, 3),"ori_format": "ND","param_type": "input"},
+                              {"shape": (3, 2, 2, 3), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2, 3),"ori_format": "ND","param_type": "input"},
+                              {"shape": (3, 2, 2, 3), "dtype": "float32", "format": "ND", "ori_shape": (3, 2, 2, 3),"ori_format": "ND","param_type": "output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+
+ut_case.add_precision_case("Ascend910",precision_case1)
+ut_case.add_precision_case("Ascend910",precision_case2)
+ut_case.add_precision_case("Ascend910",precision_case3)
+ut_case.add_precision_case("Ascend910",precision_case4)
+
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
-    exit(0)
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
+

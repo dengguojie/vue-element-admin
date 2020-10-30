@@ -22,6 +22,7 @@ set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
 protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
 
 set(_caffe_plugins
+  ../../op_proto/util/error_util.cc
   arg_max_with_k_plugin.cc
   basic_rnn_cell_plugin.cc
   bias_plugin.cc
@@ -94,16 +95,16 @@ set(_caffe_plugins
 
 add_library(ops_all_caffe_plugin SHARED
   ${_caffe_plugins}
-  ${_proto_cc}
+  ${_proto_h}
 )
 
 target_include_directories(ops_all_caffe_plugin PRIVATE
   ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/inc
   ${CANN_ROOT}/third_party/fwkacllib/inc
   ${CANN_ROOT}/third_party/metadef/inc
   ${CANN_ROOT}/third_party/metadef/inc/external
   ${CANN_ROOT}/third_party/metadef/inc/external/graph
+  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
   ${_proto_include}
   ${Protobuf_INCLUDE}
 )

@@ -109,11 +109,19 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   int64_t paddingsL;
   int64_t paddingsR;
   if (paddNode->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NCHW) {
+    if (paddings[0][0] != 0 || paddings[0][1] != 0 || paddings[1][0] != 0 || paddings[1][1] != 0) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Padd and DepthwiseConv2d fusion can only on H and W.");
+      return NOT_CHANGED;
+    }
     paddingsT = paddings[2][0];
     paddingsB = paddings[2][1];
     paddingsL = paddings[3][0];
     paddingsR = paddings[3][1];
   } else if (paddNode->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC) {
+    if (paddings[0][0] != 0 || paddings[0][1] != 0 || paddings[3][0] != 0 || paddings[3][1] != 0) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Padd and DepthwiseConv2d fusion can only on H and W.");
+      return NOT_CHANGED;
+    }
     paddingsT = paddings[1][0];
     paddingsB = paddings[1][1];
     paddingsL = paddings[2][0];

@@ -38,7 +38,7 @@ class TbeConv2dWrtselStridewrtPass : public BufferFusionPassBase {
   vector<BufferFusionPattern*> DefinePatterns() override;
 
  private:
-  const string FUSED_OP_TYPE = "FusedOp";
+  const string fused_op_type_ = "FusedOp";
 };
 }  // namespace fe
 

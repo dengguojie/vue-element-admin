@@ -13,8 +13,8 @@
 
 #include <string>
 
-#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
-
+#include "common/fe_log.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
 namespace fe {
 
@@ -40,11 +40,8 @@ vector<BufferFusionPattern*> MatmulFastGelugradUbFusion::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
   string passName = "MatmulFastGelugradUbFusion";
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(passName);
-  if (pattern == nullptr) {
-    // FE_LOGE("new an object failed."),
-    return patterns;
-  }
-  // FE_LOGD("Start to define %s pass pattern.", passName.c_str());
+  FE_CHECK((pattern == nullptr), FE_LOGE("new an object failed."), return patterns);
+  FE_LOGD("Start to define %s pass pattern.", passName.c_str());
   pattern->AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OUTPUT1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -54,7 +51,7 @@ vector<BufferFusionPattern*> MatmulFastGelugradUbFusion::DefinePatterns() {
       .SetOutputs(PATTERN_MATMUL, {PATTERN_ELTWISE, PATTERN_OUTPUT1, PATTERN_OUTPUT2}, TBE_OUTPUT_BRANCH_MULTI)
       .SetOutputs(PATTERN_OTHER_INPUT1, {PATTERN_ELTWISE});
   patterns.push_back(pattern);
-  // FE_LOGD("End to define %s pass pattern.", passName.c_str());
+  FE_LOGD("End to define %s pass pattern.", passName.c_str());
 
   return patterns;
 }
@@ -67,7 +64,7 @@ vector<BufferFusionPattern*> MatmulFastGelugradUbFusion::DefinePatterns() {
  */
 Status MatmulFastGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping,
                                                   vector<ge::NodePtr>& fusionNodes) {
-  // FE_LOGD("Begin to do MatmulFastGelugradUbFusion!");
+  FE_LOGD("Begin to do MatmulFastGelugradUbFusion!");
   fusionNodes = GetMatchedNodes(mapping);
   // multi input node can not be fused except head node
   for (auto& item : mapping) {
@@ -79,7 +76,7 @@ Status MatmulFastGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& map
       }
     }
   }
-  // FE_LOGD("End to do MatmulFastGelugradUbFusion!");
+  FE_LOGD("End to do MatmulFastGelugradUbFusion!");
   return SUCCESS;
 }
 

@@ -30,9 +30,8 @@ from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
+SHRINK_AXIS = -1
+NEW_AXIS = -2
 
 def _shape_to_list(shape):
     """
@@ -54,203 +53,257 @@ def _fill_list_with_ones(length):
     return result_list
 
 
+def _build_dense_spec(sparse: dict, dense: dict):
+    # Build expanded begin, end, strides, begin_mask, end_mask
+    # to remove any ellipsis
+    if len(dense["begin"]) < dense["dims"]:
+        pad = [0] * (dense["dims"] - len(dense["begin"]))
+        dense["begin"] += pad
+        dense["end"] += pad
+        dense["strides"] += pad
+    else:
+        dense["begin"] = dense["begin"][0:dense["dims"]]
+        dense["end"] = dense["end"][0:dense["dims"]]
+        dense["strides"] = dense["strides"][0:dense["dims"]]
+
+    # What indices to get the final shape from.
+    dense["begin_mask"] = 0
+    dense["end_mask"] = 0
+    dense["shrink_axis_mask"] = 0
+
+    full_index = 0
+    for index, _ in enumerate(range(0, sparse["dims"])):
+        bit_value = 1 << index
+        if sparse["ellipsis_mask"] & bit_value != 0:
+            # Expand the ellipsis into the appropriate indices
+            # NOTE: this only works because we guaranteed one ellipsis
+            next_index = min(dense["dims"] - (sparse["dims"] - index) + 1 + sparse["num_add_axis_after_ellipsis"],
+                             dense["dims"])
+            for i in range(full_index, next_index):
+                full_index = i
+                dense["begin"][full_index] = 0
+                dense["end"][full_index] = 0
+                dense["strides"][full_index] = 1
+                dense["begin_mask"] |= (1 << full_index)
+                dense["end_mask"] |= (1 << full_index)
+                dense["final_shape_gather_indices"].append(full_index)
+            if next_index > full_index:
+                full_index = next_index
+        elif bit_value & sparse["new_axis_mask"] != 0:
+            dense["final_shape_gather_indices"].append(NEW_AXIS)
+        else:
+            # Gather slicing spec into appropriate index
+            dense["begin"][full_index] = sparse["begin"][index]
+            dense["end"][full_index] = sparse["end"][index]
+            dense["strides"][full_index] = sparse["strides"][index]
+            if sparse["begin_mask"] & bit_value != 0:
+                dense["begin_mask"] |= (1 << full_index)
+            if sparse["end_mask"] & bit_value != 0:
+                dense["end_mask"] |= (1 << full_index)
+
+            # If shrink, record where to get the dimensionality from (i.e.
+            # new_axis creates a fake 1 size dimension. Also remember shrink
+            # axis (now in dense form) so we can ignore dense->end below.
+            if sparse["shrink_axis_mask"] & bit_value != 0:
+                dense["final_shape_gather_indices"].append(SHRINK_AXIS)
+                dense["shrink_axis_mask"] |= (1 << full_index)
+            else:
+                dense["final_shape_gather_indices"].append(full_index)
+
+            full_index += 1
+
+
+# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask):
+    sparse_spec = {
+        "dims": len(begin),
+        "num_add_axis_after_ellipsis": 0,
+        "begin": list(begin),
+        "end": list(end),
+        "strides": list(stride),
+        "begin_mask": begin_mask,
+        "end_mask": end_mask,
+        "ellipsis_mask": ellipsis_mask,
+        "new_axis_mask": new_axis_mask,
+        "shrink_axis_mask": shrink_axis_mask
+    }
+
+    # Step 1: Account for ellipsis and new axis
+    ellipsis_seen = False
+    for index, _ in enumerate(sparse_spec.get("begin")):
+        bit_value = 1 << index
+        if ellipsis_seen and (new_axis_mask & bit_value != 0):
+            sparse_spec["num_add_axis_after_ellipsis"] = sparse_spec["num_add_axis_after_ellipsis"] + 1
+
+        if ellipsis_mask & bit_value != 0:
+            ellipsis_seen = True
+
+    # If no ellipsis insert one at the end
+    if not ellipsis_seen:
+        sparse_spec["ellipsis_mask"] |= (1 << sparse_spec["dims"])
+        sparse_spec["dims"] += 1
+
+    # Step 2: Make a sparse spec into a full index spec
+    #
+    # The sparse spec does not correspond to the number of dimensions
+    # Make a dense spec that corresponds to the number of dimensions
+    #
+    # For example suppose foo[...,3:] on foo.shape=(2,2,3) then
+    # we need to produce the missing begin_mask for the first two
+    # dimensions i.e. from begin_mask_spec=0, end_mask_spec=2
+    # we achieve begin_mask=6, end_mask=7
+    dense_spec = {
+        "dims": len(shape),
+        "begin_mask": 0,
+        "end_mask": 0,
+        "begin_valid": True,
+        "end_valid": True,
+        "begin": list(begin),
+        "end": list(end),
+        "strides": list(stride),
+        "final_shape_gather_indices": [],
+        "shrink_axis_mask": 0
+    }
+    _build_dense_spec(sparse_spec, dense_spec)
+    begin = list(dense_spec["begin"])
+    end = list(dense_spec["end"])
+    stride = list(dense_spec["strides"])
+    # Step 3: Make implicit ranges (non-zero begin_masks and end_masks) explicit
+    #         and bounds check!
+    is_identity = True
+    slice_dim0 = True
+    is_simple_slice = True
+    processing_shape = []
+    processing_begin = []
+    processing_end = []
+    processing_stride = []
+    for i, dim_i in enumerate(shape):
+        bit_value = 1 << i
+        shrink_i = (dense_spec["shrink_axis_mask"] & bit_value)
+        if dim_i == -1:
+            processing_shape.append(1 if shrink_i != 0 else -1)
+            processing_begin.append(begin[i])
+            processing_end.append(begin[i] + 1 if shrink_i != 0 else -1)
+            processing_stride.append(stride[i])
+            continue
+
+        masks = (dense_spec["begin_mask"] & bit_value, dense_spec["end_mask"] & bit_value)
+        valid_range = (0 if stride[i] > 0 else -1, dim_i if stride[i] > 0 else dim_i - 1)
+
+        def canonical(x, c):
+            if masks[c] != 0:
+                return valid_range[c] if stride[i] > 0 else valid_range[(c + 1) & 1]
+            else:
+                x_fwd = (dim_i + x) if x < 0 else x
+                return valid_range[0] if x_fwd < valid_range[0] else min(x_fwd, valid_range[1])
+
+        is_simple_slice &= (stride[i] == 1)
+        begin_and_end_masked = (
+                (dense_spec["begin_mask"] & bit_value != 0) and (dense_spec["end_mask"] & bit_value != 0))
+        if dense_spec["begin_valid"] and dense_spec["end_valid"]:
+            if shrink_i != 0:
+                # If we are shrinking, the end index is now possibly incorrect. In
+                # particular foo[-1] produces sparse_begin = -1, sparse_end = 0.
+                # and canonical puts these to n-1 and 0, which implies a degenerate
+                # interval. Fortunately, it is now safe to re-create end as begin+1.
+                x_fwd = (dim_i + begin[i]) if begin[i] < 0 else begin[i]
+                begin[i] = x_fwd
+                end[i] = begin[i] + 1
+            else:
+                begin[i] = canonical(begin[i], 0)
+                end[i] = canonical(end[i], 1)
+
+            processing_begin.append(begin[i])
+            processing_end.append(end[i])
+            processing_stride.append(stride[i])
+
+            # Update optimization values
+            take_all_in_dimension = (stride[i] == 1 and begin[i] == 0 and end[i] == dim_i)
+            is_identity &= take_all_in_dimension
+            slice_dim0 &= ((i == 0 and stride[i] == 1) or take_all_in_dimension)
+        else:
+            is_identity &= (stride[i] == 1 and begin_and_end_masked)
+            slice_dim0 &= ((i == 0 and stride[i] == 1) or begin_and_end_masked)
+
+        # Compute the processing shape (the intermediate Eigen will produce)
+        interval_length = 0
+        known_interval = False
+        if dense_spec["begin_valid"] and dense_spec["end_valid"]:
+            interval_length = end[i] - begin[i]
+            known_interval = True
+        elif shrink_i != 0:
+            # The dimension is still known as 1 for the processing_shape, but will be
+            # discarded for the final shape.
+            interval_length = 1
+            known_interval = True
+        elif begin_and_end_masked:
+            # Even if we don't have values for begin or end, we do know that this
+            # dimension covers the whole interval. If we have shape information for
+            # this dimension, that tells us the interval length.
+            if dim_i >= 0:
+                interval_length = dim_i if stride[i] > 0 else -dim_i
+                known_interval = True
+
+        if known_interval:
+            size_i = 0
+            # Hold zero if the interval is degenerate, otherwise account for remainder
+            if interval_length == 0 or ((interval_length < 0) != (stride[i] < 0)):
+                size_i = 0
+            else:
+                size_i = interval_length // stride[i] + (1 if interval_length % stride[i] != 0 else 0)
+            processing_shape.append(size_i)
+        else:
+            processing_shape.append(-1)
+
+    # Step 4: Compute the final shape
+    # new_axis will increase dimension by 1 (with a one-size dimension)
+    # slices like foo[3,...] will reduce dimension by 1.
+    # This cannot be done earlier, because it depends on Step 3.
+    final_shape = []
+    final_input_shape = []
+    final_input_begin = []
+    final_input_end = []
+    final_input_stride = []
+    shrink_gather_index = 0
+    for _, gather_index in enumerate(dense_spec["final_shape_gather_indices"]):
+        if gather_index >= 0:
+            final_shape.append(processing_shape[gather_index])
+            final_input_shape.append(shape[gather_index])
+            final_input_begin.append(processing_begin[gather_index])
+            final_input_end.append(processing_end[gather_index])
+            final_input_stride.append(processing_stride[gather_index])
+            shrink_gather_index = gather_index + 1
+        elif gather_index == NEW_AXIS:
+            final_shape.append(1)
+            final_input_shape.append(1)
+            final_input_begin.append(0)
+            final_input_end.append(1)
+            final_input_stride.append(1)
+        else:
+            final_input_shape.append(shape[shrink_gather_index])
+            final_input_begin.append(processing_begin[shrink_gather_index])
+            final_input_end.append(processing_begin[shrink_gather_index] + 1)
+            final_input_stride.append(1)
+            shrink_gather_index += 1
+
+    return tuple(final_shape), final_input_shape, final_input_begin, final_input_end, final_input_stride
+
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
                     begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                     shrink_axis_mask):
-    """
-    init the begin and end parameters.
-    1.support when begin shape and end shape is less than input shape (new axis mask = 0 or != 0)
-    2.support when the value of begin and end is negative
-    3.support when the begin mask and end mask is not 0
-    4.support when ellipsis mask is not 0
-    5.support when stride shape is less than input shape
-    6.when new axis mask or shrink axis mask is not 0, change corresponding begin/end/stride
-    """
-
-    formal_begin_len = len(begin_shape)
-    input_len = len(input_list)
-    input_calc = copy.deepcopy(input_list)
-    if new_axis_mask != 0:
-        for i, _ in enumerate(input_calc):
-            if new_axis_mask & 2**i == 2**i:
-                input_calc.insert(i, 1)
-
-    i = 0
-    # if begin and end shape is not equal to input shape, then append begin and end
-    if ellipsis_mask != 0:
-        if end_mask != 0 and input_len != formal_begin_len:
-            end_mask *= end_mask * 2**(input_len - formal_begin_len - 1)
-            end_mask = int(end_mask)
-        if begin_mask != 0 and input_len != formal_begin_len:
-            begin_mask *= begin_mask * 2**(input_len - formal_begin_len - 1)
-            begin_mask = int(begin_mask)
-        for i, _ in enumerate(input_calc):
-            if (ellipsis_mask & 2**i) == 2**i:
-                ellipsis_dim = i
-                begin_shape[i] = 0
-                end_shape[i] = input_calc[i]
-                stride_shape[i] = 1
-                if len(begin_shape) < input_len:
-                    for j in range(1, input_len - formal_begin_len + 1):
-                        begin_shape.insert(ellipsis_dim + j, 0)
-                        end_shape.insert(ellipsis_dim + j,
-                                         input_calc[ellipsis_dim + j])
-                        stride_shape.insert(ellipsis_dim + j, 1)
-
-    while len(begin_shape) < input_len:
-        begin_shape.append(0)
-        end_shape.append(input_calc[formal_begin_len + i])
-        stride_shape.append(1)
-        i += 1
-
-    # if the value of begin and end is negative, transform to the positive value
-    for i, _ in enumerate(zip(begin_shape, end_shape, input_calc)):
-        if stride_shape[i] > 0:
-            if begin_shape[i] >= 0 and end_shape[i] >= 0:
-                if begin_shape[i] >= end_shape[i]:
-                    end_shape[i] = begin_shape[i]
-                if begin_shape[i] < end_shape[i]:
-                    if begin_shape[i] >= input_calc[i]:
-                        end_shape[i] = begin_shape[i] = input_calc[i]
-                    if begin_shape[i] < input_calc[i] and \
-                           end_shape[i] >= input_calc[i]:
-                        end_shape[i] = input_calc[i]
-            if begin_shape[i] < 0 and end_shape[i] >= 0:
-                if begin_shape[i] + input_calc[i] <= 0 or \
-                     begin_shape[i] + input_calc[i] <= end_shape[i]:
-                    begin_shape[i] = begin_shape[i] + input_calc[i]
-                    if begin_shape[i] >= end_shape[i]:
-                        begin_shape[i] = end_shape[i]
-                    if begin_shape[i] < end_shape[i]:
-                        if begin_shape[i] <= 0:
-                            begin_shape[i] = 0
-                        if begin_shape[i] < input_calc[i] and \
-                           end_shape[i] > input_calc[i]:
-                            end_shape[i] = input_calc[i]
-            if begin_shape[i] >= 0 and end_shape[i] < 0:
-                end_shape[i] = end_shape[i] + input_calc[i]
-                if end_shape[i] <= begin_shape[i]:
-                    begin_shape[i] = end_shape[i]
-            if begin_shape[i] < 0 and end_shape[i] < 0:
-                begin_shape[i] = begin_shape[i] + input_calc[i]
-                end_shape[i] = end_shape[i] + input_calc[i]
-                if begin_shape[i] >= 0 and end_shape[i] >= 0:
-                    if begin_shape[i] >= end_shape[i]:
-                        begin_shape[i] = end_shape[i]
-                if begin_shape[i] >= 0 and end_shape[i] < 0:
-                    begin_shape[i] = end_shape[i]
-                if begin_shape[i] < 0 and end_shape[i] >= 0:
-                    begin_shape[i] = 0
-                if begin_shape[i] < 0 and end_shape[i] < 0:
-                    begin_shape[i] = 0
-                    end_shape[i] = 0
-        if stride_shape[i] < 0:
-            if begin_shape[i] >= 0 and end_shape[i] >= 0:
-                if begin_shape[i] <= end_shape[i]:
-                    begin_shape[i] = end_shape[i]
-                if begin_shape[i] > end_shape[i]:
-                    if stride_shape[i] == -1:
-                        if begin_shape[i] >= input_calc[i]:
-                            begin_shape[i] = input_calc[i] - 1
-                    else:
-                        begin_shape[i] = input_calc[i]
-            if begin_shape[i] >= 0 and end_shape[i] < 0:
-                end_shape[i] = end_shape[i] + input_calc[i]
-                if end_shape[i] >= 0:
-                    if end_shape[i] >= begin_shape[i]:
-                        end_shape[i] = begin_shape[i]
-                    if end_shape[i] < begin_shape[i]:
-                        if stride_shape[i] == -1:
-                            if begin_shape[i] >= input_calc[i]:
-                                begin_shape[i] = input_calc[i] - 1
-                        else:
-                            if begin_shape[i] >= input_calc[i]:
-                                begin_shape[i] = input_calc[i]
-                if end_shape[i] < 0:
-                    begin_shape[i] = begin_shape[i]
-                    end_shape[i] = end_shape[i]
-            if begin_shape[i] < 0 and end_shape[i] >= 0:
-                begin_shape[i] = begin_shape[i] + input_calc[i]
-                if begin_shape[i] >= 0:
-                    if begin_shape[i] <= end_shape[i]:
-                        begin_shape[i] = end_shape[i]
-                if begin_shape[i] < 0:
-                    begin_shape[i] = end_shape[i]
-            if begin_shape[i] < 0 and end_shape[i] < 0:
-                end_shape[i] = end_shape[i] + input_calc[i]
-                begin_shape[i] = begin_shape[i] + input_calc[i]
-                if begin_shape[i] >= 0 and end_shape[i] >= 0:
-                    if begin_shape[i] <= end_shape[i]:
-                        begin_shape[i] = end_shape[i]
-                    if begin_shape[i] > end_shape[i]:
-                        if begin_shape[i] >= input_calc[i]:
-                            begin_shape[i] = input_calc[i] - 1
-                if begin_shape[i] >= 0 and end_shape[i] < 0:
-                    begin_shape[i] = begin_shape[i] + 1
-                    end_shape[i] = 0
-                if begin_shape[i] < 0 and end_shape[i] >= 0:
-                    begin_shape[i] = end_shape[i]
-                if begin_shape[i] < 0 and end_shape[i] < 0:
-                    begin_shape[i] = end_shape[i]
-
-    if shrink_axis_mask != 0:
-        for i, _ in enumerate(input_calc):
-            if shrink_axis_mask & 2**i == 2**i:
-                input_calc[i] = 0
-                if begin_mask & 2**i == 2**i:
-                    begin_mask = 0
-
-    # if the begin mask or end mask or ellipsis is not 0, update begin and end shape
-    for i, _ in \
-            enumerate(zip(begin_shape, end_shape, input_calc)):
-        if (begin_mask & 2**i) == 2**i:
-            if stride_shape[i] > 0:
-                begin_shape[i] = 0
-            else:
-                begin_shape[i] = input_calc[i]
-
-        if (end_mask & 2**i) == 2**i:
-            if stride_shape[i] > 0:
-                end_shape[i] = input_calc[i]
-            else:
-                end_shape[i] = 0
-        if (ellipsis_mask & 2**i) == 2**i:
-            begin_shape[i] = 0
-            end_shape[i] = input_calc[i]
-            stride_shape[i] = 1
-
-    i = 0
-    # if new axis mask is not 0, need to update begin and end shape
-    if new_axis_mask != 0:
-        while len(begin_shape) < len(input_calc):
-            begin_shape.append(0)
-            end_shape.append(input_calc[input_len + i])
-            i = i + 1
-    # if stride shape is less than begin shape, fill with 1
-    if len(stride_shape) < len(begin_shape):
-        while len(stride_shape) < len(begin_shape):
-            stride_shape.append(1)
-
-    # if begin or end is greater than length, update the value
-    for i, _ in enumerate(zip(stride_shape, input_calc)):
-        if stride_shape[i] > 0:
-            if end_shape[i] > input_calc[i]:
-                end_shape[i] = input_calc[i]
-        if stride_shape[i] < 0:
-            if begin_shape[i] >= input_calc[i]:
-                begin_shape[i] = input_calc[i] - 1
-    # in order not to get the output dim is 0 or negative,and change
-    # end shape when shrink axis mask is not 0
-    for i, _ in enumerate(begin_shape):
-        if (new_axis_mask & (2**i)) == 2**i:
-            begin_shape[i] = 0
-            end_shape[i] = 1
-            stride_shape[i] = 1
-        if shrink_axis_mask & 2**i == 2**i:
-            end_shape[i] = begin_shape[i] + 1
-
-    return begin_shape, end_shape, stride_shape
+    output_shape, final_input_shape, final_input_begin, final_input_end, final_input_stride = \
+        _infer_shape(shape=input_list,
+                     begin=begin_shape,
+                     end=end_shape,
+                     stride=stride_shape,
+                     begin_mask=begin_mask,
+                     end_mask=end_mask,
+                     ellipsis_mask=ellipsis_mask,
+                     new_axis_mask=new_axis_mask,
+                     shrink_axis_mask=shrink_axis_mask)
+    return final_input_shape, final_input_begin, final_input_end, final_input_stride
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,unused-argument
@@ -303,10 +356,6 @@ def strided_slice_d_compute(input_data,
     end_shape = copy.deepcopy(end)
     stride_shape = copy.deepcopy(stride_shape)
     input_list = _shape_to_list(input_data.shape)
-    # update begin_shape, end_shape
-    begin_shape, end_shape, stride_shape = _init_parameter(
-        input_list, begin_shape, end_shape, stride_shape, begin_mask, end_mask,
-        ellipsis_mask, new_axis_mask, shrink_axis_mask)
     if stride_shape[-1] != 1:
         raise RuntimeError("Only support strides with 1 at last value.")
 
@@ -323,38 +372,12 @@ def strided_slice_d_compute(input_data,
             shrink_axis_mask_temp = shrink_axis_mask_temp + 2**i
     shrink_axis_mask = shrink_axis_mask | shrink_axis_mask_temp
 
-    # handle only shrink_axis_mask
-    if shrink_axis_mask > 0 and new_axis_mask == 0:
-        for i, _ in enumerate(zip(begin_shape, end_shape)):
-            if (shrink_axis_mask & 2**i) == 2**i:
-                if begin_shape[i] < 0:
-                    begin_shape[i] = input_list[i] + begin_shape[i]
-                end_shape[i] = begin_shape[i] + 1
-
     output_shape = [
         int(math.ceil((end - begin) / (stride * 1.0)))
         for begin, end, stride in zip(begin_shape, end_shape, stride_shape)
     ]
-    # output shape should be same with input shape,if shrink_axis_mask new_axis_mask == 0
-    if shrink_axis_mask == 0 and new_axis_mask == 0 and \
-       (len(input_list) < len(begin_shape)):
-       output_shape = output_shape[0:len(input_list)]
-       begin_shape = begin_shape[0:len(input_list)]
-       end_shape = end_shape[0:len(input_list)]
-       stride_shape = stride_shape[0:len(input_list)]
 
-    if shrink_axis_mask > 0 or new_axis_mask > 0:
-        select_run_branch = 1
-
-    # To construct output_shape_shrink_axis accord to shrink_axis_mask
-    if shrink_axis_mask > 0:
-        shrink_flag = 0
-        for i, _ in enumerate(input_list):
-            if (shrink_axis_mask & 2**i) == 2**i:
-                del output_shape[i - shrink_flag]
-                shrink_flag += 1
-
-    # AICore don't support sclar
+    # AICore don't support scalar
     if not output_shape:
         output_shape = [1]
 
@@ -370,44 +393,9 @@ def strided_slice_d_compute(input_data,
                                          begin_shape[i], )
         return index_org
 
-    def _map_index_new_or_shrink_axis(*index):
-        """
-        calculate index by strided and begin parameters when new axis mask
-        or shrink axis mask is not 0.
-        """
-        location = 0
-        index_org_axis = None
-        for i, _ in enumerate(zip(begin_shape, stride_shape)):
-            if (new_axis_mask & 2**i) == 2**i:
-                location += 1
-            elif (shrink_axis_mask & 2**i) == 2**i:
-                if i == 0:
-                    index_org_axis = (0 + begin_shape[i], )
-                else:
-                    index_org_axis = index_org_axis + (0 + begin_shape[i], )
-            else:
-                if index_org_axis is None:
-                    index_org_axis = (index[location] * stride_shape[i] +
-                                      begin_shape[i], )
-                else:
-                    index_org_axis = index_org_axis + \
-                                     (index[location] * stride_shape[i] + begin_shape[i],)
-                location += 1
-        return index_org_axis
-
-    # normal situation, new axis mask == 0 and shrink axis mask == 0
-    if select_run_branch == 0:
-        output = tvm.compute(output_shape,
-                             lambda *i: input_data(*_map_index_norm(*i)),
-                             name='output', tag='strided_slice_d|1')
-
-    # new axis mask != 0 and shrink axis mask != 0
-    elif select_run_branch == 1:
-        output = tvm.compute(output_shape, lambda *i: input_data(
-            *_map_index_new_or_shrink_axis(*i)),
-                             name='output',
-                             tag='strided_slice_d|2'
-                             )
+    output = tvm.compute(output_shape,
+                         lambda *i: input_data(*_map_index_norm(*i)),
+                         name='output', tag='strided_slice_d|1')
 
     return [output, output_shape]
 
@@ -813,10 +801,17 @@ def strided_slice_d(input_x,
 
     begin = list(begin)
     end = list(end)
+    strides = list(strides)
 
     if not _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
                             new_axis_mask, shrink_axis_mask):
         raise RuntimeError("Parameter Invalid!")
+
+    # update input_shape, begin_shape, end_shape
+    input_shape, begin, end, strides = _init_parameter(input_shape, begin, end,
+                                                       strides, begin_mask, end_mask,
+                                                       ellipsis_mask, new_axis_mask,
+                                                       shrink_axis_mask)
 
     if strides is None:
         strides = _fill_list_with_ones(len(input_shape))
@@ -895,11 +890,6 @@ def strided_slice_d(input_x,
         stride_shape = list(strides)
         stride_shape = copy.deepcopy(stride_shape)
         input_list = list(input_shape)
-        # update begin_shape, end_shape
-        begin_shape, end_shape, stride_shape = _init_parameter(input_list, begin_shape, end_shape,
-                                                               stride_shape, begin_mask, end_mask,
-                                                               ellipsis_mask, new_axis_mask,
-                                                               shrink_axis_mask)
         head_size = 1
         for i in range(0, (len(input_shape) - 1)):
             head_size = head_size * input_shape[i]

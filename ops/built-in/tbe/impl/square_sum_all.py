@@ -22,6 +22,7 @@ import operator
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # Each core processing data num greater than the size we can get better performace from experience
 MINIMUM_DATA_NUM_EACH_CORE = 1024
@@ -134,10 +135,12 @@ class SquareSumAll():
         add_support = tbe_platform.api_check_support("tik.vadd", "float32")
 
         if self.input_x_dtype != self.input_y_dtype:
-            raise RuntimeError("input_x and input_y do not have the same dtype")
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "input_x", "input_y",
+                                                                  self.input_x_dtype, self.input_y_dtype)
 
         if self.input_x_dtype == "float32" and not add_support:
-            raise RuntimeError("Input dtype is float32, but do not support on the platform")
+            error_manager_vector.raise_err_input_dtype_not_supported(self.kernel_name, "input_x", [],
+                                                                     self.input_x_dtype)
 
     def _vector_add(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """

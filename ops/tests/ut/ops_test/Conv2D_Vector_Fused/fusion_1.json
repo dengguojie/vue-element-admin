@@ -1,0 +1,109 @@
+{
+    "fusion_op_name": "fusion_conv_abs",
+    "backend": "RT_DEV_BINARY_MAGIC_ELF",
+    "op_list": [
+        {
+            "name": "data_0",
+            "type": "Data",
+            "output_desc": [
+                {
+                    "name": "A_0",
+                    "data_type": 1,
+                    "shape": [
+                        1,
+                        4,
+                        16,
+                        16,
+                        16
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "data_1",
+            "type": "Data",
+            "output_desc": [
+                {
+                    "name": "B_0",
+                    "data_type": 1,
+                    "shape": [
+                        4,
+                        4,
+                        16,
+                        16
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "conv",
+            "type": "tf_conv",
+            "func_name": "conv_layer_cce",
+            "id": 0,
+            "input_desc": [
+                {
+                    "data_type": 1,
+                    "name": "A_0",
+                    "shape": [
+                        1,
+                        256,
+                        16,
+                        16
+                    ]
+                },
+                {
+                    "data_type": 1,
+                    "name": "B_0",
+                    "shape": [
+                        256,
+                        256,
+                        1,
+                        1
+                    ]
+                }
+            ],
+            "output_desc": [
+                {
+                    "data_type": 1,
+                    "name": "conv",
+                    "shape": [
+                        1,
+                        256,
+                        16,
+                        16
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "abs",
+            "type": "tf_abs",
+            "func_name": "tf_abs_cce",
+            "id": 1,
+            "input_desc": [
+                {
+                    "data_type": 1,
+                    "name": "conv",
+                    "shape": [
+                        1,
+                        256,
+                        16,
+                        16
+                    ]
+                }
+            ],
+            "output_desc": [
+                {
+                    "data_type": 1,
+                    "name": "abs",
+                    "shape": [
+                        1,
+                        256,
+                        16,
+                        16
+                    ]
+                }
+            ]
+        }
+    ]
+}

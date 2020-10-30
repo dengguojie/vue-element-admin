@@ -51,8 +51,8 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
   string pass_name1 = "TbeConvDequantQuantWriteselectStridewriteFusion";
   BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1, kMaxFuseNode);
-  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   // conv2d --> dequant --> quant --> write_select --> stride_write
   pattern1->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -70,8 +70,8 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
 
   string pass_name2 = "TbeConvDequantWriteselectStridewriteFusion";
   BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
-  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
   // conv2d --> dequant --> write_select --> stride_write
   pattern2->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -84,7 +84,7 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
       .SetOutputs(kPatternWriteselect, {kPatternStridedWrite})
       .SetOutputs(kPatternOtherInput, {kPatternDequant});
   patterns.push_back(pattern2);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 
   return patterns;
 }

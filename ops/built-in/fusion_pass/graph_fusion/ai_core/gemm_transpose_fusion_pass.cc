@@ -59,55 +59,55 @@ vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
 }
 
 static Status GenerateTransposeNode(ge::ComputeGraph* graph,
-                                    const ge::GeTensorDesc& prevOutDesc,
-                                    ge::GeTensorDesc* nextInDesc,
+                                    const ge::GeTensorDesc& prev_out_desc,
+                                    ge::GeTensorDesc* next_in_desc,
                                     const vector<int64_t>& perm,
-                                    ge::NodePtr* transposeNode,
+                                    ge::NodePtr* transpose_node,
                                     const std::string& basename) {
-  vector<int64_t> nextInShape(2);
+  vector<int64_t> next_in_shape(2);
   for (size_t i = 0; i < perm.size(); ++i) {
-    nextInShape[i] = prevOutDesc.GetShape().GetDim(perm[i]);
+    next_in_shape[i] = prev_out_desc.GetShape().GetDim(perm[i]);
   }
-  ge::OpDescPtr transposeDesc;
-  FUSION_PASS_MAKE_SHARED((transposeDesc = std::make_shared<ge::OpDesc>(
+  ge::OpDescPtr transpose_desc;
+  FUSION_PASS_MAKE_SHARED((transpose_desc = std::make_shared<ge::OpDesc>(
                                basename + "_transpose", "TransposeD")),
                           return FAILED);
-  transposeDesc->AddInputDesc("x", prevOutDesc);
-  nextInDesc->SetShape(ge::GeShape(nextInShape));
-  nextInDesc->SetOriginShape(ge::GeShape(nextInShape));
-  transposeDesc->AddOutputDesc("y", *nextInDesc);
-  ge::AttrUtils::SetListInt(transposeDesc, "perm", perm);
-  *transposeNode = graph->AddNode(transposeDesc);
+  transpose_desc->AddInputDesc("x", prev_out_desc);
+  next_in_desc->SetShape(ge::GeShape(next_in_shape));
+  next_in_desc->SetOriginShape(ge::GeShape(next_in_shape));
+  transpose_desc->AddOutputDesc("y", *next_in_desc);
+  ge::AttrUtils::SetListInt(transpose_desc, "perm", perm);
+  *transpose_node = graph->AddNode(transpose_desc);
   return SUCCESS;
 }
 
-Status GemmTransFusionPass::Relink(ge::NodePtr aNode,
-                                   ge::NodePtr transposeANode,
-                                   ge::NodePtr gemmNode, const int Anchor) {
+Status GemmTransFusionPass::Relink(ge::NodePtr a_node,
+                                   ge::NodePtr transpose_a_node,
+                                   ge::NodePtr gemm_node, const int anchor) {
   FUSION_PASS_CHECK(
-      ge::GraphUtils::RemoveEdge(aNode->GetOutDataAnchor(0),
-                                 gemmNode->GetInDataAnchor(Anchor)) != SUCCESS,
+      ge::GraphUtils::RemoveEdge(a_node->GetOutDataAnchor(0),
+                                 gemm_node->GetInDataAnchor(anchor)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(),
-              "fail to remove edge between aNode and gemmNode"),
+              "fail to remove edge between a_node and gemm_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(aNode->GetOutDataAnchor(0),
-                              transposeANode->GetInDataAnchor(0)) != SUCCESS,
+      ge::GraphUtils::AddEdge(a_node->GetOutDataAnchor(0),
+                              transpose_a_node->GetInDataAnchor(0)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(),
-              "fail to add edge between aNode and transposeANode"),
+              "fail to add edge between a_node and transpose_a_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(transposeANode->GetOutDataAnchor(0),
-                              gemmNode->GetInDataAnchor(Anchor)) != SUCCESS,
+      ge::GraphUtils::AddEdge(transpose_a_node->GetOutDataAnchor(0),
+                              gemm_node->GetInDataAnchor(anchor)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(),
-              "fail to add edge between transposeANode and gemmNode"),
+              "fail to add edge between transpose_a_node and gemm_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
-      gemmNode->GetOpDesc()->UpdateInputDesc(
-          Anchor, transposeANode->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
+      gemm_node->GetOpDesc()->UpdateInputDesc(
+          anchor, transpose_a_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(),
               "fail to update input description of transdataANode"),
       return FAILED);
@@ -116,110 +116,112 @@ Status GemmTransFusionPass::Relink(ge::NodePtr aNode,
 }
 
 Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                   vector<ge::NodePtr>& fusionNodes) {
+                                   vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter GemmTransFusionPass.");
-  ge::NodePtr gemmNode = GetNodeFromMapping(PATTERN_GEMM, mapping);
+  ge::NodePtr gemm_node = GetNodeFromMapping(PATTERN_GEMM, mapping);
 
-  int aAnchor = 0;
-  int bAnchor = 1;
-  int cAnchor = 2;
+  int a_anchor = 0;
+  int b_anchor = 1;
+  int c_anchor = 2;
 
   // get transpose flag
-  bool transposeA = false;
-  bool transposeB = false;
-  Operator op = ge::OpDescUtils::CreateOperatorFromNode(gemmNode);
+  bool transpose_a = false;
+  bool transpose_b = false;
+  Operator op = ge::OpDescUtils::CreateOperatorFromNode(gemm_node);
 
-  if (op.GetAttr("transpose_a", transposeA) != GRAPH_SUCCESS) {
+  if (op.GetAttr("transpose_a", transpose_a) != GRAPH_SUCCESS) {
     OP_LOGI(
         FUSED_OP_TYPE.c_str(),
         "op gemm get attribute transpose_a failed or transpose_a not exist");
   }
 
-  if (op.GetAttr("transpose_b", transposeB) != GRAPH_SUCCESS) {
+  if (op.GetAttr("transpose_b", transpose_b) != GRAPH_SUCCESS) {
     OP_LOGI(
         FUSED_OP_TYPE.c_str(),
         "op gemm get attribute transpose_b failed or transpose_b not exist");
   }
 
   // prerequisite
-  ge::NodePtr aNode =
-      gemmNode->GetInDataAnchor(aAnchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int aIdx = gemmNode->GetInDataAnchor(aAnchor)->GetPeerOutAnchor()->GetIdx();
+  ge::NodePtr a_node =
+      gemm_node->GetInDataAnchor(a_anchor)->GetPeerOutAnchor()->GetOwnerNode();
+  int aIdx = gemm_node->GetInDataAnchor(a_anchor)->GetPeerOutAnchor()->GetIdx();
 
-  ge::NodePtr bNode =
-      gemmNode->GetInDataAnchor(bAnchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int bIdx = gemmNode->GetInDataAnchor(bAnchor)->GetPeerOutAnchor()->GetIdx();
+  ge::NodePtr b_node =
+      gemm_node->GetInDataAnchor(b_anchor)->GetPeerOutAnchor()->GetOwnerNode();
+  int bIdx = gemm_node->GetInDataAnchor(b_anchor)->GetPeerOutAnchor()->GetIdx();
 
-  ge::NodePtr cNode =
-      gemmNode->GetInDataAnchor(cAnchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int cIdx = gemmNode->GetInDataAnchor(cAnchor)->GetPeerOutAnchor()->GetIdx();
+  ge::NodePtr c_node =
+      gemm_node->GetInDataAnchor(c_anchor)->GetPeerOutAnchor()->GetOwnerNode();
+  int cIdx = gemm_node->GetInDataAnchor(c_anchor)->GetPeerOutAnchor()->GetIdx();
 
   // get info of Node
-  ge::GeTensorDesc aOutDesc = aNode->GetOpDesc()->GetOutputDesc(aIdx);
-  ge::GeTensorDesc bOutDesc = bNode->GetOpDesc()->GetOutputDesc(bIdx);
-  ge::GeTensorDesc cOutDesc = cNode->GetOpDesc()->GetOutputDesc(cIdx);
+  ge::GeTensorDesc a_out_desc = a_node->GetOpDesc()->GetOutputDesc(aIdx);
+  ge::GeTensorDesc b_out_desc = b_node->GetOpDesc()->GetOutputDesc(bIdx);
+  ge::GeTensorDesc c_out_desc = c_node->GetOpDesc()->GetOutputDesc(cIdx);
 
-  ge::GeTensorDesc gemmAInDesc = gemmNode->GetOpDesc()->GetInputDesc(aAnchor);
-  ge::GeTensorDesc gemmBInDesc = gemmNode->GetOpDesc()->GetInputDesc(bAnchor);
+  ge::GeTensorDesc gemm_a_in_desc =
+      gemm_node->GetOpDesc()->GetInputDesc(a_anchor);
+  ge::GeTensorDesc gemm_b_in_desc =
+      gemm_node->GetOpDesc()->GetInputDesc(b_anchor);
 
   // get format and shape of a,b,c
-  ge::Format aFormat = aOutDesc.GetFormat();
-  ge::Format bFormat = bOutDesc.GetFormat();
-  ge::Format cFormat = cOutDesc.GetFormat();
-  ge::GeShape aShape = aOutDesc.GetShape();
-  ge::GeShape bShape = bOutDesc.GetShape();
+  ge::Format a_format = a_out_desc.GetFormat();
+  ge::Format b_format = b_out_desc.GetFormat();
+  ge::Format c_format = c_out_desc.GetFormat();
+  ge::GeShape a_shape = a_out_desc.GetShape();
+  ge::GeShape b_shape = b_out_desc.GetShape();
 
-  // get nDirectionLength
-  int nDirectionLength = 0;
-  std::vector<int64_t> bShapeVector = bShape.GetDims();
+  // get n_direction_length
+  int n_direction_length = 0;
+  std::vector<int64_t> b_shape_vector = b_shape.GetDims();
 
-  if (transposeB) {
-    nDirectionLength = bShapeVector[0];
+  if (transpose_b) {
+    n_direction_length = b_shape_vector[0];
   } else {
-    nDirectionLength = bShapeVector[1];
+    n_direction_length = b_shape_vector[1];
   }
 
-  bool needTranspose = true;
+  bool need_transpose = true;
 
-  if (aFormat == ge::FORMAT_ND && bFormat == ge::FORMAT_ND &&
-      cFormat == ge::FORMAT_ND && (nDirectionLength % ALIGN_LENGTH == 0)) {
-    needTranspose = false;
+  if (a_format == ge::FORMAT_ND && b_format == ge::FORMAT_ND &&
+      c_format == ge::FORMAT_ND && (n_direction_length % ALIGN_LENGTH == 0)) {
+    need_transpose = false;
   }
 
   // 2. transpose
-  ge::NodePtr transposeANode = nullptr;
-  ge::NodePtr transposeBNode = nullptr;
-  auto basenameA = aNode->GetName();
-  auto basenameB = bNode->GetName();
-  vector<int64_t> transPerm({1, 0});
+  ge::NodePtr transpose_a_node = nullptr;
+  ge::NodePtr transpose_b_node = nullptr;
+  auto basename_a = a_node->GetName();
+  auto basename_b = b_node->GetName();
+  vector<int64_t> trans_perm({1, 0});
 
-  if (transposeA && needTranspose) {
+  if (transpose_a && need_transpose) {
     // transpose a
     FUSION_PASS_CHECK(
-        GenerateTransposeNode(&graph, aOutDesc, &gemmAInDesc, transPerm,
-                              &transposeANode, basenameA) != SUCCESS,
+        GenerateTransposeNode(&graph, a_out_desc, &gemm_a_in_desc, trans_perm,
+                              &transpose_a_node, basename_a) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate transpose node A"),
         return FAILED);
     // relink a
     FUSION_PASS_CHECK(
-        Relink(aNode, transposeANode, gemmNode, aAnchor) != SUCCESS,
+        Relink(a_node, transpose_a_node, gemm_node, a_anchor) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
-    fusionNodes.push_back(transposeANode);
+    fusion_nodes.push_back(transpose_a_node);
     op.SetAttr("transpose_a", false);
   }
 
-  if (transposeB && needTranspose) {
+  if (transpose_b && need_transpose) {
     // transpose b
     FUSION_PASS_CHECK(
-        GenerateTransposeNode(&graph, bOutDesc, &gemmBInDesc, transPerm,
-                              &transposeBNode, basenameB) != SUCCESS,
+        GenerateTransposeNode(&graph, b_out_desc, &gemm_b_in_desc, trans_perm,
+                              &transpose_b_node, basename_b) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate transpose node B"),
         return FAILED);
     // relink b
     FUSION_PASS_CHECK(
-        Relink(bNode, transposeBNode, gemmNode, bAnchor) != SUCCESS,
+        Relink(b_node, transpose_b_node, gemm_node, b_anchor) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
-    fusionNodes.push_back(transposeBNode);
+    fusion_nodes.push_back(transpose_b_node);
     op.SetAttr("transpose_b", false);
   }
 

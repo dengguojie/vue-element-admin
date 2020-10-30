@@ -15,13 +15,14 @@
 """
 cube util.
 """
-from collections import namedtuple
 import math
+from collections import namedtuple
 
 from te import tvm
-from te.platform import cce_conf
 from te.platform import CUBE_MKN
+from te.platform import cce_conf
 from te.utils.error_manager import error_manager_util as err_man
+
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
 
@@ -64,25 +65,24 @@ def raise_cube_util_err(msg):
     msg for discribe the error info
     the error info only for cube_util's developers
     """
-    args_dict = {
-        "errCode": "E60108",
-        "reason": msg
-    }
+    args_dict = {"errCode": "E60108", "reason": msg}
     msg = err_man.get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
 
 
-def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913
-                     tensor_a,
-                     kernel_w,
-                     padding,
-                     stride,
-                     compute_dtype,
-                     opti_h_flag=False,
-                     tag='',
-                     dilation=(1, 1),
-                     offset_x=0,
-                     slice_offset=0):
+def im2col_row_major(  # pylint: disable=R0913
+    a_im2col_vm_shape,
+    tensor_a,
+    kernel_w,
+    padding,
+    stride,
+    compute_dtype,
+    opti_h_flag=False,
+    tag="",
+    dilation=(1, 1),
+    offset_x=0,
+    slice_offset=0
+):
     """
     calculate im2col_row_major tensor
     Parameters
@@ -105,13 +105,16 @@ def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913
     -------
     Returns : a_im2col_row_major tensor
     """
-    def __im2col_row_major_indices(indices,  # pylint: disable=R0913,R0914
-                                   tensor_a,
-                                   kernel_w,
-                                   padding,
-                                   stride,
-                                   dilation,
-                                   slice_offset=0):
+
+    def __im2col_row_major_indices(  # pylint: disable=R0913,R0914
+        indices,
+        tensor_a,
+        kernel_w,
+        padding,
+        stride,
+        dilation,
+        slice_offset=0
+    ):
         """
         calculate im2col_row_major tvm lambda function
         Parameters
@@ -137,30 +140,42 @@ def im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913
             stride_h = 1
         dilate_h, dilate_w = dilation
         padding_up, _, padding_left, padding_right = padding
-        width_out = (a_width.value + padding_left + padding_right
-                     - ((kernel_w - 1) * dilate_w + 1)) // (stride_w) + 1
+        width_out = (
+            a_width.value
+            + padding_left
+            + padding_right
+            - ((kernel_w - 1) * dilate_w + 1)
+        ) // (stride_w) + 1
 
         h_index = (hw_index // width_out) * stride_h + kh_index * dilate_h
         w_index = (hw_index % width_out) * stride_w + kw_index * dilate_w
 
-        return tvm.select(tvm.any(h_index < padding_up, h_index >
-                                  a_height.value + padding_up - 1,
-                                  w_index < padding_left, w_index >
-                                  a_width.value + padding_left - 1),
-                          tvm.const(offset_x, compute_dtype),
-                          tensor_a(n_index,
-                                   c1_index,
-                                   h_index - padding_up + slice_offset,
-                                   w_index - padding_left,
-                                   c0_index))
+        return tvm.select(
+            tvm.any(
+                h_index < padding_up,
+                h_index > a_height.value + padding_up - 1,
+                w_index < padding_left,
+                w_index > a_width.value + padding_left - 1
+            ),
+            tvm.const(offset_x, compute_dtype),
+            tensor_a(
+                n_index,
+                c1_index,
+                h_index - padding_up + slice_offset,
+                w_index - padding_left,
+                c0_index
+            )
+        )
 
-    return tvm.compute(a_im2col_vm_shape,
-                       lambda *indices: __im2col_row_major_indices(
-                           indices, tensor_a, kernel_w,
-                           padding, stride, dilation, slice_offset),
-                       name='im2col_row_major',
-                       tag=tag + 'im2col_row_major',
-                       attrs={'padding': padding, 'dilation': dilation})
+    return tvm.compute(
+        a_im2col_vm_shape,
+        lambda *indices: __im2col_row_major_indices(
+            indices, tensor_a, kernel_w, padding, stride, dilation, slice_offset
+        ),
+        name="im2col_row_major",
+        tag=tag + "im2col_row_major",
+        attrs={"padding": padding, "dilation": dilation}
+    )
 
 
 def im2col_fractal(a_im2col_shape, tensor_a_row_major):
@@ -178,8 +193,8 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
     -------
     Returns : a_im2col_fractal tensor
     """
-    def __im2col_fractal_indices(indices,  # pylint: disable=R0914
-                                 tensor_a_row_major):
+
+    def __im2col_fractal_indices(indices, tensor_a_row_major):  # pylint: disable=R0914
         """
         calculate im2col_fractal tvm lambda function
         Parameters
@@ -197,43 +212,45 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
 
         hw_index = m1_index * a_col_m0 + m0_index
 
-        c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
-                    kernel_w.value) // kernel_h.value
+        c1_index = (
+            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+        ) // kernel_h.value
 
-        kh_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
-                    kernel_w.value) % kernel_h.value
+        kh_index = (
+            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+        ) % kernel_h.value
 
-        kw_index = ((k1_index*a_col_k0 + k0_index) // a_col_k0) \
-            % kernel_w.value
+        kw_index = ((k1_index * a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
 
         c0_index = (k1_index * a_col_k0 + k0_index) % a_col_k0
 
         # dtype is compute_dtype
-        return tvm.select(tvm.any(hw_index < 0, hw_index >
-                                  a_row_major_hw.value - 1),
-                          tvm.const(0.0, tensor_a_row_major.dtype),
-                          tensor_a_row_major(n_index,
-                                             hw_index,
-                                             c1_index,
-                                             kh_index,
-                                             kw_index,
-                                             c0_index))
+        return tvm.select(
+            tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1),
+            tvm.const(0.0, tensor_a_row_major.dtype),
+            tensor_a_row_major(
+                n_index, hw_index, c1_index, kh_index, kw_index, c0_index
+            )
+        )
 
-    return tvm.compute(a_im2col_shape,
-                       lambda *indices: __im2col_fractal_indices(indices,
-                                                                 tensor_a_row_major),
-                       name='im2col_fractal',
-                       tag='im2col_fractal')
+    return tvm.compute(
+        a_im2col_shape,
+        lambda *indices: __im2col_fractal_indices(indices, tensor_a_row_major),
+        name="im2col_fractal",
+        tag="im2col_fractal"
+    )
 
 
-def im2col_fractal_3d(a_im2col_shape,  # pylint: disable=R0913
-                      tensor_a_row_major,
-                      fmap_c1,
-                      d_out,
-                      filter_d,
-                      stride_d,
-                      cyclebuffer_flag,
-                      tag=''):
+def im2col_fractal_3d(  # pylint: disable=R0913
+    a_im2col_shape,
+    tensor_a_row_major,
+    fmap_c1,
+    d_out,
+    filter_d,
+    stride_d,
+    cyclebuffer_flag,
+    tag=""
+):
     """
     calculate 3d im2col_fractal tensor
     Parameters
@@ -254,8 +271,8 @@ def im2col_fractal_3d(a_im2col_shape,  # pylint: disable=R0913
     -------
     Returns : a_im2col_fractal tensor
     """
-    def __im2col_fractal_indices(indices,  # pylint: disable=R0914
-                                 tensor_a_row_major):
+
+    def __im2col_fractal_indices(indices, tensor_a_row_major):  # pylint: disable=R0914
         """
         calculate im2col_fractal tvm lambda function
         Parameters
@@ -274,38 +291,40 @@ def im2col_fractal_3d(a_im2col_shape,  # pylint: disable=R0913
         hw_index = m1_index * a_col_m0 + m0_index
 
         if cyclebuffer_flag:
-            c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
-                        kernel_w.value) // kernel_h.value
-            c1_index = ((c1_index // fmap_c1 + (n_index % d_out) * stride_d) %
-                        filter_d) * fmap_c1 + c1_index % fmap_c1
+            c1_index = (
+                ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+            ) // kernel_h.value
+            c1_index = (
+                (c1_index // fmap_c1 + (n_index % d_out) * stride_d) % filter_d
+            ) * fmap_c1 + c1_index % fmap_c1
         else:
-            c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
-                        kernel_w.value) // kernel_h.value
+            c1_index = (
+                ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+            ) // kernel_h.value
 
-        kh_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
-                    kernel_w.value) % kernel_h.value
+        kh_index = (
+            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+        ) % kernel_h.value
 
-        kw_index = ((k1_index*a_col_k0 + k0_index) // a_col_k0) \
-            % kernel_w.value
+        kw_index = ((k1_index * a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
 
         c0_index = (k1_index * a_col_k0 + k0_index) % a_col_k0
 
         # dtype is compute_dtype
-        return tvm.select(tvm.any(hw_index < 0, hw_index >
-                                  a_row_major_hw.value - 1),
-                          tvm.const(0.0, tensor_a_row_major.dtype),
-                          tensor_a_row_major(n_index,
-                                             hw_index,
-                                             c1_index,
-                                             kh_index,
-                                             kw_index,
-                                             c0_index))
+        return tvm.select(
+            tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1),
+            tvm.const(0.0, tensor_a_row_major.dtype),
+            tensor_a_row_major(
+                n_index, hw_index, c1_index, kh_index, kw_index, c0_index
+            )
+        )
 
-    return tvm.compute(a_im2col_shape,
-                       lambda *indices: __im2col_fractal_indices(indices,
-                                                                 tensor_a_row_major),
-                       name='im2col_fractal',
-                       tag=tag + 'im2col_fractal')
+    return tvm.compute(
+        a_im2col_shape,
+        lambda *indices: __im2col_fractal_indices(indices, tensor_a_row_major),
+        name="im2col_fractal",
+        tag=tag + "im2col_fractal"
+    )
 
 
 def im2col_fractal_v2(shape, img2col_para):
@@ -331,32 +350,39 @@ def im2col_fractal_v2(shape, img2col_para):
         virtual_w = col_w * block_size + block_size_w
 
         back_c1 = virtual_w // block_size // kernel_w // kernel_h
-        back_h = (virtual_h // fmap_wo) * stride[0] + \
-            (col_w // kernel_w % kernel_h)
+        back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)
         back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)
 
-        return tvm.select(tvm.any(back_h < padding[0],
-                                  back_h > fmap.shape[2] + padding[0] - 1,
-                                  back_w < padding[2],
-                                  back_w > fmap.shape[3] + padding[2] - 1),
-                          tvm.const(0, fmap.dtype),
-                          fmap(batch, back_c1, back_h - padding[0],
-                               back_w - padding[2], block_size_w))
+        return tvm.select(
+            tvm.any(
+                back_h < padding[0],
+                back_h > fmap.shape[2] + padding[0] - 1,
+                back_w < padding[2],
+                back_w > fmap.shape[3] + padding[2] - 1
+            ),
+            tvm.const(0, fmap.dtype),
+            fmap(
+                batch, back_c1, back_h - padding[0], back_w - padding[2], block_size_w
+            )
+        )
 
-    return tvm.compute(shape,
-                       lambda *idx: __im2col_idx(idx),
-                       name='img2col_fractal_v2',
-                       tag='im2col_fractal_v2',
-                       attrs={
-                           'fmap_shape': fmap.shape,
-                           'kernel_h': kernel_h,
-                           'kernel_w': kernel_w,
-                           'padding': padding,
-                           'stride': stride,
-                           "dilation": dilation})
+    return tvm.compute(
+        shape,
+        lambda *idx: __im2col_idx(idx),
+        name="img2col_fractal_v2",
+        tag="im2col_fractal_v2",
+        attrs={
+            "fmap_shape": fmap.shape,
+            "kernel_h": kernel_h,
+            "kernel_w": kernel_w,
+            "padding": padding,
+            "stride": stride,
+            "dilation": dilation
+        }
+    )
 
 
-class CubeDslPattern():
+class CubeDslPattern:
     """
     class of cube mmad calculation
 
@@ -391,31 +417,34 @@ class CubeDslPattern():
         ----------
         type_c : data type of tensor c
         """
+
         def cal_hash(tp_a, tp_b, tp_bias):
             return hash(str(tp_a) + str(tp_b) + str(tp_bias))
 
         if CubeDslPattern.type_c_map == {}:
-            CubeDslPattern.type_c_map[cal_hash("uint8", "uint8",
-                                               None)] = "int32"
+            CubeDslPattern.type_c_map[cal_hash("uint8", "uint8", None)] = "int32"
             CubeDslPattern.type_c_map[cal_hash("int8", "int8", None)] = "int32"
-            CubeDslPattern.type_c_map[cal_hash("float16", "float16",
-                                               None)] = "float16"
-            CubeDslPattern.type_c_map[cal_hash("float16", "float16",
-                                               "float32")] = "float32"
-            CubeDslPattern.type_c_map[cal_hash("float16", "float16",
-                                               "float16")] = "float16"
+            CubeDslPattern.type_c_map[cal_hash("float16", "float16", None)] = "float16"
+            CubeDslPattern.type_c_map[
+                cal_hash("float16", "float16", "float32")
+            ] = "float32"
+            CubeDslPattern.type_c_map[
+                cal_hash("float16", "float16", "float16")
+            ] = "float16"
 
         type_c_key = cal_hash(type_a, type_b, type_bias)
         type_c = CubeDslPattern.type_c_map.get(type_c_key)
 
         return type_c
 
-    def generate_c(self,  # pylint: disable=R0914
-                   tensor_a,
-                   tensor_b,
-                   tensor_bias=None,
-                   c_type=None,
-                   offset_x=0):
+    def generate_c(  # pylint: disable=R0913,R0914
+        self,
+        tensor_a,
+        tensor_b,
+        tensor_bias=None,
+        c_type=None,
+        offset_x=0
+    ):
         """
         calculate the mad result tensor
 
@@ -437,73 +466,89 @@ class CubeDslPattern():
         """
         is_conv3d_backprop_input = False
         a_batch, a_m1, a_k1, a_m0, a_k0 = shape_to_list(tensor_a.shape)
-        axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
-        axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
+        axis_k0 = tvm.reduce_axis([0, a_k0], name="axis_k0")
+        axis_k1 = tvm.reduce_axis([0, a_k1], name="axis_k1")
         if len(tensor_b.shape) == 5:
             is_conv3d_backprop_input = True
         if is_conv3d_backprop_input:
             _, _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
-            shape_c = (a_batch*2, b_n1, a_m1*a_m0, b_n0)
-            type_c = c_type \
-                if c_type is not None else CubeDslPattern.get_type_c(
-                    tensor_a.dtype, tensor_b.dtype)
+            shape_c = (a_batch * 2, b_n1, a_m1 * a_m0, b_n0)
+            type_c = (
+                c_type
+                if c_type is not None
+                else CubeDslPattern.get_type_c(tensor_a.dtype, tensor_b.dtype)
+            )
             tensor_c = tvm.compute(
                 shape_c,
-                lambda n_index, co1_index, m_index, co0_index:
-                tvm.sum((tensor_a(n_index // 2, m_index // a_m0,
-                                  axis_k1, m_index % a_m0, axis_k0) *
-                         tensor_b(n_index % 2, axis_k1, co1_index,
-                                  co0_index, axis_k0)).astype(type_c),
-                        axis=[axis_k1, axis_k0]),
+                lambda n_index, co1_index, m_index, co0_index: tvm.sum(
+                    (
+                        tensor_a(
+                            n_index // 2,
+                            m_index // a_m0,
+                            axis_k1,
+                            m_index % a_m0,
+                            axis_k0
+                        )
+                        * tensor_b(n_index % 2, axis_k1, co1_index, co0_index, axis_k0)
+                    ).astype(type_c),
+                    axis=[axis_k1, axis_k0]
+                ),
                 name="C",
-                tag="mad")
+                tag="mad"
+            )
         else:
             _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
 
-            shape_c = (a_batch, b_n1, a_m1*a_m0, b_n0)
-            type_c = c_type if c_type is not None \
-                else CubeDslPattern.get_type_c(tensor_a.dtype,
-                                               tensor_b.dtype)
+            shape_c = (a_batch, b_n1, a_m1 * a_m0, b_n0)
+            type_c = (
+                c_type
+                if c_type is not None
+                else CubeDslPattern.get_type_c(tensor_a.dtype, tensor_b.dtype)
+            )
 
             offset_x = offset_x if is_support_v200() else 0
             tensor_c = tvm.compute(
                 shape_c,
-                lambda n_index, co1_index, m_index, co0_index:
-                tvm.sum(((tensor_a(n_index,
-                                  m_index // a_m0,
-                                  axis_k1,
-                                  m_index % a_m0,
-                                  axis_k0) - offset_x) *
-                         tensor_b(axis_k1,
-                                  co1_index,
-                                  co0_index,
-                                  axis_k0)).astype(type_c),
-                        axis=[axis_k1, axis_k0]),
+                lambda n_index, co1_index, m_index, co0_index: tvm.sum(
+                    (
+                        (
+                            tensor_a(
+                                n_index,
+                                m_index // a_m0,
+                                axis_k1,
+                                m_index % a_m0,
+                                axis_k0
+                            )
+                            - offset_x
+                        )
+                        * tensor_b(axis_k1, co1_index, co0_index, axis_k0)
+                    ).astype(type_c),
+                    axis=[axis_k1, axis_k0]
+                ),
                 name="C",
-                tag="mad")
+                tag="mad"
+            )
             if tensor_bias is not None:
                 bias_ub_brc_shape = list(shape_c)
-                bias_ub_brc_shape[2] = bias_ub_brc_shape[2] // \
-                    BRC_STANDARD_BLOCK_SIZE
+                bias_ub_brc_shape[2] = bias_ub_brc_shape[2] // BRC_STANDARD_BLOCK_SIZE
                 bias_ub_brc = tvm.compute(
                     bias_ub_brc_shape,
-                    lambda *indices:
-                    tensor_bias(
-                        indices[1]*CUBE_MKN[tensor_bias.dtype]['mac'][2] +
-                        indices[3]
+                    lambda *indices: tensor_bias(
+                        indices[1] * CUBE_MKN[tensor_bias.dtype]["mac"][2] + indices[3]
                     ),
-                    name="bias_ub_brc",
+                    name="bias_ub_brc"
                 )
                 bias_l0c = tvm.compute(
                     shape_c,
                     lambda i, j, k, l: bias_ub_brc(
-                        i, j, k // BRC_STANDARD_BLOCK_SIZE, l),
-                    name="bias_l0c",
+                        i, j, k // BRC_STANDARD_BLOCK_SIZE, l
+                    ),
+                    name="bias_l0c"
                 )
                 tensor_c = tvm.compute(
                     shape_c,
                     lambda *indices: bias_l0c(*indices) + tensor_c(*indices),
-                    name="c_add_bias",
+                    name="c_add_bias"
                 )
         self._tensor_c = tensor_c
         return tensor_c
@@ -528,9 +573,16 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     conv_pattern_instance : instance of conv pattern
     """
 
-    def __init__(self,  # pylint: disable=R0913
-                 kernel_h, kernel_w, stride, pad, dilations, offset_x=0):
-        super(ConvDslPattern, self).__init__()
+    def __init__(  # pylint: disable=R0913
+        self,
+        kernel_h,
+        kernel_w,
+        stride,
+        pad,
+        dilations,
+        offset_x=0
+    ):
+        super().__init__()
         self._kernel_h = kernel_h
         self._kernel_w = kernel_w
         self._stride_h, self._stride_w = stride
@@ -563,20 +615,25 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
 
         height_out, width_out = list(
             ((i + p_before + p_after - (kernel - 1) * d - 1) // s + 1)
-            for i, p_before, p_after, kernel, d, s in
-            zip(new_hw,
+            for i, p_before, p_after, kernel, d, s in zip(
+                new_hw,
                 new_pad_before,
                 new_pad_after,
                 [kernel_h, kernel_w],
                 [self._dilate_h, self._dilate_w],
-                stride))
+                stride
+            )
+        )
 
         return height_out, width_out
 
-    def generate_a(self,          # pylint: disable=R0914
-                   feature_map, dynamic_para=None,
-                   slice_offset=0,
-                   valid_shape=()):
+    def generate_a(  # pylint: disable=R0914
+        self,
+        feature_map,
+        dynamic_para=None,
+        slice_offset=0,
+        valid_shape=()
+    ):
         """
         calculate im2col_fractal tensor
 
@@ -597,52 +654,61 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             a_batch, a_c1, a_h, a_w, a_c0 = valid_shape
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
-        new_pad = [
-            self._pad_up, self._pad_down, self._pad_left, self._pad_right
-        ]
+        new_pad = [self._pad_up, self._pad_down, self._pad_left, self._pad_right]
         stride = [self._stride_h, self._stride_w]
 
-        if dynamic_para is None or \
-            dynamic_para.get("dynamic_mode") == "dynamic_batch":
+        if dynamic_para is None or dynamic_para.get("dynamic_mode") == "dynamic_batch":
             height_out, width_out = self.cal_howo(a_h, a_w)
         else:
             var_map = dynamic_para.get("var_map")
             height_out, width_out = var_map.get("dx_h"), var_map.get("dx_w")
-        a_im2col_row_major_shape = (a_batch, height_out * width_out, a_c1,
-                                    kernel_h, kernel_w, a_c0)
+        a_im2col_row_major_shape = (
+            a_batch,
+            height_out * width_out,
+            a_c1,
+            kernel_h,
+            kernel_w,
+            a_c0
+        )
         if dynamic_para is None:
-            a_row_major = im2col_row_major(a_im2col_row_major_shape,
-                                           feature_map,
-                                           kernel_w,
-                                           padding=new_pad,
-                                           stride=stride,
-                                           compute_dtype=feature_map.dtype,
-                                           dilation=(self._dilate_h,
-                                                     self._dilate_w),
-                                           offset_x=self._offset_x,
-                                           slice_offset=slice_offset)
+            a_row_major = im2col_row_major(
+                a_im2col_row_major_shape,
+                feature_map,
+                kernel_w,
+                padding=new_pad,
+                stride=stride,
+                compute_dtype=feature_map.dtype,
+                dilation=(self._dilate_h, self._dilate_w),
+                offset_x=self._offset_x,
+                slice_offset=slice_offset
+            )
 
-        howo = (height_out*width_out + self._m0 - 1) // self._m0 * self._m0
-        a_im2col_fractal_shape = (a_batch,
-                                  howo // self._m0,
-                                  a_c1 * kernel_h * kernel_w,
-                                  self._m0,
-                                  a_c0)
+        howo = (height_out * width_out + self._m0 - 1) // self._m0 * self._m0
+        a_im2col_fractal_shape = (
+            a_batch,
+            howo // self._m0,
+            a_c1 * kernel_h * kernel_w,
+            self._m0,
+            a_c0
+        )
         if dynamic_para is None:
             a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major)
         else:
-            img2col_para = (feature_map, kernel_h, kernel_w, new_pad, stride,
-                            width_out, (self._dilate_h, self._dilate_w))
+            img2col_para = (
+                feature_map,
+                kernel_h,
+                kernel_w,
+                new_pad,
+                stride,
+                width_out,
+                (self._dilate_h, self._dilate_w)
+            )
             a_col = im2col_fractal_v2(a_im2col_fractal_shape, img2col_para)
         return a_col
 
-
-    def generate_c(self,
-                   tensor_a,
-                   tensor_b,
-                   tensor_bias=None,
-                   c_type=None,
-                   offset_x=0):
+    def generate_c(  # pylint: disable=R0913
+        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0
+    ):
         """
         calculate convolution output tensor
 
@@ -662,11 +728,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         ----------
         tensor_c: convolution output tensor
         """
-        tensor_c = super(ConvDslPattern, self).generate_c(tensor_a,
-                                                          tensor_b,
-                                                          tensor_bias,
-                                                          c_type,
-                                                          offset_x)
+        tensor_c = super().generate_c(tensor_a, tensor_b, tensor_bias, c_type, offset_x)
         row_major = tensor_a.op.input_tensors[0]
         ho_wo = row_major.shape[1].value
         _, _, c_m, _ = shape_to_list(tensor_c.shape)
@@ -752,7 +814,7 @@ def calc_info_of_iter_vars(stage):
                     else IterVar(
                         info_iter_vars[rel.inner.var][0],
                         info_iter_vars[rel.inner.var][1],
-                        None,
+                        None
                     )
                 )
                 dom_outer = (
@@ -761,12 +823,12 @@ def calc_info_of_iter_vars(stage):
                     else IterVar(
                         info_iter_vars[rel.outer.var][0],
                         info_iter_vars[rel.outer.var][1],
-                        None,
+                        None
                     )
                 )
                 info_iter_var[rel.fused.var] = (
                     dom_inner.min * dom_outer.min,
-                    dom_inner.extent * dom_outer.extent,
+                    dom_inner.extent * dom_outer.extent
                 )
 
     info_iter_vars = {
@@ -780,7 +842,7 @@ def calc_info_of_iter_vars(stage):
             item.var,
             (item.dom.min.value, item.dom.extent.value)
             if item.dom is not None
-            else info_iter_vars[item.var],
+            else info_iter_vars[item.var]
         ]
         for item in stage.leaf_iter_vars
     ]

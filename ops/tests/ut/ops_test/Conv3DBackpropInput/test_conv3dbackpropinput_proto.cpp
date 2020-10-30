@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
-#include "all_ops.h"
+#include "array_ops.h"
+#include "nn_calculation_ops.h"
 
 
 class Conv3DBackpropInputProtoTest : public testing::Test {
@@ -28,16 +29,15 @@ TEST_F(Conv3DBackpropInputProtoTest, Base_Pass_Case){
 
     ge::Tensor constTensor;
     std::vector<int64_t> dims_input_size{2 ,2 ,16 ,16 ,16};
-    ge::TensorDesc tensor_Desc_input_size(ge::Shape(),
-      ge::FORMAT_NDHWC, ge::DT_INT32);
-    int element_size = dims_input_size[0] * dims_input_size[1]
-      * dims_input_size[2] * dims_input_size[3] * dims_input_size[4];
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCDHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
 
-    tensor_Desc_input_size.SetSize(element_size * sizeof(int32_t));
-    constTensor.SetTensorDesc(tensor_Desc_input_size);
     int *conv_input_size_tensor_value = new int[element_size];
     for (int i = 0; i < element_size; i++) {
-        *(conv_input_size_tensor_value + i) = 0;
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
     }
     constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
       element_size * sizeof(int32_t));
@@ -49,6 +49,8 @@ TEST_F(Conv3DBackpropInputProtoTest, Base_Pass_Case){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 2, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {2, 2, 16, 16, 16}, ge::FORMAT_NDHWC));
+      
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
 
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});

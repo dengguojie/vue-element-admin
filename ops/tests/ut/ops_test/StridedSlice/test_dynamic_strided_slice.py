@@ -3,7 +3,7 @@
 import te
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("DynamicStridedSlice", "impl.dynamic.strided_slice", "strided_slice")
+ut_case = OpUT("StridedSlice", "impl.dynamic.strided_slice", "strided_slice")
 
 
 def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):

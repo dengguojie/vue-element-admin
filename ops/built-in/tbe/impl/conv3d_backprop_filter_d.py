@@ -106,36 +106,35 @@ def conv3d_backprop_filter_d(x_dict,
 
     Parameters
     ----------
-    x_dict: dict with keys(shape and dtype)
-        input feature map tensor
+    x_dict: A dict with keys(shape and dtype)
+        Input feature map tensor
 
-    out_backprop: dict with keys(shape and dtype)
-        input weight tensor
+    out_backprop: A dict with keys(shape and dtype)
+        Gradients tensor
 
-    y_dict: dict with keys(shape and dtype)
-        output tensor, dtype must be assigned
+    y_dict: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
 
-    filter_size: The shape of filter.
-        5-D with shape [batch, depth, channels, height, weight].
+    filter_size: The shape of filter
+        5-D with shape [batch, depth, channels, height, weight]
 
-    strides: tuple/list of 3 integers
-        filter move stride
+    strides: A tuple/list of 5 integers
+        Filter move stride
 
-    pads: string of "SAME" or "VAILD" or
+    pads: A tuple/list of 6 integers
         [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 5 integers
-        filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
+    dilations: A tuple/list of 5 integers
+        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
 
-    groups: int
-        param for group covolution, default value is 1
+    groups: Int
+        Param for group covolution, default value is 1
 
-    data_format: str
-        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC".
-        Specify the data format of the input and output data.
+    data_format: Str
+        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
 
-    kernel_name: str
-        kernel name, default value is "conv3d_backprop_filter"
+    kernel_name: Str
+        Kernel name, default value is "conv3d_backprop_filter"
 
     Returns
     -------
@@ -225,7 +224,7 @@ def conv3d_backprop_filter_d(x_dict,
     def _normalize_shape_ndchw(ori_shape, ori_format, format_list,
                                param_name='input_param'):
         """
-        normalizing the shape to NDCHW
+        Normalizing the shape to NDCHW
         """
         if ori_format not in format_list:
             args_dict = {
@@ -309,28 +308,27 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     Parameters:
     ----------
     shape_x : The shape of feature map
-        5-D [batch, depth, channels, height, weight].
+        5-D [batch, depth, channels, height, weight]
 
     shape_out_backprop : The shape of gradients
-        5-D [batch, depth,channels, height, weight].
+        5-D [batch, depth,channels, height, weight]
 
-    filter_sizes : The shape of filter.
-        5-D [batch, depth, channels, height, weight].
+    filter_sizes : The shape of filter
+        5-D [batch, depth, channels, height, weight]
 
-    strides : The stride of the sliding window. A list of ints.
+    strides : The stride of the sliding window. A list/tuple of ints
 
-    pads : "SAME"or"VALID"
-        Type of pads algorithm, or list.
+    pads : A list/tuple of 6 integers or str
 
-    dilations : An optional list/tuple of ints. Default value is (1, 1, 1, 1, 1).
+    dilations : An optional list/tuple of ints. Default value is (1, 1, 1, 1, 1)
 
-    x_dtype : Fmeature map  data dtype. Default value is float16.
+    x_dtype : Feature map data dtype. Default value is float16
 
-    out_backprop_dtype : Gradients data dtype. Default value is float16.
+    out_backprop_dtype : Gradients data dtype. Default value is float16
 
-    res_dtype : Result(De/Dw) data dtype. Default value is float32.
+    res_dtype : Result(De/Dw) data dtype. Default value is float32
 
-    kernel_name : Kernel name of cce.
+    kernel_name : Kernel name of cce
         Default value is "conv3d_backprop_filter_cce"
 
     Returns
@@ -615,30 +613,30 @@ def conv3d_backprop_filter_cce(shape_x,
 
     Parameters:
     ----------
-    shape_x : The shape of feature map.
-        5-D with shape [batch, depth, channels, height, weight].
+    shape_x : The shape of feature map
+        5-D with shape [batch, depth, channels, height, weight]
 
-    shape_out_backprop : The shape of gradients.
-        5-D with shape [batch, depth, channels, height, weight].
+    shape_out_backprop : The shape of gradients
+        5-D with shape [batch, depth, channels, height, weight]
 
-    filter_sizes : The shape of filter.
-        5-D with shape [batch, depth, channels, height, weight].
+    filter_sizes : The shape of filter
+        5-D with shape [batch, depth, channels, height, weight]
 
-    strides : A list of ints. The stride of the sliding window.
+    strides : A tuple/list of 5 integers
+        Filter move stride
 
-    pads : "SAME"or"VALID"
-        Type of pads algorithm, or list.
+    pads : A list/tuple of 6 integers or str
 
-    dilations : An optional list of ints. Default value is [1, 1, 1, 1, 1].
+    dilations : An optional list/tuple of 5 integers. Default value is [1, 1, 1, 1, 1]
 
-    x_dtype : The dtype of feature map data. Default value is float16.
+    x_dtype : The dtype of feature map data. Default value is float16
 
-    out_backprop_dtype : The dtype of gradients data.
+    out_backprop_dtype : The dtype of gradients data
         Default value is float16.
 
-    res_dtype : The dtype of result(De/Dw) data. Default value is float32.
+    res_dtype : The dtype of result(De/Dw) data. Default value is float32
 
-    kernel_name : Cce kernel name.
+    kernel_name : Cce kernel name
         Default value is "conv3d_backprop_filter_cce"
 
     Returns

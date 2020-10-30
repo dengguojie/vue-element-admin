@@ -1703,7 +1703,7 @@ class ElewiseSchedule(VectorSchedule):
         -------
         True or False
         """
-        if not (pver().is_cloud_version() or pver().is_1951_version()):
+        if not (pver().is_cloud_version() or pver().is_ng1_version()):
             return False
 
         if not self._is_only_broadcast_not_last_axis():

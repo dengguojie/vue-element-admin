@@ -307,244 +307,245 @@ class MaxPoolWithargmaxResnet50():
         ub_buff1 = instance.Tensor(dtype, (ub_buff_size,),
                                    name="ub_buff1", scope=tik.scope_ubuf)
 
-        with instance.for_range(0, batch_size, block_num=batch_size) as batch:
-            with instance.for_range(0, c1_dim) as loopc:
-                input_idx = instance.Scalar("uint64", name="input_idx")
-                input_idx.set_as(batch * c1_dim * input_h * input_w * c0_dim +
-                                 loopc * input_h * input_w * c0_dim)
+        with instance.for_range(0, batch_size*c1_dim, block_num=batch_size*c1_dim) as batch_idx:
+            batch = batch_idx / c1_dim
+            loopc = batch_idx % c1_dim
+            input_idx = instance.Scalar("uint64", name="input_idx")
+            input_idx.set_as(batch * c1_dim * input_h * input_w * c0_dim +
+                             loopc * input_h * input_w * c0_dim)
 
-                output_idx = instance.Scalar("uint64", name="output_idx")
-                output_idx.set_as(batch*c1_dim*output_h*output_w*c0_dim +
-                                  loopc*output_h*output_w*c0_dim)
+            output_idx = instance.Scalar("uint64", name="output_idx")
+            output_idx.set_as(batch*c1_dim*output_h*output_w*c0_dim +
+                              loopc*output_h*output_w*c0_dim)
 
-                l1_buff0_idx = instance.Scalar("uint64", name="l1_buff0_idx")
-                l1_buff0_idx.set_as(0)
+            l1_buff0_idx = instance.Scalar("uint64", name="l1_buff0_idx")
+            l1_buff0_idx.set_as(0)
 
-                output_mask_idx = instance.Scalar("uint64",
-                                                  name="output_mask_idx")
-                output_mask_idx.set_as(batch*c1_dim*mask_one_window*filter_size
-                                       + loopc*mask_one_window*filter_size)
+            output_mask_idx = instance.Scalar("uint64",
+                                              name="output_mask_idx")
+            output_mask_idx.set_as(batch*c1_dim*mask_one_window*filter_size
+                                   + loopc*mask_one_window*filter_size)
 
-                with instance.for_range(0, loop_h // 2) as looph:
-                    # ping------------------------------------------------------
-                    load_fm_size = instance.Scalar("uint64")
-                    load_fm_size.set_as(0)
-                    with instance.if_scope(looph == 0):
-                        load_fm_size.set_as(
-                            (output_block_h * self.stride_h + 1) *
-                            input_w)
-                    with instance.else_scope():
-                        load_fm_size.set_as(
-                            output_block_h * self.stride_h * input_w)
-                    instance.data_move(l1_buff0[l1_buff0_idx],
-                                       input_fmap_gm[input_idx],
-                                       0, 1, load_fm_size, 0, 0)
+            with instance.for_range(0, loop_h // 2) as looph:
+                # ping------------------------------------------------------
+                load_fm_size = instance.Scalar("uint64")
+                load_fm_size.set_as(0)
+                with instance.if_scope(looph == 0):
+                    load_fm_size.set_as(
+                        (output_block_h * self.stride_h + 1) *
+                        input_w)
+                with instance.else_scope():
+                    load_fm_size.set_as(
+                        output_block_h * self.stride_h * input_w)
+                instance.data_move(l1_buff0[l1_buff0_idx],
+                                   input_fmap_gm[input_idx],
+                                   0, 1, load_fm_size, 0, 0)
 
-                    ub_buff = ub_buff0
-                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
-                                          looph * 2 * output_block_h *
-                                          self.stride_h)
-
-                    repeat_times = (output_block_h * output_w * c0_dim //
-                                    constant.MASK128)
-                    repeat_stride = constant.MASK128 * 2 // 32
-                    instance.vmax(constant.MASK128, ub_max_buff, ub_buff,
-                                  ub_buff[output_block_h * output_w * c0_dim],
-                                  repeat_times, 1, 1, 1,
-                                  repeat_stride, repeat_stride, repeat_stride)
-
-                    with instance.for_range(2, filter_size) as idx:
-                        instance.vmax(constant.MASK128, ub_max_buff,
-                                      ub_max_buff,
-                                      ub_buff[output_block_h * output_w *
-                                              c0_dim * idx],
-                                      repeat_times, 1, 1, 1,
-                                      repeat_stride, repeat_stride,
-                                      repeat_stride)
-
-                    output_idx_tmp = (output_idx +
+                ub_buff = ub_buff0
+                self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
                                       looph * 2 * output_block_h *
-                                      output_w * c0_dim)
-                    instance.data_move(output_max_gm[output_idx_tmp],
-                                       ub_max_buff, 0, 1,
+                                      self.stride_h)
+
+                repeat_times = (output_block_h * output_w * c0_dim //
+                                constant.MASK128)
+                repeat_stride = constant.MASK128 * 2 // 32
+                instance.vmax(constant.MASK128, ub_max_buff, ub_buff,
+                              ub_buff[output_block_h * output_w * c0_dim],
+                              repeat_times, 1, 1, 1,
+                              repeat_stride, repeat_stride, repeat_stride)
+
+                with instance.for_range(2, filter_size) as idx:
+                    instance.vmax(constant.MASK128, ub_max_buff,
+                                  ub_max_buff,
+                                  ub_buff[output_block_h * output_w *
+                                          c0_dim * idx],
+                                  repeat_times, 1, 1, 1,
+                                  repeat_stride, repeat_stride,
+                                  repeat_stride)
+
+                output_idx_tmp = (output_idx +
+                                  looph * 2 * output_block_h *
+                                  output_w * c0_dim)
+                instance.data_move(output_max_gm[output_idx_tmp],
+                                   ub_max_buff, 0, 1,
+                                   output_block_h * output_w *
+                                   c0_dim * 2 // 32,
+                                   0, 0)
+
+                with instance.for_range(0, filter_size) as idx:
+                    instance.vcmpv_eq(ub_mask_buff[idx * output_block_h *
+                                                   output_w * c0_dim // 16],
+                                      ub_buff[idx * output_block_h *
+                                              output_w * c0_dim],
+                                      ub_max_buff, repeat_times,
+                                      1, 1, repeat_stride, repeat_stride)
+
+                repeat_times = math.ceil(
+                    output_block_h * output_w / constant.MASK128)
+                repeat_stride = constant.MASK128 * 2 // 32
+                instance.vnot(constant.MASK128, ub_mask_not_buff,
+                              ub_mask_buff, repeat_times, 1, 1,
+                              repeat_stride,
+                              repeat_stride)
+                instance.vor(constant.MASK128, ub_mask_or_buff,
+                             ub_mask_buff,
+                             ub_mask_buff[output_block_h * output_w],
+                             repeat_times, 1, 1, 1,
+                             repeat_stride, repeat_stride, repeat_stride)
+                instance.vand(constant.MASK128, ub_mask_temp,
+                              ub_mask_not_buff,
+                              ub_mask_buff[output_block_h * output_w],
+                              repeat_times, 1, 1, 1,
+                              repeat_stride, repeat_stride, repeat_stride)
+
+                with instance.for_range(2, filter_size) as idx:
+                    instance.vnot(constant.MASK128, ub_mask_not_buff,
+                                  ub_mask_or_buff, repeat_times, 1, 1,
+                                  repeat_stride, repeat_stride)
+                    instance.vor(constant.MASK128, ub_mask_or_buff,
+                                 ub_mask_or_buff,
+                                 ub_mask_buff[
+                                     idx * output_block_h * output_w],
+                                 repeat_times, 1, 1, 1,
+                                 repeat_stride, repeat_stride,
+                                 repeat_stride)
+                    instance.vand(constant.MASK128,
+                                  ub_mask_temp[(idx - 1) *
+                                               output_block_h * output_w],
+                                  ub_mask_not_buff,
+                                  ub_mask_buff[
+                                      idx * output_block_h * output_w],
+                                  repeat_times, 1, 1, 1,
+                                  repeat_stride, repeat_stride,
+                                  repeat_stride)
+                instance.data_move(
+                    output_mask_gm[output_mask_idx],
+                    ub_mask_buff, 0, 1, output_block_h * output_w // c0_dim,
+                    0, 0)
+                instance.data_move(
+                    output_mask_gm[output_mask_idx + mask_one_window],
+                    ub_mask_temp,
+                    0,
+                    filter_size - 1,
+                    output_block_h * output_w // c0_dim,
+                    0, mask_gap)
+
+                input_idx.set_as(input_idx + load_fm_size * c0_dim)
+                output_mask_idx.set_as(output_mask_idx +
                                        output_block_h * output_w *
-                                       c0_dim * 2 // 32,
-                                       0, 0)
+                                       c0_dim // 16)
+                l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
+                # pong------------------------------------------------------
+                load_fm_size = instance.Scalar("uint64")
+                load_fm_size.set_as(0)
 
-                    with instance.for_range(0, filter_size) as idx:
-                        instance.vcmpv_eq(ub_mask_buff[idx * output_block_h *
-                                                       output_w * c0_dim // 16],
-                                          ub_buff[idx * output_block_h *
-                                                  output_w * c0_dim],
-                                          ub_max_buff, repeat_times,
-                                          1, 1, repeat_stride, repeat_stride)
+                with instance.if_scope(looph == loop_h // 2 - 1):
+                    load_fm_size.set_as(
+                        (output_block_h * self.stride_h - 1) * input_w)
+                with instance.else_scope():
+                    load_fm_size.set_as(
+                        output_block_h * self.stride_h * input_w)
+                instance.data_move(l1_buff0[l1_buff0_idx],
+                                   input_fmap_gm[input_idx],
+                                   0, 1, load_fm_size, 0, 0)
 
-                    repeat_times = math.ceil(
-                        output_block_h * output_w / constant.MASK128)
-                    repeat_stride = constant.MASK128 * 2 // 32
-                    instance.vnot(constant.MASK128, ub_mask_not_buff,
-                                  ub_mask_buff, repeat_times, 1, 1,
-                                  repeat_stride,
-                                  repeat_stride)
-                    instance.vor(constant.MASK128, ub_mask_or_buff,
-                                 ub_mask_buff,
-                                 ub_mask_buff[output_block_h * output_w],
-                                 repeat_times, 1, 1, 1,
-                                 repeat_stride, repeat_stride, repeat_stride)
-                    instance.vand(constant.MASK128, ub_mask_temp,
-                                  ub_mask_not_buff,
-                                  ub_mask_buff[output_block_h * output_w],
-                                  repeat_times, 1, 1, 1,
-                                  repeat_stride, repeat_stride, repeat_stride)
+                ub_buff = ub_buff1
 
-                    with instance.for_range(2, filter_size) as idx:
-                        instance.vnot(constant.MASK128, ub_mask_not_buff,
-                                      ub_mask_or_buff, repeat_times, 1, 1,
-                                      repeat_stride, repeat_stride)
-                        instance.vor(constant.MASK128, ub_mask_or_buff,
-                                     ub_mask_or_buff,
-                                     ub_mask_buff[
-                                         idx * output_block_h * output_w],
-                                     repeat_times, 1, 1, 1,
-                                     repeat_stride, repeat_stride,
-                                     repeat_stride)
-                        instance.vand(constant.MASK128,
-                                      ub_mask_temp[(idx - 1) *
-                                                   output_block_h * output_w],
-                                      ub_mask_not_buff,
-                                      ub_mask_buff[
-                                          idx * output_block_h * output_w],
-                                      repeat_times, 1, 1, 1,
-                                      repeat_stride, repeat_stride,
-                                      repeat_stride)
-                    instance.data_move(
-                        output_mask_gm[output_mask_idx],
-                        ub_mask_buff, 0, 1, output_block_h * output_w // c0_dim,
-                        0, 0)
-                    instance.data_move(
-                        output_mask_gm[output_mask_idx + mask_one_window],
-                        ub_mask_temp,
-                        0,
-                        filter_size - 1,
-                        output_block_h * output_w // c0_dim,
-                        0, mask_gap)
-
-                    input_idx.set_as(input_idx + load_fm_size * c0_dim)
-                    output_mask_idx.set_as(output_mask_idx +
-                                           output_block_h * output_w *
-                                           c0_dim // 16)
-                    l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
-                    # pong------------------------------------------------------
-                    load_fm_size = instance.Scalar("uint64")
-                    load_fm_size.set_as(0)
-
-                    with instance.if_scope(looph == loop_h // 2 - 1):
-                        load_fm_size.set_as(
-                            (output_block_h * self.stride_h - 1) * input_w)
-                    with instance.else_scope():
-                        load_fm_size.set_as(
-                            output_block_h * self.stride_h * input_w)
-                    instance.data_move(l1_buff0[l1_buff0_idx],
-                                       input_fmap_gm[input_idx],
-                                       0, 1, load_fm_size, 0, 0)
-
-                    ub_buff = ub_buff1
-
-                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
-                                          (looph * 2 + 1) * output_block_h *
-                                          self.stride_h)
-
-                    repeat_times = (output_block_h * output_w * c0_dim //
-                                    constant.MASK128)
-                    repeat_stride = constant.MASK128 * 2 // 32
-                    instance.vmax(constant.MASK128, ub_max_buff, ub_buff,
-                                  ub_buff[output_block_h * output_w * c0_dim],
-                                  repeat_times, 1, 1, 1,
-                                  repeat_stride, repeat_stride, repeat_stride)
-
-                    with instance.for_range(2, filter_size) as idx:
-                        instance.vmax(constant.MASK128, ub_max_buff,
-                                      ub_max_buff,
-                                      ub_buff[output_block_h * output_w *
-                                              c0_dim * idx],
-                                      repeat_times, 1, 1, 1,
-                                      repeat_stride, repeat_stride,
-                                      repeat_stride)
-
-                    output_idx_tmp = (output_idx +
+                self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
                                       (looph * 2 + 1) * output_block_h *
-                                      output_w * c0_dim)
-                    instance.data_move(output_max_gm[output_idx_tmp],
-                                       ub_max_buff, 0, 1, output_block_h *
-                                       output_w * c0_dim * 2 // 32,
-                                       0, 0)
+                                      self.stride_h)
 
-                    with instance.for_range(0, filter_size) as idx:
-                        instance.vcmpv_eq(ub_mask_buff[idx * output_block_h *
-                                                       output_w * c0_dim // 16],
-                                          ub_buff[idx * output_block_h *
-                                                  output_w * c0_dim],
-                                          ub_max_buff, repeat_times,
-                                          1, 1, repeat_stride, repeat_stride)
+                repeat_times = (output_block_h * output_w * c0_dim //
+                                constant.MASK128)
+                repeat_stride = constant.MASK128 * 2 // 32
+                instance.vmax(constant.MASK128, ub_max_buff, ub_buff,
+                              ub_buff[output_block_h * output_w * c0_dim],
+                              repeat_times, 1, 1, 1,
+                              repeat_stride, repeat_stride, repeat_stride)
 
-                    repeat_times = math.ceil(
-                        output_block_h * output_w / constant.MASK128)
-                    repeat_stride = constant.MASK128 * 2 // 32
-                    instance.vnot(constant.MASK128, ub_mask_not_buff,
-                                  ub_mask_buff, repeat_times, 1, 1,
-                                  repeat_stride,
-                                  repeat_stride)
-                    instance.vor(constant.MASK128, ub_mask_or_buff,
-                                 ub_mask_buff,
-                                 ub_mask_buff[output_block_h * output_w],
-                                 repeat_times, 1, 1, 1,
-                                 repeat_stride, repeat_stride, repeat_stride)
-                    instance.vand(constant.MASK128, ub_mask_temp,
-                                  ub_mask_not_buff,
-                                  ub_mask_buff[output_block_h * output_w],
+                with instance.for_range(2, filter_size) as idx:
+                    instance.vmax(constant.MASK128, ub_max_buff,
+                                  ub_max_buff,
+                                  ub_buff[output_block_h * output_w *
+                                          c0_dim * idx],
                                   repeat_times, 1, 1, 1,
-                                  repeat_stride, repeat_stride, repeat_stride)
+                                  repeat_stride, repeat_stride,
+                                  repeat_stride)
 
-                    with instance.for_range(2, filter_size) as idx:
-                        instance.vnot(constant.MASK128, ub_mask_not_buff,
-                                      ub_mask_or_buff, repeat_times, 1, 1,
-                                      repeat_stride, repeat_stride)
-                        instance.vor(constant.MASK128, ub_mask_or_buff,
-                                     ub_mask_or_buff,
-                                     ub_mask_buff[
-                                         idx * output_block_h * output_w],
-                                     repeat_times, 1, 1, 1,
-                                     repeat_stride, repeat_stride,
-                                     repeat_stride)
-                        instance.vand(constant.MASK128,
-                                      ub_mask_temp[(idx - 1) * output_block_h *
-                                                   output_w],
-                                      ub_mask_not_buff,
-                                      ub_mask_buff[
-                                          idx * output_block_h * output_w],
-                                      repeat_times, 1, 1, 1,
-                                      repeat_stride, repeat_stride,
-                                      repeat_stride)
-                    instance.data_move(
-                        output_mask_gm[output_mask_idx],
-                        ub_mask_buff, 0, 1, output_block_h * output_w // c0_dim,
-                        0, 0)
-                    mask_gap_element = (mask_one_window -
-                                        output_block_h * output_w)
-                    mask_gap = mask_gap_element * 2 // 32
-                    instance.data_move(
-                        output_mask_gm[output_mask_idx + mask_one_window],
-                        ub_mask_temp,
-                        0,
-                        filter_size - 1,
-                        output_block_h * output_w // c0_dim,
-                        0, mask_gap)
+                output_idx_tmp = (output_idx +
+                                  (looph * 2 + 1) * output_block_h *
+                                  output_w * c0_dim)
+                instance.data_move(output_max_gm[output_idx_tmp],
+                                   ub_max_buff, 0, 1, output_block_h *
+                                   output_w * c0_dim * 2 // 32,
+                                   0, 0)
 
-                    input_idx.set_as(input_idx + load_fm_size * c0_dim)
-                    output_mask_idx.set_as(output_mask_idx +
-                                           output_block_h * output_w *
-                                           c0_dim // 16)
-                    l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
+                with instance.for_range(0, filter_size) as idx:
+                    instance.vcmpv_eq(ub_mask_buff[idx * output_block_h *
+                                                   output_w * c0_dim // 16],
+                                      ub_buff[idx * output_block_h *
+                                              output_w * c0_dim],
+                                      ub_max_buff, repeat_times,
+                                      1, 1, repeat_stride, repeat_stride)
+
+                repeat_times = math.ceil(
+                    output_block_h * output_w / constant.MASK128)
+                repeat_stride = constant.MASK128 * 2 // 32
+                instance.vnot(constant.MASK128, ub_mask_not_buff,
+                              ub_mask_buff, repeat_times, 1, 1,
+                              repeat_stride,
+                              repeat_stride)
+                instance.vor(constant.MASK128, ub_mask_or_buff,
+                             ub_mask_buff,
+                             ub_mask_buff[output_block_h * output_w],
+                             repeat_times, 1, 1, 1,
+                             repeat_stride, repeat_stride, repeat_stride)
+                instance.vand(constant.MASK128, ub_mask_temp,
+                              ub_mask_not_buff,
+                              ub_mask_buff[output_block_h * output_w],
+                              repeat_times, 1, 1, 1,
+                              repeat_stride, repeat_stride, repeat_stride)
+
+                with instance.for_range(2, filter_size) as idx:
+                    instance.vnot(constant.MASK128, ub_mask_not_buff,
+                                  ub_mask_or_buff, repeat_times, 1, 1,
+                                  repeat_stride, repeat_stride)
+                    instance.vor(constant.MASK128, ub_mask_or_buff,
+                                 ub_mask_or_buff,
+                                 ub_mask_buff[
+                                     idx * output_block_h * output_w],
+                                 repeat_times, 1, 1, 1,
+                                 repeat_stride, repeat_stride,
+                                 repeat_stride)
+                    instance.vand(constant.MASK128,
+                                  ub_mask_temp[(idx - 1) * output_block_h *
+                                               output_w],
+                                  ub_mask_not_buff,
+                                  ub_mask_buff[
+                                      idx * output_block_h * output_w],
+                                  repeat_times, 1, 1, 1,
+                                  repeat_stride, repeat_stride,
+                                  repeat_stride)
+                instance.data_move(
+                    output_mask_gm[output_mask_idx],
+                    ub_mask_buff, 0, 1, output_block_h * output_w // c0_dim,
+                    0, 0)
+                mask_gap_element = (mask_one_window -
+                                    output_block_h * output_w)
+                mask_gap = mask_gap_element * 2 // 32
+                instance.data_move(
+                    output_mask_gm[output_mask_idx + mask_one_window],
+                    ub_mask_temp,
+                    0,
+                    filter_size - 1,
+                    output_block_h * output_w // c0_dim,
+                    0, mask_gap)
+
+                input_idx.set_as(input_idx + load_fm_size * c0_dim)
+                output_mask_idx.set_as(output_mask_idx +
+                                       output_block_h * output_w *
+                                       c0_dim // 16)
+                l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
 
         instance.BuildCCE(kernel_name=kernel_name,
                           inputs=(input_fmap_gm),

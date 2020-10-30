@@ -1289,13 +1289,6 @@ REGISTER_CUSTOM_OP("CTCGreedyDecoder")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
-// register CTCBeamSearchDecoder op to GE
-REGISTER_CUSTOM_OP("CTCBeamSearchDecoder")
-    .FrameworkType(TENSORFLOW)
-    .OriginOpType("CTCBeamSearchDecoder")
-    .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::AI_CPU);
-
 // register EditDistance op to GE
 REGISTER_CUSTOM_OP("EditDistance")
     .FrameworkType(TENSORFLOW)

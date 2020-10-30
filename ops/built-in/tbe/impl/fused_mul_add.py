@@ -16,13 +16,12 @@
 fused_mul_add
 """
 import math
-import te.lang.cce
+
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
-from topi.cce import util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
+from te.utils import shape_util
+from te.utils import para_check
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
@@ -54,35 +53,35 @@ def op_select_format(input0, input1, input2, output,
     shape_1 = input1.get("ori_shape")
     shape_2 = input2.get("ori_shape")
 
-    shape_0 = util.scalar2tensor_one(shape_0)
-    shape_1 = util.scalar2tensor_one(shape_1)
-    shape_2 = util.scalar2tensor_one(shape_2)
+    shape_0 = shape_util.scalar2tensor_one(shape_0)
+    shape_1 = shape_util.scalar2tensor_one(shape_1)
+    shape_2 = shape_util.scalar2tensor_one(shape_2)
 
     if _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
             and not _division_sixteen(shape_2):
         # Nz+ND+ND
-        input0 = gen_param(classify="input0", name="x1",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
-        input1 = gen_param(classify="input1", name="x2",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        input2 = gen_param(classify="input2", name="x3",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype="float16,float16,float16,float16,float16,\
                                       float,float,float,float,float,\
                                       int32,int32,int32,int32,int32",
@@ -93,28 +92,28 @@ def op_select_format(input0, input1, input2, output,
     elif _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
             and _division_sixteen(shape_2):
         # Nz+ND+Nz
-        input0 = gen_param(classify="input0", name="x1",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
-        input1 = gen_param(classify="input1", name="x2",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        input2 = gen_param(classify="input2", name="x3",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype="float16,float16,float16,float16,float16,\
                                       float,float,float,float,float,\
                                       int32,int32,int32,int32,int32",
@@ -125,28 +124,28 @@ def op_select_format(input0, input1, input2, output,
     elif not _division_sixteen(shape_0) and _division_sixteen(shape_1) \
             and not _division_sixteen(shape_2):
         # ND+NZ+ND
-        input0 = gen_param(classify="input0", name="x1",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        input1 = gen_param(classify="input1", name="x2",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
-        input2 = gen_param(classify="input2", name="x3",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype="float16,float16,float16,float16,float16,\
                                       float,float,float,float,float,\
                                       int32,int32,int32,int32,int32",
@@ -157,28 +156,28 @@ def op_select_format(input0, input1, input2, output,
     elif not _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
             and _division_sixteen(shape_2):
         # ND+ND+NZ
-        input0 = gen_param(classify="input0", name="x1",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        input1 = gen_param(classify="input1", name="x2",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,ND")
-        input2 = gen_param(classify="input2", name="x3",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
                            datatype="float16,float16,float16,float16,float16,\
                                      float,float,float,float,float,\
                                      int32,int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype="float16,float16,float16,float16,float16,\
                                       float,float,float,float,float,\
                                       int32,int32,int32,int32,int32",
@@ -187,28 +186,28 @@ def op_select_format(input0, input1, input2, output,
                                     NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
     else:
         # ND+ND
-        input0 = gen_param(classify="input0", name="x1",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                            datatype="float16,float16,float16,float16,\
                                      float,float,float,float,\
                                      int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND")
-        input1 = gen_param(classify="input1", name="x2",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                            datatype="float16,float16,float16,float16,\
                                      float,float,float,float,\
                                      int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND")
-        input2 = gen_param(classify="input2", name="x3",
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
                            datatype="float16,float16,float16,float16,\
                                      float,float,float,float,\
                                      int32,int32,int32,int32",
                            format="NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND,\
                                    NCHW,NC1HWC0,NHWC,ND")
-        output0 = gen_param(classify="output0", name="y",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                             datatype="float16,float16,float16,float16,\
                                       float,float,float,float,\
                                       int32,int32,int32,int32",
@@ -217,7 +216,7 @@ def op_select_format(input0, input1, input2, output,
                                    NCHW,NC1HWC0,NHWC,ND")
 
     param_list = [input0, input1, input2, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
 
@@ -251,14 +250,14 @@ def check_ori_shape(input0, input1, input2):
     """
     check the ND shapes whether they can be broadcasted
     """
-    shape_0 = list(util.scalar2tensor_one(input0.get("ori_shape")))
-    shape_1 = list(util.scalar2tensor_one(input1.get("ori_shape")))
-    shape_2 = list(util.scalar2tensor_one(input2.get("ori_shape")))
+    shape_0 = list(shape_util.scalar2tensor_one(input0.get("ori_shape")))
+    shape_1 = list(shape_util.scalar2tensor_one(input1.get("ori_shape")))
+    shape_2 = list(shape_util.scalar2tensor_one(input2.get("ori_shape")))
     shape_input0, shape_input1, shape_max_mul = \
-        broadcast_shapes(shape_0, shape_1, param_name_input1="input0",
+        shape_util.broadcast_shapes(shape_0, shape_1, param_name_input1="input0",
                          param_name_input2="input1")
     shape_input2, shape_max_mul, shape_max_add0 = \
-        broadcast_shapes(shape_0, shape_2, param_name_input1="input0",
+        shape_util.broadcast_shapes(shape_0, shape_2, param_name_input1="input0",
                          param_name_input2="input2")
 
 
@@ -290,7 +289,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
 
     if condition2:
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1,
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
                              param_name_input1="input0",
                              param_name_input2="input1")
     elif condition0 and not condition1:
@@ -301,7 +300,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-2] = 1
         shape_input1[-3] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1,
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
                              param_name_input1="input0",
                              param_name_input2="input1")
     elif not condition0 and condition1:
@@ -312,7 +311,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-4] = 1
         shape_input1[-1] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1,
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
                              param_name_input1="input0",
                              param_name_input2="input1")
     else:
@@ -320,7 +319,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
 
     if condition5:
         shape_input2, shape_max_mul, shape_max_add0 = \
-            broadcast_shapes(shape_input2, shape_max_mul,
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
                              param_name_input1="input2",
                              param_name_input2="shape_max_mul")
     elif condition3 and not condition4:
@@ -331,7 +330,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input2[-2] = 1
         shape_input2[-3] = 1
         shape_input2, shape_max_mul, shape_max_add0 = \
-            broadcast_shapes(shape_input2, shape_max_mul,
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
                              param_name_input1="input2",
                              param_name_input2="shape_max_mul")
     elif not condition3 and condition4:
@@ -342,7 +341,7 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input2[-4] = 1
         shape_input2[-1] = 1
         shape_input2, shape_max_mul, shape_max_add0 = \
-            broadcast_shapes(shape_input2, shape_max_mul,
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
                              param_name_input1="input2",
                              param_name_input2="shape_max_mul")
     else:
@@ -375,7 +374,7 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
 
     if condition2:
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
                              param_name_input2="input1")
     elif condition0 and not condition1:
         shape_input1.append(1)
@@ -385,7 +384,7 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-2] = 1
         shape_input1[-3] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
                              param_name_input2="input1")
     elif not condition0 and condition1:
         shape_input1.append(1)
@@ -395,13 +394,13 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
         shape_input1[-4] = 1
         shape_input1[-1] = 1
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
                              param_name_input2="input1")
     else:
         raise RuntimeError("shape of input1 or input0 is illegal")
 
     shape_input2, shape_max_mul, shape_max_add0 = \
-        broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+        shape_util.broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
                          param_name_input2="shape_max_mul")
 
     return shape_input0, shape_input1, shape_input2
@@ -424,14 +423,14 @@ def shape_broadcast(data_1, data_2):
     -------
     res : output of the data's divide
     """
-    shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
+    shape_x = shape_util.shape_to_list(data_1.shape)
+    shape_y = shape_util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                        param_name_input1="data_1",
                                                        param_name_input2="data_2")
-        data_1 = te.lang.cce.broadcast(data_1, shape_max)
-        data_2 = te.lang.cce.broadcast(data_2, shape_max)
+        data_1 = tbe.broadcast(data_1, shape_max)
+        data_2 = tbe.broadcast(data_2, shape_max)
 
     return data_1, data_2
 
@@ -461,17 +460,18 @@ def fused_mul_add_compute(data_input0, data_input1, data_input2,
 
     # mul
     data_input0, data_input1 = shape_broadcast(data_input0, data_input1)
-    mul_result = te.lang.cce.vmul(data_input0, data_input1)
+    mul_result = tbe.vmul(data_input0, data_input1)
 
     # add
     mul_result, data_input2 = shape_broadcast(mul_result, data_input2)
-    res = te.lang.cce.vadd(mul_result, data_input2)
+    res = tbe.vadd(mul_result, data_input2)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def fused_mul_add(input0, input1, input2,
                   output, kernel_name="fused_mul_add"):
     """
@@ -494,9 +494,9 @@ def fused_mul_add(input0, input1, input2,
     -------
     None
     """
-    shape_input0 = list(util.scalar2tensor_one(input0.get("shape")))
-    shape_input1 = list(util.scalar2tensor_one(input1.get("shape")))
-    shape_input2 = list(util.scalar2tensor_one(input2.get("shape")))
+    shape_input0 = list(shape_util.scalar2tensor_one(input0.get("shape")))
+    shape_input1 = list(shape_util.scalar2tensor_one(input1.get("shape")))
+    shape_input2 = list(shape_util.scalar2tensor_one(input2.get("shape")))
 
     dtype_input0 = input0.get("dtype").lower()
     dtype_input1 = input1.get("dtype").lower()
@@ -518,10 +518,10 @@ def fused_mul_add(input0, input1, input2,
                              shape_input2, format_pattern)
     else:
         shape_input0, shape_input1, shape_max_mul = \
-            broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
                              param_name_input2="input1")
         shape_input2, shape_max_mul, shape_max_add0 = \
-            broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
                              param_name_input2="shape_max_mul")
 
     data_input0 = tvm.placeholder(shape_input0,
@@ -538,9 +538,9 @@ def fused_mul_add(input0, input1, input2,
                                 output, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": (data_input0, data_input1, data_input2, res)}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

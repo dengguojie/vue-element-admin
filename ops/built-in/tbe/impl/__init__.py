@@ -442,3 +442,4 @@ from .stn_compute import stn_compute
 # caffe it6
 from .prior_box_d_v2 import prior_box_d_v2
 from .fill import fill
+from .strided_slice_grad import strided_slice_grad

@@ -37,20 +37,13 @@ def _get_output(x_in, k_size, pads, stride, dilation):
 
 
 def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
+    if padding == "VALID":
+        padding = (0, 0, 0, 0)
     if padding == "SAME":
         out_h_lower = _ceil(fmap_range[2][0], stride[0])
         out_h_upper = _ceil(fmap_range[2][1], stride[0])
         out_w_lower = _ceil(fmap_range[3][0], stride[1])
         out_w_upper = _ceil(fmap_range[3][1], stride[1])
-    elif padding == "VALID":
-        out_h_lower = _get_output(fmap_range[2][0], kernel[2], (0, 0), stride[0],
-                                  dilation[2])
-        out_h_upper = _get_output(fmap_range[2][1], kernel[2], (0, 0), stride[0],
-                                  dilation[2])
-        out_w_lower = _get_output(fmap_range[3][0], kernel[3], (0, 0), stride[1],
-                                  dilation[3])
-        out_w_upper = _get_output(fmap_range[3][1], kernel[3], (0, 0), stride[1],
-                                  dilation[3])
     else:
         out_h_lower = _get_output(fmap_range[2][0], kernel[2],
                                   (padding[0], padding[1]), stride[0], dilation[2])

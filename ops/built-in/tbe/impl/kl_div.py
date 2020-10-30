@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument
@@ -85,7 +86,7 @@ def kl_div_compute(input_x, input_target, output_y, reduction, batch_size, kerne
     elif reduction == "sum":
         final_res = tbe.sum(output_res, axis=0)
     else:
-        raise RuntimeError("Reduction method only support batchmean and sum")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'reduction', ("batchmean", "sum"), reduction)
 
     return final_res
 
@@ -106,7 +107,8 @@ def _check_parameter(input_x, input_target):
     shape_target = input_target.get("shape")
     para_check.check_shape(shape_x, param_name="input_x")
     if list(shape_x) != list(shape_target):
-        raise RuntimeError("input_x and input_target must have the same shape.")
+        error_manager_vector.raise_err_inputs_shape_not_equal('kl_div', 'input_x', 'input_target', shape_x,
+                                                              shape_target, shape_x)
 
     # check input tensor data_type
     dtype_x = input_x.get("dtype").lower()
@@ -114,10 +116,11 @@ def _check_parameter(input_x, input_target):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     if dtype_x != dtype_target:
-        raise RuntimeError("input_x and input_target must have the same dtype.")
+        error_manager_vector.raise_err_inputs_dtype_not_equal('kl_div', 'input_x', 'input_target', dtype_x,
+                                                              dtype_target)
 
     if dtype_x == "float32" and not tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-        raise RuntimeError("Instric only support float16 while input dtype is float32")
+        error_manager_vector.raise_err_input_dtype_not_supported('kl_div', 'input_x', ('float16', ), dtype_x)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

@@ -32,6 +32,7 @@ import subprocess
 import logging
 import json
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from configparser import ConfigParser
 
@@ -263,6 +264,58 @@ def guess_pyexe_path(mp_ctx):
             mp_ctx.set_executable(path)
             logger.info("guessed python path:%s", path)
             return
+
+
+class CompilerEnv:
+    """
+    CompilerEnv
+    """
+    embedding = None
+    socinfo = None
+    tune_mode = None
+    slog_level = None
+    slog_event = None
+    pid_timestamp = None
+    locker = threading.Lock()
+
+    task_counter = 0
+    task_running = 0
+    restart_step = int(os.getenv('TE_AUTO_RESTART_COUNTER', 0))
+    restart_counter = 0
+
+    @classmethod
+    def task_counter_modify(cls, i):
+        if cls.restart_step <= 0:
+            return False
+
+        if i > 0:
+            cls.task_counter += i
+        cls.task_running += i
+        if cls.task_running == 0 and cls.task_counter > cls.restart_counter:
+            # need restart parallel process
+            logger.info("@@@ auto restart step: %s",
+                        cls.restart_step)
+            while cls.restart_counter - cls.task_counter < cls.restart_step:
+                logger.info("@@@ need restart: %s, %s",
+                            cls.restart_counter, cls.task_counter)
+                cls.restart_counter += cls.restart_step
+
+            return True
+        return False
+
+    @classmethod
+    @contextmanager
+    def env_guard(cls):
+        if cls.restart_step > 0:
+            while True:
+                res = cls.locker.acquire()
+                if res:
+                    break
+        try:
+            yield None
+        finally:
+            if cls.restart_step > 0:
+                cls.locker.release()
 
 
 class OpCompiler:
@@ -577,6 +630,10 @@ class DeferredOpRes:
         self._from_worker = from_worker
 
     def get(self):
+        with CompilerEnv.env_guard():
+            return self.get_impl()
+
+    def get_impl(self):
         """
         get Op compilation result
         :return: None if still runing, others if finished
@@ -611,6 +668,8 @@ class DeferredOpRes:
         res = res[0]
         if res is not None:
             self._res = res
+            if CompilerEnv.task_counter_modify(-1):
+                restart_paralle_compiler()
 
         return self._res
 
@@ -647,7 +706,28 @@ def init_multi_process_env(embedding, socinfo, tune_mode,
     res = compiler.start()
     if 'GA' in tune_mode:
         autotune_compiler.start()
+
+    CompilerEnv.embedding = embedding
+    CompilerEnv.socinfo = socinfo
+    CompilerEnv.tune_mode = tune_mode
+    CompilerEnv.slog_level = slog_level
+    CompilerEnv.slog_event = slog_event
+    CompilerEnv.pid_timestamp = pid_timestamp
     return res
+
+
+def restart_paralle_compiler():
+    """
+    restart sub process
+    """
+    logger.info("@@@ restart Compiler")
+    deinit_multi_process_env()
+    init_multi_process_env(CompilerEnv.embedding,
+                           CompilerEnv.socinfo,
+                           CompilerEnv.tune_mode,
+                           CompilerEnv.slog_level,
+                           CompilerEnv.slog_event,
+                           CompilerEnv.pid_timestamp)
 
 
 def del_tmp_files_by_pid(pid):
@@ -660,6 +740,8 @@ def del_tmp_files_by_pid(pid):
     tmp_list = []
     file_lock_path = os.path.join(cur_path, "file.lock")
     tmp_list.append(file_lock_path)
+    file_connect_info = os.path.join(cur_path, ".temp_connect.log")
+    tmp_list.append(file_connect_info)
     for path_item in Path(cur_path).glob('*pid{}*'.format(pid)):
         list_item = os.fspath(path_item)
         if "tune_result" not in list_item:
@@ -689,6 +771,9 @@ def del_tmp_files(atc_time_stamp):
         os.remove(lock_file)
     if os.path.isdir(tune_show_dir):
         shutil.rmtree(tune_show_dir)
+    file_connect_info = os.path.join(cur_path, ".temp_connect.log")
+    if os.path.isfile(file_connect_info):
+        os.remove(file_connect_info)
 
 
 def deinit_multi_process_env():
@@ -712,10 +797,15 @@ def get_finished_compilation_task(graph_id):
     return finished compilation task
     :return:
     """
-    compiler = OpCompiler.compiler
-    if compiler is None:
-        return []
-    return compiler.get_finished_task(graph_id)
+    with CompilerEnv.env_guard():
+        compiler = OpCompiler.compiler
+        if compiler is None:
+            return []
+        res = compiler.get_finished_task(graph_id)
+        if res and CompilerEnv.task_counter_modify(-len(res)):
+            restart_paralle_compiler()
+
+        return res
 
 
 # 'pylint: disable=too-many-arguments
@@ -1410,16 +1500,18 @@ def dispatch_prebuild_task(graph_id, task_id, l1size,
     :param op_func:
     :param op_args:
     """
-    if OpCompiler.compiler is None:
-        return
-    inputs, outputs, attrs = op_args
-    task = PrebuildTask(graph_id, task_id, op_module,
-                        op_type, op_func,
-                        inputs=inputs, outputs=outputs, attrs=attrs,
-                        unknown_shape=unknown_shape,
-                        int64_mode=int64_mode)
-    task.set_l1size(l1size)
-    OpCompiler.compiler.dispatch_task(task)
+    with CompilerEnv.env_guard():
+        if OpCompiler.compiler is None:
+            return
+        inputs, outputs, attrs = op_args
+        task = PrebuildTask(graph_id, task_id, op_module,
+                            op_type, op_func,
+                            inputs=inputs, outputs=outputs, attrs=attrs,
+                            unknown_shape=unknown_shape,
+                            int64_mode=int64_mode)
+        task.set_l1size(l1size)
+        OpCompiler.compiler.dispatch_task(task)
+        CompilerEnv.task_counter_modify(1)
 
 
 # 'pylint: disable=too-many-arguments
@@ -1435,17 +1527,18 @@ def dispatch_single_op_compile_task(graph_id, task_id, l1size, op_module,
     :param kernel_name:
     :param op_args:
     """
+    with CompilerEnv.env_guard():
+        if OpCompiler.compiler is None:
+            return
 
-    if OpCompiler.compiler is None:
-        return
-
-    inputs, outputs, attrs = op_args
-    task = SingleOpTask(graph_id, task_id, op_module,
-                        op_type, op_func, kernel_name,
-                        inputs=inputs, outputs=outputs, attrs=attrs,
-                        unknown_shape=unknown_shape, int64_mode=int64_mode)
-    task.set_l1size(l1size)
-    OpCompiler.compiler.dispatch_task(task)
+        inputs, outputs, attrs = op_args
+        task = SingleOpTask(graph_id, task_id, op_module,
+                            op_type, op_func, kernel_name,
+                            inputs=inputs, outputs=outputs, attrs=attrs,
+                            unknown_shape=unknown_shape, int64_mode=int64_mode)
+        task.set_l1size(l1size)
+        OpCompiler.compiler.dispatch_task(task)
+        CompilerEnv.task_counter_modify(1)
 
 
 def dispatch_fusion_op_compile_task(graph_id, task_id, l1size,
@@ -1457,11 +1550,13 @@ def dispatch_fusion_op_compile_task(graph_id, task_id, l1size,
     :param json_str:
     :param kernel_name:
     """
-    if OpCompiler.compiler is None:
-        return
-    task = FusionOpTask(graph_id, task_id, json_str, kernel_name)
-    task.set_l1size(l1size)
-    OpCompiler.compiler.dispatch_task(task)
+    with CompilerEnv.env_guard():
+        if OpCompiler.compiler is None:
+            return
+        task = FusionOpTask(graph_id, task_id, json_str, kernel_name)
+        task.set_l1size(l1size)
+        OpCompiler.compiler.dispatch_task(task)
+        CompilerEnv.task_counter_modify(1)
 
 
 def dispatch_autotune_task(graph_id, task_id, l1size,
@@ -1592,10 +1687,13 @@ def compile_op(json_str, op_env_cfg=None):
     task = FusionOpTask(gid, tid, json_str, op_desc['fusion_op_name'])
     task.op_env_cfg = op_env_cfg
 
-    if OpCompiler.master_pid == gid:
-        # call from parent process
-        OpCompiler.compiler.dispatch_task(task)
-        return DeferredOpRes(gid, tid)
+    with CompilerEnv.env_guard():
+        if OpCompiler.master_pid == gid:
+            # call from parent process
+            OpCompiler.compiler.dispatch_task(task)
+            res = DeferredOpRes(gid, tid)
+            CompilerEnv.task_counter_modify(1)
+            return res
 
     # call from autotune sub process
     task.tag = "autotune_compile_op"

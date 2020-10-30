@@ -18,13 +18,13 @@
  * \file lrn_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
-#include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
 
 Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
    // Parse parameters
@@ -58,14 +58,9 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
   if (param.has_local_size()) {
     local_size = param.local_size();
     if (0 == local_size % 2) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "local_size", "odd value",
+                                to_string(local_size));
       OP_LOGE(op_dest.GetName().c_str(), "LRN only supports odd values for local_size.");
-      map<string, string> err_map;
-      err_map["op_name"] = "LRN";
-      err_map["param_name"] = "local_size";
-      err_map["excepted_value"] = "odd value";
-      err_map["input_value"] = to_string(local_size);
-      std::string report_error_code = "E70007";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return FAILED;
     }
   }

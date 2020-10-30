@@ -36,11 +36,11 @@ SHAPE_DIMS = 5
 
 def _get_mad_dtype(w_dtype):
     """
-    algorithm: get the dtype of mad
+    algorithm: Get the dtype of mad
 
     Parameters
     ----------
-    w_dtype: the dtype of filter
+    w_dtype: The dtype of filter
 
     Returns
     -------
@@ -70,27 +70,27 @@ def _conv3d_compute(shape_fm,
 
     Parameters
     ----------
-    shape_fm: the shape of feature,
-        a list/tuple of 'int' that has length `== 5`
+    shape_fm: The shape of feature,
+        A list/tuple of 'int' that has length `== 5`
 
-    shape_filter: the shape of filter, a list of 'int' that has length `== 5`
+    shape_filter: The shape of filter, a list of 'int' that has length `== 5`
 
-    bias: dict with keys(shape and dtype) or None
-        input bias tensor
+    bias: A dict with keys(shape and dtype) or None
+        An input bias tensor
 
-    stride_dhw: A list of `ints` that has length `== 3`.
+    stride_dhw: A tuple/list of `ints` that has length `== 3`
 
-    pads: tuple/list of 6 integers
+    pads: A tuple/list of 6 integers
         [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    fmp_dtype: the dtype of feature
+    fmp_dtype: The dtype of feature
 
-    w_dtype: the dtype of filter
+    w_dtype: The dtype of filter
 
-    res_dtype: the dtype of output
+    res_dtype: The dtype of output
 
-    kernel_name: str
-        kernel name, default value is "conv3d"
+    kernel_name: Str
+        Kernel name, default value is "conv3d"
 
     Returns
     -------
@@ -136,16 +136,16 @@ def _conv3d_compute(shape_fm,
 
 def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
-    algorithm: check the input params of conv3d
+    algorithm: Check the input params of conv3d
 
     Parameters
     ----------
 
-    fmp_dtype: the dtype of feature
+    fmp_dtype: The dtype of feature
 
-    w_dtype: the dtype of filter
+    w_dtype: The dtype of filter
 
-    res_dtype: the dtype of output
+    res_dtype: The dtype of output
 
     Returns
     -------
@@ -163,20 +163,20 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 
     Parameters
     ----------
-    fmp_format: The data format of the input feature.
+    fmp_format: The data format of the input feature
 
-    w_format: The data format of the input filter.
+    w_format: The data format of the input filter
 
-    fmp_shape: the shape of feature,
-        a list/tuple of 'int' that has length `== 5`
+    fmp_shape: The shape of feature
+        A list/tuple of 'int' that has length `== 5`
 
-    w_shape: the shape of filter, a list of 'int' that has length `== 5`
+    w_shape: The shape of filter, a list of 'int' that has length `== 5`
 
-    strides: A list of `ints` that has length `== 5`.
+    strides: A tuple/list of `ints` that has length `== 5`
 
-    dilations: tuple/list of 5 integers.
-        dilation on D/H/W, format sensitive,
-        Dilations in the batch and depth dimensions must be 1.
+    dilations: A tuple/list of 5 integers
+        Dilation on D/H/W, format sensitive
+        Dilations in the batch and depth dimensions must be 1
 
     Returns
     -------
@@ -229,36 +229,37 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
                        fmp_format, w_format, bias, strides, pads, dilations):
     """
-    algorithm: check the input params of conv3d
+    algorithm: Check the input params of conv3d
 
     Parameters
     ----------
-    fmp_shape: the shape of feature,
-        a list/tuple of 'int' that has length `== 5`
+    fmp_shape: The shape of feature
+        A list/tuple of 'int' that has length `== 5`
 
-    w_shape: the shape of filter, a list of 'int' that has length `== 5`
+    w_shape: The shape of filter
+        A list/tuple of 'int' that has length `== 5`
 
-    fmp_dtype: the dtype of feature
+    fmp_dtype: The dtype of feature
 
-    w_dtype: the dtype of filter
+    w_dtype: The dtype of filter
 
-    res_dtype: the dtype of output
+    res_dtype: The dtype of output
 
-    fmp_format: The data format of the input feature.
+    fmp_format: The data format of the input feature
 
-    w_format: The data format of the input filter.
+    w_format: The data format of the input filter
 
-    bias: dict with keys(shape and dtype) or None
+    bias: A dict with keys(shape and dtype) or None
         input bias tensor
 
-    strides: A list of `ints` that has length `== 5`.
+    strides: A list/tuple of `ints` that has length `== 5`
 
-    pads: tuple/list of 6 integers
+    pads: A list/tuple of 6 integers
         [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 5 integers.
-        dilation on D/H/W, format sensitive,
-        Dilations in the batch and depth dimensions must be 1.
+    dilations: A list/tuple of 5 integers
+        Dilation on D/H/W, format sensitive
+        Dilations in the batch and depth dimensions must be 1
 
     Returns
     -------
@@ -354,41 +355,41 @@ def conv3d(fmap,
 
     Parameters
     ----------
-    fmap: dict with keys(shape and dtype)
-        input 5d feature map tensor
+    fmap: A dict with keys(shape and dtype)
+        Input 5d feature map tensor
 
-    weight: dict with keys(shape and dtype)
-        input 5d weight tensor
+    weight: A dict with keys(shape and dtype)
+        Input 5d weight tensor
 
-    bias: dict with keys(shape and dtype) or None
-        input bias tensor
+    bias: A dict with keys(shape and dtype) or None
+        Input bias tensor
 
-    offset_w: dict with keys(shape and dtype) or None
-        input offset_w tensor
+    offset_w: A dict with keys(shape and dtype) or None
+        Input offset_w tensor
 
-    output: dict with keys(shape and dtype)
-        output tensor, dtype must be assigned
+    output: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
 
-    strides: tuple/list of 5 integers, format sensitive
+    strides: A tuple/list of 5 integers, format sensitive
         [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
-    pads: tuple/list of 6 integers
+    pads: A tuple/list of 6 integers
         [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 5 integers.
-        dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    dilations: A tuple/list of 5 integers
+        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
-    groups: int of blocked connections from input channels to output channels
-        default value is 1
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
 
-    data_format: The data format of the input and output data. With the
-        default format is "NDHWC"
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
 
-    offset_x: int
-        input offset_x value, default value is 0
+    offset_x: Int
+        Input offset_x value, default value is 0
 
-    kernel_name: str
-        kernel name, default value is "conv3d"
+    kernel_name: Str
+        Kernel name, default value is "conv3d"
 
     Returns
     -------

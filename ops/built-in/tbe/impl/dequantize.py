@@ -20,6 +20,7 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import operate_shape
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def _min_combined_mode_compute(input_tensor, broadcast_min_range, broadcast_max_range):
@@ -338,9 +339,11 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
     shape_input_max_range = max_range.get("shape")
     shape_output_data = y.get("shape")
     if len(shape_input_min_range) != len(shape_input_max_range):
-        raise RuntimeError("shape_input_min_range and shape_input_max_range must be equal")
+        error_manager_vector.raise_err_specific_reson("dequantize",
+                                                      "shape_input_min_range and shape_input_max_range must be equal!")
     if shape_output_data != shape_x:
-        raise RuntimeError("shape_output_data and shape_x must be equal.")
+        error_manager_vector.raise_err_inputs_shape_not_equal("dequantize", "x", "y", shape_x, shape_output_data,
+                                                              shape_x)
     shape_range = shape_input_min_range
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape_range, param_name="min_range")
@@ -356,17 +359,19 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
     check_list = ("int8", "uint8", "int32")
     s322f32_support = tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f32")
     if dtype_x == "int32" and not s322f32_support:
-        raise RuntimeError("not support on the platform")
+        error_manager_vector.raise_err_input_dtype_not_supported("dequantize", 'x', ("int8", "uint8"), dtype_x)
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if not vmul_support:
-        raise RuntimeError("not support on the platform")
+        para_check.check_dtype(dtype_output_data, [], param_name="y")
     para_check.check_dtype(dtype_x, check_list, param_name="x")
     para_check.check_dtype(dtype_input_min_range, ("float32", ), param_name="min_range")
     para_check.check_dtype(dtype_input_max_range, ("float32", ), param_name="max_range")
     para_check.check_dtype(dtype_output_data, ("float32", ), param_name="y")
 
     if mode not in ("MIN_COMBINED", "MIN_FIRST", "SCALED"):
-        raise RuntimeError("mode only support MIN_COMBINED, MIN_FIRST, SCALED.")
+        error_manager_vector.raise_err_check_params_rules('dequantize',
+                                                          'mode only support MIN_COMBINED, MIN_FIRST, SCALED', 'mode',
+                                                          mode)
 
     shape_x, shape_range, _ = operate_shape.broadcast_shapes(shape_x,
                                                              shape_range,

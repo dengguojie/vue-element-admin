@@ -18,6 +18,7 @@ in_top_k
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # size of useful UB buffer
 UB_SIZE_BYTES = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -77,15 +78,17 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     para_check.check_dtype(target_dtype, ('int32', ), param_name="targets")
 
     if not tbe_platform.api_check_support("tik.vconv", "f322f16"):
-        raise RuntimeError("this product does not supported float32")
+        error_manager_vector.raise_err_specific_reson(kernel_name, "this product does not supported float32")
     # the predictions is 2-dimensional.
     # the targets is 1-dimensional.
     if len(predictions_shape) != 2:
-        raise RuntimeError("predcitions must be 2-dimensional")
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'predictions', 2, 2,
+                                                                 len(predictions_shape))
     if len(target_shape) != 1:
-        raise RuntimeError("targets must be 1-dimensional")
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'targets', 1, 1, len(target_shape))
     if predictions_shape[0] != target_shape[0]:
-        raise RuntimeError("First dimension of predictions must match " "length of targets.")
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "First dimension of predictions must match the length of targets.")
 
     row = predictions_shape[0]
     column = predictions_shape[1]

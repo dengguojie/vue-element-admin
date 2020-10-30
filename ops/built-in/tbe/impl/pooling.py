@@ -54,6 +54,20 @@ def _pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
         error_manager_vector.raise_err_specific_reson("pooling", "the shape of stride is not 2 dims")
 
 
+def _is_window_equal(out_size_h, out_size_w, input_h, input_w, window_h, window_w, stride_h, stride_w,
+                     pad_top, pad_bottom, pad_left, pad_right):
+    for steps_h in range(0, out_size_h):
+        for steps_w in range(0, out_size_w):
+            h_start = steps_h * stride_h - pad_top
+            w_start = steps_w * stride_w - pad_left
+            h_end = min(h_start + window_h, input_h + pad_top)
+            w_end = min(w_start + window_w, input_w + pad_left)
+            area = max((h_end - h_start) * (w_end - w_start), 1)
+            if area != window_h * window_w:
+                return False
+    return True
+
+
 def get_fusion_params(input_data, output_data, is_fused_compute=True):
     """
     :param input_data: tensor of input_data
@@ -234,25 +248,36 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
 
         # call conv2d_compute to fuse for avg_cube
         if mode_avg == "AVG" and matrix is not None:
-            # conv2d interface strides is 4D
-            strides = (1, 1, stride[0], stride[1])
             # get real pad
-            _, _, pad_top, pad_bottom, pad_left, pad_right \
-                = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
-                                             window[0], window[1],
-                                             stride[0], stride[1],
-                                             dilation[0], dilation[1],
-                                             pad[0], pad[1], pad[2],
-                                             pad[3])
+            out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
+                    = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
+                                                window[0], window[1],
+                                                stride[0], stride[1],
+                                                dilation[0], dilation[1],
+                                                pad[0], pad[1], pad[2],
+                                                pad[3])
             conv2d_pad = (pad_top, pad_bottom, pad_left, pad_right)
-            # call conv2d_compute for avg
-            res = conv2d.conv2d_compute(input_data, matrix, bias, None,
-                                      output_data,
-                                      strides, conv2d_pad,
-                                      dilation, groups=1,
-                                      data_format='NCHW',
-                                      offset_x=offset_x,
-                                      kernel_name=kernel_name)
+            is_window_equal = _is_window_equal(out_size_h, out_size_w, input_h, input_w, window[0], window[1],
+                                               stride[0], stride[1], pad_top, pad_bottom, pad_left, pad_right)
+            if is_window_equal:
+                # conv2d interface strides is 4D
+                strides = (1, 1, stride[0], stride[1])
+                # call conv2d_compute for avg
+                res = conv2d.conv2d_compute(input_data, matrix, bias, None,
+                                        output_data,
+                                        strides, conv2d_pad,
+                                        dilation, groups=1,
+                                        data_format='NCHW',
+                                        offset_x=offset_x,
+                                        kernel_name=kernel_name)
+            else:
+                # depthwise interface strides is 4D
+                out_dtype = output_data.get("dtype")
+                dilations = (1, 1)
+                res = tbe.te_compute.depthwise_conv2d_compute(
+                        input_data, matrix, out_dtype.lower(), stride, conv2d_pad, dilations, {
+                        "bias_tensor": bias, "dsl_flag": True,
+                        "offset_x": offset_x}, None, kernel_name)
         else:
             # call pooling2d for gap&avg_old
             window = list(window)
@@ -460,24 +485,64 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         is_use_matrix = True
     # avg pooling calls conv2d interface to implement
     if modes == "AVG" and matrix and is_use_matrix:
-        # input origin shape should be set to [N*C1, C0, H, W]
-        input_ori_shape = (input_shape[0] * input_shape[1], input_shape[4],
-                           input_shape[2], input_shape[3])
-        x["ori_shape"] = input_ori_shape
-
-        # conv2d interface strides is 4D
-        strides = (1, 1, stride[0], stride[1])
         # get real pad
-        _, _, pad_top, pad_bottom, pad_left, pad_right \
-            = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
-                                         window[0], window[1], stride[0],
-                                         stride[1], dilation[0], dilation[1],
-                                         pad[0], pad[1], pad[2],
-                                         pad[3])
+        out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
+            = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w, window[0], window[1], stride[0], stride[1],
+                                             dilation[0], dilation[1], pad[0], pad[1], pad[2], pad[3])
         pad = (pad_top, pad_bottom, pad_left, pad_right)
 
-        conv2d.conv2d(x, matrix, None, None, y, strides, pad,
-                    dilations=(1, 1, 1, 1), kernel_name=kernel_name)
+        is_window_equal = _is_window_equal(out_size_h, out_size_w, input_h, input_w, window[0], window[1],
+                         stride[0], stride[1], pad_top, pad_bottom, pad_left, pad_right)
+
+        if is_window_equal:
+            # input origin shape should be set to [N*C1, C0, H, W]
+            input_ori_shape = (input_shape[0] * input_shape[1], input_shape[4],
+                            input_shape[2], input_shape[3])
+            x["ori_shape"] = input_ori_shape
+
+            # conv2d interface strides is 4D
+            strides = (1, 1, stride[0], stride[1])
+            conv2d.conv2d(x, matrix, None, None, y, strides, pad,
+                        dilations=(1, 1, 1, 1), kernel_name=kernel_name)
+        else:
+            addr_type = x.get("addr_type", 0)
+            valid_shape = x.get("valid_shape", [])
+            slice_offset = x.get("slice_offset", [])
+            split_index = x.get("split_index", 0)
+            l1_fusion_type = x.get("L1_fusion_type", -1)
+            attr = {"addr_type": addr_type,
+                    "valid_shape": valid_shape,
+                    "slice_offset": slice_offset,
+                    "split_index": split_index,
+                    "L1_fusion_type": l1_fusion_type}
+            is_l1fusion = l1_fusion_type in (0, 1)
+            tensor_in = tvm.placeholder(input_shape, name="tensor_in",
+                                        dtype=input_dtype, attrs=attr)
+            dilations = (1, 1)
+            matrix_shape = matrix.get("shape")
+            matrix_dtype = matrix.get("dtype").lower()
+            hw = window[0] * window[1]
+            matrix_c1 = matrix_shape[0] / hw
+            filter_shape_5d = matrix_c1, window[0], window[1], matrix_shape[2], matrix_shape[3]
+            matrix_in = tvm.placeholder(filter_shape_5d, name="matrix_in",
+                                    dtype=matrix_dtype, attrs=attr)
+            res = tbe.te_compute.depthwise_conv2d_compute(
+                    tensor_in, matrix_in, output_dtype, stride, pad, dilations, {
+                    "bias_tensor": None, "dsl_flag": False,
+                    "offset_x": offset_x}, None, kernel_name)
+            tensor_list = [tensor_in, matrix_in, res]
+            # schedule
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+
+            # build
+            config = {"print_ir": False,
+                    "need_build": False,
+                    "name": kernel_name,
+                    "tensor_list": tensor_list,
+                    "l1_fusion_option": is_l1fusion}
+
+            tbe.cce_build_code(sch, config)
     else:
         # set tensor attrs
         addr_type = x.get("addr_type", 0)

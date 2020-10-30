@@ -68,7 +68,9 @@ def gen_static_aipp_case(input_shape, output_shape,
 ut_case.add_case(["Ascend310", "Ascend710"],
                  gen_static_aipp_case((1,3,418,416), (1,1,418,416,32),
                                       "uint8", "NCHW", "aipp_1", "success"))
-
+ut_case.add_case(["Ascend910"],
+                 gen_static_aipp_case((1,3,418,416), (1,1,418,416,32),
+                                      "uint8", "NCHW", "aipp_1", RuntimeError))
 
 if __name__ == '__main__':
     # ut_case.run("Ascend710")

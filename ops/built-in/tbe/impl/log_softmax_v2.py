@@ -117,14 +117,6 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", imp
 
     axis = shape_util.axis_check(shape_len, axis)
 
-    if not isinstance(axis, int):
-        for i in axis:
-            if shape_list[i] == 1:
-                raise RuntimeError("Cannot reduce on an axis with dimension 1")
-    else:
-        if shape_list[axis] == 1:
-            raise RuntimeError("Cannot reduce on an axis with dimension 1")
-
     shape, axis = shape_util.shape_refine(list(shape), axis)
     shape, axis = shape_util.simplify_axis_shape(shape, axis)
 

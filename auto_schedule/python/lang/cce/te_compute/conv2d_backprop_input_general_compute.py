@@ -48,14 +48,23 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
     -------
     deconv_pattern_instance : instance of deconv pattern
     """
+
     fusion_para_map = None
     dedy = None
 
-    def __init__(self,  # pylint: disable=R0913
-                 kernel_sizes, strides, pad,
-                 output_shape, dilations, offset_x,
-                 fusion_para, dynamic_para, kernel_name):
-        super(DeConvPattern, self).__init__()
+    def __init__(  # pylint: disable=R0913
+        self,
+        kernel_sizes,
+        strides,
+        pad,
+        output_shape,
+        dilations,
+        offset_x,
+        fusion_para,
+        dynamic_para,
+        kernel_name
+    ):
+        super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
         self._kernel_h = kernel_h
         self._kernel_w = kernel_w
@@ -64,7 +73,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         self._output_shape = output_shape
         self._kernel_name = kernel_name
         _, _, self._dilate_h, self._dilate_w = dilations
-        self.m_0, _, _ = cce_params.CUBE_MKN["float16"]['mac']
+        self.m_0, _, _ = cce_params.CUBE_MKN["float16"]["mac"]
         self._offset_x = offset_x
         self._fusion_para = fusion_para
         self._dynamic_para = dynamic_para
@@ -81,31 +90,33 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         ----------
         dy_col: dE/dY tensor of fractal shape in L0A
         """
+
         def _fill_zero(shape_dy_filling):
             dy_zero = tvm.compute(
                 shape_dy_filling,
-                lambda *indice:
-                tvm.convert(self._offset_x).astype(dy_ddr.dtype),
+                lambda *indice: tvm.convert(self._offset_x).astype(dy_ddr.dtype),
                 name="dy_filling_i",
-                tag="init_zero")
+                tag="init_zero"
+            )
             return dy_zero
 
         def _write_select(dy_h):
             if valid_shape:
                 dy_h = valid_shape[2]
-            shape_dy_filling = (dy_batch, kernel_cout1, dy_h * stride_h,
-                                dy_w * stride_w, kernel_cout0)
-            if valid_shape and \
-                    (stride_h > 1 or stride_w > 1 or input_mem == 0):
-                dy_read = tvm.compute(valid_shape,
-                                      lambda n, c1, h, w, c0:
-                                      dy_ddr[n,
-                                             c1,
-                                             h + slice_offset[2],
-                                             w,
-                                             c0],
-                                      name="dy_selet_read",
-                                      tag="dy_selet_read")
+            shape_dy_filling = (
+                dy_batch,
+                kernel_cout1,
+                dy_h * stride_h,
+                dy_w * stride_w,
+                kernel_cout0
+            )
+            if valid_shape and (stride_h > 1 or stride_w > 1 or input_mem == 0):
+                dy_read = tvm.compute(
+                    valid_shape,
+                    lambda n, c1, h, w, c0: dy_ddr[n, c1, h + slice_offset[2], w, c0],
+                    name="dy_selet_read",
+                    tag="dy_selet_read"
+                )
             else:
                 dy_read = dy_ddr
             if stride_h == 1 and stride_w == 1:
@@ -114,27 +125,37 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 dy_zero = _fill_zero(shape_dy_filling)
                 dy_filling = tvm.compute(
                     shape_dy_filling,
-                    lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
-                    tvm.select(tvm.all(ho_idx % stride_h == 0,
-                                       wo_idx % stride_w == 0),
-                               dy_read[batch_idx,
-                                       kernel_cout1_idx,
-                                       ho_idx // stride_h,
-                                       wo_idx // stride_w,
-                                       kernel_cout0_idx],
-                               dy_zero[batch_idx,
-                                       kernel_cout1_idx,
-                                       ho_idx,
-                                       wo_idx,
-                                       kernel_cout0_idx]),
+                    lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
+                        tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
+                        dy_read[
+                            batch_idx,
+                            kernel_cout1_idx,
+                            ho_idx // stride_h,
+                            wo_idx // stride_w,
+                            kernel_cout0_idx
+                        ],
+                        dy_zero[
+                            batch_idx,
+                            kernel_cout1_idx,
+                            ho_idx,
+                            wo_idx,
+                            kernel_cout0_idx
+                        ]
+                    ),
                     name="dy_filling",
                     tag="stride_filling",
-                    attrs={"stride_expand": (self._stride_h, self._stride_w)})
+                    attrs={"stride_expand": (self._stride_h, self._stride_w)}
+                )
             return dy_filling, shape_dy_filling, dy_h
 
         def _write_select_dynamic(dy_h):
-            shape_dy_filling = (dy_batch, kernel_cout1, dy_h * stride_h,
-                                dy_w * stride_w, kernel_cout0)
+            shape_dy_filling = (
+                dy_batch,
+                kernel_cout1,
+                dy_h * stride_h,
+                dy_w * stride_w,
+                kernel_cout0
+            )
             if stride_h == 1 and stride_w == 1:
                 dy_filling = dy_ddr
             else:
@@ -161,16 +182,22 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
 
                 dy_filling = tvm.compute(
                     shape_dy_filling,
-                    lambda batch_idx_filling, kernel_cout1_idx_filling,
-                    ho_idx_filling, wo_idx_filling, kernel_cout0_idx_filling:
-                    dy_ddr[batch_idx_filling, kernel_cout1_idx_filling,
-                           ho_idx_filling // stride_h, wo_idx_filling //
-                           stride_w, kernel_cout0_idx_filling] * vn_tensor[
-                               ho_idx_filling % stride_h, wo_idx_filling %
-                               stride_w, kernel_cout0_idx_filling],
+                    lambda batch_filling, kernel_co1_filling, ho_filling, wo_filling, kernel_co0_filling: dy_ddr[
+                        batch_filling,
+                        kernel_co1_filling,
+                        ho_filling // stride_h,
+                        wo_filling // stride_w,
+                        kernel_co0_filling
+                    ]
+                    * vn_tensor[
+                        ho_filling % stride_h,
+                        wo_filling % stride_w,
+                        kernel_co0_filling
+                    ],
                     name="dy_filling",
                     tag="stride_filling",
-                    attrs={"stride_expand": (self._stride_h, self._stride_w)})
+                    attrs={"stride_expand": (self._stride_h, self._stride_w)}
+                )
 
             return dy_filling, shape_dy_filling, dy_h
 
@@ -182,8 +209,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         valid_shape = fusion_para.get("valid_shape")
         slice_offset = fusion_para.get("slice_offset")
 
-        dy_batch, kernel_cout1, dy_h, dy_w, kernel_cout0 = \
-            shape_to_list(dy_ddr.shape)
+        dy_batch, kernel_cout1, dy_h, dy_w, kernel_cout0 = shape_to_list(dy_ddr.shape)
         stride_h, stride_w = self._stride_h, self._stride_w
 
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
@@ -195,63 +221,76 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             dy_filling, shape_dy_filling, dy_h = _write_select(dy_h)
 
         new_stride = (1, 1)
-        new_hw = (dy_h*stride_h, dy_w*stride_w)
+        new_hw = (dy_h * stride_h, dy_w * stride_w)
 
-        new_pad_before = ((kernel_h - 1) * dilate_h - self._pad_up,
-                          (kernel_w - 1) * dilate_w - self._pad_left)
+        new_pad_before = (
+            (kernel_h - 1) * dilate_h - self._pad_up,
+            (kernel_w - 1) * dilate_w - self._pad_left
+        )
 
         _, _, dx_h, dx_w, _ = self._output_shape
-        new_pad_after = tuple(i - o - pb + (k - 1) * d for i, o, pb, k, d in
-                              zip((dx_h, dx_w),
-                                  new_hw,
-                                  new_pad_before,
-                                  (kernel_h, kernel_w),
-                                  (dilate_h, dilate_w)))
+        new_pad_after = tuple(
+            i - o - pb + (k - 1) * d
+            for i, o, pb, k, d in zip(
+                (dx_h, dx_w),
+                new_hw,
+                new_pad_before,
+                (kernel_h, kernel_w),
+                (dilate_h, dilate_w)
+            )
+        )
         pad_down_after, pad_right_after = new_pad_after
 
         # stride > 1 ub->l1 may cut
         if stride_h > 1 or stride_w > 1:
             if self._dynamic_para or pad_down_after < 0 or pad_right_after < 0:
-                shape_down_modify = (pad_down_after -
-                                     tvm_abs(pad_down_after)) // 2
-                shape_right_modify = (pad_right_after -
-                                      tvm_abs(pad_right_after)) // 2
-                shape_dy_filling_cut = (dy_batch, kernel_cout1,
-                                        dy_h * stride_h + shape_down_modify,
-                                        dy_w * stride_w + shape_right_modify,
-                                        kernel_cout0)
+                shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
+                shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+                shape_dy_filling_cut = (
+                    dy_batch,
+                    kernel_cout1,
+                    dy_h * stride_h + shape_down_modify,
+                    dy_w * stride_w + shape_right_modify,
+                    kernel_cout0
+                )
 
                 # cut dy_filling
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_cut,
-                    lambda batch_idx, kernel_cout1_idx,
-                    ho_idx, wo_idx, kernel_cout0_idx:
-                    dy_filling[batch_idx, kernel_cout1_idx,
-                               ho_idx, wo_idx, kernel_cout0_idx],
+                    lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
+                        batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx
+                    ],
                     name="dy_l1_cut",
-                    tag="dy_l1_cut")
+                    tag="dy_l1_cut"
+                )
 
-                pad_down_after = (pad_down_after +
-                                  tvm_abs(pad_down_after)) // 2
-                pad_right_after = (pad_right_after +
-                                   tvm_abs(pad_right_after)) // 2
+                pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
+                pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
             else:
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling,
-                    lambda batch_idx, kernel_cout1_idx,
-                    ho_idx, wo_idx, kernel_cout0_idx:
-                    dy_filling[batch_idx, kernel_cout1_idx,
-                               ho_idx, wo_idx, kernel_cout0_idx],
+                    lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
+                        batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx
+                    ],
                     name="dy_l1",
-                    tag="dy_l1")
+                    tag="dy_l1"
+                )
 
-        new_pad = ((kernel_h - 1) * dilate_h - self._pad_up,
-                   pad_down_after,
-                   (kernel_w - 1) * dilate_w - self._pad_left,
-                   pad_right_after)
+        new_pad = (
+            (kernel_h - 1) * dilate_h - self._pad_up,
+            pad_down_after,
+            (kernel_w - 1) * dilate_w - self._pad_left,
+            pad_right_after
+        )
 
-        pat_conv = ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad,
-                                  (dilate_h, dilate_w), self._offset_x)
+        pat_conv = ConvDslPattern(
+            kernel_h,
+            kernel_w,
+            new_stride,
+            new_pad,
+            (dilate_h, dilate_w),
+            self._offset_x
+        )
 
         if stride_h > 1 or stride_w > 1:
             dy_col = pat_conv.generate_a(dy_filling_l1, self._dynamic_para)
@@ -260,8 +299,11 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             if l1_fusion_type != -1 and input_mem == 1 and valid_shape:
                 offset = slice_offset[2]
             dy_col = pat_conv.generate_a(
-                dy_filling, self._dynamic_para,
-                slice_offset=offset, valid_shape=valid_shape)
+                dy_filling,
+                self._dynamic_para,
+                slice_offset=offset,
+                valid_shape=valid_shape
+            )
 
         return dy_col
 
@@ -278,36 +320,42 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         w_col: w tensor of fractal shape after transformation in L0B
         """
         if kernels.dtype == "int8":
+
             def _kernel_elem_func(*index):
                 return kernels(*index)
-            w_col = tvm.compute(kernels.shape, _kernel_elem_func,
-                                name="w_col", tag="inverse_trans_dma")
+
+            w_col = tvm.compute(
+                kernels.shape, _kernel_elem_func, name="w_col", tag="inverse_trans_dma"
+            )
         else:
-            w_k1, kernel_cout1, kernel_cout0, w_k0 = \
-                shape_to_list(kernels.shape)
+            w_k1, kernel_cout1, kernel_cout0, w_k0 = shape_to_list(kernels.shape)
             kernel_h, kernel_w = self._kernel_h, self._kernel_w
-            if w_k1 % (kernel_h*kernel_w) != 0:
-                raise RuntimeError("w_k1 could not "
-                                   "be divided by kernel_h*kernel_w ")
-            kernel_cin1 = w_k1 / (kernel_w*kernel_h)
-            shape_w_l0b = (kernel_cout1*kernel_h*kernel_w,
-                           kernel_cin1,
-                           w_k0,
-                           kernel_cout0)
+            if w_k1 % (kernel_h * kernel_w) != 0:
+                raise RuntimeError("w_k1 could not " "be divided by kernel_h*kernel_w ")
+            kernel_cin1 = w_k1 / (kernel_w * kernel_h)
+            shape_w_l0b = (
+                kernel_cout1 * kernel_h * kernel_w,
+                kernel_cin1,
+                w_k0,
+                kernel_cout0
+            )
             w_col = tvm.compute(
                 shape_w_l0b,
-                lambda w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx:
-                kernels[kernel_cin1_idx*kernel_h*kernel_w +
-                        (kernel_h*kernel_w - 1 - w_k1_idx
-                         % (kernel_h*kernel_w)),
-                        w_k1_idx // (kernel_h*kernel_w),
-                        kernel_cout0_idx, w_k0_idx],
+                lambda w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx: kernels[
+                    kernel_cin1_idx * kernel_h * kernel_w
+                    + (kernel_h * kernel_w - 1 - w_k1_idx % (kernel_h * kernel_w)),
+                    w_k1_idx // (kernel_h * kernel_w),
+                    kernel_cout0_idx,
+                    w_k0_idx
+                ],
                 name="w_col",
-                tag="inverse_trans_dma")
+                tag="inverse_trans_dma"
+            )
         return w_col
 
-    def generate_c(self,  # pylint: disable=R0914
-                   tensor_a, tensor_b, tensor_bias=None, c_type=None):
+    def generate_c(  # pylint: disable=R0914,R0913
+        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0
+    ):
         """
         generate dx_ddr
 
@@ -321,6 +369,8 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
 
         c_type : same as that in Class->CubeDslPattern
 
+        offset_x : same as that in Class->CubeDslPattern
+
         Returns
         ----------
         dx_ddr: dx tensor in ddr
@@ -329,12 +379,12 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         def _add_bias_in_ub(in_tensor0, in_tensor1):
             c_add_vector = tvm.compute(
                 in_tensor0.shape,
-                lambda *indice:
-                in_tensor0(*indice) +
-                in_tensor1(
-                    indice[1]*cce_params.CUBE_MKN[in_tensor0.dtype]['mac'][2] + indice[3]
+                lambda *indice: in_tensor0(*indice)
+                + in_tensor1(
+                    indice[1] * cce_params.CUBE_MKN[in_tensor0.dtype]["mac"][2]
+                    + indice[3]
                 ),
-                name="bias_add_vector",
+                name="bias_add_vector"
             )
             return c_add_vector
 
@@ -351,17 +401,15 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             bias = tensor_bias
         else:
             bias = None
-        dx_col = super(DeConvPattern, self).generate_c(dy_col,
-                                                       w_col,
-                                                       c_type=res_c_type,
-                                                       tensor_bias=bias,
-                                                       offset_x=self._offset_x)
+        dx_col = super().generate_c(
+            dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x
+        )
         # mad dx shape
         dx_batch, dx_c1, dx_hw, dx_c0 = shape_to_list(dx_col.shape)
 
         # real dx shape
         _, dx_cin1, dx_h, dx_w, dx_cin0 = self._output_shape
-        out_shape = (dx_batch, dx_cin1, dx_h*dx_w, dx_cin0)
+        out_shape = (dx_batch, dx_cin1, dx_h * dx_w, dx_cin0)
 
         # float32->float16
         dx_ub_type = "float16"
@@ -370,19 +418,25 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
 
         dx_ub = tvm.compute(
             (dx_batch, dx_c1, dx_hw, dx_c0),
-            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_col[dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx]
-            .astype(dx_ub_type), name="c_ub")
+            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[
+                dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
+            ].astype(dx_ub_type),
+            name="c_ub"
+        )
 
         if tensor_bias is not None and tensor_bias.dtype == "float16":
             dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
 
         dx_ddr = tvm.compute(
             out_shape,
-            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_ub[dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_ub[
+                dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
+            ],
             name="c_ddr",
             tag="conv2d_backprop_input",
-            attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
-                   "kernel_name": self._kernel_name})
+            attrs={
+                "output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                "kernel_name": self._kernel_name
+            }
+        )
         return dx_ddr

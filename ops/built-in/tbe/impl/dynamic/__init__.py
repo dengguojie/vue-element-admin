@@ -19,8 +19,8 @@ from __future__ import absolute_import as _abs
 
 from .unsorted_segment_sum import unsorted_segment_sum
 from . import gather_nd
-from . import gather_v2
-from . import gather
+from .gather import gather
+from .gather_v2 import gather_v2
 from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add
 from .scatter_update import scatter_update

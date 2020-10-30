@@ -235,7 +235,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             "op_type": 'conv2d_backprop_filter',
             "A_shape": shape_to_list(self.grads.shape),
             "B_shape": shape_to_list(self.fmap.shape),
-            "C_shape": shape_to_list([self.weight_shape[0],
+            "C_shape": shape_to_list([
+                _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE,
                 _ceil_div(self.weight_shape[1], BLOCK_SIZE),
                 self.weight_shape[2], self.weight_shape[3], BLOCK_SIZE]),
             "A_dtype": self.grads.dtype,

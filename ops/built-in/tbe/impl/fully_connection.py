@@ -95,88 +95,62 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
     length_y_ori = len(shape_y_ori)
 
     if axis == 1:
-        if length_y_ori == 4:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                               datatype="float16, int8",
-                               format="NC1HWC0, NC1HWC0")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w",
-                               datatype="float16, int8",
-                               format="FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
-                                format="NC1HWC0, NC1HWC0")
+        if shape_x_ori[0] == 1:
+            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
+                                                   format="NC1HWC0, NC1HWC0")
+            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8",
+                                                   format="FRACTAL_Z, FRACTAL_Z")
+            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16,int32",
+                                                   format="NC1HWC0,NC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
+                                                   format="ND,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",datatype="float16,int32",
+                                                    format="NC1HWC0, NC1HWC0")
+        elif length_y_ori == 4:
+            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
+                                                   format="NC1HWC0, NC1HWC0")
+            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8",
+                                                   format="FRACTAL_Z, FRACTAL_Z")
+            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16,int32",
+                                                   format="NC1HWC0,NC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
+                                                   format="ND,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16,int32",
+                                                    format="NC1HWC0, NC1HWC0")
         elif length_x_ori == 2:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                               datatype="float16, int8",
-                               format="FRACTAL_NZ, FRACTAL_NZ")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w",
-                               datatype="float16, int8",
-                               format="FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
-                                format="FRACTAL_NZ, FRACTAL_NZ")
-        elif shape_x_ori[0] == 1:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                               datatype="float16, int8",
-                               format="NC1HWC0, NC1HWC0")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w",
-                               datatype="float16, int8",
-                               format="FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
-                                format="FRACTAL_NZ, FRACTAL_NZ")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
+                                                   format="FRACTAL_NZ, FRACTAL_NZ")
+            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8",
+                                                   format="FRACTAL_Z, FRACTAL_Z")
+            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16,int32",
+                                                   format="NC1HWC0,NC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
+                                                   format="ND,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16,int32",
+                                                    format="FRACTAL_NZ, FRACTAL_NZ")
         else:
             format_x = get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, format_x_ori)
-
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                               datatype="float16, int8",
-                               format=format_x)
-            input1 = util_select_op_base.gen_param(classify="input1", name="w",
-                               datatype="float16, int8",
-                               format="FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
-                                format="FRACTAL_NZ, FRACTAL_NZ")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
+                                                   format=format_x)
+            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8",
+                                                   format="FRACTAL_Z, FRACTAL_Z")
+            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16,int32",
+                                                   format="NC1HWC0,NC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
+                                                   format="ND,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16,int32",
+                                                    format="FRACTAL_NZ, FRACTAL_NZ")
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                           datatype="float16, int8",
-                           format="FRACTAL_NZ, FRACTAL_NZ")
-        input1 = util_select_op_base.gen_param(classify="input1", name="w",
-                           datatype="float16, int8",
-                           format="FRACTAL_Z, FRACTAL_Z")
-        input2 = util_select_op_base.gen_param(classify="input2", name="b",
-                           datatype="float16,int32",
-                           format="NC1HWC0,NC1HWC0")
-        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                           datatype="int8,int8",
-                           format="ND,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                            datatype="float16,int32",
-                            format="FRACTAL_NZ, FRACTAL_NZ")
+        input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
+                                               format="FRACTAL_NZ, FRACTAL_NZ")
+        input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8",
+                                               format="FRACTAL_Z, FRACTAL_Z")
+        input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16,int32",
+                                               format="NC1HWC0,NC1HWC0")
+        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
+                                               format="ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16,int32",
+                                                format="FRACTAL_NZ, FRACTAL_NZ")
 
     param_list = [input0, input1, input2, input3, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -315,10 +289,10 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
     return result
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, 
-                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, 
-			    para_check.OPTION_ATTR_BOOL, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, 
-			    para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x=0,
                      kernel_name="fully_connection"):
     """

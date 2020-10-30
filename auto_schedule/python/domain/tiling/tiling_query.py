@@ -15,10 +15,10 @@
 """
 Query the tiling of conv
 """
-import os
 import math
 import numpy as np
 import json
+
 from te import tvm
 from te.platform import CUBE_MKN
 from te.platform.cce_conf import get_soc_spec
@@ -99,18 +99,17 @@ def get_platform_info():
     # version
     version_dict = {
         "Ascend310": 1,
-        "Ascend910": 2,
+        "Ascend910A": 2,
         "Hi3796CV300ES": 3,
         "Ascend710": 4,
         "Ascend610": 5,
-        "Ascend910Lite": 6,
-        "Ascend910Pro": 7,
+        "Ascend910B": 6,
+        "Ascend910ProA": 7,
         "Hi3796CV300CS": 8,
         "Ascend615": 9,
         "Ascend710Pro": 10,
     }
-    return version_dict[get_soc_spec("SOC_VERSION")]
-
+    return version_dict[get_soc_spec("FULL_SOC_VERSION")]
 
 def is_conv3d_op_tag(op_tag):
     """
@@ -149,8 +148,7 @@ def bank_cache_get(kernel_name):
         try:
             bank_cache_dict = json.loads(BANK_CACHE)
         except json.decoder.JSONDecodeError:
-            AUTOTILINGLOG.warn(
-                "GA BANK_CACHE: {} must be json format!".format(BANK_CACHE))
+            AUTOTILINGLOG.warn("GA BANK_CACHE: {} must be json format!".format(BANK_CACHE))
     else:
         return False, {}
 
@@ -165,8 +163,7 @@ def bank_cache_get(kernel_name):
     # te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea_56f30
     # get te_fused_op_conv2d_51f2e282e2efb9f2_bab2c8511d0e0ea to compare
     i_kernel_name = kernel_name.rsplit('_', 1)[0]
-    if b_kernel_name == i_kernel_name and \
-        bank_cache_dict.get("tuning_mode", "") == "GA":
+    if b_kernel_name == i_kernel_name and bank_cache_dict.get("tuning_mode", "") == "GA":
         tiling = bank_cache_dict["tiling_dict"]
         return True, tiling
     else:
@@ -246,15 +243,11 @@ def tiling_query(a_shape, b_shape, c_shape=None, a_dtype='float16', \
 
     platform = get_platform_info()
     params_in = {"A_shape": a_shape, "B_shape": b_shape, "C_shape": c_shape,
-                "A_dtype": a_dtype, "B_dtype": b_dtype, "C_dtype": c_dtype,
-                "mad_dtype": mad_dtype,
-                "padl": padl, "padr": padr, "padu": padu, "padd": padd,
-                "padf": padf, "padb": padb,
+                "A_dtype": a_dtype, "B_dtype": b_dtype, "C_dtype": c_dtype, "mad_dtype": mad_dtype,
+                "padl": padl, "padr": padr, "padu": padu, "padd": padd, "padf": padf, "padb": padb,
                 "strideH": strideh, "strideW": stridew, "strideD": strided,
-                "strideH_expand": strideh_expand,
-                "strideW_expand": stridew_expand,
-                "dilationH": dilationh, "dilationW": dilationw,
-                "group": group,
+                "strideH_expand": strideh_expand, "strideW_expand": stridew_expand,
+                "dilationH": dilationh, "dilationW": dilationw, "group": group,
                 "fused_double_operand_num": fused_double_operand_num,
                 "bias_flag": bias_flag, "op_type": op_tag,
                 "platform": platform, "kernel_name": kernel_name}
@@ -432,7 +425,7 @@ def encode_array(params_in):
 
     Returns
     -------
-    shape_encode_array : tvm.nd.array
+    shape_encode_array: tvm.nd.array
         the encoded params, array
     """
     _ca0 = params_in["A_shape"][-1]
@@ -633,7 +626,7 @@ def decode(tiling_encode):
 
     Returns
     -------
-    tiling : dict
+    tiling: dict
         the decoded tiling
     """
     # according to the define of TBETilingResult structure,
@@ -844,7 +837,7 @@ def cast_data_type(tiling):
 
     Returns
     -------
-    tiling : dict
+    tiling: dict
         modify tiling
     """
     for key, value in tiling.items():

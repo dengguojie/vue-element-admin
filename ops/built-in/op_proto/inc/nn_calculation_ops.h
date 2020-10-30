@@ -639,7 +639,7 @@ REG_OP(Conv2DBackpropFilterD)
 *@verbatim
     |Name             | Field    | Scope
     ------------------|----------|----------
-    |Input Image Size | H        | [1, 4096]
+    |Input Image Size | H        | [1, 100000]
     |                 | W        | [1, 4096]
     ------------------|----------|----------
     |Filter Size      | H        | [1, 255]

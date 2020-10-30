@@ -45,47 +45,47 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
 
     Parameters
     ----------
-    out_backprop: dict with keys(shape and dtype)
-        The shape of gradients.
+    out_backprop: A dict with keys(shape and dtype)
+        The shape of gradients
 
-    filters: dict with keys(shape and dtype)
+    filters: A dict with keys(shape and dtype)
         Input weight tensor
 
-    bias: dict with keys(shape and dtype) or None
+    bias: A dict with keys(shape and dtype) or None
         Input bias tensor
 
-    offset_w: dict with keys(shape and dtype) or None
+    offset_w: A dict with keys(shape and dtype) or None
         Input offset_w tensor
 
-    y_input: dict with keys(shape and dtype)
+    y_input: A dict with keys(shape and dtype)
        Conv3d_transpose output tensor, dtype must be assigned
 
-    input_sizes: The shape of feature map.
-        5-D with shape [batch, depth, height, weight, channels].
+    input_sizes: The shape of feature map
+        5-D with shape [batch, depth, height, weight, channels]
 
-    strides: tuple/list of 5 integers
+    strides: A tuple/list of 5 integers
         Filter move stride
 
-    pads: tuple/list of 6 integers
+    pads: A tuple/list of 6 integers
         [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 5 integers
+    dilations: A tuple/list of 5 integers
         Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
 
-    groups: int of blocked connections from input channels to output channels
-        default value is 1
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
 
-    data_format: The data format of the input and output data. With the
-        default format is "NDHWC"
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
 
-    output_padding: The size will be added in the output shape.
-        default value is [0, 0, 0, 0, 0]
+    output_padding: The size will be added in the output shape
+        Default value is [0, 0, 0, 0, 0]
 
-    offset_x: int
-        input offset_x value, default value is 0
+    offset_x: Int
+        Input offset_x value, default value is 0
 
-    kernel_name: str
-        kernel name, default value is "conv3d_transpose"
+    kernel_name: Str
+        Kernel name, default value is "conv3d_transpose"
 
     Returns
     -------
@@ -195,27 +195,26 @@ def conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
 
     Parameters:
     ----------
-    shape_filter : The shape of filter.
-                   5-D with shape [ depth, height, weight, batch, channels].
+    shape_filter : The shape of filter
+        5-D with shape [ depth, height, weight, batch, channels]
 
-    shape_out_backprop : The shape of gradients.
-                         5-D with shape [batch,
-                                         depth, height, weight, channels].
+    shape_out_backprop : The shape of gradients
+        5-D with shape [batch, depth, height, weight, channels]
 
-    input_sizes : The shape of feature map.
-                  5-D with shape [batch, depth, height, weight, channels].
+    input_sizes : The shape of feature map
+        5-D with shape [batch, depth, height, weight, channels]
 
-    strides : A list of ints. The stride of the sliding window.
+    strides : A list/tuple of ints. The stride of the sliding window
 
-    pads : A list of ints.
+    pads : A list/tuple of ints or str
 
-    dilations : An optional list/tuple of ints. Only support (1, 1, 1, 1, 1) now.
+    dilations : An optional list/tuple of ints. Only support (1, 1, 1, 1, 1) now
 
-    filter_dtype : The dtype of filter data. Default value is float16.
+    filter_dtype : The dtype of filter data. Default value is float16
 
-    out_backprop_dtype : The dtype of gradients data. Default value is float16.
+    out_backprop_dtype : The dtype of gradients data. Default value is float16
 
-    res_dtype : The dtype of result(De/Dx) data. Default value is float16.
+    res_dtype : The dtype of result(De/Dx) data. Default value is float16
 
     kernel_name : Cce kernel name. Default value is "conv3d_transpose_cce"
 

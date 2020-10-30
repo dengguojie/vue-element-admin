@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils import error_manager
 tbe_platform.cce_policy.disableL2()
 
 
@@ -190,7 +191,7 @@ def bn_infer(x, scale, offset, mean, variance, y,
 
     if data_format not in ("NC1HWC0",):
         format_rule = "Format only support 5HD"
-        error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
+        error_manager.error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
 
     _check_shape(shape_x, shape_scale)
     shape_util.compare_tensor_dict_key(scale, offset, "shape")

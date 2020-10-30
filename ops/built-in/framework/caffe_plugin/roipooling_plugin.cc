@@ -18,9 +18,11 @@
  * \file roipooling_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 // Caffe ParseParams
@@ -42,6 +44,8 @@ Status ParseParams_ROIPooling(const Message* op_origin, ge::Operator& op_dest) {
     op_dest.SetAttr("pooled_w", static_cast<int>(param.pooled_w()));
   }
   if (param.pooled_w() <= 0 || param.pooled_h() <= 0) {
+    ge::OpsInputShapeErrReport(op_dest.GetName(), "pooled_h or pooled_w must be larger than 0",
+                               "pooled_h",to_string(param.pooled_h()) + ", pooled_w is " + to_string(param.pooled_w()));
     OP_LOGE("ROIPooling", " pooled_h or pooled_w  must be > 0");
     return FAILED;
   }

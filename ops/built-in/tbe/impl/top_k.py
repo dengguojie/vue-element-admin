@@ -21,6 +21,7 @@ from enum import unique
 from te import platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 FP16_MINIMUM = -65504
 
@@ -56,12 +57,14 @@ class GlobalVar:
         self.region_ub = None
         self.region_sorted_ub = None
         self.reg_min_number = None
+        self._max_part_num = None
         self.reg_addr = None
         self.reg_addr_buffer = None
         self.indices_out_final_ub = None
         self.offset_ub = None
         self.offset_fp16_ub = None
         self.offset_int32_ub = None
+        self._index_reg = None
         self.offset_gm = None
 
     def set_data_gm(self, data_gm):
@@ -244,6 +247,20 @@ class GlobalVar:
         """
         return self.reg_min_number
 
+    @property
+    def max_part_num(self):
+        """
+        get max_part_num
+        """
+        return self._max_part_num
+
+    @max_part_num.setter
+    def max_part_num(self, max_part_num):
+        """
+        set max_part_num
+        """
+        self._max_part_num = max_part_num
+
     def set_reg_addr(self, reg_addr):
         """"
         set_reg_addr
@@ -315,6 +332,20 @@ class GlobalVar:
         get_offset_int32_ub
         """
         return self.offset_int32_ub
+
+    @property
+    def index_reg(self):
+        """
+        get index_reg
+        """
+        return self._index_reg
+
+    @index_reg.setter
+    def index_reg(self, index_reg):
+        """
+        set index_reg
+        """
+        self._index_reg = index_reg
 
     def set_offset_gm(self, offset_gm):
         """
@@ -406,6 +437,25 @@ def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, 
                         src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
 
 
+def _emit_reg_mov(tvm_ir, dtype, reg_addr, src, src_offset):
+    """"
+    _emit_reg_mov
+    """
+    tvm_ir.emit(
+        tvm.call_extern(dtype, "reg_mov", tvm.call_extern(dtype, "reg", reg_addr),
+                        src.access_ptr("r", offset=src_offset)))
+
+
+def _emit_vector_dup(tvm_ir, dtype, dst, value, repeats, dst_offset=0, mask=128):
+    """"
+    _emit_vector_dup
+    """
+    _set_mask_insn(tvm_ir, 'int32', mask)
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'vector_dup', dst.access_ptr('w', offset=dst_offset), value, repeats, 1, 1, 8, 8))
+    _set_mask_insn(tvm_ir, 'int32', 128)
+
+
 def _emit_vmuls(tvm_ir, dst, src, cnt):
     """
     _emit_vmuls
@@ -484,7 +534,14 @@ def _emit_vbitsort(tvm_ir, dst, src, cnt, dst_offset=0, src_offset=0):
                             src.access_ptr('r', offset=src_offset + 255 * 16 * 8 * repeat_255), config))
 
 
-def _merge_recur(tvm_ir, src_ub, dst_ub, reg_addr, reg_addr_buffer, last_dim, total_region_list, level,
+def _merge_recur(tvm_ir,
+                 src_ub,
+                 dst_ub,
+                 reg_addr,
+                 reg_addr_buffer,
+                 last_dim,
+                 total_region_list,
+                 level,
                  region_offset=0):
     """
     _merge_recur
@@ -706,6 +763,7 @@ def _copy_gm_to_ubuf_func(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset
                               src_offset=cols * i + col_start + gm_offset)
     if not largest:
         _emit_vmuls(tvm_ir, dst, dst, cnt=num_rows * cols_padding)
+
     with tvm_ir.for_range(0, num_rows, name='gm2ub_i0') as i:
         for j in range(cols_padding - cols):
             tvm_ir.emit(
@@ -848,6 +906,34 @@ def _add(tvm_ir, dst, src1, src2, rows, cols_padding):
         _set_mask_insn(tvm_ir, 'int32', 128)
 
 
+def _emit_vmul(tvm_ir, dtype, dst, src1, src2, cnt):
+    """
+    _emit_vmul
+    """
+    # Vector instr process data bytes in a cycle
+    vector_process_bytes = 256
+    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
+    calc_num_each_times = vector_process_bytes // dtype_bytes_size
+    repeat_255 = cnt // calc_num_each_times
+    repeat_remain = cnt % calc_num_each_times
+    times = (repeat_255 + 254) // 255
+    if repeat_255 > 0:
+        with tvm_ir.for_range(0, times, name='vmul_i0') as i:
+            times_len = tvm.min(repeat_255 - i * 255, 255)
+            tvm_ir.emit(
+                tvm.call_extern(dtype, 'vmul', dst.access_ptr('w', offset=i * calc_num_each_times * 255),
+                                src1.access_ptr('r', offset=i * calc_num_each_times * 255),
+                                src2.access_ptr('r'), times_len, 1, 1, 0, 8, 8, 0))
+    if repeat_remain > 0:
+        _set_mask_insn(tvm_ir, 'int32', repeat_remain)
+        tvm_ir.emit(
+            tvm.call_extern(dtype, 'vmul',
+                            dst.access_ptr('w', offset=repeat_255 * calc_num_each_times),
+                            src1.access_ptr('r', offset=repeat_255 * calc_num_each_times),
+                            src2.access_ptr('r'), 1, 1, 1, 0, 8, 8, 0))
+        _set_mask_insn(tvm_ir, 'int32', 128)
+
+
 def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_rows do topk action muilti rows
@@ -878,7 +964,7 @@ def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_
                           gm_offset=row_start_in_core * cols + core_rows_start * cols,
                           largest=largest)
     _copy_gm_to_ubuf(tvm_ir, indices_ub, indices_gm, num_rows=1, cols=cols, col_start=0, gm_offset=0)
-    _copy_gm_to_ubuf(tvm_ir, offset_ub, indices_gm, num_rows=1, cols=cols, col_start=cols, gm_offset=0)
+    _copy_gm_to_ubuf(tvm_ir, offset_ub, indices_gm, num_rows=1, cols=cols, col_start=4096, gm_offset=0)
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=rows * cols_padding)
     # for Ascend310 can't support extract score
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=rows * cols_padding)
@@ -961,11 +1047,12 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     region_k2_ub = GLOBAL_VAR.get_region_k2_ub()
     data_tail_block_ub = GLOBAL_VAR.get_data_tail_block_ub()
     indices_tail_block_ub = GLOBAL_VAR.get_indices_tail_block_ub()
-    # last dim is two long, so by partition, each part process 1024 elements
+    max_part_num = GLOBAL_VAR.max_part_num
 
     offset_ub = GLOBAL_VAR.get_offset_ub()
     offset_int32_ub = GLOBAL_VAR.get_offset_int32_ub()
     indices_out_final_ub = GLOBAL_VAR.get_indices_out_final_ub()
+    index_reg = GLOBAL_VAR.index_reg
 
     cols_per_part = 1024
     k_padding = ((k + 15) // 16) * 16
@@ -973,8 +1060,13 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     part_cnt = (cols + cols_per_part - 1) // cols_per_part
     last_part_cols = cols - ((part_cnt - 1) * cols_per_part)
     last_part_cols_padding = ((last_part_cols + 15) // 16) * 16
-
     gm_offset = row_start_in_core * cols + core_rows_start * cols
+    data_dtype = "float16"
+    # Vector instr process data bytes in a cycle
+    vector_process_bytes = 256
+    dtype_bytes_size = tbe_platform.get_bit_len(data_dtype) // 8
+    data_num_per_process = vector_process_bytes // dtype_bytes_size
+    repeat_times = cols_per_part // data_num_per_process
 
     _copy_gm_to_ubuf_func(tvm_ir,
                           data_ub,
@@ -984,8 +1076,8 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                           col_start=0,
                           gm_offset=gm_offset,
                           largest=largest)
-    _copy_gm_to_ubuf(tvm_ir, indices_ub, indices_gm, num_rows=1, cols=cols_per_part, col_start=0, gm_offset=0)
-    _copy_gm_to_ubuf(tvm_ir, offset_ub, indices_gm, num_rows=1, cols=cols_per_part, col_start=cols, gm_offset=0)
+    _emit_vector_dup(tvm_ir, data_dtype, indices_ub, tvm.const(0.0, dtype=data_dtype), repeat_times)
+    _emit_copy_gm_to_ubuf(tvm_ir, data_dtype, offset_ub, indices_gm, 1, max_part_num // 16, 0, 0)
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
     # for Ascend310 can't support extract score
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
@@ -995,6 +1087,8 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     _copy_region(tvm_ir, dst=region_k_ub, src=result_ub, num=cols_per_part)
 
     with tvm_ir.for_range(0, part_cnt - 2, name='topk_i0') as i:
+        _emit_reg_mov(tvm_ir, data_dtype, index_reg[0], offset_ub, i + 1)
+        _emit_vector_dup(tvm_ir, data_dtype, indices_ub, index_reg[0], repeat_times)
         _copy_gm_to_ubuf_func(tvm_ir,
                               data_ub,
                               data_gm,
@@ -1003,20 +1097,6 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                               col_start=cols_per_part * (i + 1),
                               gm_offset=gm_offset,
                               largest=largest)
-        _copy_gm_to_ubuf(tvm_ir,
-                         indices_ub,
-                         indices_gm,
-                         num_rows=1,
-                         cols=cols_per_part,
-                         col_start=cols_per_part * (i + 1),
-                         gm_offset=0)
-        _copy_gm_to_ubuf(tvm_ir,
-                         offset_ub,
-                         indices_gm,
-                         num_rows=1,
-                         cols=cols_per_part,
-                         col_start=cols + cols_per_part * (i + 1),
-                         gm_offset=0)
         _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
         # for Ascend310 can't support extract score
         _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
@@ -1066,20 +1146,9 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                           col_start=(part_cnt - 1) * cols_per_part,
                           gm_offset=gm_offset,
                           largest=largest)
-    _copy_gm_to_ubuf(tvm_ir,
-                     indices_ub,
-                     indices_gm,
-                     num_rows=1,
-                     cols=last_part_cols,
-                     col_start=(part_cnt - 1) * cols_per_part,
-                     gm_offset=0)
-    _copy_gm_to_ubuf(tvm_ir,
-                     offset_ub,
-                     indices_gm,
-                     num_rows=1,
-                     cols=last_part_cols,
-                     col_start=cols + (part_cnt - 1) * cols_per_part,
-                     gm_offset=0)
+
+    _emit_reg_mov(tvm_ir, data_dtype, index_reg[0], offset_ub, part_cnt - 1)
+    _emit_vector_dup(tvm_ir, data_dtype, indices_ub, index_reg[0], repeat_times)
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=last_part_cols_padding)
     # for Ascend310 can't support extract score
     _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=last_part_cols_padding)
@@ -1102,8 +1171,9 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     _conv_fp162s32(tvm_ir, indices_out_int32_ub, 0, region_k_ub, k_padding, k_padding)
     _conv_fp162s32(tvm_ir, offset_int32_ub, 0, region_k_ub, k_padding * 2, k_padding)
 
+    _emit_vector_dup(tvm_ir, 'int32', indices_tail_block_ub, tvm.const(1024, "int32"), 1, mask=8)
+    _emit_vmul(tvm_ir, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
     _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
-
     _copy_ubuf_to_gm(tvm_ir,
                      'float16',
                      data_gm_out,
@@ -1175,6 +1245,8 @@ def _kernel_ir(ins, outs, k, largest):
     cols = int(shape[-1])
     cols_padding = ((cols + 15) // 16) * 16
     rows = 1
+    # max_part_num must be a multiple of 16
+    max_part_num = 1424
     for i in range(len(shape) - 1):
         rows = rows * int(shape[i])
     multi_core = True
@@ -1197,17 +1269,19 @@ def _kernel_ir(ins, outs, k, largest):
                                           name='indices_out_int32_ub',
                                           scope=tbe_platform.scope_ubuf)
         indices_out_final_ub = indices_out_int32_ub
-        offset_ub = _new_alloc(tvm_ir, 'float16', (cols_per_part, ), name='offset_ub', scope=tbe_platform.scope_ubuf)
+        offset_ub = _new_alloc(tvm_ir, 'float16', (max_part_num, ), name='offset_ub', scope=tbe_platform.scope_ubuf)
         offset_fp16_ub = offset_ub
         offset_int32_ub = _new_alloc(tvm_ir, 'int32', (1, 5120), name='offset_int32_ub', scope=tbe_platform.scope_ubuf)
 
-        region_ub = _new_alloc(tvm_ir, 'float16', (1, 1024 * 8), name='region_ub', scope=tbe_platform.scope_ubuf)
+        region_ub = _new_alloc(tvm_ir, 'float16', (1, cols_per_part * 8),
+                               name='region_ub', scope=tbe_platform.scope_ubuf)
         region_sorted_ub = _new_alloc(tvm_ir,
-                                      'float16', (1, 1024 * 8),
+                                      'float16', (1, cols_per_part * 8),
                                       name='region_sorted_ub',
                                       scope=tbe_platform.scope_ubuf)
         region_k_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k_ub', scope=tbe_platform.scope_ubuf)
         region_k2_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k2_ub', scope=tbe_platform.scope_ubuf)
+        index_reg = tvm_ir.allocate("float16", (1,), name="index_reg", scope=tbe_platform.scope_reg)
     else:
         data_ub = _new_alloc(tvm_ir, 'float16', (batch, cols_padding), name='data_ub', scope=tbe_platform.scope_ubuf)
         indices_ub = _new_alloc(tvm_ir, 'float16', (cols_padding, ), name='indices_ub', scope=tbe_platform.scope_ubuf)
@@ -1245,6 +1319,7 @@ def _kernel_ir(ins, outs, k, largest):
                                       scope=tbe_platform.scope_ubuf)
         region_k_ub = None
         region_k2_ub = None
+        index_reg = None
 
     data_tail_block_ub = _new_alloc(tvm_ir, 'float16', (16, ), name='data_tail_block_ub', scope=tbe_platform.scope_ubuf)
     indices_tail_block_ub = _new_alloc(tvm_ir,
@@ -1277,6 +1352,8 @@ def _kernel_ir(ins, outs, k, largest):
     GLOBAL_VAR.set_offset_fp16_ub(offset_fp16_ub)
     GLOBAL_VAR.set_offset_int32_ub(offset_int32_ub)
     GLOBAL_VAR.set_indices_out_final_ub(indices_out_final_ub)
+    GLOBAL_VAR.index_reg = index_reg
+    GLOBAL_VAR.max_part_num = max_part_num
 
     blocks = len(rows_cores)
     block_index = tvm.thread_axis("blockIdx.x")
@@ -1371,8 +1448,8 @@ def check_supported(input_tensor,
     if sorted is not True:
         return False
     shape = input_tensor.get("shape")
-    # max int fp16 can represent
-    if shape[-1] > 65500:
+    # 1458176 indicates max size of the last dimension.
+    if shape[-1] > 1458176:
         return False
     # ub size limitation
     if k > 5120:
@@ -1434,17 +1511,23 @@ def top_k(input_tensor,
     out_shape_dim = len(out_shape)
 
     if shape_dim != out_shape_dim:
-        raise RuntimeError("input tensor and output tensort dim not equal.")
-    for i in range(shape_dim - 1):
-        if shape[i] != out_shape[i]:
-            raise RuntimeError("output tensor dimension not valid.")
+        error_manager_vector.raise_err_check_params_rules(
+            kernel_name, "input_tensor and out_tensor dim not equal, the dim of input_tensor is %d" % shape_dim,
+            'out_tensor', out_shape_dim)
+    if list(shape[:-1]) != list(out_shape[:-1]):
+        error_manager_vector.raise_err_check_params_rules(
+            kernel_name,
+            "input_tensor's shape must be same as out_tensor's shape expect the last dim, input_tensor's shape is %s" %
+            shape, 'out_tensor', out_shape)
     if out_shape[-1] != k:
-        raise RuntimeError("output tensor last dim must equal to k")
+        error_manager_vector.raise_err_check_params_rules(kernel_name,
+                                                          "output tensor last dim must equal to k, k is %d" % k,
+                                                          'out_tensor', out_shape)
 
     if k < 1 or k > shape[-1]:
-        raise RuntimeError("K must in ( 1,shape[-1] ]")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, shape[-1], k)
     if k > 5120:
-        raise RuntimeError("k cannot bigger than 5120")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, 5120, k)
     data_input = tvm.placeholder(shape, dtype=input_dtype, name='data_a')
     indices = tvm.placeholder(indices_shape, dtype=input_indices_dtype, name='indices')
     data_buf = tvm.decl_buffer(out_shape, dtype=input_dtype)

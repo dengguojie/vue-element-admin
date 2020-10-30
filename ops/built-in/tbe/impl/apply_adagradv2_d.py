@@ -22,6 +22,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -71,7 +72,7 @@ def apply_adagradv2_d_compute(var,
     input_dtype = var.dtype
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if input_dtype == "float32" and not vmul_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], input_dtype)
 
     if update_slots is True:
         grad_square = tbe.vmul(grad, grad)
@@ -97,10 +98,15 @@ def _get_placeholder(dict_list, name_list):
         dtype = var.get('dtype').lower()
         if name == 'var':
             var_shape = list(shape)
-        if name != 'lr' and var_shape != list(shape):
-            raise RuntimeError("The shape of var, accum, grad must be equal.")
+        if name == 'accum' and var_shape != list(shape):
+            error_detail = "the shape of var and accum must be equal"
+            error_manager_vector.raise_err_two_input_shape_invalid("apply_adagradv2_d", "var", "accum", error_detail)
+        if name == 'grad' and var_shape != list(shape):
+            error_detail = "the shape of var and grad must be equal"
+            error_manager_vector.raise_err_two_input_shape_invalid("apply_adagradv2_d", "var", "grad", error_detail)
         if name == 'lr' and shape[0] != 1:
-            raise RuntimeError("The shape of lr must be scalar.")
+            error_detail = "the shape of lr must be scalar"
+            error_manager_vector.raise_err_input_shape_invalid("apply_adagradv2_d", "lr", error_detail)
 
         para_check.check_dtype(dtype, ('float32', ), param_name="var")
         para_check.check_shape(shape)

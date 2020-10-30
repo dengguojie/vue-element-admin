@@ -39,7 +39,7 @@ class TbeConv2DAddMulQuantPass : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "FusedOp";
+  const string fused_op_type_ = "FusedOp";
 };
 
 }  // namespace fe

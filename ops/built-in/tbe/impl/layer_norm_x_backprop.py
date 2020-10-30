@@ -17,15 +17,12 @@ layer_norm_x_backprop
 """
 import operator
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
-from topi.cce import util
-from topi import generic
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from impl.util import util_select_op_base
+from te.utils import para_check
+from te.utils import shape_util
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -43,7 +40,7 @@ def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     """
     if len(shape_dy) < 2 or len(shape_gamma) != 1:
         return True
-    if shape_dy[-1] % c_0 != 0 or shape_dy[-2] % c_0 != 0\
+    if shape_dy[-1] % c_0 != 0 or shape_dy[-2] % c_0 != 0 \
             or shape_gamma[-1] % c_0 != 0:
         return True
     return False
@@ -77,69 +74,69 @@ def op_select_format(input_dy, input_x, input_variance, input_mean, input_gamma,
     """
     shape_dy = input_dy.get("ori_shape")
     shape_gamma = input_gamma.get("ori_shape")
-    shape_dy = util.scalar2tensor_one(shape_dy)
-    shape_gamma = util.scalar2tensor_one(shape_gamma)
+    shape_dy = shape_util.scalar2tensor_one(shape_dy)
+    shape_gamma = shape_util.scalar2tensor_one(shape_gamma)
     c_0 = 16
 
     if _check_dynamic_format(shape_dy, shape_gamma, c_0):
-        input0 = gen_param(classify="input0", name="dy",
+        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input1 = gen_param(classify="input1", name="x",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input2 = gen_param(classify="input2", name="variance",
+        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input3 = gen_param(classify="input3", name="mean",
+        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input4 = gen_param(classify="input4", name="gamma",
+        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        output0 = gen_param(classify="output0", name="pd_x",
+        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
                             datatype="float16,float16,float16,float16,float,"
                                      "float,float,float",
                             format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
     else:
-        input0 = gen_param(classify="input0", name="dy",
+        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
                                   "NCHW,NC1HWC0,NHWC,ND")
-        input1 = gen_param(classify="input1", name="x",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
                                   "NCHW,NC1HWC0,NHWC,ND")
-        input2 = gen_param(classify="input2", name="variance",
+        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        input3 = gen_param(classify="input3", name="mean",
+        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        input4 = gen_param(classify="input4", name="gamma",
+        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        output0 = gen_param(classify="output0", name="pd_x",
+        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
                             datatype="float16, float,float16,float16,float16,"
                                      "float16,float,float,float,float",
                             format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
                                    "ND,NCHW,NC1HWC0,NHWC,ND")
 
     param_list = [input0, input1, input2, input3, input4, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
@@ -162,7 +159,7 @@ def _check_params(params_map):
     """
 
     check_list = ("float16", "float32")
-    check_dtype(params_map.get("dtype"), check_list, param_name="input_dy")
+    para_check.check_dtype(params_map.get("dtype"), check_list, param_name="input_dy")
 
     _check_shape(params_map)
 
@@ -195,9 +192,9 @@ def _check_shape(params_map):
     shape_mean = params_map.get("shape_mean")
     shape_gamma = params_map.get("shape_gamma")
 
-    check_shape(shape_x, param_name="input_x")
-    check_shape(shape_mean, param_name="input_mean")
-    check_shape(shape_gamma, param_name="input_gamma")
+    para_check.check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_mean, param_name="input_mean")
+    para_check.check_shape(shape_gamma, param_name="input_gamma")
 
 
     _check_shape_mean(shape_x, shape_mean)
@@ -265,7 +262,7 @@ def _check_shape_gamma(shape_x, shape_gamma):
 
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
-    src_shape = te.lang.cce.util.shape_to_list(tensor.shape)
+    src_shape = shape_util.shape_to_list(tensor.shape)
     for i, _ in enumerate(shape):
         if shape[i] != src_shape[i]:
             broadcast_axes.append(i)
@@ -273,8 +270,8 @@ def _broadcast_nz(tensor, shape):
             broadcast_axes[1] - broadcast_axes[0] != 1 and \
             broadcast_axes[1] + 1 == len(shape):
         temp_shape = src_shape[:-1] + [shape[-1]]
-        tensor = te.lang.cce.broadcast(tensor, temp_shape)
-    tensor = te.lang.cce.broadcast(tensor, shape)
+        tensor = tbe.broadcast(tensor, temp_shape)
+    tensor = tbe.broadcast(tensor, shape)
     return tensor
 
 
@@ -403,8 +400,8 @@ def _get_pd_xl(data, shape_x):
     pd_xl: tvm.tensor
         data_dy*data_gamma
     """
-    data_gamma_cast = te.lang.cce.broadcast(data.get("data_gamma"), shape_x)
-    pd_xl = te.lang.cce.vmul(data_gamma_cast, data.get("data_dy"))
+    data_gamma_cast = tbe.broadcast(data.get("data_gamma"), shape_x)
+    pd_xl = tbe.vmul(data_gamma_cast, data.get("data_dy"))
 
     return pd_xl
 
@@ -425,14 +422,14 @@ def _get_pd_var_front(data, cast_dtype):
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
     """
-    var_elta = te.lang.cce.vadds(data.get("data_variance"),
+    var_elta = tbe.vadds(data.get("data_variance"),
                                  tvm.const(EPSLON, dtype=cast_dtype))
-    var_elta_log = te.lang.cce.vlog(var_elta)
-    var_elta_mul = te.lang.cce.vmuls(var_elta_log,
+    var_elta_log = tbe.vlog(var_elta)
+    var_elta_mul = tbe.vmuls(var_elta_log,
                                      tvm.const(-0.5, dtype=cast_dtype))
-    var_elta_2 = te.lang.cce.vexp(var_elta_mul)
-    pdvar1_mul = te.lang.cce.vmul(var_elta_2, var_elta_2)
-    pd_var_1 = te.lang.cce.vmul(pdvar1_mul, var_elta_2)
+    var_elta_2 = tbe.vexp(var_elta_mul)
+    pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
+    pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
 
     return pd_var_1, var_elta_2
 
@@ -466,14 +463,14 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
     """
     pd_var_1, var_elta_2 = _get_pd_var_front(data, cast_dtype)
 
-    data_mean_cast = te.lang.cce.broadcast(data.get("data_mean"), shape_x)
-    sub_x_mean = te.lang.cce.vsub(data.get("data_x"), data_mean_cast)
+    data_mean_cast = tbe.broadcast(data.get("data_mean"), shape_x)
+    sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
-    pdvar_mul1 = te.lang.cce.vmul(pd_xl, sub_x_mean)
-    pdvar_sum = te.lang.cce.sum(pdvar_mul1, params.get("reduce_axis"),
+    pdvar_mul1 = tbe.vmul(pd_xl, sub_x_mean)
+    pdvar_sum = tbe.sum(pdvar_mul1, params.get("reduce_axis"),
                                 keepdims=True)
-    pdvar_mul3 = te.lang.cce.vmul(pdvar_sum, pd_var_1)
-    pd_var = te.lang.cce.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
+    pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
+    pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
     return pd_var, var_elta_2, sub_x_mean
 
@@ -508,22 +505,22 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         + pd_var*(1.0/m)*np.sum(((-2.0)*(data_x - data_mean)),
         reduce_axis, keepdims=True)
     """
-    pdmean1_sum = te.lang.cce.sum(pd_xl, params.get("reduce_axis"),
+    pdmean1_sum = tbe.sum(pd_xl, params.get("reduce_axis"),
                                   keepdims=True)
-    pdmean1_mul = te.lang.cce.vmul(pdmean1_sum, var_elta_2)
-    pd_mean_1 = te.lang.cce.vmuls(pdmean1_mul,
+    pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
+    pd_mean_1 = tbe.vmuls(pdmean1_mul,
                                   tvm.const(-1.0, dtype=cast_dtype))
 
-    pdmean2_mul1 = te.lang.cce.vmuls(sub_x_mean,
+    pdmean2_mul1 = tbe.vmuls(sub_x_mean,
                                      tvm.const(-2.0, dtype=cast_dtype))
-    pdmean2_sum = te.lang.cce.sum(pdmean2_mul1, params.get("reduce_axis"),
+    pdmean2_sum = tbe.sum(pdmean2_mul1, params.get("reduce_axis"),
                                   keepdims=True)
-    pdmean2_mul3 = te.lang.cce.vmuls(pdmean2_sum,
+    pdmean2_mul3 = tbe.vmuls(pdmean2_sum,
                                      tvm.const((params.get("mean_num")**(-1)),
                                                dtype=cast_dtype))
-    pd_mean_2 = te.lang.cce.vmul(pd_var, pdmean2_mul3)
+    pd_mean_2 = tbe.vmul(pd_var, pdmean2_mul3)
 
-    pd_mean = te.lang.cce.vadd(pd_mean_2, pd_mean_1)
+    pd_mean = tbe.vadd(pd_mean_2, pd_mean_1)
 
     return pd_mean
 
@@ -563,14 +560,14 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean,
                            cast_dtype)
 
-    var_elta_2_cast = te.lang.cce.broadcast(var_elta_2, shape_x)
-    pd_x_1 = te.lang.cce.vmul(var_elta_2_cast, pd_xl)
-    pdx2_broad = te.lang.cce.broadcast(pd_var, shape_x)
-    pdx2_mul = te.lang.cce.vmul(pdx2_broad, sub_x_mean)
-    pd_x_2 = te.lang.cce.vmuls(pdx2_mul,
+    var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
+    pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
+    pdx2_broad = tbe.broadcast(pd_var, shape_x)
+    pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
+    pd_x_2 = tbe.vmuls(pdx2_mul,
                                tvm.const((2*(params.get("mean_num")**(-1))),
                                          dtype=cast_dtype))
-    pd_x_3 = te.lang.cce.vmuls(pd_mean,
+    pd_x_3 = tbe.vmuls(pd_mean,
                                tvm.const((params.get("mean_num")**(-1)),
                                          dtype=cast_dtype))
 
@@ -604,12 +601,12 @@ def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
     """
     pd_x_1, pd_x_2, pd_x_3 = _get_pd_x_front(data, params, shape_x, cast_dtype)
 
-    pdx_broad = te.lang.cce.broadcast(pd_x_3, shape_x)
-    pdx_add = te.lang.cce.vadd(pd_x_1, pd_x_2)
-    pd_x_ub = te.lang.cce.vadd(pdx_add, pdx_broad)
+    pdx_broad = tbe.broadcast(pd_x_3, shape_x)
+    pdx_add = tbe.vadd(pd_x_1, pd_x_2)
+    pd_x_ub = tbe.vadd(pdx_add, pdx_broad)
 
     if dtype == "float16" and cast_dtype == "float32":
-        pd_x = te.lang.cce.cast_to(pd_x_ub, dtype)
+        pd_x = tbe.cast_to(pd_x_ub, dtype)
     else:
         return pd_x_ub
 
@@ -676,8 +673,8 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
         partial derivation of beta
     """
     dtype = data_dy.dtype.lower()
-    shape_x = te.lang.cce.util.shape_to_list(data_x.shape)
-    shape_mean = te.lang.cce.util.shape_to_list(data_mean.shape)
+    shape_x = shape_util.shape_to_list(data_x.shape)
+    shape_mean = shape_util.shape_to_list(data_mean.shape)
 
     has_improve_precision = False
     cast_dtype = dtype
@@ -689,11 +686,11 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     params = _get_params(shape_x, shape_mean, shape_gamma_ori)
 
     if has_improve_precision:
-        data_dy = te.lang.cce.cast_to(data_dy, "float32")
-        data_x = te.lang.cce.cast_to(data_x, "float32")
-        data_variance = te.lang.cce.cast_to(data_variance, "float32")
-        data_mean = te.lang.cce.cast_to(data_mean, "float32")
-        data_gamma = te.lang.cce.cast_to(data_gamma, "float32")
+        data_dy = tbe.cast_to(data_dy, "float32")
+        data_x = tbe.cast_to(data_x, "float32")
+        data_variance = tbe.cast_to(data_variance, "float32")
+        data_mean = tbe.cast_to(data_mean, "float32")
+        data_gamma = tbe.cast_to(data_gamma, "float32")
 
     data = {"data_dy": data_dy, "data_x": data_x,
             "data_variance": data_variance,
@@ -704,7 +701,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     return pd_x
 
 
-@fusion_manager.register("layer_norm_x_backprop")
+@tbe_platform.fusion_manager.fusion_manager.register("layer_norm_x_backprop")
 def layer_norm_x_backprop_compute(input_dy, input_x,
                                   input_variance, input_mean,
                                   input_gamma, output_pd_x,
@@ -824,9 +821,9 @@ def _get_pd_xl_nz(data, param_nz):
     compute pd_xl according to data_dy, data_gamma and shape_x
 
     """
-    data_gamma_cast = te.lang.cce.broadcast(data.get("data_gamma"),
+    data_gamma_cast = tbe.broadcast(data.get("data_gamma"),
                                             param_nz.get("shape_x_nz"))
-    pd_xl = te.lang.cce.vmul(data_gamma_cast, data.get("data_dy"))
+    pd_xl = tbe.vmul(data_gamma_cast, data.get("data_dy"))
 
     return pd_xl
 
@@ -836,14 +833,14 @@ def _get_pd_var_front_nz(data, cast_dtype):
     compute front part of pd_var according to data_variance
 
     """
-    var_elta = te.lang.cce.vadds(data.get("data_variance"),
+    var_elta = tbe.vadds(data.get("data_variance"),
                                  tvm.const(EPSLON, dtype=cast_dtype))
-    var_elta_log = te.lang.cce.vlog(var_elta)
-    var_elta_mul = te.lang.cce.vmuls(var_elta_log,
+    var_elta_log = tbe.vlog(var_elta)
+    var_elta_mul = tbe.vmuls(var_elta_log,
                                      tvm.const(-0.5, dtype=cast_dtype))
-    var_elta_2 = te.lang.cce.vexp(var_elta_mul)
-    pdvar1_mul = te.lang.cce.vmul(var_elta_2, var_elta_2)
-    pd_var_1 = te.lang.cce.vmul(pdvar1_mul, var_elta_2)
+    var_elta_2 = tbe.vexp(var_elta_mul)
+    pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
+    pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
 
     return pd_var_1, var_elta_2
 
@@ -855,15 +852,15 @@ def _get_pd_var_nz(data, param_nz, pd_xl, cast_dtype):
     """
     pd_var_1, var_elta_2 = _get_pd_var_front_nz(data, cast_dtype)
 
-    data_mean_cast = te.lang.cce.broadcast(data.get("data_mean"),
+    data_mean_cast = tbe.broadcast(data.get("data_mean"),
                                            param_nz.get("shape_x_nz"))
-    sub_x_mean = te.lang.cce.vsub(data.get("data_x"), data_mean_cast)
+    sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
-    pdvar_mul1 = te.lang.cce.vmul(pd_xl, sub_x_mean)
-    pdvar_sum = te.lang.cce.sum(pdvar_mul1, param_nz.get("reduce_nz_axis"),
+    pdvar_mul1 = tbe.vmul(pd_xl, sub_x_mean)
+    pdvar_sum = tbe.sum(pdvar_mul1, param_nz.get("reduce_nz_axis"),
                                 keepdims=True)
-    pdvar_mul3 = te.lang.cce.vmul(pdvar_sum, pd_var_1)
-    pd_var = te.lang.cce.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
+    pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
+    pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
     return pd_var, var_elta_2, sub_x_mean
 
@@ -875,10 +872,10 @@ def _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2, sub_x_mean,
     var_elta_2 and sub_x_mean
 
     """
-    pdmean1_sum = te.lang.cce.sum(pd_xl, param_nz.get("reduce_nz_axis"),
+    pdmean1_sum = tbe.sum(pd_xl, param_nz.get("reduce_nz_axis"),
                                   keepdims=True)
-    pdmean1_mul = te.lang.cce.vmul(pdmean1_sum, var_elta_2)
-    pd_mean_1 = te.lang.cce.vmuls(pdmean1_mul,
+    pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
+    pd_mean_1 = tbe.vmuls(pdmean1_mul,
                                   tvm.const(-1.0, dtype=cast_dtype))
 
     return pd_mean_1
@@ -898,15 +895,15 @@ def _get_pd_x_front_nz(data, param_nz, cast_dtype):
                               sub_x_mean, cast_dtype)
 
     var_elta_2_cast = _broadcast_nz(var_elta_2, param_nz.get("shape_x_nz"))
-    pd_x_1 = te.lang.cce.vmul(var_elta_2_cast, pd_xl)
+    pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
     pdx2_broad = _broadcast_nz(pd_var, param_nz.get("shape_x_nz"))
-    pdx2_mul = te.lang.cce.vmul(pdx2_broad, sub_x_mean)
+    pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
     pd_x_2 = \
-        te.lang.cce.vmuls(pdx2_mul,
+        tbe.vmuls(pdx2_mul,
                           tvm.const((2*(param_nz.get("mean_nz_num")**(-1))),
                                     dtype=cast_dtype))
     pd_x_3 = \
-        te.lang.cce.vmuls(pd_mean,
+        tbe.vmuls(pd_mean,
                           tvm.const((param_nz.get("mean_nz_num")**(-1)),
                                     dtype=cast_dtype))
 
@@ -921,11 +918,11 @@ def _get_pd_x_nz(data, param_nz, dtype, cast_dtype):
     pd_x_1, pd_x_2, pd_x_3 = _get_pd_x_front_nz(data, param_nz, cast_dtype)
 
     pdx_broad = _broadcast_nz(pd_x_3, param_nz.get("shape_x_nz"))
-    pdx_add = te.lang.cce.vadd(pd_x_1, pd_x_2)
-    pd_x_ub = te.lang.cce.vadd(pdx_add, pdx_broad)
+    pdx_add = tbe.vadd(pd_x_1, pd_x_2)
+    pd_x_ub = tbe.vadd(pdx_add, pdx_broad)
 
     if dtype == "float16" and cast_dtype == "float32":
-        pd_x = te.lang.cce.cast_to(pd_x_ub, dtype)
+        pd_x = tbe.cast_to(pd_x_ub, dtype)
     else:
         return pd_x_ub
 
@@ -958,11 +955,11 @@ def _get_pds_nz(data_dy, data_x, data_variance, data_mean,
         cast_dtype = "float32"
 
     if has_improve_precision:
-        data_dy = te.lang.cce.cast_to(data_dy, "float32")
-        data_x = te.lang.cce.cast_to(data_x, "float32")
-        data_variance = te.lang.cce.cast_to(data_variance, "float32")
-        data_mean = te.lang.cce.cast_to(data_mean, "float32")
-        data_gamma = te.lang.cce.cast_to(data_gamma, "float32")
+        data_dy = tbe.cast_to(data_dy, "float32")
+        data_x = tbe.cast_to(data_x, "float32")
+        data_variance = tbe.cast_to(data_variance, "float32")
+        data_mean = tbe.cast_to(data_mean, "float32")
+        data_gamma = tbe.cast_to(data_gamma, "float32")
 
     data = {"data_dy": data_dy, "data_x": data_x,
             "data_variance": data_variance,
@@ -1005,8 +1002,10 @@ def layer_norm_x_back_nz_compute(data_dy, data_x, data_variance,
     return pd_x
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,
                           kernel_name="layer_norm_x_backprop"):
@@ -1082,13 +1081,13 @@ def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                        data_mean, data_gamma, pd_x]
 
         with tvm.target.cce():
-            sch = generic.auto_schedule(pd_x)
+            sch = tbe.auto_schedule(pd_x)
 
         config = {"print_ir": False,
                   "name": kernel_name,
                   "tensor_list": tensor_list}
 
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)
 
     else:
         _check_params({"shape_dy": shape_dy, "shape_x": shape_x,
@@ -1108,7 +1107,7 @@ def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                                                  data_gm[4], output_pd_x)
 
         with tvm.target.cce():
-            sch = generic.auto_schedule(res_list)
+            sch = tbe.auto_schedule(res_list)
 
         tensor_list = list(data_gm) + list(res_list)
 
@@ -1116,4 +1115,4 @@ def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                   "name": kernel_name,
                   "tensor_list": tensor_list}
 
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

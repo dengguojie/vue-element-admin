@@ -608,6 +608,10 @@ class VectorSchedule(object):
                     split_size = i - 1
                     break
 
+            if bound_size == 30:
+                while shape[split_axis] % split_size != 0:
+                    split_size -= 1
+
         return split_axis, split_size
 
     def _get_block_num(self):

@@ -1,63 +1,37 @@
-"""
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-BninferenceD ut case
-"""
 from op_test_frame.ut import OpUT
 ut_case = OpUT("BninferenceD", None, None)
 
-case1 = {"params": [{"shape": (1,1), "dtype": "float16", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    1.0,0.00001,True,2,
-                    ],
-         "case_name": "BninferenceD_1",
+case1 = {"params": [{"shape": (1,16,10,10), "dtype": "float16", "format": "NCHW", "ori_shape": (1,16,10,10),"ori_format": "NCHW"},
+                    {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    None, None,
+                    {"shape": (1,16,10,10), "dtype": "float16", "format": "NCHW", "ori_shape": (1,16,10,10),"ori_format": "NCHW"},
+                    0.999, 0.001, True, 1],
+         "case_name": "bn_inference_d_1",
          "expect": "success",
+         "format_expect": [],
          "support_expect": True}
 
-case2 = {"params": [{"shape": (1,2), "dtype": "float16", "format": "ND", "ori_shape": (1,2),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    1.0,0.00001,True,2,
-                    ],
-         "case_name": "BninferenceD_2",
+case2 = {"params": [{"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    None, None,
+                    {"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    0.999, 0.001, True, 1],
+         "case_name": "bn_inference_d_2",
          "expect": "success",
+         "format_expect": [],
          "support_expect": True}
 
-case3 = {"params": [{"shape": (1,3), "dtype": "float16", "format": "ND", "ori_shape": (1,3),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    {"shape": (1,1), "dtype": "float32", "format": "ND", "ori_shape": (1,1),"ori_format": "ND"},
-                    1.0,0.00001,True,2,
-                    ],
-         "case_name": "BninferenceD_3",
-         "expect": RuntimeError,
-         "support_expect": True}
 
-# TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run()
     exit(0)
 

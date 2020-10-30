@@ -23,6 +23,7 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import operate_shape
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 NUM_ONE = 1.0
 NUM_N_ONE = -1.0
@@ -60,7 +61,7 @@ def apply_adam_with_amsgrad_d_compute(var,
     # check the instruction supports or not
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
-        raise RuntimeError("Input dtype is float32, but do not support on the platform")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
     one = tvm.const(NUM_ONE, "float32")
     neg_one = tvm.const(NUM_N_ONE, "float32")
@@ -114,15 +115,20 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
         para_check.check_shape(shape)
         if value in scalar_input:
             if not para_check.is_scalar(shape):
-                raise RuntimeError("The shape of ", key, " must be scalar")
+                error_detail = "the shape of " + key + " must be scalar"
+                error_manager_vector.raise_err_input_shape_invalid("apply_adam_with_amsgrad_d", key, error_detail)
         if value in tensor_input:
             if shape != var_shape:
-                raise RuntimeError("The shape of", key, "must be the same as the var")
+                error_detail = "the shape of " + key + " must be the same as the var"
+                error_manager_vector.raise_err_two_input_shape_invalid("apply_adam_with_amsgrad_d", "var", key,
+                                                                       error_detail)
 
         dtype = value.get("dtype").lower()
         para_check.check_dtype(dtype, check_list, param_name="var")
         if dtype != var_dtype:
-            raise RuntimeError("The dtype of", key, "must be the same as the var")
+            error_detail = "the dtype of " + key + " must be the same as the var"
+            error_manager_vector.raise_err_two_input_dtype_invalid("apply_adam_with_amsgrad_d", "var", key,
+                                                                   error_detail)
 
         shape_refine = (functools.reduce(operator.mul, shape), )
         list_placeholder.append(tvm.placeholder(shape=shape_refine, name=key, dtype=dtype))

@@ -21,6 +21,7 @@
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 
@@ -38,6 +39,7 @@ Status ParseParamsInnerProduct(const Message* op_src, ge::Operator& op_dest) {
 
   // Parse num_output
   if (!inner_product_param.has_num_output()) {
+    ge::OpsGetAttrErrReport("InnerProduct", "num_output");
     OP_LOGE("InnerProduct", "Parse num_output for %s failed.", layer->name().c_str());
     return PARAM_INVALID;
   } else {

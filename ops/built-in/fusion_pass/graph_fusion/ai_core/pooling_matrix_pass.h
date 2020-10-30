@@ -34,6 +34,9 @@ class PoolingFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
+  Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad, vector<int64_t>& dimInfo,
+                  vector<int64_t> window, vector<int64_t> stride);
+  ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode);
   Status Calc4DWeight(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                       const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp);
   Status DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode, vector<ge::NodePtr>& fusionNodes);

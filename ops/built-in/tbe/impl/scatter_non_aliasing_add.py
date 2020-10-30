@@ -21,6 +21,7 @@ import math
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # block length in number
 BLOCK_LENGTH = 32
@@ -318,7 +319,7 @@ class ScatterNonAliasingAdd(object):
                 ele_every_block = math.ceil(self.inputs_ele_num / self.block_num)
                 with self.tik_instance.if_scope(self.indices_loop_index * ele_every_block <= self.inputs_read_index):
                     with self.tik_instance.if_scope(
-                            (self.indices_loop_index + 1) * ele_every_block > self.inputs_read_index):
+                        (self.indices_loop_index + 1) * ele_every_block > self.inputs_read_index):
                         self._get_updates_read_index(indices_ub_index + indices_in_index)
                         self.inputs_read_index.set_as(self.inputs_read_index)
                         self._calc_updates()
@@ -511,19 +512,25 @@ class ScatterNonAliasingAdd(object):
 
         add_support = tbe_platform.api_check_support("tik.vadd", "float32")
         if self.inputs_dtype == "float32" and not add_support:
-            raise RuntimeError("inputs_dtype only support float16 while inputs_dtype is float32")
+            error_manager_vector.raise_err_input_dtype_not_supported(self.kernel_name, 'inputs', ("float16", ),
+                                                                     self.inputs_dtype)
 
-        if (self.updates_dtype != self.inputs_dtype or outputs_dtype != self.inputs_dtype):
-            raise RuntimeError("updates's datatype and outputs's datatype must be the same as inputs's datatype.")
+        if self.updates_dtype != self.inputs_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "inputs", "updates",
+                                                                  self.inputs_dtype, self.updates_dtype)
+        if outputs_dtype != self.inputs_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "inputs", "outputs",
+                                                                  self.inputs_dtype, outputs_dtype)
 
         k = self.indices_shape[-1]
         updates_true_shape = self.indices_shape[:-1] + self.inputs_shape[k:]
         if k > len(self.inputs_shape):
-            raise RuntimeError("indices_shape[-1][%d] can not be large than inputs's rank[%d]" %
-                               (k, len(self.inputs_shape)))
+            error_manager_vector.raise_err_check_params_rules(
+                self.kernel_name, "indices_shape[-1] can not be large than inputs's rank[%d]" % len(self.inputs_shape),
+                "indices_shape", self.indices_shape)
 
         if self.updates_shape != updates_true_shape:
-            raise RuntimeError("updates's shape is not supported.")
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, "updates's shape is not supported.")
 
     def scatter_operator(self):
         """

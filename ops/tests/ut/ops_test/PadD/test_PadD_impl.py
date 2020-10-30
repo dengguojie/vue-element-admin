@@ -2,6 +2,9 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+import numpy as np
+from op_test_frame.common import precision_info
+
 ut_case = OpUT("PadD", None, None)
 
 case1 = {"params": [{"shape": (32, 128, 1024), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 128, 1024),"ori_format": "NCHW"},
@@ -55,7 +58,52 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 
 
+def calc_expect_func(x, res, paddings):
+    x_shape = x.get("shape")
+    x_value = x.get("value")
+
+    dtype = x["dtype"]
+    if dtype == "fp16" or dtype == "float16":
+        s_type = np.float16
+    elif dtype == "fp32" or dtype == "float32":
+        s_type = np.float32
+    elif dtype == "int32":
+        s_type = np.int32
+    elif dtype == "int8":
+        s_type = np.int8
+    elif dtype == "uint8":
+        s_type = np.uint8
+    else:
+        raise RuntimeError("unsupported dtype:%s " % dtype)
+
+    res = np.pad(x_value, paddings).astype(s_type)
+    return res
+
+ut_case.add_precision_case("all", {"params": [{"shape": (2,), "dtype": "float32", "format": "NCHW", "ori_shape": (2,),"ori_format": "NCHW", "param_type": "input"},
+                                              {"shape": (5,), "dtype": "float32", "format": "NCHW", "ori_shape": (5,),"ori_format": "NCHW", "param_type": "output"},
+                                              [[0,3]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (2, 2, 1027), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW", "param_type": "input"},
+                                              {"shape": (2, 18, 1043), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 18, 1043),"ori_format": "NCHW", "param_type": "output"},
+                                              [[0, 0],[0, 16],[0, 16]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (2, 2, 1024*240), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 2, 1024*240),"ori_format": "NCHW", "param_type": "input"},
+                                              {"shape": (2, 16, 245767), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 16, 245767),"ori_format": "NCHW", "param_type": "output"},
+                                              [[0, 0],[7, 7],[0, 7]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+
+# ============ auto gen ["Ascend910"] test cases end =================
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
-    exit(0)
+    ut_case.run(["Ascend910"], simulator_mode="pv",
+                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
 

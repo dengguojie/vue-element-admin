@@ -16,16 +16,16 @@
 CceConv2dBackpropInputOp
 """
 from te.lang.cce import DeconvParam
-from te.lang.cce.te_schedule.conv2d_backprop_input_general_schedule import \
+from te.lang.cce.te_schedule.conv2d_backprop_input_general_schedule import (
     general_schedule
-from te.lang.cce.te_schedule.conv2d_backprop_input_opti_schedule import \
-    opti_schedule
+)
+from te.lang.cce.te_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util
 
 
-class CceConv2dBackpropInputOp():  # pylint: disable=R0903
+class CceConv2dBackpropInputOp:  # pylint: disable=R0903
     """
     The class of conv2d backprop input
 
@@ -49,8 +49,14 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
         self._res_tensor = None
         self._spec_node_list = None
 
-    def schedule(self, res, spec_node_list, sch_list,  # pylint: disable=R0913
-                 tiling_case=None, var_range=None):
+    def schedule(  # pylint: disable=R0913
+        self,
+        res,
+        spec_node_list,
+        sch_list,
+        tiling_case=None,
+        var_range=None
+    ):
         """
         auto_schedule for cce AI-CORE.
 
@@ -83,8 +89,9 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
                 if al1_size + bl1_size > cce_conf.get_soc_spec("L1_SIZE"):
                     dict_args = dict()
                     dict_args["errCode"] = "E60026"
-                    raise RuntimeError(dict_args,
-                                       error_manager_util.get_error_message(dict_args))
+                    raise RuntimeError(
+                        dict_args, error_manager_util.get_error_message(dict_args)
+                    )
 
         _check_l1_buffer()
         schedule = sch_list[0]
@@ -94,7 +101,7 @@ class CceConv2dBackpropInputOp():  # pylint: disable=R0903
             # special case: when kernel_h and kernel_w are equal to 1,
             # and stride is greater than 1,
             # take the general scheme, add bias to l0c
-            if operation.tag == 'conv2d_backprop_input':
+            if operation.tag == "conv2d_backprop_input":
                 is_general = True
                 break
         if is_general:

@@ -31,7 +31,7 @@ CONFIG_DATA_TRANS = 64
 CONFIG_MASK = 128
 MATRIX = 256
 CONFIG_UB_LIMITED = 4096
-IF_USE_V200 = ("Ascend610", "Ascend710")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
 
 
 class InitConst:
@@ -413,7 +413,7 @@ def processing_tail(tik_instance, data_gm, tiling_para, img_size):
                        const_num.dstorsrc_rep_stride1)
 
     # do the comparing
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:    
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:
         tik_instance.vmins(const_num.mask,
                            data_tensor.res_temp2_ub[0],
                            data_tensor.res_temp1_ub[0],
@@ -553,7 +553,7 @@ def check_clip_boxes_input_dict(boxes_input, boxes_output):
         raise RuntimeError("The shape of output should be the same as the input!")
 
     # Check the size of the input shape
-    
+
     if len(input_shape) != CONFIG_TWO:
         raise RuntimeError("The input shape should be two dimension only!")
     n_x, n_y = input_shape
@@ -562,7 +562,7 @@ def check_clip_boxes_input_dict(boxes_input, boxes_output):
     if n_y != CONFIG_FOUR:
         raise RuntimeError("The last dimension of xxx tensor must be 4!")
     check_dtype(input_dtype, ["float16"], param_name="x")
-    
+
     if input_dtype != output_dtype:
         raise RuntimeError("The dtype of output should be the same as the input!")
 

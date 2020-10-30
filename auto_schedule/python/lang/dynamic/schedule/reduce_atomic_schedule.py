@@ -502,8 +502,8 @@ class ReduceAtomicSchedule(VectorSchedule):
         """
         :return: Bool
         """
-        # platform: cloud, 1951
-        if not pver().is_cloud_version() and not pver().is_1951_version():
+        # platform: cloud, ng1
+        if not pver().is_cloud_version() and not pver().is_ng1_version():
             return False
         # type: fp32
         reduce_tensor = self._reduce_info["reduce_tensor"]

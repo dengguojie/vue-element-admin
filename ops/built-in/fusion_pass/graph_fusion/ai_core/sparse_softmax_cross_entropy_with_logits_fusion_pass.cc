@@ -282,8 +282,7 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
 
   // Put origin Input0 side add to SoftMax Input0 side
-  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(1),
-                                         GatherV2Node->GetInControlAnchor())){
+  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), SoftMaxNode->GetInDataAnchor(0))){
     assitPtr = nullptr;
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
