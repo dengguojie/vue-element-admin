@@ -110,7 +110,6 @@ if(ENABLE_TEST STREQUAL "")
     )
   endif()
 else()
-  message(FATAL_ERROR "@@@@")
   add_library(optiling_llt STATIC ${_optiling_files})
   target_include_directories(optiling_llt PUBLIC
     ${_op_tiling_include}
