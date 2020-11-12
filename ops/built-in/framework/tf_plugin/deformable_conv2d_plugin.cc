@@ -51,7 +51,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op) {
 
 REGISTER_CUSTOM_OP("DeformableConv2D")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("DeformableConv2D")
+    .OriginOpType({"DeformableConv2D", "DeformableConv2DWithBias"})
     .ParseParamsFn(ParseParamsDeformableConv2D)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
