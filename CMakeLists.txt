@@ -43,6 +43,7 @@ if(BUILD_OPEN_PROJECT)
   elseif(ST_TEST)
     set(ENABLE_TEST ST)
   endif()
+  message(FATAL_ERROR "@@@ ENABLE_TEST=${ENABLE_TEST}")
 
   # build external prjects
   if(DEFINED ENV{D_PKG_SERVER})

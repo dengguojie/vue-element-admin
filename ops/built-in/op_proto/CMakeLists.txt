@@ -140,7 +140,7 @@ set(_op_proto_link_libs
     c_sec
 )
 
-if(NOT DEFINED ENABLE_TEST)
+if(ENABLE_TEST STREQUAL "")
   add_library(opsproto SHARED
     ${_op_proto_srcs}
     ${_op_proto_utils}

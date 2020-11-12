@@ -74,7 +74,7 @@ set(_op_tiling_link_libs
     c_sec
 )
 
-if(NOT DEFINED ENABLE_TEST)
+if(ENABLE_TEST STREQUAL "")
   add_library(optiling SHARED ${_optiling_files})
   target_include_directories(optiling PRIVATE
     ${_op_tiling_include}
@@ -110,6 +110,7 @@ if(NOT DEFINED ENABLE_TEST)
     )
   endif()
 else()
+  message(FATAL_ERROR "@@@@")
   add_library(optiling_llt STATIC ${_optiling_files})
   target_include_directories(optiling_llt PUBLIC
     ${_op_tiling_include}

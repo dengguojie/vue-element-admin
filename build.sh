@@ -45,8 +45,8 @@ checkopts() {
   VERBOSE=""
   THREAD_NUM=8
   GCC_PREFIX=""
-  UT_TEST=False
-  ST_TEST=False
+  UT_TEST=FALSE
+  ST_TEST=FALSE
   # Process the options
   while getopts 'hj:usvg:' opt
   do
@@ -54,8 +54,8 @@ checkopts() {
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG ;;
-      u) UT_TEST=True ;;
-      s) ST_TEST=True ;;
+      u) UT_TEST=TRUE ;;
+      s) ST_TEST=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
       *) logging "Undefined option: ${opt}"
@@ -75,15 +75,15 @@ mk_dir() {
 # create build path
 build_cann() {
   logging "Create build directory and build CANN"
-  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=true"
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE"
   if [[ "$GCC_PREFIX" != "" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
   fi
-  if [[ "$UT_TEST" == "True" ]]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=True"
+  if [[ "$UT_TEST" == "TRUE" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=TRUE"
   fi
-  if [[ "$ST_TEST" == "True" ]]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=True"
+  if [[ "$ST_TEST" == "TRUE" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=TRUE"
   fi
   logging "CMake Args: ${CMAKE_ARGS}"
 
